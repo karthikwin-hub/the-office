@@ -49,4 +49,6 @@ pnpm build:mock
 cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler deploy -c ../web/wrangler.mock.jsonc'
 ```
 
-Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`; see the comment in `apps/api/wrangler.jsonc`.
+Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`; see the comment in `apps/api/wrangler.jsonc`. `sh tools/admin/set-secrets.sh` creates the two required ones in Infisical if missing and puts them on the live Worker, without printing values; run it yourself.
+
+The handbook for the team and consultants is `docs/handbook/the-office-handbook.html` (open it in a browser, or print to PDF).
