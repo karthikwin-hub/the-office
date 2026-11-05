@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - msw
+  - sharp
+storeDir: /home/puja/.local/share/pnpm/store

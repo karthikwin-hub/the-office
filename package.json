@@ -1,0 +1,25 @@
+{
+  "name": "the-office",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "scripts": {
+    "dev": "pnpm --filter @office/web dev",
+    "dev:live": "pnpm --filter @office/api dev",
+    "build": "pnpm --filter @office/web build",
+    "build:mock": "pnpm --filter @office/web build:mock",
+    "storybook": "pnpm --filter @office/ui storybook",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "data": "python3 tools/synthetic/generate.py",
+    "screenshots": "node tools/screenshots/capture.mjs",
+    "deploy:mock": "pnpm build:mock && pnpm --filter @office/api exec wrangler deploy -c ../web/wrangler.mock.jsonc",
+    "deploy": "pnpm build && pnpm --filter @office/api run db:migrate && pnpm --filter @office/api run deploy",
+    "e2e:live": "node tools/e2e/live.mjs",
+    "verify:exports": "rm -rf tools/exports/out && mkdir -p tools/exports/out/tmp && EXPORT_DIR=$PWD/tools/exports/out pnpm --filter @office/engine exec vitest run test/excel.test.ts && TMPDIR=$PWD/tools/exports/out/tmp .venv/bin/python tools/exports/verify.py tools/exports/out"
+  },
+  "devDependencies": {
+    "playwright": "~1.57.0",
+    "typescript": "^5.7.3"
+  }
+}

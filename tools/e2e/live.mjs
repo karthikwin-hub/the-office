@@ -1,0 +1,149 @@
+#!/usr/bin/env node
+// End-to-end check of the live office against `wrangler dev` (or a deployment).
+//
+//   node tools/e2e/live.mjs [baseUrl] --owner email:password --accountant email:password
+//
+// Signs in, lets the background reader take emailed PDFs, checks the desk,
+// approves one bill, confirms a second browser sees changes pushed over the
+// WebSocket, and that the accountant cannot approve. Screenshots go to
+// screenshots/live/.
+import { mkdir } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { chromium } from "playwright";
+
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args.splice(i, 2)[1] : undefined;
+};
+const [ownerEmail, ownerPassword] = (flag("--owner") ?? "").split(":");
+const [acctEmail, acctPassword] = (flag("--accountant") ?? "").split(":");
+const base = args[0] ?? "http://localhost:8787";
+const out = join(resolve(import.meta.dirname, "../.."), "screenshots/live");
+await mkdir(out, { recursive: true });
+
+const failures = [];
+const check = (ok, what) => {
+  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
+  if (!ok) failures.push(what);
+};
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
+async function signedIn(email, password, name) {
+  const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 } });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => console.log(`  [${name}] page error: ${e.message}`));
+  await page.goto(base);
+  await page.getByRole("heading", { name: /sign in|open your office/i }).waitFor();
+  await page.screenshot({ path: join(out, `signin-${name}.png`) });
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.locator(".topbar-business").waitFor();
+  return page;
+}
+
+const owner = await signedIn(ownerEmail, ownerPassword, "owner");
+check(await owner.getByRole("button", { name: "Sign out" }).isVisible(), "owner is signed in");
+
+// The background reader takes emailed PDFs as soon as the office opens.
+const unread = async (page) => page.evaluate(async () => (await (await fetch("/api/documents/unread")).json()).length);
+let left = await unread(owner);
+for (let i = 0; i < 20 && left > 0; i++) {
+  await owner.waitForTimeout(1000);
+  left = await unread(owner);
+}
+check(left === 0, `background reader emptied the inbox (${left} left)`);
+await owner.waitForTimeout(1500);
+check(!(await owner.getByText("reconnecting").isVisible()), "live updates are connected");
+await owner.screenshot({ path: join(out, "floor-owner.png") });
+
+await owner.locator(".topbar-nav").getByRole("link", { name: /your desk/i }).click();
+await owner.locator(".approval").first().waitFor();
+const cards = await owner.locator(".approval").count();
+check(cards > 0, `desk shows ${cards} cards`);
+await owner.screenshot({ path: join(out, "desk-owner.png") });
+
+const acct = await signedIn(acctEmail, acctPassword, "accountant");
+check(await acct.locator(".role-banner").isVisible(), "accountant sees the role banner");
+await acct.goto(`${base}/desk`);
+await acct.locator(".approval").first().waitFor();
+const acctApprove = acct.locator(".approval").filter({ hasText: /post bill/i }).first().locator(".btn-primary");
+check((await acctApprove.count()) === 0 || (await acctApprove.isDisabled()), "accountant cannot approve a bill");
+await acct.screenshot({ path: join(out, "desk-accountant.png") });
+
+// The owner approves a bill (or a reminder, once the bills are done); the accountant's open desk drops it without a reload.
+const bill = owner.locator(".approval:not(.approval-decided)").filter({ hasText: /post bill|send a reminder/i }).first();
+const title = (await bill.locator("h3, h2").first().textContent())?.trim() ?? "";
+await bill.locator(".btn-primary").click();
+await owner.waitForTimeout(800);
+check(!(await owner.getByText(title, { exact: true }).isVisible()), `owner approved "${title}"`);
+let gone = false;
+for (let i = 0; i < 10 && !gone; i++) {
+  await acct.waitForTimeout(500);
+  gone = !(await acct.getByText(title, { exact: true }).isVisible());
+}
+check(gone, "the accountant's desk updated over the WebSocket");
+
+// An upload goes to R2 and is read from its text layer in the browser; a bill already in the books is set aside.
+await owner.goto(`${base}/rooms/accountant`);
+await owner.locator('input[type="file"]').setInputFiles(join(resolve(import.meta.dirname, "../.."), "apps/web/public/docs/doc-p0002.pdf"));
+const setAside = owner.locator(".intake").getByText(/already recorded|set aside/i).first();
+await setAside.waitFor({ timeout: 20_000 }).catch(() => undefined);
+check(await setAside.isVisible(), "an uploaded copy of a recorded bill is set aside");
+const stored = await owner.evaluate(async () => {
+  const docs = await (await fetch("/api/documents")).json();
+  const up = docs.find((d) => d.channel === "upload" && d.file.startsWith("/api/files/"));
+  return up ? (await fetch(up.file)).headers.get("content-type") : null;
+});
+check(stored === "application/pdf", `the upload is served back from R2 (${stored})`);
+await owner.screenshot({ path: join(out, "room-accountant-upload.png") });
+
+const session = await acct.evaluate(async () => (await fetch("/api/session")).json());
+check(session.role === "accountant" && session.mode === "live", "accountant session is live and read-only");
+const spoof = await acct.evaluate(async () => (await fetch("/api/hiring/marketer", { method: "POST", headers: { "content-type": "application/json", "x-office-as": "owner" }, body: '{"hired":true}' })).status);
+check(spoof === 403, `accountant cannot hire, even claiming to be the owner (${spoof})`);
+
+// Social media: demo channels without a stored sign-in post by hand, and nothing reaches the Office unsigned.
+const social = await owner.evaluate(async () => (await fetch("/api/reports/social")).json());
+check(social.channels.every((c) => c.mode === "manual" || c.connectedAt), "channels without a stored sign-in are posted by hand");
+const unsigned = await fetch(`${base}/api/hooks/meta`, { method: "POST", headers: { "content-type": "application/json" }, body: '{"object":"instagram","entry":[]}' });
+check(unsigned.status === 401, `an unsigned Meta webhook is refused (${unsigned.status})`);
+const handshake = await fetch(`${base}/api/hooks/meta?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=1`);
+check(handshake.status === 403, `a webhook handshake with the wrong token is refused (${handshake.status})`);
+const media = await fetch(`${base}/media/media-u1?exp=9999999999&sig=forged`);
+check(media.status === 404, `a forged media link finds nothing (${media.status})`);
+const acctConnect = await acct.evaluate(async () => (await fetch("/api/channels/instagram/connect", { redirect: "manual" })).status);
+check(acctConnect === 403, `the accountant cannot connect a channel (${acctConnect})`);
+const acctVoice = await acct.evaluate(async () => (await fetch("/api/social/voice", { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" })).status);
+check(acctVoice === 403, `the accountant cannot change the brand voice (${acctVoice})`);
+
+await owner.goto(`${base}/rooms/social-media-manager`);
+await owner.locator(".channel-strip").waitFor();
+check((await owner.locator(".channel-bay").count()) === social.channels.length, "the room shows every channel");
+await owner.screenshot({ path: join(out, "room-social-media-manager.png"), fullPage: true });
+
+const manual = social.posts.flatMap((p) => p.variants.filter((v) => v.status === "scheduled" && social.channels.find((c) => c.id === v.channelId)?.mode === "manual").map((v) => [p.id, v.channelId]))[0];
+if (manual) {
+  const [postId, channelId] = manual;
+  const pack = await owner.evaluate(async ([p, c]) => (await fetch(`/api/social/posts/${p}/variants/${c}/pack`)).json(), manual);
+  check(pack.text?.length > 0 && pack.steps?.length > 0, `a publishing pack is ready for ${channelId}`);
+  const posted = await owner.evaluate(
+    async ([p, c]) => (await fetch(`/api/social/posts/${p}/variants/${c}/posted`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: `https://example.com/e2e/${p}/${c}` }) })).json(),
+    manual,
+  );
+  check(posted.variants?.find((v) => v.channelId === channelId)?.status === "published", `Mark as posted records ${postId} on ${channelId}`);
+}
+
+await owner.goto(`${base}/api/channels/instagram/connect`);
+await owner.waitForURL(/\/settings/);
+check(/connect_error=/.test(owner.url()), "connecting without the platform's keys comes back with a reason");
+await owner.locator("#channels").waitFor();
+await owner.screenshot({ path: join(out, "settings-channels.png"), fullPage: true });
+
+await browser.close();
+if (failures.length) {
+  console.log(`\n${failures.length} failed`);
+  process.exit(1);
+}
+console.log("\nall passed");

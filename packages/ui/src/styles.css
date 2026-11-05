@@ -1,0 +1,232 @@
+@import "./tokens.css";
+@import "./components.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--graphite);
+  font-family: var(--font);
+  font-size: var(--step-0);
+  line-height: var(--leading-body);
+  font-kerning: normal;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  line-height: var(--leading-tight);
+  font-weight: 700;
+}
+h1 {
+  font-size: var(--step-3);
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-size: var(--step-2);
+}
+h3 {
+  font-size: var(--step-1);
+}
+h4 {
+  font-size: var(--step-0);
+}
+p {
+  margin: 0;
+  max-width: var(--measure);
+}
+
+a {
+  color: var(--carbon);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+.num,
+td.num,
+th.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--graphite-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Buttons */
+.btn {
+  font: inherit;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--graphite-soft);
+  background: var(--sheet);
+  color: var(--graphite);
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover {
+  border-color: var(--graphite);
+}
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--carbon);
+  border-color: var(--carbon);
+  color: white;
+}
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--carbon) 85%, black);
+}
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--carbon);
+  padding: 0 var(--s-2);
+}
+.btn-quiet:hover {
+  border-color: transparent;
+  text-decoration: underline;
+}
+
+/* Inputs: borders use graphite-soft to meet 3:1 non-text contrast */
+.field {
+  display: grid;
+  gap: var(--s-1);
+}
+.field label {
+  font-weight: 500;
+}
+.input,
+select.input,
+textarea.input {
+  font: inherit;
+  min-height: 36px;
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--graphite-soft);
+  background: var(--sheet);
+  color: var(--graphite);
+}
+
+/* Tables: the ledger */
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.ledger th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--graphite-soft);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 2px solid var(--graphite);
+  white-space: nowrap;
+}
+.ledger td {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: var(--rule-soft);
+  vertical-align: top;
+}
+.ledger tbody tr:hover td {
+  background: var(--carbon-tint);
+}
+.ledger tfoot td {
+  font-weight: 700;
+  border-top: 2px solid var(--graphite);
+  border-bottom: none;
+}
+.ledger th[aria-sort] button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ledger a {
+  color: inherit;
+  text-decoration-color: var(--plan-line);
+}
+.ledger a:hover {
+  color: var(--carbon);
+  text-decoration-color: var(--carbon);
+}
+
+/* Stamps: only four exist */
+.stamp {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  font-size: var(--step--1);
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.stamp-red {
+  color: var(--stamp-red);
+}
+.stamp-green {
+  color: var(--cleared-green);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: var(--s-5);
+  border-bottom: var(--rule);
+  overflow-x: auto;
+}
+.tabs a {
+  padding: var(--s-2) 0;
+  color: var(--graphite-soft);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.tabs a:hover {
+  color: var(--graphite);
+}
+.tabs a[aria-current="page"],
+.tabs a.active {
+  color: var(--carbon);
+  border-bottom-color: var(--carbon);
+  font-weight: 500;
+}

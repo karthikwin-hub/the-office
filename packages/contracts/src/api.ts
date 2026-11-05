@@ -1,0 +1,511 @@
+import { z } from "zod";
+import {
+  AgentState,
+  Bill,
+  Business,
+  Campaign,
+  ComplianceEvent,
+  Document,
+  FestivalDate,
+  Invoice,
+  IsoDate,
+  Lead,
+  LogEntry,
+  Paise,
+  Party,
+  BrandVoice,
+  Channel,
+  ContentCalendar,
+  MediaAsset,
+  Platform,
+  Post,
+  Quote,
+  Ref,
+  Rfq,
+  SocialMessage,
+  StagedChange,
+  TrustLevel,
+} from "./entities";
+
+/** Prose with figures that link to their proof (the covering note) */
+export const Segment = z.union([
+  z.object({ text: z.string() }),
+  z.object({ text: z.string(), figureId: z.string(), tone: z.enum(["red", "green"]).optional() }),
+]);
+export const Note = z.array(Segment);
+export type Note = z.infer<typeof Note>;
+
+export const RoomStatus = z.object({
+  agentId: z.string(),
+  hired: z.boolean(),
+  trustLevel: TrustLevel,
+  status: z.enum(["working", "idle", "waiting", "not_hired"]),
+  now: z.string(),
+  todayCount: z.number().int(),
+  waitingCount: z.number().int(),
+});
+export type RoomStatus = z.infer<typeof RoomStatus>;
+
+export const OfficeView = z.object({
+  business: Business.pick({ name: true, legalName: true, gstin: true, asOf: true, owner: true, accountantFirm: true }),
+  rooms: z.array(RoomStatus),
+  log: z.array(LogEntry),
+  deskCount: z.number().int(),
+  arriving: z.array(z.object({ docId: z.string(), agentId: z.string(), label: z.string() })),
+});
+export type OfficeView = z.infer<typeof OfficeView>;
+
+export const Kpi = z.object({
+  label: z.string(),
+  value: z.string(),
+  figureId: z.string().optional(),
+  tone: z.enum(["red", "green"]).optional(),
+});
+export type Kpi = z.infer<typeof Kpi>;
+
+export const AgentRoomView = z.object({
+  agentId: z.string(),
+  state: AgentState,
+  status: RoomStatus,
+  kpis: z.array(Kpi),
+  log: z.array(LogEntry),
+  pending: z.array(StagedChange),
+  accuracyPct: z.number().nullable(),
+  promotion: z.object({ to: TrustLevel, reason: z.string() }).nullable(),
+});
+export type AgentRoomView = z.infer<typeof AgentRoomView>;
+
+export const DeskView = z.object({ items: z.array(StagedChange), decided: z.array(StagedChange) });
+export type DeskView = z.infer<typeof DeskView>;
+
+export const Decision = z.object({
+  action: z.enum(["approve", "reject"]),
+  note: z.string().optional(),
+  edits: z.record(z.unknown()).optional(),
+});
+export type Decision = z.infer<typeof Decision>;
+
+/* ---------- Reports ---------- */
+
+export const SkuSalesRow = z.object({
+  skuId: z.string(),
+  name: z.string(),
+  category: z.string(),
+  hsn: z.string(),
+  unit: z.string(),
+  qty: z.number().int(),
+  invoices: z.number().int(),
+  taxablePaise: Paise,
+  marginPaise: Paise,
+  marginPct: z.number(),
+  sharePct: z.number(),
+  cumulativePct: z.number(),
+  figureId: z.string(),
+});
+export type SkuSalesRow = z.infer<typeof SkuSalesRow>;
+
+export const SalesReport = z.object({
+  from: IsoDate,
+  to: IsoDate,
+  note: Note,
+  totals: z.object({ taxablePaise: Paise, taxPaise: Paise, invoices: z.number().int(), customers: z.number().int(), marginPaise: Paise }),
+  bySku: z.array(SkuSalesRow),
+  byCustomer: z.array(
+    z.object({ partyId: z.string(), name: z.string(), city: z.string(), invoices: z.number().int(), taxablePaise: Paise, sharePct: z.number(), figureId: z.string() }),
+  ),
+  byMonth: z.array(z.object({ month: z.string(), taxablePaise: Paise, figureId: z.string() })),
+});
+export type SalesReport = z.infer<typeof SalesReport>;
+
+export const AGEING_BUCKETS = ["Not yet due", "1 to 30 days", "31 to 60 days", "61 to 90 days", "Over 90 days"] as const;
+
+export const AgeingRow = z.object({
+  partyId: z.string(),
+  name: z.string(),
+  city: z.string(),
+  termsDays: z.number().int(),
+  buckets: z.array(Paise).length(5),
+  totalPaise: Paise,
+  oldestDaysOverdue: z.number().int(),
+  openInvoices: z.number().int(),
+  avgDaysLate: z.number().nullable(),
+  lastPaymentOn: IsoDate.nullable(),
+  figureId: z.string(),
+});
+export type AgeingRow = z.infer<typeof AgeingRow>;
+
+export const OpenInvoice = z.object({
+  invoiceId: z.string(),
+  number: z.string(),
+  partyId: z.string(),
+  partyName: z.string(),
+  date: IsoDate,
+  dueDate: IsoDate,
+  daysOverdue: z.number().int(),
+  totalPaise: Paise,
+  outstandingPaise: Paise,
+  bucket: z.number().int().min(0).max(4),
+  docId: z.string(),
+});
+export type OpenInvoice = z.infer<typeof OpenInvoice>;
+
+export const AgeingReport = z.object({
+  asOf: IsoDate,
+  note: Note,
+  bucketTotals: z.array(Paise).length(5),
+  bucketFigureIds: z.array(z.string()).length(5),
+  totalPaise: Paise,
+  rows: z.array(AgeingRow),
+  open: z.array(OpenInvoice),
+});
+export type AgeingReport = z.infer<typeof AgeingReport>;
+
+const TaxSplit = z.object({ taxablePaise: Paise, cgstPaise: Paise, sgstPaise: Paise, igstPaise: Paise });
+export const GstReport = z.object({
+  period: z.string(),
+  note: Note,
+  outward: TaxSplit.extend({ invoices: z.number().int(), figureId: z.string() }),
+  byRate: z.array(TaxSplit.extend({ rate: z.number().int() })),
+  hsn: z.array(TaxSplit.extend({ hsn: z.string(), description: z.string(), uqc: z.string(), qty: z.number().int(), rate: z.number().int() })),
+  itc: z.object({
+    books: TaxSplit.extend({ figureId: z.string() }),
+    eligible: TaxSplit.extend({ figureId: z.string() }),
+    notIn2b: z.array(z.object({ billId: z.string(), number: z.string(), vendor: z.string(), date: IsoDate, taxPaise: Paise, docId: z.string() })),
+  }),
+  payable: z.object({ igstPaise: Paise, cgstPaise: Paise, sgstPaise: Paise, totalPaise: Paise }),
+  filings: z.array(z.object({ form: z.string(), period: z.string(), status: z.enum(["draft", "filed", "not_started"]), dueOn: IsoDate, filedOn: IsoDate.nullable() })),
+  periods: z.array(z.string()),
+});
+export type GstReport = z.infer<typeof GstReport>;
+
+export const TdsDeduction = z.object({
+  billId: z.string(),
+  docId: z.string(),
+  vendor: z.string(),
+  pan: z.string(),
+  section: z.string(),
+  date: IsoDate,
+  basePaise: Paise,
+  expectedPaise: Paise,
+  bookedPaise: Paise,
+  filedPaise: Paise.nullable(),
+  ruleRateBp: z.number().int(),
+  bookedRateBp: z.number().int(),
+});
+export type TdsDeduction = z.infer<typeof TdsDeduction>;
+
+export const TdsReport = z.object({
+  quarter: z.string(),
+  quarters: z.array(z.string()),
+  note: Note,
+  bySection: z.array(
+    z.object({ section: z.string(), nature: z.string(), rate: z.string(), deductees: z.number().int(), basePaise: Paise, tdsPaise: Paise, figureId: z.string() }),
+  ),
+  deductions: z.array(TdsDeduction),
+  receivable: z.array(
+    z.object({ invoiceId: z.string(), number: z.string(), customer: z.string(), expectedPaise: Paise, creditedPaise: Paise, docId: z.string() }),
+  ),
+  sectionNote: z.string(),
+});
+export type TdsReport = z.infer<typeof TdsReport>;
+
+export const CashReport = z.object({
+  asOf: IsoDate,
+  note: Note,
+  months: z.array(z.object({ month: z.string(), receiptsPaise: Paise, paymentsPaise: Paise, netPaise: Paise })),
+  weeks: z.array(
+    z.object({
+      weekOf: IsoDate,
+      expectedInPaise: Paise,
+      expectedOutPaise: Paise,
+      items: z.array(z.object({ label: z.string(), amountPaise: Paise, direction: z.enum(["in", "out"]), date: IsoDate })),
+    }),
+  ),
+  assumptions: z.array(z.string()),
+});
+export type CashReport = z.infer<typeof CashReport>;
+
+export const Reorder = z.object({
+  partyId: z.string(),
+  name: z.string(),
+  orders: z.number().int(),
+  avgIntervalDays: z.number().int(),
+  lastOrderOn: IsoDate,
+  daysSince: z.number().int(),
+  expectedOn: IsoDate,
+  status: z.enum(["ok", "due", "late"]),
+  typicalPaise: Paise,
+});
+export type Reorder = z.infer<typeof Reorder>;
+
+export const SalesTeamReport = z.object({
+  note: Note,
+  pipeline: z.array(z.object({ stage: z.string(), count: z.number().int(), valuePaise: Paise })),
+  leads: z.array(Lead),
+  quotes: z.array(Quote.extend({ customer: z.string(), overdueWarning: z.string().nullable() })),
+  reorders: z.array(Reorder),
+});
+export type SalesTeamReport = z.infer<typeof SalesTeamReport>;
+
+export const MarketingReport = z.object({
+  note: Note,
+  campaigns: z.array(Campaign.extend({ skuNames: z.array(z.string()), returnMultiple: z.number().nullable() })),
+  slowMovers: z.array(
+    z.object({ skuId: z.string(), name: z.string(), onHand: z.number().int(), soldLast60: z.number().int(), daysOfStock: z.number().int().nullable(), stockValuePaise: Paise }),
+  ),
+  prices: z.array(
+    z.object({
+      skuId: z.string(),
+      name: z.string(),
+      ourPricePaise: Paise,
+      offers: z.array(z.object({ marketplace: z.string(), seller: z.string(), pricePaise: Paise })),
+      gapPct: z.number(),
+    }),
+  ),
+  calendar: z.array(FestivalDate),
+});
+export type MarketingReport = z.infer<typeof MarketingReport>;
+
+/** A check on a post, for one channel or for all of them. */
+export const PostCheck = z.object({ key: z.string(), label: z.string(), ok: z.boolean(), detail: z.string(), channelId: z.string().nullable() });
+export type PostCheck = z.infer<typeof PostCheck>;
+
+export const SocialPerformance = z.object({
+  byChannel: z.array(z.object({ channelId: z.string(), platform: Platform, posts: z.number().int(), views: z.number(), engagements: z.number(), rate: z.number(), enquiries: z.number() })),
+  byPillar: z.array(z.object({ pillarId: z.string(), name: z.string(), posts: z.number().int(), views: z.number(), rate: z.number() })),
+  /** From posts to invoices: leads that came from social, their quotes, and what those customers were invoiced since. */
+  funnel: z.object({ posts: z.number().int(), views: z.number(), clicks: z.number(), enquiries: z.number(), leads: z.number().int(), quotes: z.number().int(), invoicedPaise: Paise, partyIds: z.array(z.string()), leadIds: z.array(z.string()) }),
+  best: z.array(z.object({ postId: z.string(), channelId: z.string(), reason: z.string() })),
+  experiment: z.string(),
+});
+export type SocialPerformance = z.infer<typeof SocialPerformance>;
+
+export const SocialReport = z.object({
+  note: Note,
+  posts: z.array(Post),
+  inbox: z.array(SocialMessage),
+  ratings: z.object({ average: z.number(), count: z.number().int() }),
+  channels: z.array(Channel),
+  voice: BrandVoice,
+  calendars: z.array(ContentCalendar),
+  media: z.array(MediaAsset),
+  checks: z.record(z.array(PostCheck)),
+  performance: SocialPerformance,
+});
+export type SocialReport = z.infer<typeof SocialReport>;
+
+/** What to post by hand on a channel that is not connected. */
+export const PublishingPack = z.object({
+  postId: z.string(),
+  channelId: z.string(),
+  platform: Platform,
+  handle: z.string(),
+  text: z.string(),
+  media: z.array(MediaAsset),
+  at: z.string(),
+  steps: z.array(z.string()),
+});
+export type PublishingPack = z.infer<typeof PublishingPack>;
+
+export const VariantEdit = z.object({ text: z.string().min(1).max(5000).optional(), link: z.string().url().nullable().optional(), mediaIds: z.array(z.string()).max(10).optional() });
+export const MarkPosted = z.object({ url: z.string().url().max(500) });
+export const ChannelSetup = z.object({ handle: z.string().min(1).max(100).optional(), mode: z.enum(["connected", "manual"]).optional(), postingHours: z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }).optional() });
+export const MetricsImport = z.object({ content: z.string().min(1).max(2_000_000) });
+
+export const OperationsReport = z.object({
+  note: Note,
+  stock: z.array(
+    z.object({
+      skuId: z.string(),
+      name: z.string(),
+      category: z.string(),
+      onHand: z.number().int(),
+      unit: z.string(),
+      reorderPoint: z.number().int(),
+      leadTimeDays: z.number().int(),
+      soldLast30: z.number().int(),
+      daysOfCover: z.number().int().nullable(),
+      status: z.enum(["reorder", "ok", "excess"]),
+      stockValuePaise: Paise,
+    }),
+  ),
+  purchaseOrders: z.array(z.object({ id: z.string(), number: z.string(), vendor: z.string(), date: IsoDate, status: z.string(), lines: z.number().int(), totalPaise: Paise })),
+  rfqs: z.array(Rfq.extend({ recommended: z.string(), reason: z.string() })),
+  compliance: z.array(ComplianceEvent.extend({ daysLeft: z.number().int() })),
+});
+export type OperationsReport = z.infer<typeof OperationsReport>;
+
+export const PayrollLine = z.object({
+  employeeId: z.string(),
+  name: z.string(),
+  role: z.string(),
+  grossPaise: Paise,
+  payableDays: z.number(),
+  earnedPaise: Paise,
+  pfEmployeePaise: Paise,
+  esiEmployeePaise: Paise,
+  ptPaise: Paise,
+  netPaise: Paise,
+  pfEmployerPaise: Paise,
+  esiEmployerPaise: Paise,
+});
+export type PayrollLine = z.infer<typeof PayrollLine>;
+
+export const PeopleReport = z.object({
+  period: z.string(),
+  note: Note,
+  lines: z.array(PayrollLine),
+  totals: PayrollLine.omit({ employeeId: true, name: true, role: true, payableDays: true }),
+  assumptions: z.array(z.string()),
+});
+export type PeopleReport = z.infer<typeof PeopleReport>;
+
+/* ---------- The Auditor ---------- */
+
+export const Finding = z.object({
+  id: z.string(),
+  severity: z.enum(["high", "medium", "low"]),
+  form: z.string(),
+  period: z.string(),
+  title: z.string(),
+  explanation: z.string(),
+  action: z.string(),
+  impactPaise: Paise,
+  evidence: z.array(z.object({ label: z.string(), ref: Ref })),
+});
+export type Finding = z.infer<typeof Finding>;
+
+export const Comparison = z.object({
+  form: z.string(),
+  line: z.string(),
+  booksPaise: Paise,
+  filedPaise: Paise,
+  diffPaise: Paise,
+});
+export type Comparison = z.infer<typeof Comparison>;
+
+export const AuditReport = z.object({
+  period: z.string(),
+  periods: z.array(z.string()),
+  note: Note,
+  returns: z.array(z.object({ id: z.string(), form: z.string(), period: z.string(), status: z.string(), filedOn: IsoDate.nullable(), sharedOn: IsoDate.nullable(), matched: z.boolean() })),
+  comparisons: z.array(Comparison),
+  findings: z.array(Finding),
+});
+export type AuditReport = z.infer<typeof AuditReport>;
+
+/* ---------- Drill-down ---------- */
+
+export const TraceRow = z.object({
+  label: z.string(),
+  detail: z.string(),
+  date: IsoDate,
+  amountPaise: Paise,
+  docId: z.string().nullable(),
+  region: z.string().nullable(),
+});
+export type TraceRow = z.infer<typeof TraceRow>;
+
+export const Trace = z.object({ figureId: z.string(), title: z.string(), totalPaise: Paise, rows: z.array(TraceRow) });
+export type Trace = z.infer<typeof Trace>;
+
+export const DocumentView = z.object({
+  document: Document,
+  invoice: Invoice.nullable(),
+  bill: Bill.nullable(),
+  party: Party.nullable(),
+  outstandingPaise: Paise.nullable(),
+});
+export type DocumentView = z.infer<typeof DocumentView>;
+
+export const PartyView = z.object({
+  party: Party,
+  ageing: AgeingRow.nullable(),
+  open: z.array(OpenInvoice),
+  recent: z.array(z.object({ date: IsoDate, label: z.string(), amountPaise: Paise, docId: z.string().nullable() })),
+  reminders: z.array(StagedChange),
+});
+export type PartyView = z.infer<typeof PartyView>;
+
+/* ---------- Office Manager ---------- */
+
+export const AskRequest = z.object({ question: z.string().min(1).max(500) });
+export const AskResponse = z.object({ answer: Note, followUps: z.array(z.string()) });
+export type AskResponse = z.infer<typeof AskResponse>;
+
+/* ---------- Document intake ---------- */
+
+/** A run of text from a PDF's text layer; positions are page fractions, origin top left. */
+export const TextItem = z.object({ str: z.string().max(500), page: z.number().int().min(1), x: z.number(), y: z.number(), w: z.number(), h: z.number() });
+export type TextItem = z.infer<typeof TextItem>;
+export const ReadRequest = z.object({ items: z.array(TextItem).max(6000) });
+export const IngestResult = z.object({ document: Document, staged: StagedChange.nullable(), message: z.string() });
+export type IngestResult = z.infer<typeof IngestResult>;
+
+/* ---------- Hiring, settings, session ---------- */
+
+export const HiringView = z.object({ agents: z.array(AgentState) });
+export type HiringView = z.infer<typeof HiringView>;
+export const HiringChange = z.object({ hired: z.boolean().optional(), trustLevel: TrustLevel.optional() });
+
+export const Role = z.enum(["owner", "accountant"]);
+export type Role = z.infer<typeof Role>;
+
+export const Settings = z.object({
+  business: Business,
+  users: z.array(z.object({ name: z.string(), email: z.string(), role: Role })),
+  /** Live office only: addresses the owner has invited who have not signed up yet. */
+  invited: z.array(z.object({ email: z.string(), role: Role })).optional(),
+  ingestEmail: z.string(),
+  digestTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  reminderPolicy: z.object({ firstAfterDays: z.number().int(), firmAfterDays: z.number().int(), finalAfterDays: z.number().int(), sendFrom: z.string() }),
+});
+export type Settings = z.infer<typeof Settings>;
+
+export const Session = z.object({ user: z.object({ name: z.string(), email: z.string() }), role: Role, mode: z.enum(["mock", "live"]) });
+export type Session = z.infer<typeof Session>;
+
+/* ---------- Routes ---------- */
+
+export const ROUTES = {
+  session: "/api/session",
+  office: "/api/office",
+  agent: (id: string) => `/api/agents/${id}`,
+  desk: "/api/desk",
+  decide: (id: string) => `/api/desk/${id}`,
+  sales: "/api/reports/sales",
+  ageing: "/api/reports/ageing",
+  gst: "/api/reports/gst",
+  tds: "/api/reports/tds",
+  cash: "/api/reports/cash",
+  salesTeam: "/api/reports/sales-team",
+  marketing: "/api/reports/marketing",
+  social: "/api/reports/social",
+  operations: "/api/reports/operations",
+  people: "/api/reports/people",
+  audit: "/api/audit",
+  trace: (figureId: string) => `/api/trace/${encodeURIComponent(figureId)}`,
+  document: (id: string) => `/api/documents/${id}`,
+  documents: "/api/documents",
+  unread: "/api/documents/unread",
+  readDocument: (id: string) => `/api/documents/${id}/read`,
+  file: (id: string) => `/api/files/${id}`,
+  importReturn: "/api/returns/import",
+  party: (id: string) => `/api/parties/${id}`,
+  ask: "/api/ask",
+  hiring: "/api/hiring",
+  hire: (agentId: string) => `/api/hiring/${agentId}`,
+  settings: "/api/settings",
+  exportGstr1: (period: string) => `/api/exports/gstr1/${period}`,
+  exportGstr3b: (period: string) => `/api/exports/gstr3b/${period}`,
+  exportTds: (quarter: string) => `/api/exports/tds/${quarter}`,
+  socialVoice: "/api/social/voice",
+  socialChannel: (id: string) => `/api/social/channels/${id}`,
+  socialConnect: (platform: string) => `/api/channels/${platform}/connect`,
+  socialCalendarDraft: "/api/social/calendar/draft",
+  socialVariant: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}`,
+  socialPosted: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}/posted`,
+  socialPack: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}/pack`,
+  socialMetricsImport: "/api/social/metrics/import",
+  socialMedia: "/api/social/media",
+} as const;

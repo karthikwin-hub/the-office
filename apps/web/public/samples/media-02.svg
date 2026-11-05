@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+<defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="hsl(205 30% 80%)" stroke-width="1"/></pattern></defs>
+<rect width="1080" height="1080" fill="hsl(205 35% 94%)"/><rect width="1080" height="1080" fill="url(#g)"/>
+<rect x="240" y="220" width="600" height="520" rx="8" fill="none" stroke="hsl(205 40% 35%)" stroke-width="6" stroke-dasharray="18 10"/>
+<text x="540" y="500" text-anchor="middle" font-family="Georgia, serif" font-size="56" fill="hsl(205 40% 25%)">LED panel 2x2 ft 36 W</text>
+<text x="540" y="860" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" letter-spacing="4" fill="hsl(205 30% 35%)">SAMPLE PRODUCT PHOTO</text>
+</svg>

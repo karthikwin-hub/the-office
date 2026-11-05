@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "the-office",
+  "account_id": "d3b8b7d744513171ea57b5b424391de9",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/media/*"]
+  },
+  // BETTER_AUTH_SECRET is a secret: `infisical run --env=dev -- sh -c 'printf %s "$BETTER_AUTH_SECRET" | wrangler secret put BETTER_AUTH_SECRET'`.
+  // Social channels are optional secrets, put the same way: SOCIAL_TOKEN_KEY, then per platform META_APP_ID/SECRET, META_VERIFY_TOKEN,
+  // INSTAGRAM_APP_ID/SECRET, THREADS_APP_ID/SECRET, WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE, LINKEDIN_CLIENT_ID/SECRET, X_CLIENT_ID/SECRET.
+  "vars": {
+    "DATA_MODE": "live",
+    "OFFICE_ID": "kaveri-electricals",
+    "MAIL_FROM": "office@the-office.example",
+    "INGEST_EMAIL": "bills@the-office.example",
+    "BETTER_AUTH_URL": "https://the-office.the-office-agents.workers.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "office",
+      "database_id": "9c39f2e1-42ff-4cfc-8fd6-d55075a10cdb",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "DOCS", "bucket_name": "office-docs" }],
+  "ai": { "binding": "AI" },
+  // One Office per business holds its books and is their only writer; its own alarms run the morning round.
+  "durable_objects": { "bindings": [{ "name": "Office", "class_name": "Office" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Office"] }],
+  // Delivers only to addresses verified in Email Routing on the account.
+  "send_email": [{ "name": "MAILER" }],
+  "observability": { "enabled": true }
+}

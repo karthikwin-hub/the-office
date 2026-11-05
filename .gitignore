@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+storybook-static/
+.venv/
+__pycache__/
+test-results/
+
+# Proprietary Anthropic skills: dev-time only, never redistributed
+.cursor/skills/pdf/
+.cursor/skills/xlsx/
+
+# Exported workbooks and LibreOffice scratch space from tools/exports/verify.py
+tools/exports/out/

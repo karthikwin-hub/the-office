@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "@observablehq/plot": [
+        "./node_modules/@observablehq/plot/src/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

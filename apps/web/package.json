@@ -1,0 +1,36 @@
+{
+  "name": "@office/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "build:mock": "VITE_DATA=mock vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@observablehq/plot": "^0.6.17",
+    "@office/contracts": "workspace:*",
+    "@office/engine": "workspace:*",
+    "@office/fixtures": "workspace:*",
+    "@office/ui": "workspace:*",
+    "@tanstack/react-query": "^5.66.9",
+    "@tanstack/react-router": "^1.114.3",
+    "@tanstack/react-table": "^8.21.2",
+    "pdfjs-dist": "4.10.38",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "msw": "^2.7.3",
+    "vite": "^6.2.0"
+  },
+  "msw": {
+    "workerDirectory": ["public"]
+  }
+}
