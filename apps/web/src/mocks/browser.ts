@@ -3,6 +3,7 @@ import { dispatch, mockConnect, OfficeService, runMockEffects } from "@office/en
 import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
 import { setupWorker } from "msw/browser";
+import { mockWhatsApp } from "./whatsapp";
 
 const USERS: Record<Role, { name: string; email: string }> = {
   owner: { name: "Anil Kulkarni", email: "anil@kaverielectricals.in" },
@@ -68,6 +69,13 @@ const handler = http.all("/api/*", async ({ request }) => {
     if (!(file instanceof File) || !/^image\/(png|jpe?g|webp)$/.test(file.type)) return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture." }, { status: 415 });
     const asset = getOffice().addMedia({ id: `media-u${Date.now().toString(36)}`, url: URL.createObjectURL(file), kind: "image", alt: String(form.get("alt") ?? ""), skuId: (form.get("skuId") as string | null) || null, rights: form.get("rights") === "generated" ? "generated" : "own", width: Number(form.get("width")) || null, height: Number(form.get("height")) || null });
     return HttpResponse.json(asset);
+  }
+  if (url.pathname.startsWith("/api/whatsapp")) {
+    const res = await mockWhatsApp(request, url.pathname, role, getOffice(), USERS[role]);
+    if (res) {
+      if (request.method !== "GET") runMockEffects(getOffice());
+      return res;
+    }
   }
   if (url.pathname === "/api/prefs") {
     const saved = Prefs.parse({ ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") });

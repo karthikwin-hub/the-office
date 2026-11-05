@@ -76,6 +76,9 @@ function widePlan(groups: Group[], vacant: number): Plan {
   return { width, height: top + bH + 44, rooms, alcove, corridor, wings, entrance: { x: left, y: corridor.y + 16, orient: "v", into: 1, size: 44 }, narrow: false, building: { x: left, y: top, w: right - left, h: bH } };
 }
 
+/** Beyond this the narrow plan's rooms grow taller than they are useful. */
+const NARROW_MAX = 560;
+
 /** Narrow plan: the corridor runs down the page with rooms on both sides. */
 function narrowPlan(groups: Group[], vacant: number): Plan {
   const width = 400;
@@ -170,14 +173,14 @@ const statusText: Record<RoomStatus["status"], string> = { working: "Working", i
  */
 export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hiring", renderHiringLink, wholeFloor = false, layout, texture = DEFAULT_SKIN.texture }: FloorPlanProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [measured, setMeasured] = useState<"wide" | "narrow">("wide");
+  const [room, setRoom] = useState(Infinity);
   useLayoutEffect(() => {
-    if (layout || !ref.current) return;
-    const ro = new ResizeObserver(([e]) => setMeasured(e!.contentRect.width < 760 ? "narrow" : "wide"));
-    ro.observe(ref.current);
+    const box = ref.current?.parentElement;
+    if (layout || !box) return;
+    const ro = new ResizeObserver(([e]) => setRoom(e!.contentRect.width));
+    ro.observe(box);
     return () => ro.disconnect();
   }, [layout]);
-  const mode = layout ?? measured;
   const textureId = `floor-texture-${useId().replace(/:/g, "")}`;
   const hiredKey = rooms
     .filter((r) => r.hired)
@@ -185,11 +188,12 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
     .sort()
     .join(",");
   const vacant = wholeFloor ? 0 : AGENTS.filter((a) => a.id !== "office-manager" && !rooms.find((r) => r.agentId === a.id)?.hired).length;
-  const plan = useMemo(() => {
-    const keep = wholeFloor ? null : new Set(hiredKey.split(","));
-    const groups = groupsFor(keep);
-    return mode === "wide" ? widePlan(groups, vacant) : narrowPlan(groups, vacant);
-  }, [mode, wholeFloor, hiredKey, vacant]);
+  const plans = useMemo(() => {
+    const groups = groupsFor(wholeFloor ? null : new Set(hiredKey.split(",")));
+    return { wide: widePlan(groups, vacant), narrow: narrowPlan(groups, vacant) };
+  }, [wholeFloor, hiredKey, vacant]);
+  const mode = layout ?? (room >= Math.min(760, plans.wide.width) ? "wide" : "narrow");
+  const plan = plans[mode];
   const byId = new Map(rooms.map((r) => [r.agentId, r]));
   const pct = (r: Rect) => ({ left: `${(r.x / plan.width) * 100}%`, top: `${(r.y / plan.height) * 100}%`, width: `${(r.w / plan.width) * 100}%`, height: `${(r.h / plan.height) * 100}%` });
   const link =
@@ -208,7 +212,7 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
     ));
 
   return (
-    <div ref={ref} className={`floor-plan floor-plan-${mode}`} style={{ aspectRatio: `${plan.width} / ${plan.height}`, maxWidth: plan.narrow ? undefined : `${plan.width}px` }}>
+    <div ref={ref} className={`floor-plan floor-plan-${mode}`} style={{ aspectRatio: `${plan.width} / ${plan.height}`, maxWidth: plan.narrow ? `${NARROW_MAX}px` : `${plan.width}px` }}>
       <svg viewBox={`0 0 ${plan.width} ${plan.height}`} aria-hidden="true" className="floor-plan-drawing">
         <defs>
           <pattern id={textureId} width={texture.size} height={texture.size} patternUnits="userSpaceOnUse">

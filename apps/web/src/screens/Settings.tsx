@@ -7,6 +7,7 @@ import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
 import { SkinPicker } from "./SettingsSkin";
 import { SocialSettings } from "./SettingsSocial";
+import { WhatsAppSettings } from "./SettingsWhatsApp";
 
 export function SettingsScreen() {
   const settings = useQuery(q.settings());
@@ -154,6 +155,7 @@ function SettingsForm({ s }: { s: Settings }) {
     <>
       <PageHead title="Settings" lede={owner ? undefined : "Only the owner can change the office's settings; how the office looks to you is yours to choose."} />
       <SkinPicker />
+      <WhatsAppSettings />
       {owner ? (
         <BusinessForm b={b} />
       ) : (

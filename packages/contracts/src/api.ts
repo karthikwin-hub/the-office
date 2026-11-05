@@ -9,6 +9,7 @@ import {
   FestivalDate,
   Invoice,
   IsoDate,
+  IsoDateTime,
   Lead,
   LogEntry,
   Paise,
@@ -474,6 +475,45 @@ export const DEFAULT_PREFS: Prefs = { skin: "blueprint", wholeFloor: false };
 /** Reading forgives a retired skin; a change has to name one that exists. */
 export const PrefsChange = z.object({ skin: SkinId, wholeFloor: z.boolean() }).partial().strict();
 
+/* ---------- The office on WhatsApp ---------- */
+
+export const WaLanguage = z.enum(["en", "hi", "mr", "gu", "ta", "te", "kn", "bn"]);
+export type WaLanguage = z.infer<typeof WaLanguage>;
+export const WA_LANGUAGE_NAMES: Record<WaLanguage, string> = {
+  en: "English",
+  hi: "हिन्दी (Hindi)",
+  mr: "मराठी (Marathi)",
+  gu: "ગુજરાતી (Gujarati)",
+  ta: "தமிழ் (Tamil)",
+  te: "తెలుగు (Telugu)",
+  kn: "ಕನ್ನಡ (Kannada)",
+  bn: "বাংলা (Bengali)",
+};
+
+/** One person's link between their own WhatsApp number and the office. The number itself is shown only masked. */
+export const WhatsAppStatus = z.object({
+  /** The office can send and receive WhatsApp messages: the Cloud API keys are set, or this is the demo. */
+  available: z.boolean(),
+  linked: z.boolean(),
+  /** For example "+91 ••••• ••480". */
+  number: z.string().nullable(),
+  /** "auto" answers in the language of the person's last message. */
+  language: z.union([z.literal("auto"), WaLanguage]),
+  digest: z.boolean(),
+  /** The office's own WhatsApp number to send JOIN to, when known. */
+  businessNumber: z.string().nullable(),
+  /** A paid template is set up, so the morning digest can reach them even after 24 hours of silence. */
+  template: z.boolean(),
+});
+export type WhatsAppStatus = z.infer<typeof WhatsAppStatus>;
+export const WhatsAppChange = z.object({ language: z.union([z.literal("auto"), WaLanguage]), digest: z.boolean() }).partial().strict();
+export const JoinCode = z.object({ code: z.string().regex(/^\d{4}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
+export type JoinCode = z.infer<typeof JoinCode>;
+/** The demo phone on the mock site: a typed message, or one of the sample voice notes. */
+export const WhatsAppDemoMessage = z.object({ text: z.string().max(2000).optional(), voice: z.string().optional() });
+export const WhatsAppDemoReply = z.object({ heard: z.string().nullable(), reply: z.string() });
+export type WhatsAppDemoReply = z.infer<typeof WhatsAppDemoReply>;
+
 export const Session = z.object({ user: z.object({ name: z.string(), email: z.string() }), role: Role, mode: z.enum(["mock", "live"]) });
 export type Session = z.infer<typeof Session>;
 
@@ -509,6 +549,9 @@ export const ROUTES = {
   hire: (agentId: string) => `/api/hiring/${agentId}`,
   settings: "/api/settings",
   prefs: "/api/prefs",
+  whatsapp: "/api/whatsapp",
+  whatsappCode: "/api/whatsapp/code",
+  whatsappDemo: "/api/whatsapp/demo",
   exportGstr1: (period: string) => `/api/exports/gstr1/${period}`,
   exportGstr3b: (period: string) => `/api/exports/gstr3b/${period}`,
   exportTds: (quarter: string) => `/api/exports/tds/${quarter}`,

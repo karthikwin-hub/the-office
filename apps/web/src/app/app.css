@@ -346,6 +346,131 @@
   align-items: center;
   margin-top: var(--s-4);
 }
+.section[aria-labelledby="whatsapp"] {
+  margin-bottom: var(--s-7);
+}
+.wa-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-5);
+  align-items: end;
+  margin: var(--s-3) 0;
+}
+.wa-fields .field {
+  min-width: 16rem;
+}
+.wa-check {
+  display: inline-flex;
+  gap: var(--s-2);
+  align-items: center;
+  padding-bottom: var(--s-2);
+}
+.wa-code {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+}
+/* ---------- The office on WhatsApp ---------- */
+.wa-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+.wa-phone {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 32rem;
+  border: 1px solid var(--plan-line);
+  border-radius: 22px;
+  background: var(--sheet);
+  overflow: hidden;
+  box-shadow: 0 0 0 6px var(--paper), 0 0 0 7px var(--plan-line-soft);
+}
+.wa-phone-head {
+  display: grid;
+  padding: var(--s-3) var(--s-4);
+  background: var(--carbon);
+  color: var(--on-carbon);
+}
+.wa-phone-name {
+  font-weight: 700;
+}
+.wa-phone-sub {
+  font-size: var(--step--1);
+  opacity: 0.85;
+}
+.wa-phone-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  overflow-y: auto;
+  background: var(--paper);
+}
+.wa-bubble {
+  max-width: 88%;
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font-size: var(--step--1);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.wa-you {
+  align-self: flex-end;
+  background: var(--carbon-wash);
+  color: var(--graphite);
+  border-bottom-right-radius: 2px;
+}
+.wa-office {
+  align-self: flex-start;
+  background: var(--sheet);
+  color: var(--graphite);
+  border: 1px solid var(--plan-line-soft);
+  border-bottom-left-radius: 2px;
+}
+.wa-typing {
+  color: var(--graphite-soft);
+  font-style: italic;
+}
+.wa-voice {
+  color: var(--carbon);
+  font-weight: 700;
+}
+.wa-phone-input {
+  display: flex;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-top: 1px solid var(--plan-line-soft);
+  background: var(--sheet);
+}
+.wa-phone-input .input {
+  flex: 1;
+  min-width: 0;
+}
+.wa-demo-side {
+  display: grid;
+  gap: var(--s-3);
+  max-width: 34rem;
+}
+.wa-demo-side p {
+  margin: 0;
+}
+.wa-voice-label {
+  font-weight: 700;
+}
+.wa-voice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+@media (max-width: 720px) {
+  .wa-demo {
+    grid-template-columns: 1fr;
+  }
+}
 .skin-menu {
   display: inline-flex;
   align-items: baseline;

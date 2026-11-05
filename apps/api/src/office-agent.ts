@@ -1,5 +1,5 @@
-import { type Platform, type Role, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest } from "@office/contracts";
-import { dispatch, nextMonth, OfficeService, type ApiResult, type TextItem } from "@office/engine";
+import { type JoinCode, type Platform, type Role, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import { digestChannel, dispatch, nextMonth, OfficeService, parseCommand, type ApiResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent } from "agents";
 import { EmailMessage } from "cloudflare:email";
@@ -14,9 +14,12 @@ import { adaptersFor } from "./social";
 import { MEDIA_ID } from "./social/media";
 import { callbackUrl, newState, readState } from "./social/oauth";
 import { TokenVault } from "./social/tokens";
-import { parseMetaDelivery } from "./social/webhooks";
+import { parseMetaDelivery, parseWhatsAppMessages } from "./social/webhooks";
 import { BooksStore } from "./store";
 import { digestCron, istDate } from "./time";
+import { sendTemplate, sendText, type WaKeys } from "./whatsapp/cloud";
+import { linkFor, linkOf, maskPhone, newJoinCode, sessionFor, unlink, updateLink } from "./whatsapp/links";
+import { morningDigest, officeWhatsApp, type WaDeps } from "./whatsapp/office";
 
 export type Caller = { name: string; email: string; role: Role };
 export const CALLER_HEADER = "x-office-caller";
@@ -173,6 +176,7 @@ export class Office extends Agent<Env> {
     const doc = /^\/api\/documents\/([^/]+)\/(read|scan)$/.exec(path);
     if (post && doc) return this.readStored(decodeURIComponent(doc[1]!), doc[2] as "read" | "scan", request);
     if (path === "/api/prefs") return this.prefs(request, caller);
+    if (path === "/api/whatsapp" || path === "/api/whatsapp/code") return this.whatsappRoute(request, caller, path);
 
     if (request.method === "GET" && /^\/api\/exports\/(gstr3b|tds)\//.test(path)) {
       const { exportFile } = await import("@office/engine/excel");
@@ -271,8 +275,24 @@ export class Office extends Agent<Env> {
     return json(asset);
   }
 
-  /** A signed Meta webhook, already verified by the Worker: comments, reviews and WhatsApp messages. */
+  /**
+   * A signed Meta webhook, already verified by the Worker: comments, reviews and WhatsApp messages.
+   * WhatsApp from a linked number (or a JOIN code) is someone running the office, not a customer.
+   */
   private async receiveMeta(body: unknown) {
+    const kv = this.kv.bind(this);
+    const handled = new Set<string>();
+    let office = 0;
+    for (const m of parseWhatsAppMessages(body)) {
+      const out = await officeWhatsApp(this.waDeps(), m);
+      if (!out) continue;
+      handled.add(m.id);
+      office++;
+      await this.send(out.decided);
+      const keys = this.waKeys();
+      if (keys && out.text)
+        await sendText(keys, out.to, out.text).catch((e) => console.error("whatsapp reply failed", e instanceof Error ? e.message : "unknown error"));
+    }
     const connected = this.office.books.channels.filter((c) => c.mode === "connected");
     const own = new Set<string>();
     for (const c of connected) {
@@ -280,11 +300,61 @@ export class Office extends Agent<Env> {
       if (t) for (const id of [t.account, ...Object.values(t.extra)]) if (id) own.add(id);
     }
     const byPlatform = new Map(connected.map((c) => [PLATFORM_NAMES[c.platform], c.id]));
-    const raws = parseMetaDelivery(body, own)
+    const raws = parseMetaDelivery(body, own, Date.now(), (from, text) => Boolean(linkFor(kv, from)) || parseCommand(text).kind === "join")
+      .filter((m) => !m.externalId || !handled.has(m.externalId))
       .map((m) => ({ ...m, channelId: byPlatform.get(m.platform) ?? "" }))
       .filter((m) => m.channelId);
     const r = this.office.receiveMessages(raws);
-    return { received: r.added.length, leads: r.leads, replied: r.replied };
+    return { received: r.added.length, leads: r.leads, replied: r.replied, office };
+  }
+
+  private waKeys(): WaKeys | null {
+    const e = this.env;
+    return e.WHATSAPP_TOKEN && e.WHATSAPP_PHONE_NUMBER_ID ? { token: e.WHATSAPP_TOKEN, phoneId: e.WHATSAPP_PHONE_NUMBER_ID, template: e.WHATSAPP_TEMPLATE ?? null } : null;
+  }
+
+  private waDeps(): WaDeps {
+    return {
+      kv: this.kv.bind(this),
+      office: this.office,
+      ai: this.env.AI,
+      keys: this.waKeys(),
+      base: this.env.BETTER_AUTH_URL,
+      newDocId,
+      store: async (key, bytes, contentType, meta) => void (await this.env.DOCS.put(key, bytes, { httpMetadata: { contentType }, customMetadata: meta })),
+      readImage: (id, image, auto) => this.readImage(id, image, auto),
+      readItems: (id, items, auto) => this.readItems(id, items, auto),
+    };
+  }
+
+  /** Settings, under Your WhatsApp: a code to link this person's phone, their reply language and the morning digest. */
+  private async whatsappRoute(request: Request, caller: Caller, path: string): Promise<Response> {
+    const kv = this.kv.bind(this);
+    const status = (): WhatsAppStatus => {
+      const l = linkOf(kv, caller.email);
+      const handle = this.office.books.channels.find((c) => c.platform === "whatsapp")?.handle ?? null;
+      return { available: Boolean(this.waKeys()), linked: Boolean(l), number: l ? maskPhone(l.phone) : null, language: l?.language ?? "auto", digest: l?.digest ?? false, businessNumber: handle && /\d{6}/.test(handle.replace(/\D/g, "")) ? handle : null, template: Boolean(this.env.WHATSAPP_TEMPLATE) };
+    };
+    if (path === "/api/whatsapp/code" && request.method === "POST") {
+      if (!this.waKeys()) return json({ error: "WhatsApp is not set up for this office yet: add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID." }, 409);
+      const c = newJoinCode(kv, caller);
+      const number = status().businessNumber;
+      const digits = number?.replace(/\D/g, "") ?? "";
+      return json({ ...c, businessNumber: number, link: digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`JOIN ${c.code}`)}` : null } satisfies JoinCode);
+    }
+    if (path !== "/api/whatsapp") return json({ error: "Not found" }, 404);
+    if (request.method === "GET") return json(status());
+    if (request.method === "DELETE") {
+      if (unlink(kv, caller.email)) this.office.log("office-manager", `${caller.name} unlinked their WhatsApp from the office.`);
+      return json(status());
+    }
+    if (request.method === "PUT") {
+      const change = WhatsAppChange.safeParse(await request.json().catch(() => null));
+      if (!change.success) return json({ error: "Invalid change" }, 400);
+      if (!updateLink(kv, caller.email, change.data)) return json({ error: "Link your WhatsApp first." }, 409);
+      return json(status());
+    }
+    return json({ error: "Not found" }, 404);
   }
 
   /** Who can sign in comes from the accounts, not the books. */
@@ -399,7 +469,8 @@ export class Office extends Agent<Env> {
     await this.socialMorning();
     const pending = this.office.pending();
     const { users } = await members(this.env);
-    const owners = users.filter((u) => u.role === "owner");
+    const onWhatsApp = await this.whatsappDigests(users, pending.length);
+    const owners = users.filter((u) => u.role === "owner" && !onWhatsApp.has(u.email.toLowerCase()));
     if (this.env.MAILER && owners.length && (pending.length || done.length)) {
       const link = this.env.BETTER_AUTH_URL ? `${this.env.BETTER_AUTH_URL.replace(/\/$/, "")}/desk` : "";
       const body = [
@@ -421,6 +492,28 @@ export class Office extends Agent<Env> {
     }
     this.office.log("office-manager", `Morning round: ${done.length ? `${done.length} routine ${done.length === 1 ? "task" : "tasks"} done by trusted agents; ` : ""}${pending.length} waiting on your desk.`);
     this.commit();
+  }
+
+  /** Everyone who asked for the digest on WhatsApp gets it there if WhatsApp allows; returns who was reached. */
+  private async whatsappDigests(users: { name: string; email: string; role: Role }[], waiting: number): Promise<Set<string>> {
+    const reached = new Set<string>();
+    const keys = this.waKeys();
+    if (!keys) return reached;
+    const kv = this.kv.bind(this);
+    for (const u of users) {
+      const link = linkOf(kv, u.email);
+      if (!link) continue;
+      const how = digestChannel({ wantsWhatsApp: link.digest, lastAt: sessionFor(kv, link.phone).lastAt, now: Date.now(), template: Boolean(keys.template) });
+      try {
+        if (how === "whatsapp") await sendText(keys, link.phone, await morningDigest(this.waDeps(), link.phone, u, link.language === "auto" ? null : link.language));
+        else if (how === "template") await sendTemplate(keys, link.phone, `${waiting} waiting on your desk. Reply desk to see them.`);
+        else continue;
+        reached.add(u.email.toLowerCase());
+      } catch (e) {
+        this.office.log("office-manager", `Could not send ${u.name} the morning digest on WhatsApp${e instanceof Error ? `: ${e.message}` : ""}. It went by email instead.`);
+      }
+    }
+    return reached;
   }
 
   /**

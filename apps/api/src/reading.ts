@@ -3,11 +3,11 @@ import { type ExtractContext, type Extraction, extractInvoice, fromModel, MODEL_
 
 type Run = (model: string, input: unknown) => Promise<unknown>;
 
-const TEXT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+export const TEXT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 
 /** Models answer with an object, a JSON string, or JSON wrapped in prose; take the outermost object. */
-function json(answer: unknown): unknown {
+export function modelJson(answer: unknown): unknown {
   const r = (answer as { response?: unknown })?.response ?? answer;
   if (r && typeof r === "object") return r;
   const s = String(r ?? "");
@@ -37,7 +37,7 @@ export async function readText(ai: Ai, items: TextItem[], ctx: ExtractContext): 
       max_tokens: 2048,
       temperature: 0,
     });
-    const model = fromModel(json(answer), items, ctx);
+    const model = fromModel(modelJson(answer), items, ctx);
     const failed = (e: Extraction) => e.checks.filter((c) => !c.ok).length;
     return needsModel(model) || failed(model) > failed(rules) ? rules : model;
   } catch {
@@ -67,5 +67,5 @@ export async function readScan(ai: Ai, image: ArrayBuffer, ctx: ExtractContext &
     await run(VISION_MODEL, { prompt: "agree" });
     answer = await run(VISION_MODEL, input);
   }
-  return fromModel(json(answer), [], ctx);
+  return fromModel(modelJson(answer), [], ctx);
 }

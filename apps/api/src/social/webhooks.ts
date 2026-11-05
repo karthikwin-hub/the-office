@@ -30,11 +30,52 @@ const isoFrom = (v: unknown, fallback: number) => {
   return new Date(fallback).toISOString();
 };
 
+export type WaIncoming = {
+  id: string;
+  from: string;
+  at: string;
+  kind: "text" | "image" | "document" | "audio" | "other";
+  text: string;
+  media: { id: string; mimeType: string; filename: string | null } | null;
+};
+
+type WaRaw = {
+  id?: string;
+  from?: string;
+  timestamp?: string;
+  type?: string;
+  text?: { body?: string };
+  button?: { text?: string };
+  interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
+  image?: { id?: string; mime_type?: string; caption?: string };
+  document?: { id?: string; mime_type?: string; filename?: string; caption?: string };
+  audio?: { id?: string; mime_type?: string; voice?: boolean };
+};
+
+/** Every WhatsApp message in a delivery, with its photo, PDF or voice note if it has one. */
+export function parseWhatsAppMessages(body: unknown, now = Date.now()): WaIncoming[] {
+  const d = body as Delivery;
+  const out: WaIncoming[] = [];
+  if (d.object !== "whatsapp_business_account") return out;
+  for (const e of d.entry ?? [])
+    for (const c of e.changes ?? []) {
+      if (c.field !== "messages") continue;
+      for (const m of ((c.value ?? {}).messages ?? []) as WaRaw[]) {
+        if (!m.id || !m.from) continue;
+        const media = m.image?.id ? { id: m.image.id, mimeType: m.image.mime_type ?? "image/jpeg", filename: null } : m.document?.id ? { id: m.document.id, mimeType: m.document.mime_type ?? "application/pdf", filename: m.document.filename ?? null } : m.audio?.id ? { id: m.audio.id, mimeType: m.audio.mime_type ?? "audio/ogg", filename: null } : null;
+        const kind = m.type === "text" || m.type === "button" || m.type === "interactive" ? "text" : m.type === "image" || m.type === "document" || m.type === "audio" ? m.type : "other";
+        const text = m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title ?? m.image?.caption ?? m.document?.caption ?? "";
+        out.push({ id: m.id, from: m.from, at: isoFrom(m.timestamp, now), kind, text: text.slice(0, 2000), media });
+      }
+    }
+  return out;
+}
+
 /**
  * Turns one webhook delivery into inbox messages. Channel ids are filled in by the Office from the platform.
  * Our own replies come back as comments too; `ownIds` (our account ids) drops them.
  */
-export function parseMetaDelivery(body: unknown, ownIds: Set<string> = new Set(), now = Date.now()): IncomingMessage[] {
+export function parseMetaDelivery(body: unknown, ownIds: Set<string> = new Set(), now = Date.now(), office: (from: string, text: string) => boolean = () => false): IncomingMessage[] {
   const d = body as Delivery;
   const out: IncomingMessage[] = [];
   for (const e of d.entry ?? []) {
@@ -68,6 +109,8 @@ export function parseMetaDelivery(body: unknown, ownIds: Set<string> = new Set()
         for (const m of (v.messages ?? []) as { id?: string; from?: string; timestamp?: string; type?: string; text?: { body?: string }; button?: { text?: string }; interactive?: { button_reply?: { title?: string } } }[]) {
           if (!m.id || !m.from) continue;
           const text = m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? (m.type ? `Sent a ${m.type}` : "");
+          // The owner and their accountant talking to the office are not customers.
+          if (office(m.from, text)) continue;
           const name = contacts.find((x) => x.wa_id === m.from)?.profile?.name;
           out.push({ id: `wa-${m.id}`, externalId: m.id, platform: "WhatsApp", channelId: "", kind: "dm", author: name ?? `+${m.from}`, at: isoFrom(m.timestamp, now), rating: null, text: text.slice(0, 2000), postId: null, threadId: m.from });
         }

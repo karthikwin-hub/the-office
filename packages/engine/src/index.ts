@@ -15,3 +15,4 @@ export * from "./textlayer";
 export * from "./imports";
 export * from "./extract-model";
 export * from "./social";
+export * from "./whatsapp-desk";

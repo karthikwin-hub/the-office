@@ -10,6 +10,7 @@ import { AgeingView, FilingList } from "../reports/accounts";
 import { InboxThreads, SocialRoomPanel, useApprovalBody } from "../reports/social";
 import { CampaignsView, ComplianceView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
 import { count, isOwner, Page, PageHead, Register, Section, shortDate, theAgent, time, useApprovalContext } from "./common";
+import { WhatsAppPhone } from "./WhatsAppPhone";
 
 const ACCOUNTANT_MAY = new Set(["audit_flag", "share_file"]);
 
@@ -211,6 +212,9 @@ function OfficeManagerPanel() {
         <button type="button" className="btn btn-primary" onClick={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: "open" }), resetScroll: false })}>
           Ask the office manager
         </button>
+      </Section>
+      <Section title="On WhatsApp, in your own language">
+        <WhatsAppPhone />
       </Section>
     </>
   );

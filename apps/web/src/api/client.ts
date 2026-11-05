@@ -34,6 +34,9 @@ import {
   type MediaAsset,
   type Post,
   type PublishingPack,
+  type JoinCode,
+  type WhatsAppDemoReply,
+  type WhatsAppStatus,
 } from "@office/contracts";
 
 export class ApiError extends Error {
@@ -141,6 +144,11 @@ export const api = {
   saveSettings: (s: Partial<Settings>) => call<Settings>(ROUTES.settings, { method: "PUT", body: s }),
   prefs: () => call<Prefs>(ROUTES.prefs),
   savePrefs: (p: Partial<Prefs>) => call<Prefs>(ROUTES.prefs, { method: "PUT", body: p }),
+  whatsapp: () => call<WhatsAppStatus>(ROUTES.whatsapp),
+  whatsappCode: () => call<JoinCode>(ROUTES.whatsappCode, { method: "POST" }),
+  saveWhatsApp: (c: Partial<Pick<WhatsAppStatus, "language" | "digest">>) => call<WhatsAppStatus>(ROUTES.whatsapp, { method: "PUT", body: c }),
+  unlinkWhatsApp: () => call<WhatsAppStatus>(ROUTES.whatsapp, { method: "DELETE" }),
+  whatsappDemo: (m: { text?: string; voice?: string }) => call<WhatsAppDemoReply>(ROUTES.whatsappDemo, { method: "POST", body: m }),
   editVariant: (postId: string, channelId: string, edit: { text?: string; link?: string | null; mediaIds?: string[] }) => call<Post>(ROUTES.socialVariant(postId, channelId), { method: "PUT", body: edit }),
   markPosted: (postId: string, channelId: string, url: string) => call<Post>(ROUTES.socialPosted(postId, channelId), { method: "POST", body: { url } }),
   pack: (postId: string, channelId: string) => call<PublishingPack>(ROUTES.socialPack(postId, channelId)),
