@@ -108,7 +108,7 @@ th.num {
 .btn-primary {
   background: var(--carbon);
   border-color: var(--carbon);
-  color: white;
+  color: var(--on-carbon);
 }
 .btn-primary:hover {
   background: color-mix(in srgb, var(--carbon) 85%, black);

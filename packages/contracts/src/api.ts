@@ -43,6 +43,8 @@ export const RoomStatus = z.object({
   now: z.string(),
   todayCount: z.number().int(),
   waitingCount: z.number().int(),
+  /** The one figure that matters most in this room today, traceable like any other. */
+  headline: z.object({ label: z.string(), value: z.string(), figureId: z.string().optional(), tone: z.enum(["red", "green"]).optional() }).optional(),
 });
 export type RoomStatus = z.infer<typeof RoomStatus>;
 
@@ -462,6 +464,16 @@ export const Settings = z.object({
 });
 export type Settings = z.infer<typeof Settings>;
 
+export const SkinId = z.enum(["blueprint", "open-plan", "cubicles", "counting-house", "loft", "night-shift"]);
+export type SkinId = z.infer<typeof SkinId>;
+
+/** One person's view of the office; it follows them from machine to machine. */
+export const Prefs = z.object({ skin: SkinId.catch("blueprint"), wholeFloor: z.boolean().catch(false) });
+export type Prefs = z.infer<typeof Prefs>;
+export const DEFAULT_PREFS: Prefs = { skin: "blueprint", wholeFloor: false };
+/** Reading forgives a retired skin; a change has to name one that exists. */
+export const PrefsChange = z.object({ skin: SkinId, wholeFloor: z.boolean() }).partial().strict();
+
 export const Session = z.object({ user: z.object({ name: z.string(), email: z.string() }), role: Role, mode: z.enum(["mock", "live"]) });
 export type Session = z.infer<typeof Session>;
 
@@ -496,6 +508,7 @@ export const ROUTES = {
   hiring: "/api/hiring",
   hire: (agentId: string) => `/api/hiring/${agentId}`,
   settings: "/api/settings",
+  prefs: "/api/prefs",
   exportGstr1: (period: string) => `/api/exports/gstr1/${period}`,
   exportGstr3b: (period: string) => `/api/exports/gstr3b/${period}`,
   exportTds: (quarter: string) => `/api/exports/tds/${quarter}`,

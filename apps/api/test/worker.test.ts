@@ -4,6 +4,7 @@ import PostalMime from "postal-mime";
 import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "../src/auth";
 import { parseInbound, plainMessage } from "../src/mail";
+import { readPrefs, savePrefs } from "../src/prefs";
 import { BooksStore } from "../src/store";
 import { digestCron, istDate } from "../src/time";
 
@@ -37,6 +38,38 @@ describe("books store", () => {
     books.staged.splice(0, 1);
     expect(store.save(books)).toBe(1);
     expect(new BooksStore(sql).load()).toEqual(books);
+  });
+});
+
+describe("each person's preferences", () => {
+  const kvOver = (sql: SqlStorage) => (k: string, v?: string) => {
+    if (v !== undefined) sql.exec("INSERT INTO office_kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", k, v);
+    return (sql.exec("SELECT v FROM office_kv WHERE k = ?", k).toArray()[0] as { v: string } | undefined)?.v ?? null;
+  };
+  const fresh = () => {
+    const sql = sqlStorage();
+    sql.exec("CREATE TABLE office_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
+    return kvOver(sql);
+  };
+
+  it("starts on Blueprint with only staffed rooms, and keeps each person's choice to themselves", () => {
+    const kv = fresh();
+    expect(readPrefs(kv, "anil@kaverielectricals.in")).toEqual({ skin: "blueprint", wholeFloor: false });
+    expect(savePrefs(kv, "Anil@KaveriElectricals.in ", { skin: "night-shift" })).toEqual({ skin: "night-shift", wholeFloor: false });
+    expect(savePrefs(kv, "anil@kaverielectricals.in", { wholeFloor: true })).toEqual({ skin: "night-shift", wholeFloor: true });
+    expect(readPrefs(kv, "ANIL@kaverielectricals.in")).toEqual({ skin: "night-shift", wholeFloor: true });
+    expect(readPrefs(kv, "rajesh@mehtaassociates.in")).toEqual({ skin: "blueprint", wholeFloor: false });
+  });
+
+  it("refuses unknown skins and fields, and survives a damaged or retired saved value", () => {
+    const kv = fresh();
+    expect(savePrefs(kv, "a@x", { skin: "disco" })).toBeNull();
+    expect(savePrefs(kv, "a@x", { skin: "loft", admin: true })).toBeNull();
+    expect(savePrefs(kv, "a@x", null)).toBeNull();
+    kv("prefs:a@x", "{not json");
+    expect(readPrefs(kv, "a@x")).toEqual({ skin: "blueprint", wholeFloor: false });
+    kv("prefs:a@x", JSON.stringify({ skin: "retired-skin", wholeFloor: true }));
+    expect(readPrefs(kv, "a@x")).toEqual({ skin: "blueprint", wholeFloor: true });
   });
 });
 

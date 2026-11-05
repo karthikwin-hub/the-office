@@ -117,6 +117,20 @@ describe("office", () => {
     }
   });
 
+  it("each staffed room on the floor shows one of its own figures, and it traces to rows", () => {
+    const rooms = office.officeView().rooms;
+    const withHeadline = rooms.filter((r) => r.headline);
+    expect(withHeadline.length).toBeGreaterThanOrEqual(8);
+    for (const r of rooms) if (!r.hired) expect(r.headline, r.agentId).toBeUndefined();
+    for (const r of withHeadline) {
+      const h = r.headline!;
+      expect(office.kpis(r.agentId).some((k) => k.label === h.label && k.value === h.value), r.agentId).toBe(true);
+      expect(h.value, r.agentId).not.toMatch(/^(₹?0|None|-)$/);
+      if (h.figureId) expect(trace(l, h.figureId).rows.length, r.agentId).toBeGreaterThan(0);
+    }
+    expect(withHeadline.filter((r) => r.headline!.figureId).length).toBeGreaterThanOrEqual(5);
+  });
+
   it("approving a staged bill posts it", () => {
     const item = office.desk().items.find((i) => i.kind === "ledger_entry")!;
     const billId = (item.payload as { billId: string }).billId;

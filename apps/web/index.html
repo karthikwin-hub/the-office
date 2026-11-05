@@ -6,6 +6,16 @@
     <meta name="theme-color" content="#F3F5F7" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>The Office</title>
+    <script>
+      // Paint the last skin used on this machine before the app loads, so a dark office never flashes light.
+      try {
+        var s = JSON.parse(localStorage.getItem("office.skin.style") || "null");
+        if (s && s.style) {
+          for (var k in s.style) document.documentElement.style.setProperty(k, s.style[k]);
+          document.documentElement.dataset.skin = s.id;
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

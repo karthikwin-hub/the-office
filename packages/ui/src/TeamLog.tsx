@@ -6,11 +6,11 @@ import { useFigures } from "./Figure";
 const who = (agentId: string) => (agentId === "you" ? "You" : (AGENT_BY_ID[agentId]?.short ?? agentId));
 
 /** What the team did, newest first, in the words the agents used. */
-export function TeamLog({ entries, title = "Team log", empty = "Nothing has happened yet today.", showAgent = true, footer }: { entries: LogEntry[]; title?: string; empty?: string; showAgent?: boolean; footer?: ReactNode }) {
+export function TeamLog({ entries, title = "Team log", heading = true, empty = "Nothing has happened yet today.", showAgent = true, footer }: { entries: LogEntry[]; title?: string; heading?: boolean; empty?: string; showAgent?: boolean; footer?: ReactNode }) {
   const { openDocument } = useFigures();
   return (
     <section className="team-log" aria-label={title}>
-      <h2 className="team-log-title">{title}</h2>
+      {heading ? <h2 className="team-log-title">{title}</h2> : null}
       {entries.length === 0 ? (
         <p className="muted">{empty}</p>
       ) : (

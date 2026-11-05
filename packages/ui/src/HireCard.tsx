@@ -5,10 +5,36 @@ import { ACTIONS } from "./ApprovalCard";
 import { TrustLevel } from "./TrustLevel";
 
 /** A job description in the Hiring Hall: what the agent does and what it will ask you to approve. */
-export function HireCard({ state, onHire, onLetGo, busy, readOnly }: { state: AgentState; onHire?: () => void; onLetGo?: () => void; busy?: boolean; readOnly?: boolean }) {
+export function HireCard({ state, onHire, onLetGo, busy, readOnly, compact }: { state: AgentState; onHire?: () => void; onLetGo?: () => void; busy?: boolean; readOnly?: boolean; compact?: boolean }) {
   const def = AGENT_BY_ID[state.agentId]!;
   const id = useId();
   const pct = state.accuracy.checked ? Math.round((state.accuracy.correct / state.accuracy.checked) * 1000) / 10 : null;
+  const hireLabel = `Hire ${def.title.replace(/^The /, "the ").replace(/ (\S)/g, (_, c: string) => ` ${c.toLowerCase()}`)}`;
+  if (compact && !state.hired)
+    return (
+      <article className="hire hire-compact" aria-labelledby={`${id}-t`}>
+        <div className="hire-main">
+          <h3 id={`${id}-t`}>{def.title}</h3>
+          <p className="hire-job">{def.job}</p>
+          <details className="hire-more">
+            <summary>What they do</summary>
+            <ul className="hire-duties">
+              {def.duties.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+            <p className="hire-asks muted">
+              {def.proposes.length ? `Will ask you to approve: ${def.proposes.map((k) => ACTIONS[k].verb.toLowerCase()).join(", ")}.` : "Only answers and reports; never acts on its own."}
+            </p>
+          </details>
+        </div>
+        {readOnly ? null : (
+          <button type="button" className="btn btn-quiet" onClick={onHire} disabled={busy} aria-label={hireLabel}>
+            Hire
+          </button>
+        )}
+      </article>
+    );
   return (
     <article className={`hire${state.hired ? " hire-hired" : ""}`} aria-labelledby={`${id}-t`}>
       <div className="hire-main">
@@ -49,7 +75,7 @@ export function HireCard({ state, onHire, onLetGo, busy, readOnly }: { state: Ag
           <>
             <p className="muted">Starts as a trainee: everything waits for you.</p>
             <button type="button" className="btn btn-primary" onClick={onHire} disabled={busy}>
-              Hire {def.title.replace(/^The /, "the ").replace(/ (\S)/g, (_, c: string) => ` ${c.toLowerCase()}`)}
+              {hireLabel}
             </button>
           </>
         )}

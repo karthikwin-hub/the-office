@@ -6,6 +6,7 @@ import { EmailMessage } from "cloudflare:email";
 import { members } from "./auth";
 import type { Env } from "./env";
 import { plainMessage } from "./mail";
+import { readPrefs, savePrefs } from "./prefs";
 import { readScan, readText } from "./reading";
 import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
@@ -69,6 +70,15 @@ export class Office extends Agent<Env> {
     const sql = this.ctx.storage.sql;
     if (v !== undefined) sql.exec("INSERT INTO office_kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", k, v);
     return sql.exec<{ v: string }>("SELECT v FROM office_kv WHERE k = ?", k).toArray()[0]?.v ?? null;
+  }
+
+  /** Each person's skin and floor view, kept here so they follow that person to any machine. */
+  private async prefs(request: Request, caller: Caller): Promise<Response> {
+    const kv = this.kv.bind(this);
+    if (request.method === "GET") return json(readPrefs(kv, caller.email));
+    if (request.method !== "PUT" && request.method !== "POST") return json({ error: "Not found" }, 404);
+    const next = savePrefs(kv, caller.email, await request.json().catch(() => null));
+    return next ? json(next) : json({ error: "Invalid preferences" }, 400);
   }
 
   /** A new office starts empty, named for its owner; the sample business is for demos and tests. */
@@ -162,6 +172,7 @@ export class Office extends Agent<Env> {
     if (request.method === "GET" && channel) return channel[2] === "connect" ? this.startConnect(channel[1]!, caller) : this.finishConnect(channel[1]!, url, caller);
     const doc = /^\/api\/documents\/([^/]+)\/(read|scan)$/.exec(path);
     if (post && doc) return this.readStored(decodeURIComponent(doc[1]!), doc[2] as "read" | "scan", request);
+    if (path === "/api/prefs") return this.prefs(request, caller);
 
     if (request.method === "GET" && /^\/api\/exports\/(gstr3b|tds)\//.test(path)) {
       const { exportFile } = await import("@office/engine/excel");

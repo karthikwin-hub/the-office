@@ -45,6 +45,23 @@ import { marketingReport, operationsReport, peopleReport, salesTeamReport, socia
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, and the month's plan. */
 const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
+/** Which of an agent's KPIs its room shows on the floor. */
+const HEADLINE_KPI: Record<string, number> = {
+  accountant: 2,
+  "credit-controller": 0,
+  "tax-clerk": 0,
+  auditor: 1,
+  "sales-rep": 1,
+  "quote-desk": 0,
+  "account-manager": 0,
+  marketer: 1,
+  "market-watcher": 1,
+  "social-media-manager": 3,
+  storekeeper: 1,
+  buyer: 0,
+  "compliance-officer": 0,
+  "payroll-clerk": 0,
+};
 /** Meta's marketing-message rate for India, roughly; the card says to check the current rate. */
 export const WHATSAPP_MARKETING_PAISE = 78;
 
@@ -147,7 +164,11 @@ export class OfficeService {
     const b = this.books.business;
     return {
       business: { name: b.name, legalName: b.legalName, gstin: b.gstin, asOf: this.asOf, owner: b.owner, accountantFirm: b.accountantFirm },
-      rooms: AGENTS.map((a) => this.room(a.id)),
+      rooms: AGENTS.map((a) => {
+        const r = this.room(a.id);
+        const headline = r.hired ? this.headline(a.id) : undefined;
+        return headline ? { ...r, headline } : r;
+      }),
       log: this.today().filter((e) => this.hired(e.agentId) || e.agentId === "you"),
       deskCount: this.pending().length,
       arriving: [
@@ -159,6 +180,15 @@ export class OfficeService {
           : []),
       ],
     };
+  }
+
+  /** The one figure a room shows on the floor: the KPI that best answers "should I look in here?". Nothing when it is zero. */
+  headline(agentId: string): RoomStatus["headline"] {
+    const pick = HEADLINE_KPI[agentId];
+    if (pick === undefined) return undefined;
+    const k = this.kpis(agentId)[pick];
+    if (!k || /^(₹?0|None|-)$/.test(k.value)) return undefined;
+    return { label: k.label, value: k.value, ...(k.figureId ? { figureId: k.figureId } : {}), ...(k.tone ? { tone: k.tone } : {}) };
   }
 
   kpis(agentId: string): Kpi[] {

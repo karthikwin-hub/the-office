@@ -1,4 +1,4 @@
-import { ReadRequest, type Role } from "@office/contracts";
+import { DEFAULT_PREFS, Prefs, PrefsChange, ReadRequest, type Role } from "@office/contracts";
 import { dispatch, mockConnect, OfficeService, runMockEffects } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
@@ -14,6 +14,8 @@ const liveRoutes = (import.meta.env.VITE_LIVE_ROUTES ?? "")
   .split(",")
   .map((s: string) => s.trim())
   .filter(Boolean);
+
+const PREFS_KEY = "office.prefs.server";
 
 let office: OfficeService | null = null;
 const getOffice = () => (office ??= new OfficeService(loadBooks()));
@@ -66,6 +68,15 @@ const handler = http.all("/api/*", async ({ request }) => {
     if (!(file instanceof File) || !/^image\/(png|jpe?g|webp)$/.test(file.type)) return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture." }, { status: 415 });
     const asset = getOffice().addMedia({ id: `media-u${Date.now().toString(36)}`, url: URL.createObjectURL(file), kind: "image", alt: String(form.get("alt") ?? ""), skuId: (form.get("skuId") as string | null) || null, rights: form.get("rights") === "generated" ? "generated" : "own", width: Number(form.get("width")) || null, height: Number(form.get("height")) || null });
     return HttpResponse.json(asset);
+  }
+  if (url.pathname === "/api/prefs") {
+    const saved = Prefs.parse({ ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") });
+    if (request.method === "GET") return HttpResponse.json(saved);
+    const change = PrefsChange.safeParse(await request.json().catch(() => null));
+    if (!change.success) return HttpResponse.json({ error: "Invalid preferences" }, { status: 400 });
+    const next = { ...saved, ...change.data };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    return HttpResponse.json(next);
   }
   let body: unknown;
   if (request.method !== "GET" && request.headers.get("content-type")?.includes("json")) body = await request.json();

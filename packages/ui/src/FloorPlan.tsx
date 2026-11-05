@@ -1,62 +1,83 @@
 import type { OfficeView, RoomStatus } from "@office/contracts";
 import { AGENT_BY_ID, AGENTS, TEAMS, type TeamId } from "@office/contracts";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Figure } from "./Figure";
+import { DEFAULT_SKIN, type Skin } from "./skins";
 
 type Rect = { x: number; y: number; w: number; h: number };
 /** `h` doors sit in a horizontal wall; `into` is the direction the leaf swings (+1 down or right). */
 type Door = { x: number; y: number; orient: "h" | "v"; into: 1 | -1; size: number };
 type PlacedRoom = { agentId: string; rect: Rect; door: Door };
-type WingLabel = { text: string; x: number; y: number; anchor?: "start" | "middle"; rotate?: boolean };
-type Plan = { width: number; height: number; rooms: PlacedRoom[]; corridor: Rect; wings: WingLabel[]; entrance: Door; building: Rect; narrow: boolean };
+type WingLabel = { text: string; x: number; y: number };
+type Plan = { width: number; height: number; rooms: PlacedRoom[]; alcove: Rect | null; corridor: Rect; wings: WingLabel[]; entrance: Door; building: Rect; narrow: boolean };
+type Group = { team: TeamId; ids: string[] };
 
-const TOP: TeamId[] = ["accounts", "sales"];
-const BOTTOM: TeamId[] = ["marketing", "social", "operations", "people"];
+const ORDER: TeamId[] = ["accounts", "sales", "marketing", "social", "operations", "people"];
 const DOOR = 34;
 const NARROW_DOOR = 24;
 
-const teamAgents = (t: TeamId) => AGENTS.filter((a) => a.team === t).map((a) => a.id);
 const wingName = (t: TeamId) => TEAMS.find((x) => x.id === t)!.wing;
 
-/** Wide plan: reception at the entrance on the left, one corridor, rooms either side. */
-function widePlan(): Plan {
-  const width = 1200;
+/** The wings that have someone in them, in floor order. `null` keeps every room. */
+function groupsFor(keep: Set<string> | null): Group[] {
+  return ORDER.map((team) => ({ team, ids: AGENTS.filter((a) => a.team === team && (!keep || keep.has(a.id))).map((a) => a.id) })).filter((g) => g.ids.length);
+}
+
+/** Splits the wings into two rows as evenly as possible without breaking a wing; the alcove, if any, goes at the end of the second row. */
+function split(groups: Group[], extra: number): [Group[], Group[]] {
+  const total = groups.reduce((n, g) => n + g.ids.length, 0) + extra;
+  let best = 1, bestDiff = Infinity, acc = 0;
+  for (let k = 1; k <= groups.length; k++) {
+    acc += groups[k - 1]!.ids.length;
+    const diff = Math.abs(acc - (total - acc));
+    if (diff < bestDiff) [best, bestDiff] = [k, diff];
+  }
+  if (!groups.length) return [[], []];
+  return [groups.slice(0, best), groups.slice(best)];
+}
+
+const rowIds = (gs: Group[]) => gs.flatMap((g) => g.ids);
+
+/** Wide plan: reception at the entrance on the left, one corridor, rooms either side. Narrow offices draw a shorter building. */
+function widePlan(groups: Group[], vacant: number): Plan {
   const top = 44, roomH = 176, corridorH = 76;
-  const left = 16, receptionW = 168, right = width - 16;
-  const corridor = { x: left + receptionW, y: top + roomH, w: right - left - receptionW, h: corridorH };
+  const left = 16, receptionW = 168, maxRoomW = 300, fullW = 1200 - 32 - receptionW;
+  const [topG, bottomG] = split(groups, vacant ? 1 : 0);
+  const topN = rowIds(topG).length;
+  const bottomN = rowIds(bottomG).length + (vacant ? 1 : 0);
+  const most = Math.max(topN, bottomN, 1);
+  const corridorW = Math.min(fullW, most * maxRoomW);
+  const width = left + receptionW + corridorW + 16;
+  const right = width - 16;
+  const corridor = { x: left + receptionW, y: top + roomH, w: corridorW, h: corridorH };
   const rooms: PlacedRoom[] = [];
   const wings: WingLabel[] = [];
-  const row = (teams: TeamId[], y: number, side: "top" | "bottom") => {
-    const ids = teams.flatMap(teamAgents);
-    const w = corridor.w / ids.length;
+  let alcove: Rect | null = null;
+  const row = (gs: Group[], y: number, side: "top" | "bottom", withAlcove: boolean) => {
+    const n = rowIds(gs).length + (withAlcove ? 1 : 0);
+    if (!n) return;
+    const w = corridor.w / n;
     let i = 0;
-    for (const t of teams) {
-      wings.push({ text: wingName(t), x: corridor.x + i * w + 10, y: side === "top" ? top - 14 : y + roomH + 26 });
-      for (const id of teamAgents(t)) {
+    for (const g of gs) {
+      wings.push({ text: wingName(g.team), x: corridor.x + i * w + 10, y: side === "top" ? top - 14 : y + roomH + 26 });
+      for (const id of g.ids) {
         const x = corridor.x + i * w;
         rooms.push({ agentId: id, rect: { x, y, w, h: roomH }, door: { x: x + w - DOOR - 16, y: side === "top" ? y + roomH : y, orient: "h", into: side === "top" ? 1 : -1, size: DOOR } });
         i++;
       }
     }
+    if (withAlcove) alcove = { x: corridor.x + i * w, y, w, h: roomH };
   };
-  row(TOP, top, "top");
-  row(BOTTOM, top + roomH + corridorH, "bottom");
+  row(topG, top, "top", false);
+  row(bottomG, top + roomH + corridorH, "bottom", vacant > 0);
   const bH = roomH * 2 + corridorH;
   rooms.unshift({ agentId: "office-manager", rect: { x: left, y: top, w: receptionW, h: bH }, door: { x: left + receptionW, y: corridor.y + 21, orient: "v", into: 1, size: DOOR } });
   wings.unshift({ text: wingName("front"), x: left + 10, y: top - 14 });
-  return {
-    width,
-    height: top + bH + 44,
-    rooms,
-    corridor,
-    wings,
-    entrance: { x: left, y: corridor.y + 16, orient: "v", into: 1, size: 44 },
-    narrow: false,
-    building: { x: left, y: top, w: right - left, h: bH },
-  };
+  return { width, height: top + bH + 44, rooms, alcove, corridor, wings, entrance: { x: left, y: corridor.y + 16, orient: "v", into: 1, size: 44 }, narrow: false, building: { x: left, y: top, w: right - left, h: bH } };
 }
 
 /** Narrow plan: the corridor runs down the page with rooms on both sides. */
-function narrowPlan(): Plan {
+function narrowPlan(groups: Group[], vacant: number): Plan {
   const width = 400;
   const left = 8, right = width - 8, corridorW = 54;
   const colW = (right - left - corridorW) / 2;
@@ -65,33 +86,31 @@ function narrowPlan(): Plan {
   const corridor = { x: left + colW, y: top + receptionH, w: corridorW, h: 0 };
   const rooms: PlacedRoom[] = [];
   const wings: WingLabel[] = [];
-  const column = (teams: TeamId[], x: number, side: "left" | "right") => {
+  let alcove: Rect | null = null;
+  const column = (gs: Group[], x: number, side: "left" | "right", withAlcove: boolean) => {
     let y = corridor.y;
-    for (const t of teams) {
+    for (const g of gs) {
       y += gap;
-      wings.push({ text: wingName(t), x: x + 8, y: y - 9 });
-      for (const id of teamAgents(t)) {
+      wings.push({ text: wingName(g.team), x: x + 8, y: y - 9 });
+      for (const id of g.ids) {
         rooms.push({ agentId: id, rect: { x, y, w: colW, h: roomH }, door: { x: side === "left" ? x + colW : x, y: side === "left" ? y + roomH - NARROW_DOOR - 10 : y + 10, orient: "v", into: side === "left" ? 1 : -1, size: NARROW_DOOR } });
         y += roomH;
       }
     }
+    if (withAlcove) {
+      y += gap;
+      alcove = { x, y, w: colW, h: roomH * 0.7 };
+      y += roomH * 0.7;
+    }
     return y;
   };
-  const endL = column(TOP, left, "left");
-  const endR = column(BOTTOM, left + colW + corridorW, "right");
-  const bottom = Math.max(endL, endR);
+  const [leftG, rightG] = split(groups, vacant ? 1 : 0);
+  const endL = column(leftG, left, "left", false);
+  const endR = column(rightG, left + colW + corridorW, "right", vacant > 0);
+  const bottom = Math.max(endL, endR, corridor.y + gap + roomH);
   corridor.h = bottom - corridor.y;
   rooms.unshift({ agentId: "office-manager", rect: { x: left, y: top, w: right - left, h: receptionH }, door: { x: corridor.x + 12, y: top + receptionH, orient: "h", into: 1, size: NARROW_DOOR + 6 } });
-  return {
-    width,
-    height: bottom + 12,
-    rooms,
-    corridor,
-    wings,
-    entrance: { x: right - 24 - 40, y: top, orient: "h", into: 1, size: 40 },
-    narrow: true,
-    building: { x: left, y: top, w: right - left, h: bottom - top },
-  };
+  return { width, height: bottom + 12, rooms, alcove, corridor, wings, entrance: { x: right - 24 - 40, y: top, orient: "h", into: 1, size: 40 }, narrow: true, building: { x: left, y: top, w: right - left, h: bottom - top } };
 }
 
 /** "documents read" becomes "document read"; "replies drafted" becomes "reply drafted". */
@@ -100,9 +119,6 @@ function singular(label: string) {
   const one = first!.endsWith("ies") ? `${first!.slice(0, -3)}y` : first!.endsWith("s") ? first!.slice(0, -1) : first!;
   return [one, ...rest].join(" ");
 }
-
-const WIDE = widePlan();
-const NARROW = narrowPlan();
 
 /** Erase the wall at a door and draw the leaf with its swing, as on an architect's plan. */
 function DoorMark({ door, waiting }: { door: Door; waiting?: number }) {
@@ -134,9 +150,15 @@ export type FloorPlanProps = {
   arriving?: OfficeView["arriving"];
   /** Link renderer so the app can use its router; defaults to a plain anchor. */
   renderLink?: (agentId: string, className: string, children: ReactNode, label: string) => ReactNode;
+  /** Where the vacant-rooms alcove leads. */
   hiringHref?: string;
+  renderHiringLink?: (className: string, children: ReactNode, label: string) => ReactNode;
+  /** Draw every room, hired or not, instead of only the staffed wings. */
+  wholeFloor?: boolean;
   /** Force a layout instead of measuring, for stories and screenshots. */
   layout?: "wide" | "narrow";
+  /** The skin's floor tile; how strongly it shows is the skin's `--texture-opacity`. */
+  texture?: Skin["texture"];
 };
 
 const statusText: Record<RoomStatus["status"], string> = { working: "Working", idle: "Idle", waiting: "Waiting for you", not_hired: "Not hired" };
@@ -144,8 +166,9 @@ const statusText: Record<RoomStatus["status"], string> = { working: "Working", i
 /**
  * The office drawn as an architect's plan. Each room is a link to that agent's
  * room; the only motion is a document travelling from the entrance to its desk.
+ * By default only staffed rooms are drawn, and the vacancies share one alcove.
  */
-export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPlanProps) {
+export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hiring", renderHiringLink, wholeFloor = false, layout, texture = DEFAULT_SKIN.texture }: FloorPlanProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<"wide" | "narrow">("wide");
   useLayoutEffect(() => {
@@ -155,7 +178,18 @@ export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPla
     return () => ro.disconnect();
   }, [layout]);
   const mode = layout ?? measured;
-  const plan = mode === "wide" ? WIDE : NARROW;
+  const textureId = `floor-texture-${useId().replace(/:/g, "")}`;
+  const hiredKey = rooms
+    .filter((r) => r.hired)
+    .map((r) => r.agentId)
+    .sort()
+    .join(",");
+  const vacant = wholeFloor ? 0 : AGENTS.filter((a) => a.id !== "office-manager" && !rooms.find((r) => r.agentId === a.id)?.hired).length;
+  const plan = useMemo(() => {
+    const keep = wholeFloor ? null : new Set(hiredKey.split(","));
+    const groups = groupsFor(keep);
+    return mode === "wide" ? widePlan(groups, vacant) : narrowPlan(groups, vacant);
+  }, [mode, wholeFloor, hiredKey, vacant]);
   const byId = new Map(rooms.map((r) => [r.agentId, r]));
   const pct = (r: Rect) => ({ left: `${(r.x / plan.width) * 100}%`, top: `${(r.y / plan.height) * 100}%`, width: `${(r.w / plan.width) * 100}%`, height: `${(r.h / plan.height) * 100}%` });
   const link =
@@ -165,14 +199,34 @@ export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPla
         {children}
       </a>
     ));
+  const hiringLink =
+    renderHiringLink ??
+    ((className: string, children: ReactNode, label: string) => (
+      <a href={hiringHref} className={className} aria-label={label}>
+        {children}
+      </a>
+    ));
 
   return (
-    <div ref={ref} className={`floor-plan floor-plan-${mode}`} style={{ aspectRatio: `${plan.width} / ${plan.height}` }}>
+    <div ref={ref} className={`floor-plan floor-plan-${mode}`} style={{ aspectRatio: `${plan.width} / ${plan.height}`, maxWidth: plan.narrow ? undefined : `${plan.width}px` }}>
       <svg viewBox={`0 0 ${plan.width} ${plan.height}`} aria-hidden="true" className="floor-plan-drawing">
+        <defs>
+          <pattern id={textureId} width={texture.size} height={texture.size} patternUnits="userSpaceOnUse">
+            <path d={texture.d} className="floor-texture-line" fill="none" />
+          </pattern>
+        </defs>
+        <rect x={plan.building.x} y={plan.building.y} width={plan.building.w} height={plan.building.h} className="building-floor" />
+        <rect x={plan.building.x} y={plan.building.y} width={plan.building.w} height={plan.building.h} fill={`url(#${textureId})`} className="floor-texture" />
         {plan.rooms.map(({ agentId, rect }) => {
           const s = byId.get(agentId);
-          return <rect key={agentId} x={rect.x} y={rect.y} width={rect.w} height={rect.h} className={`room-wall room-${s?.status ?? "not_hired"}`} />;
+          return (
+            <g key={agentId}>
+              <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} className={`room-wall room-${s?.status ?? "not_hired"}`} />
+              {s?.hired ? <Furniture rect={rect} reception={agentId === "office-manager"} /> : null}
+            </g>
+          );
         })}
+        {plan.alcove ? <rect x={plan.alcove.x} y={plan.alcove.y} width={plan.alcove.w} height={plan.alcove.h} className="room-wall room-not_hired room-alcove" /> : null}
         <rect x={plan.building.x} y={plan.building.y} width={plan.building.w} height={plan.building.h} className="building-wall" />
         {plan.rooms.map(({ agentId, door }) => {
           const s = byId.get(agentId);
@@ -184,7 +238,7 @@ export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPla
             {w.text}
           </text>
         ))}
-        {plan.narrow ? null : (
+        {plan.narrow || plan.corridor.w < 360 ? null : (
           <text x={plan.corridor.x + plan.corridor.w / 2} y={plan.corridor.y + plan.corridor.h / 2} className="corridor-label" textAnchor="middle" dy="0.35em">
             Corridor
           </text>
@@ -196,8 +250,9 @@ export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPla
         const def = AGENT_BY_ID[agentId]!;
         const status = s?.status ?? "not_hired";
         const label = `${def.title}. ${statusText[status]}.${s?.waitingCount ? ` ${s.waitingCount} waiting for you.` : ""}`;
+        const headline = status === "not_hired" ? undefined : s?.headline;
         return (
-          <div key={agentId} className="room-slot" style={pct(rect)}>
+          <div key={agentId} className={`room-slot${headline ? " room-slot-headline" : ""}`} style={pct(rect)}>
             {link(
               agentId,
               `room room-${status}`,
@@ -216,10 +271,57 @@ export function FloorPlan({ rooms, arriving = [], renderLink, layout }: FloorPla
               </>,
               label,
             )}
+            {headline ? (
+              <span className="room-headline">
+                <span className="room-headline-label">{headline.label}</span>{" "}
+                <Figure figureId={headline.figureId} tone={headline.tone} label={`${def.short}: ${headline.label}`}>
+                  <span className="num">{headline.value}</span>
+                </Figure>
+              </span>
+            ) : null}
           </div>
         );
       })}
+      {plan.alcove ? (
+        <div className="room-slot" style={pct(plan.alcove)}>
+          {hiringLink(
+            "room room-not_hired room-vacant",
+            <>
+              <span className="room-name">Vacant rooms</span>
+              <span className="room-now">
+                <span className="num">{vacant}</span> {vacant === 1 ? "room is" : "rooms are"} empty. Hire for them in the hiring hall.
+              </span>
+            </>,
+            `${vacant} vacant ${vacant === 1 ? "room" : "rooms"}: open the hiring hall`,
+          )}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/** A desk and chair, or the reception counter, drawn faintly so the room still reads as a plan. Each skin restyles them. */
+function Furniture({ rect, reception }: { rect: Rect; reception: boolean }) {
+  if (reception) {
+    const w = Math.min(rect.w - 40, 110);
+    const x = rect.x + (rect.w - w) / 2;
+    const y = rect.y + rect.h - 92;
+    return (
+      <g className="furniture" aria-hidden="true">
+        <path d={`M ${x} ${y} h ${w} v 26 h -${w - 26} v 34 h -26 z`} className="furniture-desk" />
+        <circle cx={x + w / 2} cy={y - 14} r={8} className="furniture-chair" />
+      </g>
+    );
+  }
+  const w = 34, h = 13;
+  const x = rect.x + rect.w - w - 12;
+  const y = rect.y + rect.h - h - 12;
+  return (
+    <g className="furniture" aria-hidden="true">
+      <rect x={x} y={y} width={w} height={h} rx={2} className="furniture-desk" />
+      <circle cx={x + w / 2} cy={y - 8} r={5} className="furniture-chair" />
+      <rect x={x + 5} y={y + 3} width={10} height={7} rx={1} className="furniture-item" />
+    </g>
   );
 }
 

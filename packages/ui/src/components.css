@@ -79,12 +79,66 @@
 }
 .building-wall {
   fill: none;
-  stroke: var(--graphite);
+  stroke: var(--wall-ink, var(--graphite));
   stroke-width: 4;
+}
+.building-floor {
+  fill: var(--floor, transparent);
+}
+.floor-texture {
+  opacity: var(--texture-opacity, 0);
+  pointer-events: none;
+}
+.floor-texture-line {
+  stroke: var(--texture-ink, var(--plan-line));
+  stroke-width: 1;
+}
+.furniture {
+  pointer-events: none;
+}
+.furniture-desk,
+.furniture-item {
+  fill: var(--furniture-fill, none);
+  stroke: var(--furniture-line, var(--plan-line));
+  stroke-width: 1;
+}
+.furniture-desk {
+  rx: var(--desk-radius, 2px);
+}
+.furniture-chair {
+  fill: none;
+  stroke: var(--furniture-line, var(--plan-line));
+  stroke-width: 1;
+}
+.room-alcove {
+  fill: transparent;
+}
+
+/* ---------- Skin previews ---------- */
+.skin-preview {
+  display: block;
+  line-height: 0;
+}
+.skin-preview-svg {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-control);
+}
+.skin-preview-paper {
+  fill: var(--paper);
+}
+.skin-preview .room-wall {
+  stroke-width: calc(var(--wall) * 0.6);
+}
+.skin-preview-ink {
+  fill: var(--graphite);
+}
+.skin-preview-accent {
+  fill: var(--carbon);
 }
 .room-wall {
   fill: var(--sheet);
-  stroke: var(--graphite-soft);
+  stroke: var(--room-line, var(--graphite-soft));
   stroke-width: var(--wall);
 }
 .room-working {
@@ -117,7 +171,7 @@
   fill: var(--carbon);
 }
 .door-count text {
-  fill: white;
+  fill: var(--on-carbon);
   font: 700 13px var(--font);
   font-variant-numeric: tabular-nums;
 }
@@ -130,7 +184,7 @@
   font: 400 14px var(--font);
 }
 .arrival path {
-  fill: white;
+  fill: var(--sheet);
   stroke: var(--carbon);
   stroke-width: 1.5;
   stroke-linejoin: round;
@@ -143,6 +197,15 @@
 .room-slot {
   position: absolute;
   padding: 3px;
+  container-type: inline-size;
+}
+@container (max-width: 8rem) {
+  .room-headline-label {
+    display: none;
+  }
+  .room-slot.room-slot-headline .room {
+    padding-bottom: 2.2rem;
+  }
 }
 .room {
   display: flex;
@@ -167,6 +230,10 @@
 .room-name {
   font-weight: 700;
   line-height: 1.25;
+  align-self: flex-start;
+  background: var(--nameplate, transparent);
+  box-shadow: 0 0 0 3px var(--nameplate, transparent);
+  border-radius: 1px;
 }
 .room-count {
   font-size: var(--step--1);
@@ -188,6 +255,39 @@
 .room-not_hired .room-name {
   color: var(--graphite-soft);
   font-weight: 500;
+}
+.room-vacant .room-now {
+  margin-top: var(--s-1);
+}
+.room-slot.room-slot-headline .room {
+  padding-bottom: 3.1rem;
+}
+.room-slot-headline .room-now {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 1.1em), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 1.1em), transparent);
+}
+.room-headline {
+  position: absolute;
+  left: calc(3px + var(--s-3));
+  right: calc(3px + 2.75rem);
+  bottom: calc(3px + var(--s-2));
+  font-size: var(--step--1);
+  line-height: 1.3;
+  color: var(--graphite-soft);
+}
+.room-headline .figure {
+  font-weight: 700;
+  color: var(--graphite);
+}
+.room-headline .figure-red {
+  color: var(--stamp-red);
+}
+.floor-plan-narrow .room-headline {
+  font-size: 0.75rem;
+  left: calc(3px + var(--s-2));
 }
 .floor-plan-wide .room-slot:first-of-type .room-now {
   -webkit-line-clamp: 4;
@@ -507,10 +607,10 @@
 }
 .trust-option.is-current {
   background: var(--carbon);
-  color: white;
+  color: var(--on-carbon);
 }
 .trust-option.is-current .trust-desc {
-  color: color-mix(in srgb, white 82%, var(--carbon));
+  color: color-mix(in srgb, var(--on-carbon) 82%, var(--carbon));
 }
 .trust-label {
   font-weight: 700;
@@ -569,6 +669,33 @@
   padding-left: 1.2em;
 }
 .hire-asks {
+  font-size: var(--step--1);
+}
+.hire-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: var(--rule-soft);
+  align-items: start;
+}
+.hire-compact h3 {
+  font-size: var(--step-0);
+  margin-bottom: 2px;
+}
+.hire-compact .hire-job {
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+  margin-bottom: var(--s-1);
+}
+.hire-more summary {
+  font-size: var(--step--1);
+  color: var(--carbon);
+  cursor: pointer;
+}
+.hire-more[open] summary {
+  margin-bottom: var(--s-2);
+}
+.hire-more .hire-duties {
   font-size: var(--step--1);
 }
 .hire-side {

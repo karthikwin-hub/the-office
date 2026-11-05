@@ -11,15 +11,8 @@
   --plan-line: #b4bcc6;
   --stamp-red: #b42318;
   --cleared-green: #2f6b3f;
-
-  /* Derived tints, mixed only from the palette */
-  --sheet: color-mix(in srgb, white 70%, var(--paper));
-  --carbon-tint: color-mix(in srgb, var(--carbon) 9%, var(--paper));
-  --carbon-wash: color-mix(in srgb, var(--carbon) 18%, transparent);
-  --red-tint: color-mix(in srgb, var(--stamp-red) 8%, var(--paper));
-  --green-tint: color-mix(in srgb, var(--cleared-green) 9%, var(--paper));
-  --graphite-soft: color-mix(in srgb, var(--graphite) 68%, var(--paper));
-  --plan-line-soft: color-mix(in srgb, var(--plan-line) 50%, var(--paper));
+  --on-carbon: #ffffff;
+  --sheet-base: #ffffff;
 
   /* Type */
   --font: "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -56,6 +49,19 @@
 
   --focus: 2px solid var(--carbon);
   --motion: 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Derived tints, mixed only from the palette. Skins (skins.ts) override the palette, never these;
+   they are declared again on every skinned element so a preview recomputes them from its own palette. */
+:root,
+[data-skin] {
+  --sheet: color-mix(in srgb, var(--sheet-base) 70%, var(--paper));
+  --carbon-tint: color-mix(in srgb, var(--carbon) 9%, var(--paper));
+  --carbon-wash: color-mix(in srgb, var(--carbon) 18%, transparent);
+  --red-tint: color-mix(in srgb, var(--stamp-red) 8%, var(--paper));
+  --green-tint: color-mix(in srgb, var(--cleared-green) 9%, var(--paper));
+  --graphite-soft: color-mix(in srgb, var(--graphite) 68%, var(--paper));
+  --plan-line-soft: color-mix(in srgb, var(--plan-line) 50%, var(--paper));
 }
 
 @media (prefers-reduced-motion: reduce) {

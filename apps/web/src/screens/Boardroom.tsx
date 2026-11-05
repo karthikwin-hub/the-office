@@ -1,4 +1,4 @@
-import { AGENT_BY_ID, TEAMS } from "@office/contracts";
+import { AGENT_BY_ID, AGENTS, TEAMS } from "@office/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
@@ -70,31 +70,53 @@ const BOARD_TEAMS = TEAMS.filter((t) => t.id !== "front");
 
 export function BoardroomScreen() {
   const params = useParams({ strict: false }) as { team?: string; tab?: string };
-  const team = BOARD_TEAMS.find((t) => t.id === params.team) ?? BOARD_TEAMS[0]!;
-  const tabs = useTabs(team.id);
-  const tab = tabs.find((t) => t.id === params.tab) ?? tabs[0]!;
   const office = useQuery(q.office());
+  const isHired = (agentId: string) => office.data?.rooms.find((r) => r.agentId === agentId)?.hired ?? true;
+  const staffed = BOARD_TEAMS.filter((t) => AGENTS.some((a) => a.team === t.id && isHired(a.id)));
+  const shownTeams = staffed.length ? staffed : BOARD_TEAMS;
+  const team = BOARD_TEAMS.find((t) => t.id === params.team) ?? shownTeams[0]!;
+  const tabs = useTabs(team.id);
+  const tab = tabs.find((t) => t.id === params.tab) ?? tabs.find((t) => isHired(t.agent)) ?? tabs[0]!;
   const content = tab.render();
-  const hired = office.data?.rooms.find((r) => r.agentId === tab.agent)?.hired ?? true;
+  const hired = isHired(tab.agent);
   const agent = AGENT_BY_ID[tab.agent]!;
+  const teamTabs = shownTeams.some((t) => t.id === team.id) ? shownTeams : [...shownTeams, team];
+  const hiredTabs = tabs.filter((t) => isHired(t.agent));
+  const otherTabs = tabs.filter((t) => !isHired(t.agent));
+  const otherTeams = BOARD_TEAMS.filter((t) => !teamTabs.includes(t));
+  const others = otherTabs.length + otherTeams.length;
+  const reportLink = (t: Tab) => (
+    <Link key={t.id} to="/boardroom/$team/$tab" params={{ team: team.id, tab: t.id }} aria-current={t.id === tab.id ? "page" : undefined}>
+      {t.label}
+    </Link>
+  );
 
   return (
     <Page ready={content.ready} error={content.error} wide>
-      <PageHead title="Boardroom" lede="Every report the team keeps. Underlined figures open the documents they were added up from." />
-      <nav className="tabs board-teams" aria-label="Teams">
-        {BOARD_TEAMS.map((t) => (
-          <Link key={t.id} to="/boardroom/$team" params={{ team: t.id }} aria-current={t.id === team.id ? "page" : undefined}>
-            {t.name}
-          </Link>
-        ))}
-      </nav>
-      <div className="board">
-        <nav className="board-reports" aria-label={`${team.name} reports`}>
-          {tabs.map((t) => (
-            <Link key={t.id} to="/boardroom/$team/$tab" params={{ team: team.id, tab: t.id }} aria-current={t.id === tab.id ? "page" : undefined}>
-              {t.label}
+      <PageHead title="Boardroom" lede="Every report your team keeps. Underlined figures open the documents they were added up from." />
+      {teamTabs.length > 1 ? (
+        <nav className="tabs board-teams" aria-label="Teams">
+          {teamTabs.map((t) => (
+            <Link key={t.id} to="/boardroom/$team" params={{ team: t.id }} aria-current={t.id === team.id ? "page" : undefined}>
+              {t.name}
             </Link>
           ))}
+        </nav>
+      ) : null}
+      <div className="board">
+        <nav className="board-reports" aria-label={`${team.name} reports`}>
+          {hiredTabs.map(reportLink)}
+          {others ? (
+            <details className="board-others" open={!hired || !hiredTabs.length}>
+              <summary>Reports from agents you haven't hired ({others})</summary>
+              {otherTabs.map(reportLink)}
+              {otherTeams.map((t) => (
+                <Link key={t.id} to="/boardroom/$team" params={{ team: t.id }}>
+                  {t.name}
+                </Link>
+              ))}
+            </details>
+          ) : null}
         </nav>
         <div className="board-body">
           {!hired ? (

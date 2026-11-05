@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { account, ApiError, isLive, viewingAs } from "../api/client";
 import { q, useAsk } from "../api/queries";
 import { useBackgroundReader } from "../intake/intake";
+import { useApplySkin } from "./prefs";
 import { SignIn } from "./SignIn";
 import { useLiveUpdates } from "./live";
 
@@ -34,6 +35,7 @@ function OfficeShell() {
   const role = viewingAs();
   const live = useLiveUpdates(isLive);
   useBackgroundReader(isLive);
+  useApplySkin();
   const signOut = useMutation({ mutationFn: account.signOut, onSettled: () => qc.resetQueries() });
 
   const figures = useMemo(
