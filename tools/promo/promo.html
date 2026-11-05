@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8" />
+<title>Agentic Office by Snilld AI</title>
+<style>
+  @font-face { font-family: "Atkinson"; font-weight: 400; src: url("../../node_modules/.pnpm/@fontsource+atkinson-hyperlegible-next@5.3.0/node_modules/@fontsource/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Atkinson"; font-weight: 700; src: url("../../node_modules/.pnpm/@fontsource+atkinson-hyperlegible-next@5.3.0/node_modules/@fontsource/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-700-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Atkinson"; font-weight: 800; src: url("../../node_modules/.pnpm/@fontsource+atkinson-hyperlegible-next@5.3.0/node_modules/@fontsource/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-800-normal.woff2") format("woff2"); }
+
+  :root {
+    --ink: #1e2433;
+    --slate: #2b3245;
+    --lamp: #f0b44c;
+    --paper: #f7f4ee;
+    --sheet: #fffdf8;
+    --teal: #1d5c55;
+    --teal-soft: #d8e7e3;
+    --alarm: #c4553f;
+    --muted: #6b7080;
+    --line: #e2dccf;
+    --b: 2.2vmin;
+    --vy: 42%;
+    --cap: 5.4vmin;
+    --cap-bottom: 7%;
+    --cap-width: 82%;
+  }
+  @media (min-aspect-ratio: 4/3) { :root { --vy: 42%; --cap: 5.2vmin; --cap-bottom: 6%; --cap-width: 66%; } }
+  @media (max-aspect-ratio: 3/4) { :root { --b: 2.7vmin; --vy: 40%; --cap: 6.6vmin; --cap-bottom: 19%; --cap-width: 88%; } }
+
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--ink); }
+  body { font-family: "Atkinson", "Noto Sans", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: fixed; inset: 0; overflow: hidden; }
+  .layer { position: absolute; inset: 0; }
+  .night { background: radial-gradient(circle at 22% 12%, #3a3a3c 0, var(--ink) 55%); }
+  .glow { background: radial-gradient(circle at 24% 10%, rgba(240, 180, 76, 0.32), rgba(240, 180, 76, 0) 46%); }
+  .day { background: var(--paper); }
+  .dusk { background: linear-gradient(180deg, #f7f4ee 0%, #f3dcc0 100%); }
+  .brand { background: var(--teal); }
+
+  [data-t] { opacity: 0; will-change: opacity, transform; }
+  .visual { position: absolute; left: 50%; top: var(--vy); font-size: var(--b); }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+  .captions { position: absolute; left: 50%; bottom: var(--cap-bottom); width: var(--cap-width); transform: translateX(-50%); height: calc(var(--cap) * 2.5); }
+  .captions p { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 800; font-size: var(--cap); line-height: 1.16; letter-spacing: -0.01em; text-wrap: balance; }
+  .captions .on-night { color: var(--paper); }
+  .captions .on-day { color: var(--ink); }
+
+  /* The night clock, and the corner clock once the problems start piling up. */
+  .clock-big, .clock-corner { font-family: "Noto Sans", sans-serif; }
+  .clock-big { position: relative; font-weight: 800; font-size: 9em; text-shadow: 0 0.04em 0.25em rgba(20, 24, 34, 0.55); color: var(--lamp); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .clock-big small { font-size: 0.42em; font-weight: 700; margin-left: 0.15em; }
+  .clock-corner { position: absolute; top: 5vmin; left: 5vmin; font-size: calc(var(--b) * 1.6); font-weight: 800; color: var(--lamp); font-variant-numeric: tabular-nums; }
+  .pile { position: absolute; left: 50%; top: 50%; }
+  .paper { position: absolute; width: 13em; padding: 0.9em 1em; background: var(--sheet); border-radius: 0.25em; box-shadow: 0 0.4em 1.2em rgba(0, 0, 0, 0.35); font-size: 1em; color: var(--ink); }
+  .paper b { display: block; font-size: 1.05em; }
+  .paper span { color: var(--muted); font-size: 0.85em; }
+  .paper i { display: block; height: 0.4em; margin-top: 0.5em; background: var(--line); border-radius: 0.2em; font-style: normal; }
+
+  .problems { display: grid; grid-template-columns: repeat(2, 15em); gap: 1em; transform: translate(-50%, -50%); }
+  @media (min-aspect-ratio: 4/3) { .problems { grid-template-columns: repeat(4, 15em); } }
+  .problem { background: var(--slate); color: var(--paper); border-radius: 0.6em; padding: 1.1em 1.2em 1.2em; min-height: 10.5em; display: flex; flex-direction: column; gap: 0.35em; border-top: 0.25em solid var(--lamp); }
+  .problem h3 { font-size: 1.25em; font-weight: 800; }
+  .problem p { font-size: 1em; color: #c9ccd6; }
+  .problem .amount { font-size: 1.5em; font-weight: 800; color: var(--paper); }
+  .problem .tag { margin-top: auto; align-self: flex-start; font-size: 0.85em; font-weight: 700; padding: 0.25em 0.6em; border-radius: 1em; background: rgba(196, 85, 63, 0.22); color: #f2a593; }
+
+  .floor { position: relative; transform: translate(-50%, -50%); width: 64em; }
+  @media (max-aspect-ratio: 3/4) { .floor { width: 50em; } }
+  @media (max-aspect-ratio: 4/3) and (min-aspect-ratio: 3/4) { .floor { width: 41em; } }
+  .floor img { display: block; width: 100%; border-radius: 0.5em; box-shadow: 0 1em 3em rgba(30, 36, 51, 0.18); }
+  .room { position: absolute; border: 0.22em solid var(--teal); border-radius: 0.3em; background: rgba(29, 92, 85, 0.08); }
+  .room span { position: absolute; left: 50%; bottom: calc(100% + 0.4em); transform: translateX(-50%); white-space: nowrap; background: var(--teal); color: #fff; font-weight: 700; font-size: 0.95em; padding: 0.2em 0.6em; border-radius: 1em; }
+  .room.below span { bottom: auto; top: calc(100% + 0.4em); }
+
+  .card { transform: translate(-50%, -50%); width: 34em; background: var(--sheet); border: 1px solid var(--line); border-radius: 0.7em; box-shadow: 0 1em 3em rgba(30, 36, 51, 0.14); overflow: hidden; }
+  .card header { display: flex; align-items: center; gap: 0.7em; padding: 0.9em 1.2em; border-bottom: 1px solid var(--line); }
+  .face { width: 2.4em; height: 2.4em; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1em; flex: none; }
+  .card header b { display: block; font-size: 1.1em; }
+  .card header span { color: var(--muted); font-size: 0.9em; }
+  .card .body { padding: 1.1em 1.2em 1.3em; }
+  .mail { display: flex; align-items: center; gap: 0.8em; background: var(--teal-soft); border-radius: 0.5em; padding: 0.8em 1em; margin-bottom: 1em; }
+  .mail .pdf { flex: none; width: 2em; height: 2.5em; background: var(--alarm); color: #fff; font-size: 0.7em; font-weight: 800; display: grid; place-items: center; border-radius: 0.2em; }
+  .mail b { display: block; }
+  .mail span { color: var(--muted); font-size: 0.9em; }
+  .fields { display: grid; grid-template-columns: auto 1fr; gap: 0.55em 1.2em; font-size: 1.1em; }
+  .fields dt { color: var(--muted); }
+  .fields dd { font-weight: 700; }
+  .ok { color: var(--teal); }
+  .letter { font-size: 1.2em; line-height: 1.45; min-height: 8.8em; white-space: pre-wrap; }
+  .chip { display: inline-block; margin-top: 1em; font-weight: 700; font-size: 0.95em; padding: 0.35em 0.8em; border-radius: 1em; background: #f6e3c0; color: #7a4a0a; }
+  .chat { display: flex; flex-direction: column; gap: 0.7em; min-height: 11em; }
+  .msg { max-width: 80%; padding: 0.7em 0.95em; border-radius: 0.9em; font-size: 1.15em; line-height: 1.35; }
+  .msg.them { align-self: flex-start; background: #ece8df; border-bottom-left-radius: 0.2em; }
+  .msg.us { align-self: flex-end; background: var(--teal); color: #fff; border-bottom-right-radius: 0.2em; }
+  .msg small { display: block; font-size: 0.75em; opacity: 0.75; margin-bottom: 0.2em; font-weight: 700; }
+
+  .phone { transform: translate(-50%, -50%); width: 15.5em; height: 28em; border-radius: 2.2em; background: #171b26; padding: 0.7em; box-shadow: 0 1.5em 4em rgba(30, 36, 51, 0.3); }
+  @media (max-aspect-ratio: 3/4) { .phone { width: 19em; height: 34em; } }
+  .screen { height: 100%; border-radius: 1.6em; background: #ece5dd; overflow: hidden; display: flex; flex-direction: column; }
+  .screen header { background: var(--teal); color: #fff; padding: 1.6em 1em 0.8em; }
+  .screen header b { display: block; font-size: 1.05em; }
+  .screen header span { font-size: 0.75em; opacity: 0.85; }
+  .thread { padding: 0.9em 0.7em; display: flex; flex-direction: column; gap: 0.6em; }
+  .bubble { background: #fff; border-radius: 0.7em; padding: 0.7em 0.8em; font-size: 0.92em; line-height: 1.35; box-shadow: 0 0.1em 0.2em rgba(0, 0, 0, 0.08); max-width: 92%; }
+  .bubble small { display: block; color: var(--teal); font-weight: 800; font-size: 0.8em; margin-bottom: 0.25em; }
+  .bubble.mine { align-self: flex-end; background: #d9f2d0; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5em; margin-top: 0.7em; position: relative; }
+  .actions div { text-align: center; font-weight: 800; padding: 0.55em 0; border-radius: 0.5em; border: 0.12em solid var(--teal); color: var(--teal); font-size: 0.95em; position: relative; }
+  .actions .approved { position: absolute; left: 0; top: 0; width: calc(50% - 0.25em); background: var(--teal); color: #fff; }
+  .ripple { position: absolute; left: 25%; top: 50%; width: 3.4em; height: 3.4em; margin: -1.7em 0 0 -1.7em; border-radius: 50%; background: rgba(29, 92, 85, 0.35); pointer-events: none; }
+
+  .summary { transform: translate(-50%, -50%); width: 30em; }
+  .summary h2 { font-size: 2.3em; font-weight: 800; letter-spacing: -0.01em; }
+  .summary .when { color: var(--muted); font-size: 1.1em; margin: 0.2em 0 1em; }
+  .summary ul { list-style: none; padding: 0; display: grid; gap: 0.6em; }
+  .summary li { display: flex; gap: 0.7em; align-items: baseline; font-size: 1.35em; background: var(--sheet); border: 1px solid var(--line); border-radius: 0.5em; padding: 0.65em 0.9em; }
+  .summary li b { color: var(--teal); font-weight: 800; }
+  .summary li.you b { color: #b7791f; }
+  .home { transform: translate(-50%, -50%); text-align: center; }
+  .home .clock-big { color: var(--ink); text-shadow: none; }
+
+  .end { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--paper); padding: 8vmin; gap: 2.4vmin; }
+  .end h1 { font-size: 12vmin; font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; }
+  .end .by { font-size: 4.2vmin; font-weight: 700; opacity: 0.9; }
+  .end .line { font-size: 4vmin; max-width: 26ch; line-height: 1.25; margin-top: 2vmin; text-wrap: balance; }
+  .end .contact { margin-top: 4vmin; font-size: 3.6vmin; font-weight: 700; line-height: 1.5; }
+  .end .contact span { display: block; font-weight: 400; opacity: 0.85; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer night" data-t="0 15" data-fade="0 1" data-enter="none"></div>
+  <div class="layer glow" data-t="0 15" data-fade="0 1" data-enter="none"></div>
+  <div class="layer day" data-t="13.8 51.2" data-fade="1.2 0.6" data-enter="none"></div>
+  <div class="layer dusk" data-t="48.2 51.2" data-fade="0.8 0.6" data-enter="none"></div>
+  <div class="layer brand" data-t="50.8 99" data-fade="0.6 0" data-enter="none"></div>
+
+  <!-- Act one: 9:40 pm and the paperwork piles up. -->
+  <div class="visual" data-t="0 6.4">
+    <div class="pile">
+      <div class="paper" data-t="0.5 6.4" data-enter="drop" style="--r: -7deg; left: -15em; top: -1em;"><b>Invoice NSL/2611/876</b><span>Narmada Switchgear Ltd</span><i></i><i style="width: 60%"></i></div>
+      <div class="paper" data-t="1.4 6.4" data-enter="drop" style="--r: 5deg; left: 1.5em; top: -0.5em;"><b>GSTR-1, October</b><span>Due 11 November</span><i></i><i style="width: 70%"></i></div>
+      <div class="paper" data-t="2.3 6.4" data-enter="drop" style="--r: -2deg; left: -12em; top: 3.2em;"><b>Payment overdue</b><span>Sharma Traders</span><i></i><i style="width: 50%"></i></div>
+      <div class="paper" data-t="3.2 6.4" data-enter="drop" style="--r: 8deg; left: -1em; top: 3.8em;"><b>Quote request</b><span>40 MCCBs, by Friday</span><i></i><i style="width: 65%"></i></div>
+    </div>
+    <div class="center" data-t="0.1 6.4" data-enter="none" style="top: -6.5em;"><div class="clock-big" data-clock>9:40<small>pm</small></div></div>
+  </div>
+  <div class="clock-corner" data-t="6.2 14.2" data-clock>9:56 pm</div>
+
+  <div class="visual" data-t="6.2 14.2">
+    <div class="problems">
+      <div class="problem" data-t="6.3 14.2"><h3>Bills to enter</h3><p>Narmada Switchgear Ltd</p><span class="amount">₹12,65,285</span><span class="tag">Not entered</span></div>
+      <div class="problem" data-t="7.9 14.2"><h3>Payments to chase</h3><p>Sharma Traders</p><span class="amount">₹1,84,000</span><span class="tag">20 days overdue</span></div>
+      <div class="problem" data-t="9.5 14.2"><h3>GST deadlines</h3><p>GSTR-1 for October</p><span class="amount">11 Nov</span><span class="tag">6 days left</span></div>
+      <div class="problem" data-t="11.1 14.2"><h3>Customers waiting</h3><p>“Can you quote for 40 MCCBs?”</p><span class="amount">9 hours</span><span class="tag">No reply yet</span></div>
+    </div>
+  </div>
+
+  <!-- Act two: the office, the real floor from the app. -->
+  <div class="visual" data-t="14.4 20.2" data-enter="pop">
+    <div class="floor" data-zoom="14.4 20.2">
+      <img src="shots/floor.png" alt="" />
+      <div class="room" data-t="15.6 20.2" data-enter="pop" style="left: 15.3%; top: 9%; width: 13.8%; height: 33%;"><span>Meera</span></div>
+      <div class="room" data-t="16.3 20.2" data-enter="pop" style="left: 29.1%; top: 9%; width: 13.9%; height: 33%;"><span>Arjun</span></div>
+      <div class="room" data-t="17.0 20.2" data-enter="pop" style="left: 43%; top: 9%; width: 13.9%; height: 33%;"><span>Farhan</span></div>
+      <div class="room below" data-t="17.7 20.2" data-enter="pop" style="left: 48.6%; top: 57.8%; width: 16.6%; height: 33.6%;"><span>Gopal</span></div>
+      <div class="room below" data-t="18.4 20.2" data-enter="pop" style="left: 15.3%; top: 57.8%; width: 16.7%; height: 33.6%;"><span>Ishita</span></div>
+      <div class="room" data-t="19.0 20.2" data-enter="pop" style="left: 70.8%; top: 9%; width: 13.8%; height: 33%;"><span>Vikram</span></div>
+    </div>
+  </div>
+
+  <!-- They read your bills. -->
+  <div class="visual" data-t="20.4 24.6">
+    <div class="card">
+      <header><div class="face">M</div><div><b>Meera</b><span>Accountant</span></div></header>
+      <div class="body">
+        <div class="mail" data-t="20.6 24.6"><div class="pdf">PDF</div><div><b>Invoice NSL/2611/876.pdf</b><span>Emailed by Narmada Switchgear Ltd</span></div></div>
+        <dl class="fields">
+          <dt data-t="21.5 24.6">Supplier</dt><dd data-t="21.5 24.6">Narmada Switchgear Ltd</dd>
+          <dt data-t="22.0 24.6">Amount</dt><dd data-t="22.0 24.6">₹12,65,285</dd>
+          <dt data-t="22.5 24.6">GST</dt><dd data-t="22.5 24.6" class="ok">18%, checked against the order</dd>
+          <dt data-t="23.0 24.6">Due</dt><dd data-t="23.0 24.6">4 December</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- They draft the reminders. -->
+  <div class="visual" data-t="24.8 29">
+    <div class="card">
+      <header><div class="face">A</div><div><b>Arjun</b><span>Credit controller, drafting a reminder</span></div></header>
+      <div class="body">
+        <p class="letter" data-type="25.2 28.0">Dear Mr Sharma,
+A friendly reminder that invoice KE/1042 for ₹1,84,000 was due on 15 October. Could you let us know when to expect payment?
+Kaveri Electricals</p>
+        <span class="chip" data-t="28.0 29">Waiting for your OK before it is sent</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- They answer customers, and know when to ask you. -->
+  <div class="visual" data-t="29.2 34.2">
+    <div class="card">
+      <header><div class="face">A</div><div><b>Ananya</b><span>Customer service, on your website</span></div></header>
+      <div class="body">
+        <div class="chat">
+          <div class="msg them" data-t="29.5 34.2"><small>A customer</small>Do you have 25 mm conduit pipes in stock?</div>
+          <div class="msg us" data-t="30.4 34.2">Yes, 300 lengths in stock. Delivery in 2 days.</div>
+          <div class="msg them" data-t="31.4 34.2"><small>Another customer</small>Two coils arrived damaged. I want a refund.</div>
+          <div class="msg us" data-t="32.3 34.2">Sorry about that. I have passed this to Anil, who will reply today.</div>
+        </div>
+        <span class="chip" data-t="33.0 34.2">Refunds always go to you</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- One tap. -->
+  <div class="visual" data-t="34.4 44.2">
+    <div class="phone">
+      <div class="screen">
+        <header><b>Agentic Office</b><span>Kaveri Electricals</span></header>
+        <div class="thread">
+          <div class="bubble" data-t="35.0 44.2"><small>Meera, Accountant</small>Post bill NSL/2611/876 from Narmada Switchgear Ltd, ₹12,65,285?
+            <div class="actions"><div>Approve</div><div>Not now</div><div class="approved" data-t="39.3 44.2" data-enter="none">Approved</div><span class="ripple" data-t="39.0 39.9" data-enter="ripple"></span></div>
+          </div>
+          <div class="bubble" data-t="40.0 44.2"><small>Meera, Accountant</small>Done. Posted to the books, and filed with the bill.</div>
+          <div class="bubble" data-t="41.4 44.2"><small>Arjun, Credit controller</small>Send the reminder to Sharma Traders?
+            <div class="actions"><div>Send</div><div>Not now</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Every morning. -->
+  <div class="visual" data-t="44.4 48.4">
+    <div class="summary">
+      <h2>Good morning, Anil</h2>
+      <p class="when">Your office, at 8:45 am</p>
+      <ul>
+        <li data-t="45.0 48.4"><b>✓</b>Books up to date: 14 bills posted</li>
+        <li data-t="45.6 48.4"><b>✓</b>₹3.4 lakh collected yesterday</li>
+        <li data-t="46.2 48.4"><b>✓</b>GST return ready for your CA</li>
+        <li data-t="46.8 48.4" class="you"><b>●</b>2 things need you today</li>
+      </ul>
+    </div>
+  </div>
+  <div class="visual" data-t="48.5 51">
+    <div class="home"><div class="clock-big">6:00<small>pm</small></div></div>
+  </div>
+
+  <div class="end">
+    <h1 data-t="51.4 99">Agentic Office</h1>
+    <p class="by" data-t="51.9 99">by Snilld AI</p>
+    <p class="line" data-t="52.8 99">Your business, running smoothly, even when you’re not looking.</p>
+    <p class="contact" data-t="54.0 99">snilldai.com<span>puja@snilldai.com</span></p>
+  </div>
+
+  <div class="captions">
+    <p class="on-night" data-t="0.4 3.0">You started a business to grow it.</p>
+    <p class="on-night" data-t="3.0 6.0">Not to chase paperwork at 10 pm.</p>
+    <p class="on-night" data-t="6.3 7.9">Bills to enter.</p>
+    <p class="on-night" data-t="7.9 9.5">Payments to chase.</p>
+    <p class="on-night" data-t="9.5 11.1">GST deadlines.</p>
+    <p class="on-night" data-t="11.1 12.7">Customers waiting for answers.</p>
+    <p class="on-night" data-t="12.7 14.2">Every single day.</p>
+    <p class="on-day" data-t="14.8 17.2">Meet your Agentic Office.</p>
+    <p class="on-day" data-t="17.2 20.1">A team of AI assistants, each with one job, working for you all day.</p>
+    <p class="on-day" data-t="20.5 24.5">They read your bills.</p>
+    <p class="on-day" data-t="24.9 28.9">They draft the reminders.</p>
+    <p class="on-day" data-t="29.3 34.1">They answer customers, and know when to ask you.</p>
+    <p class="on-day" data-t="34.5 38.7">Nothing important happens without you.</p>
+    <p class="on-day" data-t="38.7 44.1">Anything involving money waits for your one tap, on WhatsApp or on your desk.</p>
+    <p class="on-day" data-t="44.5 48.3">Every morning, a short summary.</p>
+    <p class="on-day" data-t="48.5 51.0">Books up to date. Cash in sooner.<br />Home on time.</p>
+  </div>
+</div>
+
+<script>
+  const DURATION = 58;
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const items = [...document.querySelectorAll("[data-t]")].map((el) => {
+    const [a, b] = el.dataset.t.split(" ").map(Number);
+    const [fin, fout] = (el.dataset.fade ?? "0.5 0.4").split(" ").map(Number);
+    return { el, a, b, fin, fout, enter: el.dataset.enter ?? "up", base: el.style.transform };
+  });
+  const typed = [...document.querySelectorAll("[data-type]")].map((el) => ({ el, full: el.textContent, range: el.dataset.type.split(" ").map(Number) }));
+  const clocks = [...document.querySelectorAll("[data-clock]")];
+  const zooms = [...document.querySelectorAll("[data-zoom]")].map((el) => ({ el, range: el.dataset.zoom.split(" ").map(Number) }));
+
+  function clockAt(t) {
+    const minutes = 21 * 60 + 40 + Math.floor(Math.min(t, 14) * 2.7);
+    const h = Math.floor(minutes / 60) % 12 || 12;
+    return [`${h}:${String(minutes % 60).padStart(2, "0")}`, "pm"];
+  }
+
+  function render(t) {
+    for (const it of items) {
+      const inP = it.fin ? ease(clamp((t - it.a) / it.fin)) : t >= it.a ? 1 : 0;
+      const outP = it.fout ? ease(clamp((it.b - t) / it.fout)) : t < it.b ? 1 : 0;
+      const v = Math.min(inP, outP);
+      let transform = "";
+      if (it.enter === "up") transform = `translateY(${(1 - inP) * 1.2}em)`;
+      else if (it.enter === "pop") transform = `scale(${0.94 + 0.06 * inP})`;
+      else if (it.enter === "drop") transform = `translateY(${(1 - inP) * -3}em) rotate(var(--r))`;
+      if (it.enter === "ripple") {
+        const p = clamp((t - it.a) / (it.b - it.a));
+        it.el.style.opacity = t >= it.a && t < it.b ? String(0.9 * (1 - p)) : "0";
+        it.el.style.transform = `scale(${0.4 + 1.4 * p})`;
+        continue;
+      }
+      it.el.style.opacity = String(v);
+      if (it.el.classList.contains("visual")) continue;
+      if (transform) it.el.style.transform = `${it.base ?? ""} ${transform}`.trim();
+    }
+    for (const ty of typed) {
+      const [a, b] = ty.range;
+      ty.el.textContent = ty.full.slice(0, Math.round(ty.full.length * clamp((t - a) / (b - a))));
+    }
+    const [hm, ap] = clockAt(t);
+    for (const c of clocks) c.innerHTML = c.classList.contains("clock-big") ? `${hm}<small>${ap}</small>` : `${hm} ${ap}`;
+    for (const z of zooms) z.el.style.transform = `translate(-50%, -50%) scale(${1 + 0.035 * clamp((t - z.range[0]) / (z.range[1] - z.range[0]))})`;
+  }
+  window.render = render;
+  window.DURATION = DURATION;
+
+  const at = new URLSearchParams(location.search).get("t");
+  if (at !== null) render(Number(at));
+  else {
+    const start = performance.now();
+    const loop = () => {
+      render(((performance.now() - start) / 1000) % DURATION);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

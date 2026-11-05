@@ -17,3 +17,6 @@ backups/
 
 # Exported workbooks and LibreOffice scratch space from tools/exports/verify.py
 tools/exports/out/
+
+# Rendered promo videos from tools/promo/render.mjs
+tools/promo/out/
