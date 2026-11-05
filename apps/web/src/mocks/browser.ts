@@ -1,4 +1,4 @@
-import { DEFAULT_PREFS, Prefs, PrefsChange, ReadRequest, type Role } from "@office/contracts";
+import { ambientFrom, checkPersonaNames, DEFAULT_PREFS, Prefs, PrefsChange, ReadRequest, readPersonaNames, type Role, ROUTES } from "@office/contracts";
 import { dispatch, mockConnect, OfficeService, runMockEffects } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
@@ -19,6 +19,7 @@ const liveRoutes = (import.meta.env.VITE_LIVE_ROUTES ?? "")
   .filter(Boolean);
 
 const PREFS_KEY = "office.prefs.server";
+const NAMES_KEY = "office.personas.server";
 
 let office: OfficeService | null = null;
 const getOffice = () => {
@@ -87,6 +88,19 @@ const handler = http.all("/api/*", async ({ request }) => {
       if (request.method !== "GET") runMockEffects(getOffice());
       return res;
     }
+  }
+  if (url.pathname === ROUTES.ambient && request.method === "GET") {
+    return HttpResponse.json(ambientFrom(getOffice().books, readPersonaNames(localStorage.getItem(NAMES_KEY)), getOffice().books.business.asOf));
+  }
+  if (url.pathname === ROUTES.personas) {
+    if (role !== "owner") return HttpResponse.json({ error: "Only the owner can rename the team." }, { status: 403 });
+    const checked = checkPersonaNames(await request.json().catch(() => null));
+    if ("error" in checked) return HttpResponse.json(checked, { status: 400 });
+    localStorage.setItem(NAMES_KEY, JSON.stringify(checked.names));
+    return HttpResponse.json({ names: checked.names });
+  }
+  if (url.pathname === ROUTES.weather) {
+    return HttpResponse.json({ weather: { city: "Pune", tempC: 27, sky: "cloudy", at: new Date().toISOString() } });
   }
   if (url.pathname === "/api/prefs") {
     const saved = Prefs.parse({ ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") });

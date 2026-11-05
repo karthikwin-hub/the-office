@@ -194,6 +194,32 @@ export const SKINS: Skin[] = [
     },
     texture: { size: 24, d: "M 0 24 L 24 0" },
   },
+  {
+    id: "lived-in",
+    name: "Lived-in",
+    description: "The team at work: at their desks, carrying papers, and now and then a word over tea.",
+    tokens: {
+      paper: "#f6f2ea",
+      carbon: "#7a3e2b",
+      onCarbon: "#ffffff",
+      graphite: "#2c2824",
+      planLine: "#d3c6b2",
+      stampRed: "#a8261c",
+      clearedGreen: "#2e6638",
+      sheetBase: "#fffcf6",
+      floor: "#ece3d3",
+      wallInk: "#4f463c",
+      roomLine: "#a88f73",
+      wall: "2px",
+      furnitureLine: "#b49d80",
+      furnitureFill: "#f3eadb",
+      deskRadius: "8px",
+      nameplate: "transparent",
+      textureInk: "#5d4a2a",
+      textureOpacity: 0.035,
+    },
+    texture: { size: 36, d: "M 0 18 H 36 M 18 0 V 18 M 0 36 H 36" },
+  },
 ];
 
 export const SKIN_BY_ID = Object.fromEntries(SKINS.map((s) => [s.id, s])) as Record<SkinId, Skin>;

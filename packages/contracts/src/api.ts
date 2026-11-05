@@ -465,7 +465,7 @@ export const Settings = z.object({
 });
 export type Settings = z.infer<typeof Settings>;
 
-export const SkinId = z.enum(["blueprint", "open-plan", "cubicles", "counting-house", "loft", "night-shift"]);
+export const SkinId = z.enum(["blueprint", "open-plan", "cubicles", "counting-house", "loft", "night-shift", "lived-in"]);
 export type SkinId = z.infer<typeof SkinId>;
 
 /** One person's view of the office; it follows them from machine to machine. */
@@ -645,4 +645,7 @@ export const ROUTES = {
   orders: "/api/orders",
   order: (id: string) => `/api/orders/${encodeURIComponent(id)}`,
   ordersImport: "/api/orders/import",
+  ambient: "/api/ambient",
+  personas: "/api/personas",
+  weather: "/api/weather",
 } as const;

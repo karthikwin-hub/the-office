@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 export const LEGAL_DOCUMENTS = {
   terms: { title: "Terms of service", version: "2026-11-05", path: "/legal/terms" },
-  privacy: { title: "Privacy notice", version: "2026-11-05", path: "/legal/privacy" },
+  privacy: { title: "Privacy notice", version: "2026-11-05.2", path: "/legal/privacy" },
 } as const;
 export type LegalDocument = keyof typeof LEGAL_DOCUMENTS;
 export const LegalDocumentId = z.enum(["terms", "privacy"]);

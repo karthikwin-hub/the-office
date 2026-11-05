@@ -13,6 +13,7 @@ import {
   OpenOffice,
   Platform as PlatformEnum,
   RoleChange,
+  ROUTES,
   TransferRequest,
 } from "@office/contracts";
 import { Hono, type Context } from "hono";
@@ -30,6 +31,7 @@ import { metaChallenge, verifyMetaSignature } from "./social/webhooks";
 import { ControlPlane, ingestAddress, OFFICE_ID, type OfficeRow, PURGE_AFTER_MS } from "./tenancy";
 import { sendText } from "./whatsapp/cloud";
 import { WaDirectory } from "./whatsapp/links";
+import { weatherFor, type Where } from "./weather";
 import { zip, type ZipEntry } from "./zip";
 
 type User = { id: string; name: string; email: string; emailVerified: boolean };
@@ -240,6 +242,14 @@ app.use("/api/o/:office/*", async (c, next) => {
 });
 
 const ownerOnly = (c: Ctx) => (c.get("caller").role === "owner" ? null : c.json({ error: "Only the owner can do that." }, 403));
+
+/** For the Lived-in office's small talk: the weather near the person looking, never stored with them. */
+app.get(`/api/o/:office${ROUTES.weather.slice(4)}`, async (c) => {
+  const cache = (globalThis as { caches?: { default?: Parameters<typeof weatherFor>[1]["cache"] } }).caches?.default ?? null;
+  const userAgent = `the-office/1.0 (${c.env.BETTER_AUTH_URL}; ${c.env.MAIL_FROM})`;
+  const weather = await weatherFor(c.req.raw.cf as Where | undefined, { fetcher: (u, i) => fetch(u, i), cache, userAgent });
+  return c.json({ weather }, 200, { "cache-control": "private, max-age=900" });
+});
 
 app.get("/api/o/:office/files/:id", async (c) => {
   const id = c.req.param("id");

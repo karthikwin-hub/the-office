@@ -164,6 +164,27 @@
 .cs-message-failed {
   border-color: var(--stamp-red);
 }
+.persona-names {
+  margin-top: var(--s-4);
+}
+.persona-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--s-2) var(--s-4);
+  margin: var(--s-3) 0;
+}
+.persona-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  align-items: center;
+  gap: var(--s-2);
+}
+.persona-row dd {
+  margin: 0;
+}
+.persona-row input {
+  width: 100%;
+}
 .cs-form {
   display: grid;
   gap: var(--s-3);

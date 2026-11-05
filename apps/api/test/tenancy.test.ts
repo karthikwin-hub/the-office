@@ -280,6 +280,20 @@ describe("one office cannot reach another", () => {
   });
 });
 
+describe("the weather for the Lived-in office", () => {
+  it("is for members only, and without a location asks nobody", async () => {
+    const { w, anil, bina, A } = await twoOffices();
+    const outside = vi.spyOn(globalThis, "fetch");
+    const res = await call(w, anil, inOffice(A, ROUTES.weather));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ weather: null });
+    expect(outside).not.toHaveBeenCalled();
+    expect((await call(w, bina, inOffice(A, ROUTES.weather))).status).toBe(404);
+    expect(w.seen.some((s) => s.path.endsWith("/weather"))).toBe(false);
+    outside.mockRestore();
+  });
+});
+
 describe("a person's own rights", () => {
   const me = async (w: World, p: Person) => (await (await call(w, p, ACCOUNT_ROUTES.me)).json()) as { consentNeeded: { document: string; version: string }[]; deletionRequested: boolean };
   const current = Object.entries(LEGAL_DOCUMENTS).map(([document, d]) => ({ document, version: d.version }));

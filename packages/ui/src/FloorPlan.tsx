@@ -4,12 +4,13 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { Figure } from "./Figure";
 import { DEFAULT_SKIN, type Skin } from "./skins";
 
-type Rect = { x: number; y: number; w: number; h: number };
+export type Rect = { x: number; y: number; w: number; h: number };
 /** `h` doors sit in a horizontal wall; `into` is the direction the leaf swings (+1 down or right). */
-type Door = { x: number; y: number; orient: "h" | "v"; into: 1 | -1; size: number };
-type PlacedRoom = { agentId: string; rect: Rect; door: Door };
+export type Door = { x: number; y: number; orient: "h" | "v"; into: 1 | -1; size: number };
+export type PlacedRoom = { agentId: string; rect: Rect; door: Door };
 type WingLabel = { text: string; x: number; y: number };
-type Plan = { width: number; height: number; rooms: PlacedRoom[]; alcove: Rect | null; corridor: Rect; wings: WingLabel[]; entrance: Door; building: Rect; narrow: boolean };
+/** The drawn floor in plan units, for anything layered on top of it. */
+export type Plan = { width: number; height: number; rooms: PlacedRoom[]; alcove: Rect | null; corridor: Rect; wings: WingLabel[]; entrance: Door; building: Rect; narrow: boolean };
 type Group = { team: TeamId; ids: string[] };
 
 const ORDER: TeamId[] = ["accounts", "sales", "marketing", "social", "operations", "people"];
@@ -162,6 +163,8 @@ export type FloorPlanProps = {
   layout?: "wide" | "narrow";
   /** The skin's floor tile; how strongly it shows is the skin's `--texture-opacity`. */
   texture?: Skin["texture"];
+  /** Drawn inside the plan above the rooms, in plan units; it must not take clicks. */
+  overlay?: (plan: Plan) => ReactNode;
 };
 
 const statusText: Record<RoomStatus["status"], string> = { working: "Working", idle: "Idle", waiting: "Waiting for you", not_hired: "Not hired" };
@@ -171,7 +174,7 @@ const statusText: Record<RoomStatus["status"], string> = { working: "Working", i
  * room; the only motion is a document travelling from the entrance to its desk.
  * By default only staffed rooms are drawn, and the vacancies share one alcove.
  */
-export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hiring", renderHiringLink, wholeFloor = false, layout, texture = DEFAULT_SKIN.texture }: FloorPlanProps) {
+export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hiring", renderHiringLink, wholeFloor = false, layout, texture = DEFAULT_SKIN.texture, overlay }: FloorPlanProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState(Infinity);
   useLayoutEffect(() => {
@@ -299,6 +302,11 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
             `${vacant} vacant ${vacant === 1 ? "room" : "rooms"}: open the hiring hall`,
           )}
         </div>
+      ) : null}
+      {overlay ? (
+        <svg viewBox={`0 0 ${plan.width} ${plan.height}`} aria-hidden="true" className="floor-plan-overlay">
+          {overlay(plan)}
+        </svg>
       ) : null}
     </div>
   );

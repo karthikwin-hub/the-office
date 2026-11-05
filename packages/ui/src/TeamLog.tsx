@@ -3,11 +3,28 @@ import { AGENT_BY_ID } from "@office/contracts";
 import type { ReactNode } from "react";
 import { useFigures } from "./Figure";
 
-const who = (agentId: string) => (agentId === "you" ? "You" : (AGENT_BY_ID[agentId]?.short ?? agentId));
+const role = (agentId: string) => (agentId === "you" ? "You" : (AGENT_BY_ID[agentId]?.short ?? agentId));
 
-/** What the team did, newest first, in the words the agents used. */
-export function TeamLog({ entries, title = "Team log", heading = true, empty = "Nothing has happened yet today.", showAgent = true, footer }: { entries: LogEntry[]; title?: string; heading?: boolean; empty?: string; showAgent?: boolean; footer?: ReactNode }) {
+/** What the team did, newest first, in the words the agents used. `label` names an agent another way, for the Lived-in office. */
+export function TeamLog({
+  entries,
+  title = "Team log",
+  heading = true,
+  empty = "Nothing has happened yet today.",
+  showAgent = true,
+  footer,
+  label,
+}: {
+  entries: LogEntry[];
+  title?: string;
+  heading?: boolean;
+  empty?: string;
+  showAgent?: boolean;
+  footer?: ReactNode;
+  label?: (agentId: string) => string;
+}) {
   const { openDocument } = useFigures();
+  const who = (agentId: string) => (label && agentId !== "you" && AGENT_BY_ID[agentId] ? label(agentId) : role(agentId));
   return (
     <section className="team-log" aria-label={title}>
       {heading ? <h2 className="team-log-title">{title}</h2> : null}

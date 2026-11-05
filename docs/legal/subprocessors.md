@@ -1,6 +1,6 @@
 # Subprocessors
 
-> **Draft for legal review.** Version 2026-11-05. We give [30] days' notice on this page, and by email to owners, before adding a subprocessor.
+> **Draft for legal review.** Version 2026-11-05.2. We give [30] days' notice on this page, and by email to owners, before adding a subprocessor.
 
 These are the companies that receive personal data so that The Office can work, and what each one receives.
 
@@ -16,5 +16,6 @@ These are the companies that receive personal data so that The Office can work, 
 | Meta Platforms, Inc. | Facebook, Instagram and Threads APIs | Posts, comments, messages and page insights for connected accounts | Meta's data centres | Only for connected platforms |
 | LinkedIn Corporation | LinkedIn API | Posts and their results for a connected page | LinkedIn's data centres | Only when connected |
 | X Corp. | X API | Posts and their results for a connected account | X's data centres | Only when connected |
+| MET Norway (Norwegian Meteorological Institute) | Weather forecast API (api.met.no), forecast data under CC BY 4.0 | A location rounded to about ten kilometres, and our service's name; no account or office data | Norway | Only for people who choose the Lived-in look |
 
 Meta, LinkedIn and X also process the data under their own terms, because the business holds its own account with them.

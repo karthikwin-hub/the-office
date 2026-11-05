@@ -77,6 +77,10 @@ The `route` table sends inbound traffic to one office. Its kinds are `email` (bi
 
 The chat snippet a business pastes into its website loads `/w/<key>.js` and talks to `/api/chat/<key>` (open to any site, no cookies). A disabled chat or an agent that is not hired answers 404. Customer service uses at most 150 of the office's 400 daily AI calls (quota `cs_ai`); after that it carries on with its keyword rules alone and hands the owner anything they cannot place.
 
+## 4b. Weather for the Lived-in skin
+
+`GET /api/o/<office>/weather` is answered by the Worker, never the office. It reads the caller's approximate location from Cloudflare (`cf.latitude`, `cf.longitude`, `cf.city`), rounds it to 0.1 degrees, and asks MET Norway's `locationforecast/2.0/compact` API, caching each rounded area for an hour with the Cache API. The request carries the User-Agent `the-office/1.0 (<BETTER_AUTH_URL>; <MAIL_FROM>)`, as MET Norway's terms require an identifying name and contact, so both must be real before go-live. No key or secret is needed. Any failure answers `{ "weather": null }` and the team simply does not mention the weather. MET Norway's data is CC BY 4.0; the credit is shown in Settings beside the skin. Persona names are kept in the office's own storage (`office_kv`, key `personas`).
+
 ## 5. Social channels and WhatsApp
 
 | Platform | Where it is set up | Settings needed |

@@ -1,4 +1,4 @@
-import { type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import { ambientFrom, checkPersonaNames, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -390,6 +390,14 @@ export class Office extends Agent<Env> {
     const doc = /^\/api\/documents\/([^/]+)\/(read|scan)$/.exec(path);
     if (post && doc) return this.readStored(decodeURIComponent(doc[1]!), doc[2] as "read" | "scan", request);
     if (path === "/api/prefs") return this.prefs(request, caller);
+    if (request.method === "GET" && path === ROUTES.ambient) return json(ambientFrom(this.office.books, readPersonaNames(this.kv("personas")), this.day));
+    if (path === ROUTES.personas && (request.method === "PUT" || post)) {
+      if (caller.role !== "owner") return json({ error: "Only the owner can rename the team." }, 403);
+      const checked = checkPersonaNames(await request.json().catch(() => null));
+      if ("error" in checked) return json(checked, 400);
+      this.kv("personas", JSON.stringify(checked.names));
+      return json({ names: checked.names });
+    }
     if (request.method === "GET" && path === "/api/routines") return json({ routines: routinesView(this.office, Date.now(), this.social().nextWake()) });
     const runRoutine = /^\/api\/routines\/([a-z-]+)\/run$/.exec(path);
     if (post && runRoutine) {

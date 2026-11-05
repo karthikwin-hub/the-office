@@ -77,6 +77,89 @@
   height: 100%;
   overflow: visible;
 }
+.floor-plan-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* The Lived-in office: people drawn in the plan's own line, never cartoons. */
+.person-shoulders {
+  fill: var(--sheet);
+  stroke: var(--wall-ink);
+  stroke-width: 1.3;
+}
+.person-head {
+  fill: color-mix(in srgb, var(--wall-ink) 78%, var(--paper));
+  stroke: var(--wall-ink);
+  stroke-width: 1;
+}
+.person-working .person-shoulders {
+  stroke: var(--carbon);
+}
+.person-sheet {
+  fill: var(--sheet);
+  stroke: var(--carbon);
+  stroke-width: 1;
+}
+.person-typing {
+  fill: var(--carbon);
+  animation: person-typing 1.6s ease-in-out infinite;
+}
+@keyframes person-typing {
+  50% {
+    opacity: 0.2;
+  }
+}
+.tea-point circle {
+  fill: var(--furniture-fill, none);
+  stroke: var(--furniture-line);
+  stroke-width: 1;
+}
+.tea-point rect {
+  fill: none;
+  stroke: var(--furniture-line);
+  stroke-width: 1;
+}
+.bubble-box {
+  overflow: visible;
+}
+.bubble {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+}
+.bubble-below {
+  align-items: flex-start;
+}
+.bubble p {
+  margin: 0;
+  padding: 0.35em 0.6em;
+  max-width: 100%;
+  font-size: inherit;
+  line-height: 1.35;
+  color: var(--graphite);
+  background: var(--sheet);
+  border: 1px solid var(--room-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--graphite) 8%, transparent);
+  animation: bubble-in 0.3s ease-out;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .person-typing,
+  .bubble p {
+    animation: none;
+  }
+}
 .building-wall {
   fill: none;
   stroke: var(--wall-ink, var(--graphite));

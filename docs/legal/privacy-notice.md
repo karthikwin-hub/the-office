@@ -1,6 +1,6 @@
 # Privacy notice
 
-> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-05.
+> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-05.2.
 
 This notice explains what The Office does with personal data: what it collects, why, where it is kept, for how long, who else sees it, and what you can do about it. It is a separate document from the [terms of service](/legal/terms) so that you can read it on its own.
 
@@ -25,6 +25,7 @@ If you are a customer of a business that uses The Office and you want your data 
 | Your acceptance of these documents (version, date, country) | You | To prove what you agreed to | Cloudflare D1 | As long as the account exists, then 1 year | Cloudflare |
 | Your WhatsApp number, if you link it | You | To send you the digest and let you approve work on WhatsApp | Cloudflare D1 and the office's storage | Until you unlink it | Meta (WhatsApp Cloud API) |
 | Your preferences (theme, language, digest) | You | To remember how you like the office | The office's storage | While you are a member | Cloudflare |
+| Your approximate location (an area about ten kilometres across), only if you choose the Lived-in look | You | To mention the local weather in the team's small talk | Not kept; the forecast is cached for an hour against the area, not against you | One hour | MET Norway (the Norwegian Meteorological Institute) receives the area, not who you are |
 | The business's books: bills, invoices, payments, stock, payroll, parties | The business, its customers, suppliers and staff | To run the business's accounts, as the business asks | The office's storage (Cloudflare Durable Objects) | For the life of the office, and 30 days after it is deleted | Cloudflare |
 | Documents the business uploads or emails in (PDFs, photos) | The business and the people named in them | To read bills and invoices into the books | Cloudflare R2 | For the life of the office, and 30 days after it is deleted | Cloudflare; Cloudflare Workers AI reads them |
 | Customer conversations (WhatsApp, email, website chat) | The business's customers | To answer customers and hand questions to the business | The office's storage | 12 months by default; the business can choose 3 to 36 months | Cloudflare; Meta for WhatsApp; Cloudflare Workers AI reads them |

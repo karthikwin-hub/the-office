@@ -114,7 +114,10 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 - **WhatsApp:** link a phone, language, daily digest.
 - **Customer service** (in the agent's room): business facts, saved answers, orders (by hand or CSV), channels, the website chat snippet and the conversation retention period.
 - **Your account:** download my data, delete my account.
-- **Look:** six office skins, saved per person.
+- **Look:** seven office skins, saved per person. The **Lived-in** skin draws the team as people with first names (which the owner can change for the office):
+  - they sit at their desks, wait at the door with a sheet when something is on your desk, say their latest team-log line word for word, and walk the work to a colleague the line names;
+  - when nobody is working and nothing was logged for a minute, two of them may meet at the tea point, at most once every one to two minutes, about the time of day, the weather near you, a festival on the calendar, a birthday, a work anniversary or month end;
+  - it is a picture only: it reads the same office view as the Floor, changes nothing an agent does, takes no clicks, is hidden from screen readers, and stands still for anyone who has asked their system for reduced motion.
 
 ## 9. What would change for another market
 

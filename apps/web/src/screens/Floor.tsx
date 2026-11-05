@@ -1,5 +1,5 @@
 import type { StagedChange } from "@office/contracts";
-import { ACTIONS, FloorPlan, TeamLog } from "@office/ui";
+import { ACTIONS, FloorPlan, LivingFloor, personaLabel, TeamLog } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -27,6 +27,10 @@ export function FloorScreen() {
   const office = useQuery(q.office());
   const [prefs, setPrefs] = usePrefs();
   const skin = useSkin();
+  const lived = skin.id === "lived-in";
+  const ambient = useQuery({ ...q.ambient(), enabled: lived });
+  const weather = useQuery({ ...q.weather(), enabled: lived });
+  const names = ambient.data?.names ?? {};
   const wideDesk = useMedia(WIDE_DESK);
   const v = office.data;
   const waiting = v?.rooms.filter((r) => r.waitingCount > 0).sort((a, b) => b.waitingCount - a.waitingCount) ?? [];
@@ -71,6 +75,7 @@ export function FloorScreen() {
               arriving={v.arriving}
               wholeFloor={prefs.wholeFloor}
               texture={skin.texture}
+              overlay={lived ? (plan) => <LivingFloor plan={plan} inputs={{ rooms: v.rooms, log: v.log, arriving: v.arriving, names, ambient: ambient.data ?? null, weather: weather.data?.weather ?? null }} /> : undefined}
               renderLink={(agentId, className, children, label) => (
                 <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
                   {children}
@@ -106,7 +111,7 @@ export function FloorScreen() {
           {wideDesk && v.deskCount ? <DeskColumn /> : null}
           <details className="floor-log" open>
             <summary className="floor-log-summary">Today on the floor</summary>
-            <TeamLog entries={v.log} title="Today on the floor" heading={false} />
+            <TeamLog entries={v.log} title="Today on the floor" heading={false} label={lived ? (id) => personaLabel(id, names) : undefined} />
           </details>
         </div>
       ) : null}
