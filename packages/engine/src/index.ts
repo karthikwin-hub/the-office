@@ -16,3 +16,5 @@ export * from "./imports";
 export * from "./extract-model";
 export * from "./social";
 export * from "./whatsapp-desk";
+export * from "./routines";
+export * from "./customer";

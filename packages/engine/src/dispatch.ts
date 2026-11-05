@@ -1,4 +1,27 @@
-import { AskRequest, BrandVoice, ChannelSetup, HiringChange, MarkPosted, MediaAsset, MetricsImport, ReadRequest, type Role, Settings, VariantEdit } from "@office/contracts";
+import {
+  AnswerInput,
+  AskRequest,
+  BrandVoice,
+  ChannelSetup,
+  CsSettingsInput,
+  FactsInput,
+  HiringChange,
+  MarkPosted,
+  MediaAsset,
+  MetricsImport,
+  OrderChange,
+  OrderInput,
+  OrdersImport,
+  OwnerReply,
+  ReadRequest,
+  type Role,
+  ROUTINE_BY_ID,
+  RoutineChange,
+  Settings,
+  VariantEdit,
+  WidgetChange,
+} from "@office/contracts";
+import { routinesView } from "./routines";
 import { importMetrics, publishingPack } from "./social/manual";
 import { ageingReport } from "./ageing";
 import { auditReport } from "./audit";
@@ -119,6 +142,9 @@ export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
     }
     if (get && head === "exports" && a === "gstr1" && b) return ok(computeGstr1(l, b));
     if (head === "social") return social(office, req, parts.slice(1));
+    if (head === "routines") return routines(office, req, parts.slice(1));
+    if (head === "customers") return customers(office, req, parts.slice(1));
+    if (head === "orders") return orders(office, req, parts.slice(1));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/^(No|Unknown) /.test(msg)) return { status: 404, body: { error: msg } };
@@ -128,6 +154,90 @@ export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
 }
 
 const bad = (error: string): ApiResult => ({ status: 400, body: { error } });
+
+/** Routines: anyone may look; pausing is the owner's. "Run now" needs the host, so it is handled there. */
+function routines(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const [id, sub] = parts;
+  if (req.method === "GET" && !id) return ok({ routines: routinesView(office) });
+  if (!id || !ROUTINE_BY_ID[id]) return notFound("Routine");
+  if (req.method === "GET" && sub === "runs") return ok({ runs: office.routines.runs(id, 50) });
+  if (req.method === "POST" && !sub) {
+    if (req.role !== "owner") return forbidden("Only the owner can pause or resume a routine.");
+    const parsed = RoutineChange.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("Send { paused: true } or { paused: false }.");
+    office.routines.setPaused(id, parsed.data.paused);
+    office.log("office-manager", `${req.user.name} ${parsed.data.paused ? "paused" : "resumed"} "${ROUTINE_BY_ID[id]!.title}".`);
+    return ok({ routines: routinesView(office) });
+  }
+  return notFound("Route");
+}
+
+/** The Customer Service agent's room. Conversations are open to the team; changing the agent's knowledge or replying is the owner's. */
+function customers(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const cs = office.customers;
+  const [what, id, sub] = parts;
+  const write = req.method !== "GET";
+  if (write && req.role !== "owner") return forbidden("Only the owner can change customer service or reply to customers.");
+  if (!what && !write) return ok(cs.view());
+  if (what === "threads" && id && !sub && !write) return ok(cs.threadView(id));
+  if (what === "threads" && id && sub === "reply" && req.method === "POST") {
+    const parsed = OwnerReply.safeParse(req.body ?? {});
+    return parsed.success ? ok(cs.ownerReply(id, parsed.data.text, req.user.name)) : bad("Write a reply.");
+  }
+  if (what === "facts" && write) {
+    const parsed = FactsInput.safeParse(req.body ?? {});
+    return parsed.success ? ok(cs.updateFacts(parsed.data)) : bad("Check the business facts: opening and closing times as HH:MM.");
+  }
+  if (what === "settings" && write) {
+    const parsed = CsSettingsInput.safeParse(req.body ?? {});
+    return parsed.success ? ok(cs.setRetention(parsed.data.retentionMonths)) : bad("Keep conversations for 1 to 36 months.");
+  }
+  if (what === "widget" && write) {
+    const parsed = WidgetChange.safeParse(req.body ?? {});
+    return parsed.success ? ok(cs.setWidget(parsed.data.enabled)) : bad("Send { enabled: true } or { enabled: false }.");
+  }
+  if (what === "answers") {
+    if (!write) return ok(cs.setup.answers);
+    if (req.method === "DELETE" && id) return ok(cs.removeAnswer(id));
+    const parsed = AnswerInput.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("An answer needs a title and the reply to send.");
+    return ok(id ? cs.updateAnswer(id, parsed.data) : cs.addAnswer(parsed.data));
+  }
+  return notFound("Route");
+}
+
+/** Orders, so the agent can say where one is: added by hand, imported from a spreadsheet, or changed on WhatsApp. */
+function orders(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const cs = office.customers;
+  const [id] = parts;
+  const write = req.method !== "GET";
+  if (write && req.role !== "owner") return forbidden("Only the owner can change orders.");
+  if (!write) return ok({ orders: office.books.orders.slice().sort((a, b) => (a.placedOn < b.placedOn ? 1 : a.placedOn > b.placedOn ? -1 : a.number < b.number ? 1 : -1)) });
+  if (id === "import" && req.method === "POST") {
+    const parsed = OrdersImport.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("Attach the orders file.");
+    try {
+      return ok(cs.importOrders(parsed.data.content, req.user.name));
+    } catch (e) {
+      return { status: 422, body: { error: e instanceof Error ? e.message : String(e) } };
+    }
+  }
+  if (!id && req.method === "POST") {
+    const parsed = OrderInput.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("An order needs a number and a customer.");
+    try {
+      return ok(cs.addOrder(parsed.data));
+    } catch (e) {
+      return { status: 409, body: { error: e instanceof Error ? e.message : String(e) } };
+    }
+  }
+  if (id && req.method === "DELETE") return ok(cs.removeOrder(id));
+  if (id && (req.method === "PUT" || req.method === "POST")) {
+    const parsed = OrderChange.safeParse(req.body ?? {});
+    return parsed.success ? ok(cs.updateOrder(id, parsed.data, req.user.name)) : bad("Invalid change");
+  }
+  return notFound("Route");
+}
 
 /** The Social Media Manager's routes. Reading is open to the team; changing anything is the owner's. */
 function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {

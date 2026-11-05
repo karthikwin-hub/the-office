@@ -580,6 +580,71 @@ export const ComplianceEvent = z.object({
 });
 export type ComplianceEvent = z.infer<typeof ComplianceEvent>;
 
+/* ---------- Customer service ---------- */
+
+export const OrderStatus = z.enum(["received", "packed", "dispatched", "delivered", "cancelled"]);
+export type OrderStatus = z.infer<typeof OrderStatus>;
+
+/** A customer's order, kept so the Customer Service agent can say where it is. Added by hand, from a CSV or by a WhatsApp command. */
+export const Order = z.object({
+  id: z.string(),
+  number: z.string().min(1).max(40),
+  partyId: z.string().nullable().default(null),
+  customer: z.string().max(120),
+  /** The phone and email on the order: only someone writing from one of them is told about it. */
+  phone: z.string().max(30).default(""),
+  email: z.string().max(200).default(""),
+  items: z.string().max(500),
+  status: OrderStatus,
+  placedOn: IsoDate,
+  expectedOn: IsoDate.nullable().default(null),
+  tracking: z.string().max(500).nullable().default(null),
+  note: z.string().max(500).default(""),
+  updatedAt: IsoDateTime,
+});
+export type Order = z.infer<typeof Order>;
+
+/** One of the owner's usual answers: one topic, a few ways customers ask it, and the reply sent word for word. */
+export const CannedAnswer = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(120),
+  examples: z.array(z.string().max(300)).max(10),
+  answer: z.string().min(1).max(2000),
+  enabled: z.boolean(),
+});
+export type CannedAnswer = z.infer<typeof CannedAnswer>;
+
+/** What the agent may say about the business itself. An empty fact is never guessed at; the question goes to the owner. */
+export const BusinessFacts = z.object({
+  hours: z.string().max(300).default(""),
+  /** When a person is around to answer, in the office's time zone; outside it, a hand-off says when to expect a reply. */
+  opensAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("09:30"),
+  closesAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("19:00"),
+  /** 0 is Sunday. */
+  openDays: z.array(z.number().int().min(0).max(6)).default([1, 2, 3, 4, 5, 6]),
+  address: z.string().max(500).default(""),
+  delivery: z.string().max(1000).default(""),
+  returns: z.string().max(1000).default(""),
+  payments: z.string().max(500).default(""),
+  /** How a customer reaches a person, said in every disclosure: a phone number, an email or "reply PERSON". */
+  humanContact: z.string().max(200).default(""),
+});
+export type BusinessFacts = z.infer<typeof BusinessFacts>;
+export type FactKey = "hours" | "address" | "delivery" | "returns" | "payments";
+
+export const CustomerServiceSetup = z.object({
+  facts: BusinessFacts,
+  answers: z.array(CannedAnswer).default([]),
+  /** The chat on the business's website. The key is public; it only finds this office's widget. */
+  widget: z.object({ enabled: z.boolean(), key: z.string().nullable() }).default({ enabled: false, key: null }),
+  /** Conversations older than this are deleted by the morning round. */
+  retentionMonths: z.number().int().min(1).max(36).default(12),
+  /** The address the business forwards its support mail to, once the agent is hired. */
+  supportEmail: z.string().nullable().default(null),
+});
+export type CustomerServiceSetup = z.infer<typeof CustomerServiceSetup>;
+export const DEFAULT_CUSTOMER_SERVICE: CustomerServiceSetup = { facts: BusinessFacts.parse({}), answers: [], widget: { enabled: false, key: null }, retentionMonths: 12, supportEmail: null };
+
 /* ---------- People ---------- */
 
 export const Employee = z.object({
@@ -629,6 +694,8 @@ export const RefKind = z.enum([
   "purchase_order",
   "compliance",
   "figure",
+  "conversation",
+  "order",
 ]);
 export const Ref = z.object({ kind: RefKind, id: z.string().nullable(), region: z.string().optional() });
 export type Ref = z.infer<typeof Ref>;
@@ -655,6 +722,8 @@ export const StagedKind = z.enum([
   "broadcast",
   "purchase_order",
   "payroll_run",
+  "customer_reply",
+  "handoff",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 
@@ -706,6 +775,8 @@ export const Books = z.object({
   rfqs: z.array(Rfq),
   compliance: z.array(ComplianceEvent),
   employees: z.array(Employee),
+  orders: z.array(Order).default([]),
+  customerService: CustomerServiceSetup.default(DEFAULT_CUSTOMER_SERVICE),
   agents: z.array(AgentState),
   teamLog: z.array(LogEntry),
   staged: z.array(StagedChange),

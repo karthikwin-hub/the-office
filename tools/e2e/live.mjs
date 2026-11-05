@@ -40,7 +40,15 @@ async function signedIn(email, password, name) {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
   const picker = page.locator(".office-choice").first();
-  await Promise.race([page.locator(".topbar-business").waitFor(), picker.waitFor()]);
+  const consent = page.getByRole("heading", { name: /updated our terms|before you start/i });
+  await Promise.race([page.locator(".topbar-business").waitFor(), picker.waitFor(), consent.waitFor()]);
+  if (await consent.isVisible()) {
+    await page.screenshot({ path: join(out, `consent-${name}.png`) });
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: /continue/i }).click();
+    await Promise.race([page.locator(".topbar-business").waitFor(), picker.waitFor()]);
+    check(true, `${name} accepted the current terms and privacy notice`);
+  }
   if (await picker.isVisible()) await picker.click();
   await page.locator(".topbar-business").waitFor();
   return page;
@@ -154,6 +162,58 @@ await owner.waitForURL(/\/settings/);
 check(/connect_error=/.test(owner.url()), "connecting without the platform's keys comes back with a reason");
 await owner.locator("#channels").waitFor();
 await owner.screenshot({ path: join(out, "settings-channels.png"), fullPage: true });
+
+// Routines: every scheduled job is listed with its owner, and running one now records a run.
+const routines = await owner.evaluate(async (path) => (await fetch(path)).json(), o("/api/routines"));
+check(routines.routines?.some((r) => r.id === "morning-digest" && r.active), "the morning digest is listed as a routine");
+const ran = await owner.evaluate(async (path) => {
+  const r = await fetch(path, { method: "POST" });
+  return { status: r.status, body: await r.json() };
+}, o("/api/routines/compliance-due/run"));
+check(ran.status === 200 || ran.status === 409, `running a routine now is recorded or refused with a reason (${ran.status})`);
+const runs = await owner.evaluate(async (path) => (await fetch(path)).json(), o("/api/routines/compliance-due/runs"));
+check(ran.status !== 200 || runs.runs?.[0]?.trigger === "manual", "the manual run is in the routine's history");
+const acctRun = await acct.evaluate(async (path) => (await fetch(path, { method: "POST" })).status, o("/api/routines/compliance-due/run"));
+check(acctRun === 403, `the accountant cannot run a routine (${acctRun})`);
+await owner.goto(`${base}/routines`);
+await owner.locator(".routine").first().waitFor();
+check((await owner.locator(".routine").count()) >= 5, "the Routines page lists the office's routines");
+await owner.screenshot({ path: join(out, "routines.png"), fullPage: true });
+
+// Customer service: a website visitor asks for a refund, the agent hands it over, the owner answers and the visitor sees it.
+const json = (method, body) => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const ownerFetch = (path, init) => owner.evaluate(async ([p, i]) => {
+  const r = await fetch(p, i);
+  return { status: r.status, body: await r.json().catch(() => null) };
+}, [path, init]);
+const hiring = await ownerFetch(o("/api/hiring"));
+const wasHired = hiring.body?.agents?.find((a) => a.agentId === "customer-service")?.hired ?? false;
+await ownerFetch(o("/api/hiring/customer-service"), json("POST", { hired: true, trustLevel: "trusted" }));
+const widget = await ownerFetch(o("/api/customers/widget"), json("PUT", { enabled: true }));
+const key = widget.body?.key;
+check(Boolean(key), `turning on the website chat gives it a key (${key})`);
+const script = await fetch(`${base}/w/${key}.js`);
+check(script.status === 200 && (script.headers.get("content-type") ?? "").includes("javascript"), `the chat script is served publicly (${script.status})`);
+const visitor = `e2e-visitor-${Date.now().toString(36)}-abcdef`;
+const chat = await fetch(`${base}/api/chat/${key}`, json("POST", { visitor, text: "Two coils arrived damaged, I want a refund." }));
+check(chat.status === 200, `a visitor's message is taken without signing in (${chat.status})`);
+const desk = await ownerFetch(o("/api/customers"));
+const thread = desk.body?.threads?.find((t) => t.key === visitor);
+check(thread?.status === "handed_off", `a refund is handed to the owner (${thread?.status})`);
+const answer = "Sorry about that. Send us a photo and we will replace them.";
+const replied = await ownerFetch(o(`/api/customers/threads/${thread?.id}/reply`), json("POST", { text: answer }));
+check(replied.status === 200, `the owner answers in the conversation (${replied.status})`);
+const seen = await (await fetch(`${base}/api/chat/${key}?visitor=${visitor}`)).json();
+check(seen.messages?.some((m) => m.from === "us" && m.text === answer), "the visitor sees the owner's answer in the chat");
+const acctReply = await acct.evaluate(async ([p, b]) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: b })).status, [o(`/api/customers/threads/${thread?.id}/reply`), JSON.stringify({ text: "x" })]);
+check(acctReply === 403, `the accountant cannot answer customers (${acctReply})`);
+await owner.goto(`${base}/rooms/customer-service`);
+await owner.locator(".cs-threads").waitFor();
+await owner.screenshot({ path: join(out, "room-customer-service.png"), fullPage: true });
+await ownerFetch(o("/api/customers/widget"), json("PUT", { enabled: false }));
+const closed = await fetch(`${base}/w/${key}.js`);
+check(closed.status === 404, `the chat script is gone once the chat is off (${closed.status})`);
+if (!wasHired) await ownerFetch(o("/api/hiring/customer-service"), json("POST", { hired: false }));
 
 await browser.close();
 if (failures.length) {

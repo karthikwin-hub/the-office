@@ -1,4 +1,5 @@
-import { AGENT_BY_ID, type Note, type Role, type StagedChange, type WaLanguage, WA_LANGUAGE_NAMES } from "@office/contracts";
+import { AGENT_BY_ID, CS_CHANNEL_NAMES, type Note, type OrderStatus, type Role, type StagedChange, type WaLanguage, WA_LANGUAGE_NAMES } from "@office/contracts";
+import { parseOrderCommand, STATUS_WORDS } from "./customer/orders";
 import type { OfficeService } from "./office";
 import { phrase, WORDS } from "./whatsapp-phrases";
 
@@ -30,6 +31,8 @@ export type WaCommand =
   | { kind: "switch"; n: number | null }
   | { kind: "decide"; items: { n: number | "all"; action: WaAction }[] }
   | { kind: "show"; n: number }
+  | { kind: "customerReply"; ref: number; text: string }
+  | { kind: "order"; number: string; status: OrderStatus; tracking: string | null }
   | { kind: "ask"; text: string };
 
 const DIGIT_ZEROS = [0x0966, 0x09e6, 0x0ae6, 0x0be6, 0x0c66, 0x0ce6];
@@ -59,6 +62,10 @@ export function parseCommand(text: string): WaCommand {
   if (join) return { kind: "join", code: join[1]! };
   const sw = /^(switch|badlo|बदलो)(?:\s+(\d{1,2}))?$/i.exec(asciiDigits(raw));
   if (sw) return { kind: "switch", n: sw[2] ? Number(sw[2]) : null };
+  const rep = /^reply\s+(\d{1,4})\s+([\s\S]+)$/i.exec(raw);
+  if (rep) return { kind: "customerReply", ref: Number(rep[1]), text: rep[2]!.trim() };
+  const ord = parseOrderCommand(raw);
+  if (ord) return { kind: "order", ...ord };
   const w = words(raw);
   if (!w.length) return { kind: "desk" };
   if (w.length <= 3 && (w.every((x) => inSet(x, WORDS.help)) || raw === "?")) return { kind: "help" };
@@ -240,6 +247,24 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
           parts.push({ text: phrase(t.action === "approve" ? "approved" : "rejected", lang, { n: t.n }) });
         }
       }
+      break;
+    }
+    case "customerReply": {
+      if (person.role !== "owner") {
+        parts.push({ text: phrase("ownerOnly", lang) });
+        break;
+      }
+      const t = office.customers.replyByRef(cmd.ref, cmd.text, person.name);
+      parts.push({ text: t ? `Sent to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}.` : `There is no customer waiting as number ${cmd.ref}. The number is in the message that told you about them.`, translate: true });
+      break;
+    }
+    case "order": {
+      if (person.role !== "owner") {
+        parts.push({ text: phrase("ownerOnly", lang) });
+        break;
+      }
+      const o = office.customers.orderUpdate(cmd.number, cmd.status, cmd.tracking, person.name);
+      parts.push({ text: o ? `Order ${o.number} for ${o.customer} is now ${STATUS_WORDS[o.status]}${o.tracking && cmd.tracking ? `, with the tracking link` : ""}. Customers who ask will be told.` : `There is no order ${cmd.number} in your orders.`, translate: true });
       break;
     }
     case "ask": {

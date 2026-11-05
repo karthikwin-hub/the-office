@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { ACCOUNT_ROUTES, ROUTES } from "@office/contracts";
+import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, ROUTES } from "@office/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, purgeDeleted, receiveEmail } from "../src/app";
 import { CALLER_HEADER, type Caller } from "../src/caller";
@@ -267,6 +267,102 @@ describe("one office cannot reach another", () => {
     await receiveEmail(stray, w.env);
     expect(stray.setReject).toHaveBeenCalled();
     expect(w.docs.map.size).toBe(1);
+  });
+
+  it("sends mail to a support address to that office's Customer Service agent, not its bills", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "support_email", "kaveri.help@in.the-office.test");
+    const raw = ["From: Mandar Joshi <mandar@joshi.test>", "To: kaveri.help@in.the-office.test", "Subject: Damaged coils", "Message-ID: <m1@joshi.test>", "In-Reply-To: <csm-1@the-office.test>", "Content-Type: text/plain", "", "Two coils were damaged.", "", "On Mon, 2 Nov 2026 at 10:00, Kaveri wrote:", "> earlier", ""].join("\r\n");
+    await receiveEmail({ from: "mandar@joshi.test", to: "Kaveri.Help@in.the-office.test", raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/support-email"]]);
+    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ from: "mandar@joshi.test", name: "Mandar Joshi", subject: "Damaged coils", messageId: "<m1@joshi.test>", inReplyTo: "<csm-1@the-office.test>" });
+    expect(w.docs.map.size).toBe(0);
+  });
+});
+
+describe("a person's own rights", () => {
+  const me = async (w: World, p: Person) => (await (await call(w, p, ACCOUNT_ROUTES.me)).json()) as { consentNeeded: { document: string; version: string }[]; deletionRequested: boolean };
+  const current = Object.entries(LEGAL_DOCUMENTS).map(([document, d]) => ({ document, version: d.version }));
+
+  it("asks for the current terms and privacy notice until they are accepted, and refuses an old version", async () => {
+    const { w, anil } = await twoOffices();
+    expect((await me(w, anil)).consentNeeded).toEqual(current);
+    const old = await call(w, anil, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: [{ document: "terms", version: "2020-01-01" }] }) });
+    expect(old.status).toBe(409);
+    expect((await call(w, anil, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: current }), headers: { "cf-ipcountry": "IN" } })).status).toBe(200);
+    expect((await me(w, anil)).consentNeeded).toEqual([]);
+    expect(w.db.sqlite.prepare("SELECT document, version, country FROM consent WHERE user_id = ? ORDER BY document").all(anil.id)).toEqual(current.map((c) => ({ ...c, country: "IN" })).sort((a, b) => a.document.localeCompare(b.document)));
+    w.db.sqlite.prepare("UPDATE consent SET version = '2026-01-01' WHERE user_id = ? AND document = 'privacy'").run(anil.id);
+    expect((await me(w, anil)).consentNeeded.map((c) => c.document)).toEqual(["privacy"]);
+  });
+
+  it("gives a person a copy of their own account, without passwords or anyone else's data", async () => {
+    const { w, anil, A } = await twoOffices();
+    const res = await call(w, anil, ACCOUNT_ROUTES.accountExport);
+    expect(res.headers.get("content-disposition")).toContain("my-account.json");
+    const text = await res.text();
+    const data = JSON.parse(text) as { account: { email: string }; offices: { id: string }[]; sessions: unknown[] };
+    expect(data.account.email).toBe(anil.email);
+    expect(data.offices.map((o) => o.id)).toEqual([A]);
+    expect(data.sessions.length).toBeGreaterThan(0);
+    expect(text).not.toMatch(/password"\s*:|token|bina/i);
+  });
+
+  it("records a deletion request in every office's audit, refuses the only owner, and lets the request be withdrawn", async () => {
+    const { w, anil, bina, A, cp } = await twoOffices();
+    const ask = (p: Person) => call(w, p, ACCOUNT_ROUTES.accountRequests, { method: "POST", body: JSON.stringify({ kind: "delete" }) });
+    const sole = await ask(anil);
+    expect(sole.status).toBe(409);
+    expect(((await sole.json()) as { error: string }).error).toContain("Kaveri Electricals");
+    const { token } = await cp.invite(A, "carol@ca.test", "accountant", anil.email);
+    const carol = await signUp(w, "Carol", "carol@ca.test");
+    expect((await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(200);
+    const made = await ask(carol);
+    expect(made.status).toBe(201);
+    const r = (await made.json()) as { id: string; status: string };
+    expect(r.status).toBe("open");
+    expect((await ask(carol)).status).toBe(201);
+    expect((await me(w, carol)).deletionRequested).toBe(true);
+    expect((await cp.auditTrail(A)).some((a) => a.action === "member.deletion-requested" && a.actor === "carol@ca.test")).toBe(true);
+    expect((await call(w, bina, `${ACCOUNT_ROUTES.accountRequests}/${r.id}`, { method: "DELETE" })).status).toBe(404);
+    expect((await call(w, carol, `${ACCOUNT_ROUTES.accountRequests}/${r.id}`, { method: "DELETE" })).status).toBe(200);
+    expect((await me(w, carol)).deletionRequested).toBe(false);
+  });
+});
+
+describe("the website chat", () => {
+  const post = (w: World, key: string, body: unknown, ip = "203.0.113.9") => call(w, null, `/api/chat/${key}`, { method: "POST", body: JSON.stringify(body), headers: { "cf-connecting-ip": ip } });
+  const visitor = "visitor-aaaaaaaaaaaaaaaa";
+
+  it("serves the script and takes messages only for a key that is switched on, without anyone signed in", async () => {
+    const { w, cp, A } = await twoOffices();
+    expect((await call(w, null, "/w/wkaverichat01.js")).status).toBe(404);
+    expect((await post(w, "wkaverichat01", { visitor, text: "hi" })).status).toBe(404);
+    await cp.claimRoute(A, "widget", "wkaverichat01");
+    const js = await call(w, null, "/w/wkaverichat01.js");
+    expect(js.headers.get("content-type")).toContain("javascript");
+    expect(await js.text()).toContain('"key":"wkaverichat01"');
+    const res = await post(w, "wkaverichat01", { visitor, text: "Do you deliver to Satara?" });
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect(w.seen.map((s) => [s.stub, s.path, s.caller.role])).toEqual([[A, "/internal/chat", "owner"]]);
+    expect(JSON.parse(w.seen[0]!.body)).toEqual({ visitor, text: "Do you deliver to Satara?", name: null });
+    expect((await post(w, "wkaverichat01", { visitor: "short", text: "hi" })).status).toBe(400);
+  });
+
+  it("stops a visitor at the rate limit, and asks for Turnstile when it is set up", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "widget", "wkaverichat01");
+    let calls = 0;
+    (w.env as { CHAT_LIMIT?: unknown }).CHAT_LIMIT = { limit: async ({ key }: { key: string }) => ({ success: key.endsWith("203.0.113.9") && ++calls <= 2 }) };
+    expect((await post(w, "wkaverichat01", { visitor, text: "one" })).status).toBe(200);
+    expect((await post(w, "wkaverichat01", { visitor, text: "two" })).status).toBe(200);
+    expect((await post(w, "wkaverichat01", { visitor, text: "three" })).status).toBe(429);
+    (w.env as { CHAT_LIMIT?: unknown }).CHAT_LIMIT = undefined;
+    (w.env as { TURNSTILE_SECRET?: string }).TURNSTILE_SECRET = "turnstile-test";
+    expect((await post(w, "wkaverichat01", { visitor, text: "no token" })).status).toBe(403);
+    graph.mockImplementationOnce(async () => Response.json({ success: true }));
+    expect((await post(w, "wkaverichat01", { visitor, text: "with token", turnstile: "tok" })).status).toBe(200);
+    expect(w.seen.filter((s) => s.path === "/internal/chat")).toHaveLength(3);
   });
 });
 

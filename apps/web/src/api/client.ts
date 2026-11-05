@@ -43,6 +43,17 @@ import {
   type JoinCode,
   type WhatsAppDemoReply,
   type WhatsAppStatus,
+  type RoutinesView,
+  type RoutineRun,
+  type CustomerDeskView,
+  type CsThreadView,
+  type BusinessFacts,
+  type CannedAnswer,
+  type Order,
+  type OrdersView,
+  type OrdersImportResult,
+  type TryResult,
+  type RightsRequestView,
 } from "@office/contracts";
 
 export class ApiError extends Error {
@@ -68,7 +79,7 @@ export function setActiveOffice(id: string | null) {
  * The one place an office's requests get its prefix: `/api/desk` becomes `/api/o/<office>/desk`.
  * Account routes, sign-in and paths that already name an office pass through. Mockups have one office and no prefix.
  */
-const ACCOUNT_PATH = /^\/api\/(o\/|auth\/|me$|offices$|invitations(\/|$))/;
+const ACCOUNT_PATH = /^\/api\/(o\/|auth\/|account\/|me$|offices$|invitations(\/|$))/;
 
 export function officePath(path: string): string {
   if (!isLive || !activeOffice || !path.startsWith("/api/") || ACCOUNT_PATH.test(path.replace(/\?.*$/, ""))) return path;
@@ -118,6 +129,11 @@ export const account = {
   peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.invitation(token)),
   restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),
   acceptInvitation: (token: string) => call<{ officeId: string; role: Session["role"] }>(ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: { token } }),
+  consent: (documents: { document: "terms" | "privacy"; version: string }[]) => call<{ ok: true }>(ACCOUNT_ROUTES.consent, { method: "POST", body: { documents } }),
+  exportMine: () => download(ACCOUNT_ROUTES.accountExport, "my-account.json"),
+  requests: () => call<{ requests: RightsRequestView[] }>(ACCOUNT_ROUTES.accountRequests),
+  requestDeletion: (note?: string) => call<RightsRequestView>(ACCOUNT_ROUTES.accountRequests, { method: "POST", body: { kind: "delete", note } }),
+  withdrawRequest: (id: string) => call<{ ok: true }>(`${ACCOUNT_ROUTES.accountRequests}/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
 /** The office as an account: its name, people and invitations, export and deletion. */
@@ -207,6 +223,25 @@ export const api = {
     }
     return call<Channel>(ROUTES.socialConnect(platform), { method: "POST" });
   },
+  routines: () => call<RoutinesView>(ROUTES.routines),
+  routineRuns: (id: string) => call<{ runs: RoutineRun[] }>(ROUTES.routineRuns(id)),
+  pauseRoutine: (id: string, paused: boolean) => call<RoutinesView>(ROUTES.routine(id), { method: "POST", body: { paused } }),
+  runRoutine: (id: string) => call<RoutineRun>(ROUTES.runRoutine(id), { method: "POST" }),
+  customers: () => call<CustomerDeskView>(ROUTES.customers),
+  thread: (id: string) => call<CsThreadView>(ROUTES.customerThread(id)),
+  replyThread: (id: string, text: string) => call<CsThreadView>(ROUTES.customerReply(id), { method: "POST", body: { text } }),
+  saveFacts: (f: Partial<BusinessFacts>) => call<BusinessFacts>(ROUTES.customerFacts, { method: "PUT", body: f }),
+  saveCsSettings: (retentionMonths: number) => call<CustomerDeskView>(ROUTES.customerSettings, { method: "PUT", body: { retentionMonths } }),
+  addAnswer: (a: Omit<CannedAnswer, "id">) => call<CannedAnswer>(ROUTES.customerAnswers, { method: "POST", body: a }),
+  saveAnswer: (id: string, a: Omit<CannedAnswer, "id">) => call<CannedAnswer>(ROUTES.customerAnswer(id), { method: "PUT", body: a }),
+  removeAnswer: (id: string) => call<{ removed: string }>(ROUTES.customerAnswer(id), { method: "DELETE" }),
+  setWidget: (enabled: boolean) => call<CustomerDeskView["widget"]>(ROUTES.customerWidget, { method: "PUT", body: { enabled } }),
+  tryAgent: (text: string) => call<TryResult & { notes: string[] }>(ROUTES.customerTry, { method: "POST", body: { text } }),
+  orders: () => call<OrdersView>(ROUTES.orders),
+  addOrder: (o: Partial<Order> & { number: string; customer: string }) => call<Order>(ROUTES.orders, { method: "POST", body: o }),
+  saveOrder: (id: string, o: Partial<Order>) => call<Order>(ROUTES.order(id), { method: "PUT", body: o }),
+  removeOrder: (id: string) => call<{ removed: string }>(ROUTES.order(id), { method: "DELETE" }),
+  importOrders: (content: string) => call<OrdersImportResult>(ROUTES.ordersImport, { method: "POST", body: { content } }),
   uploadMedia: async (form: FormData): Promise<MediaAsset> => {
     const res = await fetch(officePath(ROUTES.socialMedia), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
     if (!res.ok) {

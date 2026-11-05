@@ -36,6 +36,7 @@ Personas are written for any market. The Indian examples are illustrations.
 | Auditor | Accounts | Imports what the accountant filed and explains each difference from the books in plain language | Built | Core method, India-pack returns |
 | Social Media Manager | Social | Plans a monthly calendar, drafts posts per channel with every price and claim checked against the books, publishes after approval, listens for comments and messages and turns enquiries into leads | Built | Core |
 | WhatsApp desk | Front office | Lists waiting approvals, takes "approve 1, 3" or "reject 2", answers questions, accepts voice notes, sends a daily digest | Built | Core, with Indian languages |
+| Customer Service | Front office | Answers the business's own customers on WhatsApp (the business's number), email and a website chat: order status, balance, business facts and saved answers, all looked up in the books. Hands refunds, complaints and anything it cannot ground to the owner, who can reply from the Desk or WhatsApp. See [Customer service](08-customer-service.md) | First version built | Core |
 | Sales Rep, Quote Desk, Account Manager | Sales | Leads, tax-correct quotations from the price list, reorder predictions | Preview on the books | Core |
 | Marketer, Market Watcher | Marketing | Promotes slow-moving products around the festival calendar, tracks competitor prices | Preview on the books | Core (calendar is per market) |
 | Storekeeper, Buyer, Compliance Officer | Operations | Reorder points, vendor quote comparison, filing calendar | Preview on the books | Core, filing calendar per pack |
@@ -52,6 +53,8 @@ Personas are written for any market. The Indian examples are illustrations.
 | Autonomous | Acts on its own and reports what it did | The owner promotes it again |
 
 Some work always waits regardless of trust: audit flags, file sharing, payroll runs, campaigns, social calendars, broadcasts and posts are reviewed on the Desk in full.
+
+For the Customer Service agent the levels mean: a **trainee** drafts every reply for the owner; a **trusted** agent sends looked-up answers (order status, balance after identity is confirmed, saved answers, greetings and the "we will get back to you" holding reply); an **autonomous** agent also sends replies grounded in the business facts. Refunds, complaints, legal threats, discounts and anything the agent cannot ground always go to the owner. The agent never writes a figure or a promise itself: the model only classifies the message, and the words come from the books, the facts or a saved answer.
 
 ## 5. Offices, people and roles
 
@@ -83,6 +86,9 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 | F13 | As a person in two offices, I never mix them up | An office switcher on the web; on WhatsApp, a heading or a choice whenever the office is ambiguous | Core |
 | F14 | As an owner, I can leave with my data | Export everything as a zip; delete with 30 days to restore | Core |
 | F15 | As an operator, I can support offices without reading their books | Admin tool lists offices, suspends and resumes, re-sends an owner invitation, backs up the control plane | Core |
+| F16 | As an owner, my customers get answers when I am busy | Customers write on WhatsApp to the business's own number, to `<slug>.help@INGEST_DOMAIN`, or in a chat on the business's website; the first reply says it is an assistant; order status and balance are answered from the books after the customer is identified; everything else is handed over with a short summary, and a customer is never left without a reply | Core |
+| F17 | As an owner, I see what the office did while I slept | A Routines page lists every scheduled job (trusted work, reminders, social, reorder check, filings due, customers waiting, the digest, scheduled posts) with its last run, outcome and 90 days of history; each can be paused and run now | Core |
+| F18 | As a person, I control my own account data | Sign-up records acceptance of the current terms and privacy notice; a changed version asks once more; Settings downloads a copy of my account and files an audited deletion request, which an operator completes | Core, with law per pack |
 
 ## 7. Non-functional requirements
 
@@ -93,8 +99,8 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 | Languages | Interface copy and WhatsApp replies in the person's language | WhatsApp in English, Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada and Bengali; web interface in English | Core mechanism |
 | Mobile | Every screen works at phone width | Yes, with phone screenshots for every screen | Core |
 | Accessibility | Keyboard focus, reduced motion, AA contrast; a typeface that separates 0 from O and 1 from l | Atkinson Hyperlegible Next throughout | Core |
-| Privacy | Export and deletion; purpose-limited processing; per-person removal on request | Built; data region per office designed, not built | Core, with law per pack |
-| Fair use | Daily allowance per office | 400 AI calls and 250 MB of uploads per office per day | Core |
+| Privacy | Export and deletion; purpose-limited processing; per-person removal on request; consent recorded by document version | Built, including self-serve account download and deletion request; customer conversations deleted after the office's retention period (12 months by default); legal texts drafted, awaiting legal review; data region per office designed, not built | Core, with law per pack |
+| Fair use | Daily allowance per office | 400 AI calls and 250 MB of uploads per office per day; customer service has its own 150 of those calls so a busy chat cannot stop the books being read; the website chat is rate-limited per visitor | Core |
 | Reliability | One office's failure does not affect others | One Durable Object per office | Core |
 | Performance | Floor and Desk load in under two seconds on a mid-range phone | Static assets on the edge; live updates over a WebSocket | Core |
 | Auditability | Who did what, when | Office history in Settings and the control-plane audit table | Core |
@@ -106,6 +112,8 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 - **Office:** people and roles, invitations, the office's inbound email address, handover, history, export, delete.
 - **Channels:** connect social accounts or post by hand; brand voice; posting hours.
 - **WhatsApp:** link a phone, language, daily digest.
+- **Customer service** (in the agent's room): business facts, saved answers, orders (by hand or CSV), channels, the website chat snippet and the conversation retention period.
+- **Your account:** download my data, delete my account.
 - **Look:** six office skins, saved per person.
 
 ## 9. What would change for another market

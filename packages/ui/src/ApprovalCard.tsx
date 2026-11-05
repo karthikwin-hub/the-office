@@ -17,6 +17,8 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   broadcast: { verb: "Send broadcast", done: "Broadcast sent" },
   purchase_order: { verb: "Send order", done: "Order sent" },
   payroll_run: { verb: "Release payslips", done: "Payslips released" },
+  customer_reply: { verb: "Send reply", done: "Reply sent" },
+  handoff: { verb: "Send your answer", done: "Answered" },
 };
 
 /** Payload fields the owner may rewrite before approving. */
@@ -36,9 +38,12 @@ type Props = {
 };
 
 export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true, context, body }: Props) {
-  const [mode, setMode] = useState<"view" | "edit" | "reject">("view");
+  const handoff = item.kind === "handoff";
+  const [mode, setMode] = useState<"view" | "edit" | "reject">(handoff ? "edit" : "view");
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
+  const [save, setSave] = useState(false);
+  const [saveTitle, setSaveTitle] = useState("");
   const { openDocument, open } = useFigures();
   const id = useId();
   const action = ACTIONS[item.kind];
@@ -50,6 +55,7 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
     <article className={`approval${decided ? " approval-decided" : ""}`} aria-labelledby={`${id}-t`}>
       <header className="approval-head">
         {showAgent && agent ? <span className="approval-agent">{agent.short}</span> : null}
+        {!decided && !handoff ? <span className="approval-ai">Drafted by AI, checked by you</span> : null}
         <time className="approval-time num" dateTime={item.createdAt}>
           {item.createdAt.slice(11, 16)}
         </time>
@@ -81,6 +87,19 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
               )}
             </div>
           ))}
+          {handoff ? (
+            <div className="approval-save">
+              <label className="check">
+                <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} /> Save as one of your answers, so the agent can send it next time
+              </label>
+              {save ? (
+                <div className="field">
+                  <label htmlFor={`${id}-save`}>What the answer is about</label>
+                  <input id={`${id}-save`} className="input" value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="For example: Delivery to Pune" />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : editable.length ? (
         <details className="approval-preview">
@@ -140,15 +159,27 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
         </form>
       ) : (
         <div className="approval-actions">
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onDecide?.({ action: "approve", edits: Object.keys(edits).length ? edits : undefined })}>
-            {mode === "edit" ? `${action.verb} with changes` : action.verb}
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy || (handoff && save && !saveTitle.trim())}
+            onClick={() => {
+              const all = { ...edits, ...(handoff && save && saveTitle.trim() ? { saveAs: saveTitle.trim() } : {}) };
+              onDecide?.({ action: "approve", edits: Object.keys(all).length ? all : undefined });
+            }}
+          >
+            {mode === "edit" && !handoff ? `${action.verb} with changes` : action.verb}
           </button>
           {editable.length && mode !== "edit" ? (
             <button type="button" className="btn" onClick={() => setMode("edit")}>
               Edit
             </button>
           ) : null}
-          {mode === "edit" ? (
+          {handoff ? (
+            <button type="button" className="btn btn-quiet" onClick={() => setMode("reject")}>
+              Close without replying
+            </button>
+          ) : mode === "edit" ? (
             <button type="button" className="btn btn-quiet" onClick={() => (setMode("view"), setEdits({}))}>
               Discard changes
             </button>

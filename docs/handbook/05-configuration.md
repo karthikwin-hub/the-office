@@ -11,7 +11,8 @@
 | `DOCS` | R2 | `office-docs` | Documents and media under `o/<officeId>/` |
 | `AI` | Workers AI | | Reading documents, transcribing voice notes, translation |
 | `Office` | Durable Object namespace | class `Office` (SQLite) | One per business |
-| `MAILER` | Send Email | | Reminders, invitations, confirmations, digests |
+| `MAILER` | Send Email | | Reminders, invitations, confirmations, digests, customer service replies |
+| `CHAT_LIMIT` | Rate limit | namespace `1001`, 20 a minute | Website chat messages, counted per widget and visitor IP; over the limit answers 429 |
 
 ## 2. Plain settings (`vars` in `wrangler.jsonc`)
 
@@ -21,6 +22,7 @@
 | `MAIL_FROM` | The address mail is sent from | Placeholder (`office@the-office.example`); must be replaced |
 | `INGEST_DOMAIN` | Each office receives mail at `<slug>@INGEST_DOMAIN` | Placeholder (`in.the-office.example`); must be replaced |
 | `BETTER_AUTH_URL` | The public URL used in links and cookies | The live workers.dev URL |
+| `TURNSTILE_SITE_KEY` | Optional. The public Turnstile site key the website chat shows; set together with `TURNSTILE_SECRET` | Not set (the chat relies on the rate limit) |
 
 Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
 
@@ -39,7 +41,7 @@ Put with `wrangler secret put <NAME>` through Infisical, for example:
 infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 ```
 
-`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing. Run it yourself, not through an agent.
+`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing, and puts `TURNSTILE_SECRET` on the Worker if it is in Infisical. Run it yourself, not through an agent.
 
 | Name | Required | Purpose |
 | --- | --- | --- |
@@ -54,6 +56,7 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 | `WHATSAPP_TEMPLATE` | For broadcasts | Approved template name for messages outside the 24-hour window |
 | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | For LinkedIn | LinkedIn app |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For X | X app (OAuth 2.0) |
+| `TURNSTILE_SECRET` | Optional, for the website chat | Verifies the Turnstile token on each chat message; without it the chat accepts messages within the rate limit |
 
 In Infisical (environment `dev`), the Cloudflare deploy token is held as `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time.
 
@@ -66,6 +69,13 @@ In Infisical (environment `dev`), the Cloudflare deploy token is held as `CLOUDF
 | Sending | A domain we own, added to Cloudflare, with Email Routing enabled; `MAIL_FROM` on that domain; SPF and DKIM records. Note: the `send_email` binding delivers only to addresses verified on the Cloudflare account, so mail to arbitrary customers and new sign-ups needs a sending service (for example Amazon SES, Postmark or Resend) or Cloudflare's own email sending when available on the account. | **Open: blocks self-serve sign-up on live** |
 | Receiving | A subdomain for inbound mail (for example `in.<our domain>`), an Email Routing catch-all rule sending to the Worker, and `INGEST_DOMAIN` set to it | **Open** |
 | Legacy address | `bills@the-office.example` is routed to the original office; replace when the domain is set | Open |
+| Customer service address | Hiring the Customer Service agent claims `<slug>.help@INGEST_DOMAIN` (route kind `support_email`); replies go out through `MAILER` threaded on the customer's message, with Reply-To set to that address | Works once receiving and sending are set up |
+
+## 4a. Website chat and route kinds
+
+The `route` table sends inbound traffic to one office. Its kinds are `email` (bills), `support_email` (customer service mail), `widget` (a website chat key), `wa_phone` (an office's own WhatsApp number), and the social page and account kinds. The Customer Service agent claims and releases its `support_email` and `widget` routes itself when it is hired or the chat is switched on or off; `admin.mjs route` is not needed for them.
+
+The chat snippet a business pastes into its website loads `/w/<key>.js` and talks to `/api/chat/<key>` (open to any site, no cookies). A disabled chat or an agent that is not hired answers 404. Customer service uses at most 150 of the office's 400 daily AI calls (quota `cs_ai`); after that it carries on with its keyword rules alone and hands the owner anything they cannot place.
 
 ## 5. Social channels and WhatsApp
 
@@ -100,7 +110,9 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | `route <office> <kind> <external id>` | Sends a page, account or WhatsApp number to an office |
 | `purge-soon <office>` | A deleted office is purged at the next nightly run instead of after 30 days |
 | `backup` | Exports the control plane as SQL into `backups/` (git-ignored; holds account data) |
-| `forget-user <email>` | Removes a person's account, sessions, memberships and WhatsApp link; refuses if they are the only owner of an office |
+| `forget-user <email>` | Removes a person's account, sessions, memberships, WhatsApp link and consent records; refuses if they are the only owner of an office |
+| `requests` | Lists open account deletion requests made from Settings, oldest first |
+| `requests done <id>` | Completes a deletion request: runs `forget-user` for that person and marks the request done |
 
 ## 8. Go-live checklist
 
@@ -113,7 +125,30 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | Done 5 November 2026 with `tools/admin/set-secrets.sh` |
 | 6 | Meta app reviewed and live (Pages, Instagram, Threads, WhatsApp, webhooks) | Business and engineering | Per platform |
 | 7 | WhatsApp Business number verified and display name approved | Business | Per account |
-| 8 | Privacy notice and terms covering accounting data, AI processing and WhatsApp | Business and legal | Open |
+| 8 | Privacy notice and terms covering accounting data, AI processing and WhatsApp | Business and legal | **In progress:** drafts in `docs/legal`, published at `/legal/...`; see the legal checklist below |
 | 9 | Workers Paid plan when the first non-pilot office signs up | Business | When needed |
 | 10 | Backups before every migration; rollback rehearsed once | Engineering | Process in place |
 | 11 | Monitoring: Workers observability alerts on error rate | Engineering | Open |
+| 12 | Migration `0003_legal.sql` applied to the live database (consent and deletion requests) | Engineering | Open: run `wrangler d1 migrations apply office --remote` through Infisical before deploying this version |
+
+## 9. Legal checklist
+
+| # | Item | Status |
+| --- | --- | --- |
+| 1 | A lawyer in India reviews the privacy notice, terms, data processing terms and subprocessor list | Open |
+| 2 | Bracketed details completed: legal name, registered address, grievance officer, contact address, response times | Open |
+| 3 | When a document changes, raise its version in `LEGAL_DOCUMENTS` (`packages/contracts`) and the date at its top; everyone is asked to accept it once more | Process in place |
+| 4 | Each business using the Customer Service agent puts the customer AI notice (`docs/legal/customer-notice-template.md`) on its website and WhatsApp profile | Per business, at hiring |
+| 5 | Deletion requests checked weekly with `admin.mjs requests` and completed within 30 days | Process in place |
+| 6 | Subprocessor list kept current when a provider is added (for example an email sending service) | Ongoing |
+
+## 10. Security incidents
+
+A personal data breach is any loss, leak or unauthorised access to personal data we hold, whether account data or a business's books and customer messages.
+
+1. **Who decides.** The engineer on call contains it (revoke keys, suspend the affected office, rotate `BETTER_AUTH_SECRET` or `SOCIAL_TOKEN_KEY` through Infisical) and tells the founder the same day. The founder decides what is notified and signs it off.
+2. **Record.** Start a written record at once: what happened, when it was found, which offices and people, what data, what was done. Keep it even if nothing turns out to be notifiable.
+3. **Tell the businesses.** Each affected business is told without undue delay and within 24 hours of confirming it, as the data processing terms promise, so it can meet its own duties to its customers and staff.
+4. **Tell the Data Protection Board and the people affected.** Under the Digital Personal Data Protection Rules, the Board gets a first report without delay and a detailed report within 72 hours of becoming aware; people whose account data is affected are told in plain language what happened, the likely effect and what they can do. Confirm the current timelines with the lawyer, as the rules are new.
+5. **Logs.** The rules expect logs that can show what happened to be kept for a year. Workers observability keeps logs for a short period only, so this is a **gap**: export Worker logs to long-term storage (for example Logpush to R2) before the first pilot.
+6. **Afterwards.** Write down the cause and the fix, and add a test or check so it cannot happen the same way again.

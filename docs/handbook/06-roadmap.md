@@ -1,6 +1,6 @@
 # Roadmap
 
-> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. The next phase is go-live readiness, which is mostly configuration (email, domain, privacy notice; the secrets are now set) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
+> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. Alongside go-live readiness, Phase 6b added Routines with a run history and a first version of the Customer Service agent. Go-live readiness itself is mostly configuration (email, domain, legal review of the drafted privacy notice and terms; the secrets are now set) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
 
 ## Overview
 
@@ -13,6 +13,7 @@
 | 4 | WhatsApp in your own language | Done |
 | 5 | Multi-tenant offices | Done |
 | 6 | Go-live readiness | **Next** |
+| 6b | Routines and the Customer Service agent | Done (first version) |
 | 7 | Pilot and accuracy | Planned |
 | 8 | Accounting firms | Planned |
 | 9 | Deeper teams | Planned |
@@ -61,6 +62,14 @@
 - Daily AI and upload allowances per office; logs tagged by office; a two-office isolation test suite; the admin tool.
 - The original office migrated in place, keeping its id.
 
+### Phase 6b: Routines and the Customer Service agent
+
+- **Routines:** every scheduled job is a named routine with an owner agent, a pause switch, "run now" and 90 days of run history (outcome, counts, errors) on a Routines page and in each agent's room. Two new routines: the reorder check (drafts purchase orders when the Storekeeper is hired) and returns and filings due in the next seven days.
+- **Customer Service agent, first version:** answers the business's customers on WhatsApp (the business's own number only), a support email address per office and a website chat widget. It confirms who the customer is before giving a balance, answers order status, facts and saved answers from the books, and hands everything else to the owner with a summary. The model only classifies; the words come from the books. Trust levels decide what it sends on its own. The owner replies from the agent's room or from WhatsApp ("reply 2 …"), updates orders with "order 1042 shipped", and saves a good reply as an answer for next time.
+- **Guardrails:** an AI disclosure on the first reply, flood and duplicate guards, a per-office AI sub-allowance, a rate limit per website visitor and optional Turnstile, retention of conversations for a period the owner sets.
+- **Orders** come in by hand or CSV behind an `OrderSource` interface, so a shop connector can be added later.
+- Research, competitors and the later phases are in [Customer service](08-customer-service.md).
+
 ## Next and planned
 
 ### Phase 6: Go-live readiness (next)
@@ -73,7 +82,7 @@
 | Sending email | A provider that can reach any address; `MAIL_FROM` on our domain; SPF, DKIM, DMARC |
 | Receiving email | Email Routing catch-all on an inbound subdomain; `INGEST_DOMAIN` set |
 | Domain | Custom domain on the Worker; auth URL and platform redirects updated |
-| Privacy and terms | Notice covering accounting data, AI processing, WhatsApp, deletion; terms of service |
+| Privacy and terms | **In progress.** Drafts in `docs/legal` (privacy notice, terms, data processing terms, subprocessors, a customer AI notice template) are published at `/legal/...`, with consent recorded at sign-up and self-serve account download and deletion requests. Waiting on review by a lawyer in India and the bracketed details (company name, address, grievance officer) |
 | Monitoring | Error-rate alerts; a weekly `admin.mjs list` review |
 | Readiness habit | Add `country`, `currency`, `locale` and `timeZone` to the office record (India values only), so new code reads them instead of constants |
 
@@ -113,7 +122,7 @@
 | Work | Detail |
 | --- | --- |
 | Accounting connectors | A `BusinessBackend` interface; Tally import first, for businesses that keep their books there |
-| Routines with history | Every scheduled job (digest, reminders, publishing, reorder checks) as a visible routine with its runs, outcome and owner |
+| Customer service, phase two | Shopify and WooCommerce order connectors, Instagram and Facebook messages, customer voice notes, a searchable knowledge base, and order changes made by the agent with approval |
 | Agent configuration history | Every change to an agent's instructions or trust level is versioned and can be rolled back |
 | Team templates | Hire a ready-made team (for example "Accounts for a wholesaler") in one step |
 | Connector permissions | For each outside service an agent can use: Allowed, Ask first or Off |
@@ -155,7 +164,7 @@
 | Evaluation sets with saved test runs | 7 |
 | "Request revision" as an approval outcome | 7 |
 | Anchored comments on documents | 8 |
-| Routines as first-class, with run history | 9 |
+| Routines as first-class, with run history | 6b (done) |
 | Versioned agent configuration with rollback | 9 |
 | Installable team templates | 9 |
 | Connector permissions: Allowed, Ask first, Off | 9 |

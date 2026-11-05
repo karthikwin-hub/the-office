@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { account, ApiError, isLive, setActiveOffice } from "../api/client";
 import { q } from "../api/queries";
+import { ConsentGate, LegalFooter } from "./Legal";
 import { SignIn } from "./SignIn";
 
 const ACTIVE_KEY = "office.active";
@@ -48,6 +49,7 @@ export function OfficeGate({ children }: { children: ReactNode }) {
       </Door>
     ) : null;
   if (me.data.verificationRequired && !me.data.user.emailVerified) return <ConfirmEmail me={me.data} />;
+  if (me.data.consentNeeded.length) return <ConsentGate me={me.data} />;
   if (invite) return <AcceptInvitation token={invite} />;
   if (params().has("open")) return <OpenOffice me={me.data} />;
   const active = chooseOffice(me.data.offices);
@@ -65,6 +67,7 @@ function Door({ title, lede, children }: { title: string; lede?: ReactNode; chil
         {lede ? <p className="muted">{lede}</p> : null}
         {children}
       </div>
+      <LegalFooter />
     </main>
   );
 }

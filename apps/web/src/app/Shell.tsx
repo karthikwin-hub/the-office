@@ -2,17 +2,20 @@ import type { AskResponse } from "@office/contracts";
 import { dateLabel } from "@office/engine";
 import { CoveringNote, FigureContext, SourceViewer } from "@office/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { account, ApiError, isLive, viewingAs } from "../api/client";
 import { q, useAsk } from "../api/queries";
 import { useBackgroundReader } from "../intake/intake";
 import { useApplySkin } from "./prefs";
+import { LegalFooter } from "./Legal";
 import { OfficeGate, OfficeSwitcher } from "./Offices";
 import { useLiveUpdates } from "./live";
 
-/** In the live app nothing of an office loads until someone has signed in and chosen an office they are in. */
+/** In the live app nothing of an office loads until someone has signed in and chosen an office they are in. The legal pages are open to anyone. */
 export function Shell() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  if (path.startsWith("/legal/")) return <Outlet />;
   if (!isLive) return <OfficeShell />;
   return (
     <OfficeGate>
@@ -85,6 +88,9 @@ function OfficeShell() {
             <Link to="/hiring" activeProps={{ "aria-current": "page" }}>
               Hiring hall
             </Link>
+            <Link to="/routines" activeProps={{ "aria-current": "page" }}>
+              Routines
+            </Link>
             <Link to="/settings" activeProps={{ "aria-current": "page" }}>
               Settings
             </Link>
@@ -111,6 +117,7 @@ function OfficeShell() {
       <main id="main" className="main">
         <Outlet />
       </main>
+      <LegalFooter />
       <SourceHost figure={search.figure} doc={search.doc} region={search.region} asOf={office.data?.business.asOf} />
       <AskPanel open={search.ask === "open"} onClose={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: undefined }), resetScroll: false })} />
     </FigureContext.Provider>

@@ -41,9 +41,14 @@ import { extractInvoice, type Extraction, type TextItem } from "./extract";
 import { gstReport, salesReport, tdsReport } from "./reports";
 import { expectedTdsByBill } from "./tds";
 import { marketingReport, operationsReport, peopleReport, salesTeamReport, socialReport } from "./teams";
+import { MemoryRoutineLog, type RoutineLog } from "./routines";
+import { CustomerService } from "./customer/desk";
+import type { OrderSource } from "./customer/orders";
+import { type CsStore, MemoryCsStore } from "./customer/store";
+import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 
-/** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, and the month's plan. */
-const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast"]);
+/** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, and a customer the agent handed over. */
+const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -61,6 +66,7 @@ const HEADLINE_KPI: Record<string, number> = {
   buyer: 0,
   "compliance-officer": 0,
   "payroll-clerk": 0,
+  "customer-service": 0,
 };
 /** Meta's marketing-message rate for India, roughly; the card says to check the current rate. */
 export const WHATSAPP_MARKETING_PAISE = 78;
@@ -78,16 +84,31 @@ function istNow(asOf: string): string {
   return `${asOf}T${new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(11, 19)}+05:30`;
 }
 
-export type OfficeOptions = { asOf?: string; ingestEmail?: string };
+export type OfficeOptions = {
+  asOf?: string;
+  ingestEmail?: string;
+  /** Where routine runs are kept; memory unless the host has storage. */
+  routines?: RoutineLog;
+  /** Where customer conversations are kept; memory unless the host has storage. */
+  conversations?: CsStore;
+  orderSources?: OrderSource[];
+};
 
 export class OfficeService {
   readonly books: Books;
   ledger: Ledger;
   private settingsState: Settings;
+  readonly routines: RoutineLog;
+  readonly customers: CustomerService;
 
   constructor(books: Books, opts: OfficeOptions = {}) {
     this.books = books;
+    books.orders ??= [];
+    books.customerService ??= structuredClone(DEFAULT_CUSTOMER_SERVICE);
+    for (const a of AGENTS) if (!books.agents.some((s) => s.agentId === a.id)) books.agents.push({ agentId: a.id, hired: false, trustLevel: "trainee", hiredOn: null, accuracy: { checked: 0, correct: 0 } });
     this.ledger = new Ledger(books, opts.asOf);
+    this.routines = opts.routines ?? new MemoryRoutineLog();
+    this.customers = new CustomerService(this, opts.conversations ?? new MemoryCsStore(), opts.orderSources);
     this.settingsState = {
       business: books.business,
       users: [
@@ -102,6 +123,11 @@ export class OfficeService {
 
   get asOf() {
     return this.ledger.asOf;
+  }
+
+  /** Now, in India, on the books' date. */
+  nowIst() {
+    return istNow(this.asOf);
   }
 
   private state(agentId: string) {
@@ -304,8 +330,73 @@ export class OfficeService {
           { label: "People", value: String(p.lines.length) },
         ];
       }
+      case "customer-service":
+        return this.customers.kpis();
     }
     return [];
+  }
+
+  /**
+   * Items at or under their reorder level. With the Storekeeper on the team, each supplier they were last
+   * bought from gets one draft purchase order for the desk, unless an order for the item is already open.
+   */
+  reorderCheck(): { items: string[]; drafted: number; covered: boolean } {
+    const o = operationsReport(this.ledger);
+    const low = o.stock.filter((s) => s.status === "reorder");
+    if (!low.length) return { items: [], drafted: 0, covered: false };
+    const onOrder = new Set(this.books.purchaseOrders.filter((p) => p.status !== "received").flatMap((p) => p.lines.map((x) => x.skuId)));
+    const lastBought = new Map<string, { vendorId: string; ratePaise: number; date: string }>();
+    for (const b of this.books.bills) {
+      if (b.status !== "posted") continue;
+      for (const line of b.lines) {
+        if (!line.skuId) continue;
+        const prev = lastBought.get(line.skuId);
+        if (!prev || prev.date < b.date) lastBought.set(line.skuId, { vendorId: b.partyId, ratePaise: line.ratePaise, date: b.date });
+      }
+    }
+    const byVendor = new Map<string, { skuId: string; qty: number; ratePaise: number }[]>();
+    for (const s of low) {
+      const from = lastBought.get(s.skuId);
+      if (onOrder.has(s.skuId) || !from) continue;
+      const qty = Math.max(1, s.reorderPoint + s.soldLast30 - s.onHand);
+      byVendor.set(from.vendorId, [...(byVendor.get(from.vendorId) ?? []), { skuId: s.skuId, qty, ratePaise: from.ratePaise }]);
+    }
+    let drafted = 0;
+    if (this.hired("storekeeper")) {
+      for (const [vendorId, lines] of byVendor) {
+        const id = `po-auto-${this.asOf}-${vendorId}`;
+        if (this.books.purchaseOrders.some((p) => p.id === id)) continue;
+        const totalPaise = lines.reduce((a, x) => a + x.qty * x.ratePaise, 0);
+        const number = `PO-${this.asOf.replace(/-/g, "")}-${this.books.purchaseOrders.length + 1}`;
+        this.books.purchaseOrders.push({ id, number, vendorId, date: this.asOf, status: "draft", lines, totalPaise });
+        const vendor = this.ledger.findParty(vendorId)?.name ?? vendorId;
+        this.books.staged.push({
+          id: `chg-${id}`,
+          agentId: "storekeeper",
+          kind: "purchase_order",
+          createdAt: istNow(this.asOf),
+          title: `Reorder from ${vendor}, ₹${inr(totalPaise, { rupees: true })}`,
+          summary: `${lines.map((x) => `${x.qty} × ${this.ledger.sku(x.skuId).name}`).join(", ")}, at the rates on their last bill. Each item is at or under its reorder level.`,
+          evidence: [{ label: "Stock levels", ref: { kind: "purchase_order", id } }],
+          payload: { poId: id },
+          status: "pending",
+        });
+        drafted++;
+      }
+      if (drafted) this.log("storekeeper", `Drafted ${drafted === 1 ? "a purchase order" : `${drafted} purchase orders`} for items at their reorder level.`);
+    }
+    return { items: low.map((s) => s.name), drafted, covered: low.every((s) => onOrder.has(s.skuId)) };
+  }
+
+  /** Returns and filings due within `days`, or overdue, from the compliance calendar and the GST returns not yet filed. */
+  complianceDue(days: number): { form: string; date: string; daysLeft: number }[] {
+    const o = operationsReport(this.ledger);
+    const out = o.compliance.filter((c) => c.status !== "done" && c.daysLeft <= days).map((c) => ({ form: c.form, date: c.date, daysLeft: c.daysLeft }));
+    for (const f of gstReport(this.ledger).filings) {
+      const left = Math.round((Date.parse(`${f.dueOn}T00:00:00Z`) - Date.parse(`${this.asOf}T00:00:00Z`)) / 86_400_000);
+      if (f.status !== "filed" && left <= days && !out.some((x) => x.form === f.form && x.date === f.dueOn)) out.push({ form: f.form, date: f.dueOn, daysLeft: left });
+    }
+    return out.sort((a, b) => (a.date < b.date ? -1 : 1));
   }
 
   agentRoom(agentId: string): AgentRoomView {
@@ -622,6 +713,7 @@ export class OfficeService {
 
   /** A rejected ledger entry leaves its bill or invoice out of the books; a rejected calendar drops its drafts. */
   private withdraw(item: StagedChange) {
+    if (item.kind === "customer_reply" || item.kind === "handoff") return this.customers.decided(item, false);
     if (item.kind === "calendar") {
       const cal = this.books.calendars.find((c) => c.id === (item.payload as { calendarId?: string }).calendarId);
       if (!cal) return;
@@ -720,6 +812,10 @@ export class OfficeService {
       }
       case "payroll_run":
         this.log("payroll-clerk", "Released payslips.");
+        break;
+      case "customer_reply":
+      case "handoff":
+        this.customers.decided(item, true);
         break;
     }
   }

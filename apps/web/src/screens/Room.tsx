@@ -11,6 +11,8 @@ import { InboxThreads, SocialRoomPanel, useApprovalBody } from "../reports/socia
 import { CampaignsView, ComplianceView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
 import { count, isOwner, Page, PageHead, Register, Section, shortDate, theAgent, time, useApprovalContext } from "./common";
 import { WhatsAppPhone } from "./WhatsAppPhone";
+import { CustomerServicePanel } from "./CustomerService";
+import { RoutineList } from "./Routines";
 
 const ACCOUNTANT_MAY = new Set(["audit_flag", "share_file"]);
 
@@ -101,6 +103,7 @@ function RoomBody({ v }: { v: AgentRoomView }) {
         </div>
         <aside className="room-side">
           <TeamLog title={`What ${theAgent(def.id)} did`} entries={v.log.slice(0, 14)} showAgent={false} empty="Nothing recorded yet." />
+          <RoomRoutines agentId={def.id} />
           <section className="room-trust" aria-label="Trust level">
             {owner ? <TrustLevel level={v.state.trustLevel} onChange={(l) => hire.mutate({ agentId: def.id, change: { trustLevel: l } })} disabled={hire.isPending} /> : <TrustLevel level={v.state.trustLevel} compact />}
           </section>
@@ -131,6 +134,23 @@ function RoomBody({ v }: { v: AgentRoomView }) {
         </aside>
       </div>
     </>
+  );
+}
+
+function RoomRoutines({ agentId }: { agentId: string }) {
+  const routines = useQuery(q.routines());
+  const mine = (routines.data?.routines ?? []).filter((r) => r.agentId === agentId);
+  if (!mine.length) return null;
+  return (
+    <section className="room-routines" aria-labelledby="room-routines">
+      <h2 id="room-routines" className="team-log-title">
+        Routines I run
+      </h2>
+      <RoutineList routines={mine} showAgent={false} />
+      <p className="muted">
+        <Link to="/routines">Every routine in the office</Link>
+      </p>
+    </section>
   );
 }
 
@@ -173,6 +193,8 @@ function WorkPanel({ agentId, preview }: { agentId: string; preview?: boolean })
       return p(<Q k="operations">{(d) => <ComplianceView report={d} compact />}</Q>);
     case "payroll-clerk":
       return p(<Q k="people">{(d) => <PayrollView report={d} />}</Q>);
+    case "customer-service":
+      return p(<CustomerServicePanel preview={preview} />);
   }
   return null;
 }

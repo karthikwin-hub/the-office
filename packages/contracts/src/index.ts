@@ -1,3 +1,6 @@
 export * from "./entities";
 export * from "./api";
 export * from "./catalog";
+export * from "./routines";
+export * from "./customer";
+export * from "./legal";

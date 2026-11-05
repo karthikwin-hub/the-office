@@ -528,6 +528,10 @@ export const Me = z.object({
   offices: z.array(OfficeSummary),
   /** Opening an office or accepting an invitation needs a confirmed address. */
   verificationRequired: z.boolean(),
+  /** Documents this person has not yet accepted in their current version. Nothing else opens until they have. */
+  consentNeeded: z.array(z.object({ document: z.enum(["terms", "privacy"]), version: z.string() })).default([]),
+  /** An open request to delete this account, if they made one. */
+  deletionRequested: z.boolean().default(false),
 });
 export type Me = z.infer<typeof Me>;
 export const OpenOffice = z.object({ name: z.string().trim().min(2).max(80) });
@@ -566,6 +570,9 @@ export const ACCOUNT_ROUTES = {
   offices: "/api/offices",
   invitation: (token: string) => `/api/invitations/${encodeURIComponent(token)}`,
   acceptInvitation: "/api/invitations/accept",
+  consent: "/api/account/consent",
+  accountExport: "/api/account/export",
+  accountRequests: "/api/account/requests",
 } as const;
 
 /** Every route below is inside one office: the app sends it as `/api/o/<office id>/...`. */
@@ -622,4 +629,20 @@ export const ROUTES = {
   socialPack: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}/pack`,
   socialMetricsImport: "/api/social/metrics/import",
   socialMedia: "/api/social/media",
+  routines: "/api/routines",
+  routine: (id: string) => `/api/routines/${encodeURIComponent(id)}`,
+  routineRuns: (id: string) => `/api/routines/${encodeURIComponent(id)}/runs`,
+  runRoutine: (id: string) => `/api/routines/${encodeURIComponent(id)}/run`,
+  customers: "/api/customers",
+  customerThread: (id: string) => `/api/customers/threads/${encodeURIComponent(id)}`,
+  customerReply: (id: string) => `/api/customers/threads/${encodeURIComponent(id)}/reply`,
+  customerFacts: "/api/customers/facts",
+  customerSettings: "/api/customers/settings",
+  customerAnswers: "/api/customers/answers",
+  customerAnswer: (id: string) => `/api/customers/answers/${encodeURIComponent(id)}`,
+  customerWidget: "/api/customers/widget",
+  customerTry: "/api/customers/try",
+  orders: "/api/orders",
+  order: (id: string) => `/api/orders/${encodeURIComponent(id)}`,
+  ordersImport: "/api/orders/import",
 } as const;

@@ -10,7 +10,7 @@ import { b64url } from "./social/tokens";
 
 export type OfficeStatus = "active" | "suspended" | "deleting";
 export type OfficeRow = { id: string; name: string; slug: string; status: OfficeStatus; createdBy: string | null; createdAt: number; deletedAt: number | null };
-export type RouteKind = "email" | "wa_phone" | "meta_page" | "ig_account" | "threads" | "linkedin" | "x";
+export type RouteKind = "email" | "wa_phone" | "meta_page" | "ig_account" | "threads" | "linkedin" | "x" | "support_email" | "widget";
 export type Member = { userId: string; name: string; email: string; role: Role; since: number };
 export type Invitation = { email: string; role: Role; invitedBy: string; createdAt: number; expiresAt: number };
 export type UserRef = { id: string; name: string; email: string; emailVerified: boolean };

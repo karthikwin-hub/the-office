@@ -12,6 +12,9 @@ export function loadBooks(): Books {
   return Books.parse(structuredClone(raw));
 }
 
+export { sampleRoutineRuns } from "./routines";
+export { sampleCustomerService, sampleConversations } from "./customers";
+
 export const SEED_AS_OF = "2026-11-04";
 /** The sample business's generator seed; empty books use 0. */
 export const SAMPLE_SEED = sample.seed;

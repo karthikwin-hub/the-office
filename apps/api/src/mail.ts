@@ -4,7 +4,7 @@ const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
 
 export type Attachment = { filename: string; mimeType: string; content: ArrayBuffer };
-export type Inbound = { from: string | null; subject: string; attachments: Attachment[]; skipped: string[] };
+export type Inbound = { from: string | null; name: string | null; subject: string; text: string; messageId: string | null; inReplyTo: string | null; attachments: Attachment[]; skipped: string[] };
 
 /** Keeps the PDFs and pictures of an email; anything else is listed as skipped so the log can say so. */
 export async function parseInbound(raw: ReadableStream | ArrayBuffer): Promise<Inbound> {
@@ -18,7 +18,7 @@ export async function parseInbound(raw: ReadableStream | ArrayBuffer): Promise<I
     if (!kind || content.byteLength > MAX_BYTES || attachments.length >= MAX_ATTACHMENTS) skipped.push(name);
     else attachments.push({ filename: name, mimeType: kind, content });
   }
-  return { from: mail.from?.address ?? null, subject: mail.subject ?? "", attachments, skipped };
+  return { from: mail.from?.address ?? null, name: mail.from?.name || null, subject: mail.subject ?? "", text: mail.text ?? "", messageId: mail.messageId ?? null, inReplyTo: mail.inReplyTo ?? null, attachments, skipped };
 }
 
 const b64 = (s: string) => {
@@ -29,14 +29,16 @@ const b64 = (s: string) => {
 };
 
 /** A plain-text message in UTF-8, as `send_email` takes it. */
-export function plainMessage(m: { fromName: string; from: string; to: string; subject: string; body: string; replyTo?: string }): string {
+export function plainMessage(m: { fromName: string; from: string; to: string; subject: string; body: string; replyTo?: string; messageId?: string; inReplyTo?: string | null }): string {
   const domain = m.from.split("@")[1] ?? "localhost";
+  const id = m.messageId ?? `<${crypto.randomUUID()}@${domain}>`;
   const headers = [
     `From: =?UTF-8?B?${b64(m.fromName)}?= <${m.from}>`,
     `To: <${m.to}>`,
     ...(m.replyTo ? [`Reply-To: <${m.replyTo}>`] : []),
     `Subject: =?UTF-8?B?${b64(m.subject)}?=`,
-    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
+    `Message-ID: ${id}`,
+    ...(m.inReplyTo ? [`In-Reply-To: ${m.inReplyTo}`, `References: ${m.inReplyTo}`] : []),
     `Date: ${new Date().toUTCString()}`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",

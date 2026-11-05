@@ -33,6 +33,8 @@ export function mockMe(role: Role, users: Record<Role, Person>, office: OfficeSe
     user: { id: role === "owner" ? "u-anil" : "u-rajesh", name: u.name, email: u.email, emailVerified: true },
     offices: [{ id: OFFICE_ID, name: office.books.business.name, role, status: "active" }],
     verificationRequired: false,
+    consentNeeded: [],
+    deletionRequested: false,
   } satisfies Me);
 }
 

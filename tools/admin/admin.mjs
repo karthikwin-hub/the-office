@@ -9,7 +9,8 @@
 //   route <office> <kind> <external id>  sends a page, account or WhatsApp number (kind wa_phone) to an office
 //   purge-soon <office>                  a deleted office is purged at the next nightly run instead of after 30 days
 //   backup                               the whole control plane as SQL, into backups/
-//   forget-user <email>                  removes a person's account, sessions, memberships and WhatsApp link (DPDP request)
+//   forget-user <email>                  removes a person's account, sessions, memberships, WhatsApp link and consent records (DPDP request)
+//   requests [done <id>]                 lists the open "Delete my account" requests, or completes one
 //
 // Add --local to work on `wrangler dev`'s database instead.
 import { execFileSync } from "node:child_process";
@@ -23,7 +24,7 @@ const args = process.argv.slice(2);
 const local = args.includes("--local");
 const [command, ...rest] = args.filter((a) => a !== "--local");
 const OFFICE = /^(off_[a-z2-9]{16}|kaveri-electricals)$/;
-const KINDS = new Set(["email", "wa_phone", "meta_page", "ig_account", "threads", "linkedin", "x"]);
+const KINDS = new Set(["email", "wa_phone", "meta_page", "ig_account", "threads", "linkedin", "x", "support_email", "widget"]);
 const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN_OFFICE_AGENTS };
 const lit = (v) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 
@@ -46,6 +47,22 @@ function audit(id, action, detail = null) {
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+/** The account, its sign-ins, memberships, WhatsApp link and consent records go; each office's audit says so first. */
+function forgetUser(email) {
+  const [u] = sql(`SELECT id, name FROM user WHERE lower(email) = ${lit(email)}`);
+  if (!u) fail(`No account for ${email}.`);
+  const sole = sql(`SELECT o.id, o.name FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ${lit(u.id)} AND m.role = 'owner'
+    AND (SELECT COUNT(*) FROM membership x WHERE x.office_id = m.office_id AND x.role = 'owner') = 1`);
+  if (sole.length) fail(`${u.name} is the only owner of ${sole.map((o) => `${o.name} (${o.id})`).join(", ")}. Hand those over or delete them first.`);
+  const offices = sql(`SELECT office_id FROM membership WHERE user_id = ${lit(u.id)}`);
+  sql(`${offices.map((o) => `${audit(o.office_id, "member.forgotten", "account removed on request")};`).join(" ")}
+    DELETE FROM wa_code WHERE user_id = ${lit(u.id)}; DELETE FROM wa_link WHERE user_id = ${lit(u.id)};
+    DELETE FROM membership WHERE user_id = ${lit(u.id)}; DELETE FROM invitation WHERE email = ${lit(email)};
+    DELETE FROM consent WHERE user_id = ${lit(u.id)};
+    DELETE FROM session WHERE user_id = ${lit(u.id)}; DELETE FROM account WHERE user_id = ${lit(u.id)}; DELETE FROM user WHERE id = ${lit(u.id)}`);
+  console.log(`Removed ${u.name}'s account from ${offices.length} offices. Their name may remain in those offices' books, where the business keeps it as a record.`);
 }
 
 switch (command) {
@@ -108,21 +125,28 @@ switch (command) {
     break;
   }
   case "forget-user": {
-    const email = (rest[0] ?? "").trim().toLowerCase();
-    const [u] = sql(`SELECT id, name FROM user WHERE lower(email) = ${lit(email)}`);
-    if (!u) fail(`No account for ${email}.`);
-    const sole = sql(`SELECT o.id, o.name FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ${lit(u.id)} AND m.role = 'owner'
-      AND (SELECT COUNT(*) FROM membership x WHERE x.office_id = m.office_id AND x.role = 'owner') = 1`);
-    if (sole.length) fail(`${u.name} is the only owner of ${sole.map((o) => `${o.name} (${o.id})`).join(", ")}. Hand those over or delete them first.`);
-    const offices = sql(`SELECT office_id FROM membership WHERE user_id = ${lit(u.id)}`);
-    sql(`DELETE FROM wa_code WHERE user_id = ${lit(u.id)}; DELETE FROM wa_link WHERE user_id = ${lit(u.id)};
-      DELETE FROM membership WHERE user_id = ${lit(u.id)}; DELETE FROM invitation WHERE email = ${lit(email)};
-      DELETE FROM session WHERE user_id = ${lit(u.id)}; DELETE FROM account WHERE user_id = ${lit(u.id)}; DELETE FROM user WHERE id = ${lit(u.id)};
-      ${offices.map((o) => audit(o.office_id, "member.forgotten", "account removed on request")).join("; ")}`);
-    console.log(`Removed ${u.name}'s account from ${offices.length} offices. Their name may remain in those offices' books, where the business keeps it as a record.`);
+    forgetUser((rest[0] ?? "").trim().toLowerCase());
+    break;
+  }
+  case "requests": {
+    const [action, id] = rest;
+    if (!action) {
+      const open = sql("SELECT id, email, kind, note, created_at FROM rights_request WHERE status = 'open' ORDER BY created_at");
+      const day = (ms) => new Date(ms).toISOString().slice(0, 10);
+      if (!open.length) console.log("No open requests.");
+      else console.table(open.map((r) => ({ id: r.id, email: r.email, kind: r.kind, asked: day(r.created_at), "days open": Math.floor((Date.now() - r.created_at) / 86400_000), note: r.note ?? "" })));
+      break;
+    }
+    if (action !== "done" || !/^req_[0-9a-f-]{36}$/.test(id ?? "")) fail("requests            lists the open requests\nrequests done <id>  completes one: deletes the account it asks about");
+    const [r] = sql(`SELECT id, email, kind, status FROM rights_request WHERE id = ${lit(id)}`);
+    if (!r) fail(`No request ${id}`);
+    if (r.status !== "open") fail(`Request ${id} is already ${r.status}.`);
+    forgetUser(r.email);
+    sql(`UPDATE rights_request SET status = 'done', done_at = ${Date.now()}, done_by = 'admin' WHERE id = ${lit(id)}`);
+    console.log(`Request ${id} is done.`);
     break;
   }
   default:
-    console.log(`Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user. See the top of ${import.meta.filename}.`);
+    console.log(`Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user, requests. See the top of ${import.meta.filename}.`);
     process.exit(command ? 1 : 0);
 }

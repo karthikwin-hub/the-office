@@ -42,4 +42,8 @@ export type Env = {
   LINKEDIN_CLIENT_SECRET?: string;
   X_CLIENT_ID?: string;
   X_CLIENT_SECRET?: string;
+  /** The website chat: a per-office, per-visitor limit, and Cloudflare Turnstile when both keys are set. */
+  CHAT_LIMIT?: RateLimit;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET?: string;
 };

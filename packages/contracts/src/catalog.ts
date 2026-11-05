@@ -39,6 +39,17 @@ export const AGENTS: AgentDef[] = [
     livePhase: 1,
   },
   {
+    id: "customer-service",
+    title: "The Customer Service Agent",
+    short: "Customer service",
+    team: "front",
+    job: "Answers your customers on WhatsApp, email and your website: order and invoice status, your usual answers, opening hours and policies. Anything it cannot answer from your records, or anything sensitive, it hands to you with a summary and a suggested reply.",
+    duties: ["Answer from your own answers and records", "Tell customers they are talking to an AI, and how to reach you", "Hand refunds, complaints and anything unclear to you"],
+    proposes: ["customer_reply", "handoff"],
+    countLabel: "conversations",
+    livePhase: 3,
+  },
+  {
     id: "accountant",
     title: "The Accountant",
     short: "Accountant",

@@ -4,6 +4,7 @@ import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
 import { setupWorker } from "msw/browser";
 import { mockMe, mockOfficeAdmin } from "./office";
+import { mockMore, seedMock, settleCs } from "./customers";
 import { mockWhatsApp } from "./whatsapp";
 
 const USERS: Record<Role, { name: string; email: string }> = {
@@ -20,7 +21,12 @@ const liveRoutes = (import.meta.env.VITE_LIVE_ROUTES ?? "")
 const PREFS_KEY = "office.prefs.server";
 
 let office: OfficeService | null = null;
-const getOffice = () => (office ??= new OfficeService(loadBooks()));
+const getOffice = () => {
+  if (office) return office;
+  office = new OfficeService(loadBooks());
+  seedMock(office);
+  return office;
+};
 
 /** Fresh books, as if the office had just opened. Used by review screenshots. */
 export function resetOffice() {
@@ -72,6 +78,8 @@ const handler = http.all("/api/*", async ({ request }) => {
     return HttpResponse.json(asset);
   }
   if (url.pathname === "/api/me") return mockMe(role, USERS, getOffice());
+  const more = await mockMore(request, url.pathname, role, getOffice());
+  if (more) return more;
   if (url.pathname.startsWith("/api/office-admin")) return (await mockOfficeAdmin(request, url.pathname, role, getOffice(), USERS))!;
   if (url.pathname.startsWith("/api/whatsapp")) {
     const res = await mockWhatsApp(request, url.pathname, role, getOffice(), USERS[role]);
@@ -92,7 +100,10 @@ const handler = http.all("/api/*", async ({ request }) => {
   let body: unknown;
   if (request.method !== "GET" && request.headers.get("content-type")?.includes("json")) body = await request.json();
   const res = dispatch(getOffice(), { method: request.method, path: url.pathname, query: url.searchParams, body, role, user: USERS[role], mode: "mock" });
-  if (request.method !== "GET") runMockEffects(getOffice());
+  if (request.method !== "GET") {
+    runMockEffects(getOffice());
+    settleCs(getOffice());
+  }
   const headers: Record<string, string> = {};
   if (res.status === 200 && url.pathname.startsWith("/api/exports/gstr1/")) {
     const period = url.pathname.split("/").pop()!;

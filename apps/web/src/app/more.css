@@ -1,0 +1,286 @@
+/* Routines, the Customer Service room and the legal pages. */
+
+.outcome {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-control);
+  font-size: var(--step--1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.outcome-ok {
+  color: var(--cleared-green);
+  background: var(--green-tint);
+}
+.outcome-bad {
+  color: var(--stamp-red);
+  background: var(--red-tint);
+}
+.outcome-warn {
+  color: var(--stamp-red);
+}
+.outcome-quiet {
+  color: var(--graphite-soft);
+}
+
+.routines {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-width: 80ch;
+}
+.routine {
+  padding: var(--s-4) 0;
+  border-top: var(--rule);
+}
+.routine-off {
+  opacity: 0.7;
+}
+.routine-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.routine-title {
+  font-size: var(--step-1);
+  font-weight: 700;
+  margin: 0;
+}
+.routine-does {
+  margin: var(--s-1) 0 var(--s-2);
+}
+.routine-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--s-1) var(--s-4);
+  margin: 0 0 var(--s-3);
+}
+.routine-facts > div {
+  display: contents;
+}
+.routine-facts dt {
+  color: var(--graphite-soft);
+  font-size: var(--step--1);
+}
+.routine-facts dd {
+  margin: 0;
+}
+.routine-actions {
+  display: flex;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}
+.routine-history summary {
+  cursor: pointer;
+  color: var(--carbon);
+}
+.routine-runs td {
+  vertical-align: top;
+}
+.room-routines .routine {
+  padding: var(--s-3) 0;
+}
+.room-routines .routine-title {
+  font-size: var(--step-0);
+}
+
+/* Customer service */
+
+.cs-threads {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.cs-threads li {
+  border-top: var(--rule);
+}
+.cs-thread-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-1) var(--s-3);
+  width: 100%;
+  padding: var(--s-3) 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.cs-thread-row:hover .cs-thread-name,
+.cs-thread-row[aria-current="true"] .cs-thread-name {
+  color: var(--carbon);
+  text-decoration: underline;
+}
+.cs-thread-name {
+  font-weight: 700;
+}
+.cs-thread-preview {
+  grid-column: 1 / -1;
+  color: var(--graphite-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-waiting {
+  color: var(--stamp-red);
+  font-weight: 700;
+  font-size: var(--step--1);
+}
+.cs-conversation {
+  border: var(--rule);
+  border-radius: var(--radius-panel);
+  padding: var(--s-4);
+  background: var(--sheet);
+  margin: var(--s-3) 0;
+}
+.cs-messages {
+  list-style: none;
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+.cs-message {
+  max-width: 85%;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--radius-panel);
+  white-space: pre-wrap;
+  border: var(--rule-soft);
+  background: var(--paper);
+}
+.cs-message-out {
+  justify-self: end;
+  background: var(--carbon-tint);
+}
+.cs-message-meta {
+  display: block;
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+  margin-top: var(--s-1);
+}
+.cs-message-failed {
+  border-color: var(--stamp-red);
+}
+.cs-form {
+  display: grid;
+  gap: var(--s-3);
+  max-width: 60ch;
+}
+.cs-form .row {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cs-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--s-1);
+}
+.cs-form textarea.input,
+.cs-form > input.input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+.cs-form dt {
+  font-weight: 700;
+}
+.cs-form dd {
+  margin: 0 0 var(--s-3);
+}
+.cs-form dd p {
+  margin: var(--s-2) 0;
+}
+.cs-answers {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--s-3);
+}
+.cs-answers li {
+  border-top: var(--rule);
+  padding: var(--s-3) 0;
+}
+.cs-answer-title {
+  font-weight: 700;
+}
+.cs-snippet {
+  display: block;
+  padding: var(--s-2) var(--s-3);
+  background: var(--paper);
+  border: var(--rule);
+  border-radius: var(--radius-control);
+  font-family: ui-monospace, monospace;
+  font-size: var(--step--1);
+  overflow-x: auto;
+  white-space: pre;
+}
+.cs-notes {
+  margin: var(--s-2) 0 0;
+  color: var(--graphite-soft);
+}
+
+/* Legal pages and the consent gate */
+
+.legal {
+  max-width: 72ch;
+  margin: 0 auto;
+  padding: var(--s-5) var(--s-4) var(--s-6);
+}
+.legal h1 {
+  font-size: var(--step-3);
+}
+.legal h2 {
+  margin-top: var(--s-5);
+}
+.legal h3 {
+  margin-top: var(--s-4);
+}
+.legal table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: var(--s-3) 0;
+  font-size: var(--step--1);
+}
+.legal th,
+.legal td {
+  border: var(--rule);
+  padding: var(--s-2);
+  text-align: left;
+  vertical-align: top;
+}
+.legal blockquote {
+  margin: var(--s-3) 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--stamp-red);
+  background: var(--red-tint);
+}
+.legal blockquote p {
+  margin: 0;
+}
+.legal .signin-plate a {
+  color: inherit;
+  text-decoration: none;
+}
+.legal-nav,
+.footer-legal {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  font-size: var(--step--1);
+}
+.footer-legal {
+  justify-content: center;
+  padding: var(--s-4);
+  color: var(--graphite-soft);
+}
+.consent-gate .check,
+.signin-form .check {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-start;
+  margin: var(--s-3) 0;
+}

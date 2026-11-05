@@ -55,7 +55,7 @@
 | Earned autonomy | Execution policies, pause and resume | Trust levels: Trainee, Trusted, Autonomous | Concept |
 | Multiple organisations in one deployment | Companies with scoped access | Offices with membership checks and per-office storage | Strong |
 | Audit trail | Durable activity log | Team log per office, control-plane audit | Strong |
-| Scheduled work | Routines with history | Durable Object alarms (digest, publishing, reminders), not yet visible as routines | Partial |
+| Scheduled work | Routines with history | Every scheduled job is a named routine with pause, run now and 90 days of history (added in Phase 6b) | Yes |
 | Costs and budgets | Per agent, per project, with auto-pause | A daily allowance per office, no per-agent cost view | Partial |
 | Skills and evals | Skill studio, evals, version history | Engine tests; no evaluation set for reading yet | Partial |
 | Mobile | Mobile-ready web | Phone layouts plus WhatsApp in eight languages | Concept |
@@ -90,7 +90,7 @@
 | Evaluation sets with saved runs | A saved set of anonymised documents with expected readings; every prompt or model change scored; the score becomes the agent's published accuracy record | High: the basis for promoting agents to Trusted | Medium | 7 |
 | "Request revision" on the Desk | A third choice beside Approve and Reject: return the work to the agent with a note | Medium | Small | 7 |
 | Anchored comments | Comments on a specific document line or figure, shared by owner and accountant | High for accounting firms | Medium | 8 |
-| Routines with history | Digest, reminders, publishing and reorder checks shown as routines with their runs and outcomes | Medium: makes the invisible visible | Small to medium | 9 |
+| Routines with history | Digest, reminders, publishing and reorder checks shown as routines with their runs and outcomes | Medium: makes the invisible visible | Small to medium | 6b (done) |
 | Versioned agent configuration | Every change to an agent's instructions and trust level recorded, with rollback | Medium | Small | 9 |
 | Team templates | Hire "Accounts for a wholesaler" or "Social for a retailer" in one step | Medium for onboarding | Small | 9 |
 | Connector permissions | For each outside service: Allowed, Ask first or Off, per agent | Medium, needed once connectors arrive | Medium | 9 |
@@ -115,6 +115,6 @@
 ## 8. Summary for decision-makers
 
 - Paperclip is not a competitor for our customer: it serves technical operators of agent fleets, not owners checking their books.
-- It is a useful benchmark for operational maturity. Eight of its ideas are now on our roadmap, in Phases 7 to 9.
+- It is a useful benchmark for operational maturity. Eight of its ideas are now on our roadmap, in Phases 6b to 9; routines with history is already built.
 - It confirms two of our design choices: better-auth for identity, and approvals as the centre of the product.
 - It is a reminder to keep one thing different: our owners must never need to understand agents, models or budgets to get value.

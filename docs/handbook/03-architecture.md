@@ -20,7 +20,7 @@ A pnpm monorepo in TypeScript.
 
 **One contract.** The web app, the demo's mock handlers, the Worker and the engine import the same zod types, so the demo cannot drift from the real product. Switching between them is a build flag (`VITE_DATA=mock` or `live`).
 
-**Tests.** 266 engine tests (tax, ageing, audit, social, WhatsApp desk), 73 Worker tests (including a two-office isolation suite), Storybook stories for every component state, and a 26-check browser end-to-end run against a local Worker.
+**Tests.** 286 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines), 92 Worker tests (including a two-office isolation suite, the website chat and account rights), Storybook stories for every component state, and a 26-check browser end-to-end run against a local Worker.
 
 ## 2. Runtime
 
@@ -57,7 +57,8 @@ Some traffic arrives without a signed-in person: email, platform webhooks, OAuth
 | Email | Each office has `<slug>@INGEST_DOMAIN`. The `route` table maps the address to the office. Unknown addresses are rejected at the SMTP stage. |
 | Meta webhooks (Facebook, Instagram, Threads, WhatsApp on an office's own number) | The signature is checked, then each entry is routed by its page or account id. One delivery can be split across several offices. |
 | OAuth callbacks (connecting a social account) | The signed `state` names the office and the owner who started it; the callback checks both before storing tokens. |
-| Shared WhatsApp number | One number serves every office. The sender's phone is linked to a person by a six-digit JOIN code issued in Settings. A person in several offices gets a heading on each message and can switch with a short command; ambiguous messages ask which office. |
+| Shared WhatsApp number | One number serves every office. The sender's phone is linked to a person by a six-digit JOIN code issued in Settings. A person in several offices gets a heading on each message and can switch with a short command; ambiguous messages ask which office. It is never used to talk to a business's customers. |
+| Customer messages | WhatsApp messages from customers to an office's own number go to its Customer Service agent when hired (otherwise to the Social Media Manager, as before). Mail to `<slug>.help@INGEST_DOMAIN` is a `support_email` route. The website chat posts to `/api/chat/<key>`, a `widget` route, after a per-visitor rate limit and an optional Turnstile check; it carries no cookies and answers 404 when the chat is off. |
 
 ## 5. Where data lives
 
@@ -66,6 +67,16 @@ Some traffic arrives without a signed-in person: email, platform webhooks, OAuth
 - **The control plane (D1)** never holds books. It answers "who is this person, which offices are theirs, and where does this email or webhook go".
 - **Each office's Durable Object** holds its books in its own SQLite database. There is no shared table of invoices with an `office_id` column to forget in a query.
 - **Files (R2)** live under `o/<officeId>/docs/` and `o/<officeId>/media/`. They are served only through the office's own path, or through a signed media link (for the social platforms to fetch images) that names the office.
+
+Besides the books, each office's SQLite database has a few tables of its own:
+
+| Table | Holds | Kept for |
+| --- | --- | --- |
+| `routine_run` | One row per routine run: routine, trigger (schedule or by hand), start and finish, outcome, a summary, counts and any error | 90 days |
+| `cs_thread` | One row per customer conversation: channel, the customer's key on it (phone, email address or visitor id), name, the matched party and whether identity was confirmed, status, hand-offs, time to first reply | The office's retention period (12 months by default), then deleted with its messages |
+| `cs_message` | Each message in and out: who wrote it (customer, agent or a named person), the intent and what grounded the reply, sending status, the platform's message id for de-duplication | As its conversation |
+
+The control plane adds two tables for each person's own rights (migration `0003_legal.sql`): `consent` (which version of which document a person accepted, when, and from which country) and `rights_request` (deletion requests from Settings, with who completed them and when). Neither holds books.
 
 ## 6. Security model
 
@@ -77,7 +88,8 @@ Some traffic arrives without a signed-in person: email, platform webhooks, OAuth
 | Social and WhatsApp tokens | Encrypted at rest with a key derived per office (HKDF from `SOCIAL_TOKEN_KEY` and the office id), with a key version for rotation |
 | Webhooks | Meta signatures verified with the app secret; the verify token checked on the handshake |
 | Media links | HMAC-signed, expiring, scoped to one office |
-| Fair use | Per-office daily allowance: 400 AI calls, 250 MB of uploads; a 429 with a plain explanation when spent |
+| Fair use | Per-office daily allowance: 400 AI calls (at most 150 for customer service), 250 MB of uploads; a 429 with a plain explanation when spent |
+| Public website chat | No cookies or credentials; rate-limited per widget and visitor IP; optional Turnstile; message length capped; a disabled chat is indistinguishable from none |
 | Secrets | Held in Infisical and put as Worker secrets; never in files or logs |
 | Audit | Office events (invitations, role changes, handover, deletion, restore) in the `audit` table; agent work in each office's team log |
 | Operator access | The admin tool works on the control plane only; it has no command to read an office's books |
@@ -100,6 +112,8 @@ Some traffic arrives without a signed-in person: email, platform webhooks, OAuth
 - Ageing from invoice payment terms; reminder escalation.
 - The Auditor's comparison of filed returns with computed figures, with reasons.
 - The social calendar, drafting and price checks; the WhatsApp desk's command parser in eight languages.
+- The Customer Service agent's brain: rules first (greetings, order numbers, balance questions, always-human topics such as refunds and complaints), then, only when the rules are unsure, a model call that must answer in a fixed JSON shape choosing among the business's facts and saved answers. Every reply is built from the books, a fact or a saved answer; the model never writes text for the customer. The host (`CustomerDesk` in the Worker) sends what the agent decides on WhatsApp or email and records the result.
+- Routines: each scheduled step is wrapped so its outcome, counts and errors are recorded, a paused routine is skipped, and one failing routine does not stop the others.
 
 ## 9. The demo (mock mode)
 

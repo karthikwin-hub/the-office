@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { account } from "../api/client";
+import { currentDocuments, LegalFooter } from "./Legal";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -14,9 +15,15 @@ export function SignIn({ invited }: { invited: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   const submit = useMutation({
-    mutationFn: () => (mode === "sign-in" ? account.signIn(email, password) : account.signUp(name, email, password)),
+    mutationFn: async () => {
+      if (mode === "sign-in") return account.signIn(email, password);
+      await account.signUp(name, email, password);
+      // If this fails the gate asks again after sign-in; the account exists either way.
+      await account.consent(currentDocuments()).catch(() => undefined);
+    },
     onSuccess: () => qc.resetQueries(),
   });
   const onSubmit = (e: FormEvent) => {
@@ -62,6 +69,22 @@ export function SignIn({ invited }: { invited: boolean }) {
             />
             {mode === "sign-up" ? <span className="muted">At least 10 characters.</span> : null}
           </div>
+          {mode === "sign-up" ? (
+            <label className="check">
+              <input type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                I accept the{" "}
+                <a href="/legal/terms" target="_blank" rel="noreferrer">
+                  terms of service
+                </a>{" "}
+                and I have read the{" "}
+                <a href="/legal/privacy" target="_blank" rel="noreferrer">
+                  privacy notice
+                </a>
+                .
+              </span>
+            </label>
+          ) : null}
           {submit.error ? (
             <p className="form-error" role="alert">
               {submit.error.message}
@@ -89,6 +112,7 @@ export function SignIn({ invited }: { invited: boolean }) {
           )}
         </p>
       </div>
+      <LegalFooter />
     </main>
   );
 }

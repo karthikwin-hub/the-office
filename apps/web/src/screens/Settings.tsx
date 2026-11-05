@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
+import { AccountSettings } from "./SettingsAccount";
 import { OfficeSettings } from "./SettingsOffice";
 import { SkinPicker } from "./SettingsSkin";
 import { SocialSettings } from "./SettingsSocial";
@@ -143,6 +144,7 @@ function SettingsForm({ s }: { s: Settings }) {
         </Section>
       )}
       <OfficeSettings />
+      <AccountSettings />
       <Section title="Getting documents in">
         <p>
           Forward bills and invoices to <strong className="num">{s.ingestEmail}</strong>, or upload them on the Accountant's room. The Accountant reads each one within a few minutes.

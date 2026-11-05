@@ -27,7 +27,21 @@ export const q = {
   hiring: () => queryOptions({ queryKey: ["hiring"], queryFn: api.hiring }),
   settings: () => queryOptions({ queryKey: ["settings"], queryFn: api.settings }),
   pack: (postId: string, channelId: string) => queryOptions({ queryKey: ["pack", postId, channelId], queryFn: () => api.pack(postId, channelId) }),
+  routines: () => queryOptions({ queryKey: ["routines"], queryFn: api.routines }),
+  routineRuns: (id: string) => queryOptions({ queryKey: ["routines", id, "runs"], queryFn: () => api.routineRuns(id) }),
+  customers: () => queryOptions({ queryKey: ["customers"], queryFn: api.customers, refetchInterval: isLive ? false : 15_000 }),
+  thread: (id: string) => queryOptions({ queryKey: ["customers", "thread", id], queryFn: () => api.thread(id) }),
+  orders: () => queryOptions({ queryKey: ["orders"], queryFn: api.orders }),
 };
+
+/** Any change in the office whose effects reach beyond one screen: everything but documents refetches. */
+export function useChange<T = unknown>() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (run: () => Promise<T>) => run(),
+    onSuccess: () => qc.invalidateQueries({ predicate: (x) => x.queryKey[0] !== "document" && x.queryKey[0] !== "session" }),
+  });
+}
 
 /** A decision can change any figure in the office, so everything except documents is refetched. */
 export function useDecide() {

@@ -27,5 +27,17 @@ for name in $NAMES; do
   echo "$name: put on the live Worker"
 done
 
+# Optional, and not generated: TURNSTILE_SECRET comes from the Turnstile widget in the Cloudflare dashboard.
+# Add it to Infisical yourself, and TURNSTILE_SITE_KEY to wrangler.jsonc vars; the website chat then asks for the check.
+for name in TURNSTILE_SECRET; do
+  present=$(infisical run --env="$ENV" --silent -- sh -c "[ -n \"\${$name:-}\" ] && echo yes || echo no")
+  if [ "$present" = "yes" ]; then
+    infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS\" ./node_modules/.bin/wrangler secret put $name" >/dev/null
+    echo "$name: put on the live Worker"
+  else
+    echo "$name: not in Infisical, skipped (optional)"
+  fi
+done
+
 echo "Secrets on the live Worker now:"
 infisical run --env="$ENV" --silent -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler secret list' | grep -o '"name": "[A-Z_]*"'

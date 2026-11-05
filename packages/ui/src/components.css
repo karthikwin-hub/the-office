@@ -482,6 +482,14 @@
   font-weight: 700;
   color: var(--graphite);
 }
+.approval-ai {
+  font-style: italic;
+}
+.approval-save {
+  margin-top: var(--s-2);
+  display: grid;
+  gap: var(--s-2);
+}
 .approval-title {
   font-size: var(--step-1);
   font-weight: 700;

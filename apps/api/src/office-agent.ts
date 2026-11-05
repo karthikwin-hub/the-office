@@ -1,5 +1,5 @@
 import { type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
-import { digestChannel, dispatch, nextMonth, OfficeService, type ApiResult, type TextItem } from "@office/engine";
+import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { EmailMessage } from "cloudflare:email";
@@ -18,6 +18,10 @@ import { callbackUrl, newState, readState } from "./social/oauth";
 import { TokenVault } from "./social/tokens";
 import { parseMetaDelivery, parseWhatsAppMessages } from "./social/webhooks";
 import { BooksStore } from "./store";
+import { SqlRoutineLog } from "./routines";
+import { SqlCsStore } from "./customer/store";
+import { CustomerDesk } from "./customer/desk";
+import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
 import { ControlPlane, ingestAddress, OFFICE_ID, type RouteKind } from "./tenancy";
 import { digestCron, istDate } from "./time";
 import { sendTemplate, sendText, type WaKeys } from "./whatsapp/cloud";
@@ -40,6 +44,8 @@ const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = { facebook: "meta_page"
  */
 export class Office extends Agent<Env> {
   private store!: BooksStore;
+  private runs!: SqlRoutineLog;
+  private conversations!: SqlCsStore;
   private office!: OfficeService;
   private vault!: TokenVault;
   private day = "";
@@ -47,7 +53,9 @@ export class Office extends Agent<Env> {
   private officeId: string | null = null;
   private ingestEmail = "";
   private businessName = "";
+  private slug = "";
   private ai!: Ai;
+  private csAi!: Ai;
 
   private ownName(): string | null {
     try {
@@ -82,9 +90,13 @@ export class Office extends Agent<Env> {
     const routes = await this.plane().routesOf(id, "email");
     const primary = ingestAddress(row.slug, this.env.INGEST_DOMAIN);
     this.ingestEmail = routes.some((r) => r.externalId === primary) ? primary : (routes[0]?.externalId ?? primary);
+    this.slug = row.slug;
     this.ai = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "ai"));
+    this.csAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "cs_ai"));
 
     this.store = new BooksStore(sql);
+    this.runs = new SqlRoutineLog(sql);
+    this.conversations = new SqlCsStore(sql);
     this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
@@ -184,7 +196,7 @@ export class Office extends Agent<Env> {
 
   private open(books: OfficeService["books"]) {
     this.day = istDate();
-    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail });
+    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations });
     const saved = this.kv("settings");
     if (saved) this.office.updateSettings(JSON.parse(saved));
     this.social().reconcile();
@@ -221,20 +233,94 @@ export class Office extends Agent<Env> {
     if (next) await this.schedule(new Date(next), "publishTick");
   }
 
-  /** Whatever the last change asked of the platforms goes out now, then the next alarm is set. */
+  /** Whatever the last change asked of the platforms and of customers goes out now, then the next alarm is set. */
   private async afterChange() {
     const effects = this.office.takeEffects();
     if (effects.length) await this.social().run(effects);
+    await this.desk().run();
     await this.armPublishing();
+  }
+
+  private desk(): CustomerDesk {
+    return new CustomerDesk({
+      office: this.office,
+      kv: this.kv.bind(this),
+      ai: this.env.AI ? this.csAi : null,
+      ownKeys: async () => {
+        const k = await this.ownWaKeys();
+        return k && k.phoneId !== this.env.WHATSAPP_PHONE_NUMBER_ID ? k : null;
+      },
+      sharedKeys: () => this.sharedWaKeys(),
+      mailer: this.env.MAILER,
+      mailFrom: this.env.MAIL_FROM,
+      businessName: this.office.books.business.name || this.businessName,
+      supportAddress: this.office.books.customerService.supportEmail,
+      ownersOnWhatsApp: () => new WaDirectory(this.env.DB).linksIn(this.officeId!),
+      log: (m, e) => this.log(m, e),
+    });
+  }
+
+  /**
+   * The Customer Service agent's addresses follow its hiring and the owner's switch: a support address
+   * while it is on the team, and the website chat's key while the chat is on. Anything else is dropped.
+   */
+  private async syncCustomerRoutes() {
+    const plane = this.plane();
+    const cs = this.office.books.customerService;
+    const hired = this.office.hired(CS_AGENT);
+    const want = new Set<string>();
+    const address = supportAddress(this.slug, this.env.INGEST_DOMAIN);
+    if (hired && address) want.add(`support_email|${address}`);
+    if (hired && cs.widget.enabled && cs.widget.key) want.add(`widget|${cs.widget.key}`);
+    for (const r of await plane.routesOf(this.officeId!)) if ((r.kind === "support_email" || r.kind === "widget") && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const w of want) {
+      const [kind, id] = w.split("|") as [RouteKind, string];
+      await plane.claimRoute(this.officeId!, kind, id);
+    }
+    cs.supportEmail = hired ? address : null;
+  }
+
+  /** The website chat, as one visitor sees it: their messages and the replies that went out. */
+  private chatMessages(visitor: string) {
+    const t = this.conversations.threadByKey("web", visitor);
+    const messages = t && !t.test ? this.conversations.messages(t.id).filter((m) => m.direction === "in" || m.status === "sent").map((m) => ({ id: m.id, at: m.at, from: m.direction === "in" ? ("you" as const) : ("us" as const), text: m.text })) : [];
+    return { messages, business: this.office.books.business.name || this.businessName };
   }
 
   /** A post's time has come: it is checked again, then published, held back or left for posting by hand. */
   async publishTick() {
-    if (!this.officeId) return;
+    if (!this.officeId || this.kv("office:purged")) return;
     this.fresh();
-    this.office.publishDue(new Date().toISOString());
+    await runOne(this.office, "publish-posts", "schedule", this.routineHost());
     await this.afterChange();
     this.commit();
+  }
+
+  /** Publishes whatever is due and says what happened, counted from the posts before and after. */
+  private async publishNow(): Promise<StepResult> {
+    const count = () => {
+      const all = this.office.books.posts.flatMap((p) => p.variants);
+      return { published: all.filter((v) => v.status === "published").length, failed: all.filter((v) => v.status === "failed").length };
+    };
+    const before = count();
+    this.office.publishDue(new Date().toISOString());
+    const effects = this.office.takeEffects();
+    if (effects.length) await this.social().run(effects);
+    const after = count();
+    const published = after.published - before.published;
+    const failed = Math.max(0, after.failed - before.failed);
+    if (!published && !failed) return { outcome: "nothing", summary: effects.length ? "Posts were due, but none went out; they are held back or ready to post by hand." : "No post was due.", counts: { published: 0, failed: 0 } };
+    return { outcome: failed ? (published ? "partial" : "failed") : "ok", summary: `${published} ${published === 1 ? "post" : "posts"} published${failed ? `; ${failed} failed and will be retried or held for you` : ""}.`, counts: { published, failed } };
+  }
+
+  /** What the routines need from this office: email, WhatsApp and the platforms. */
+  private routineHost(): RoutineHost {
+    return {
+      sendReminders: (items) => this.send(items),
+      socialMorning: () => this.socialMorning(),
+      publish: () => this.publishNow(),
+      digest: (notes) => this.digest(notes),
+    };
   }
 
   /** Open browsers listen here. The Worker checked the membership; this checks the request was meant for this office. */
@@ -278,6 +364,25 @@ export class Office extends Agent<Env> {
     if (post && path === "/internal/social/meta") return json(await this.receiveMeta(await request.json()));
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
     if (post && path === "/internal/export") return json(this.exportBooks());
+    if (post && path === "/internal/support-email") return json(await this.receiveSupport((await request.json()) as SupportMail));
+    if (post && path === "/internal/chat") {
+      const body = (await request.json()) as ChatPostBody;
+      if (!this.office.hired(CS_AGENT) || !this.office.books.customerService.widget.enabled) return json({ error: "This chat is closed." }, 404);
+      await this.desk().receive({ channel: "web", key: body.visitor, name: body.name || "Website visitor", text: body.text });
+      return json(this.chatMessages(body.visitor));
+    }
+    if (post && path === "/internal/chat-messages") {
+      const body = (await request.json()) as { visitor: string };
+      return json(this.chatMessages(body.visitor));
+    }
+    if (post && path === "/api/customers/try") {
+      if (caller.role !== "owner") return json({ error: "Only the owner can try the agent." }, 403);
+      const body = (await request.json().catch(() => ({}))) as { text?: unknown };
+      const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
+      if (!text) return json({ error: "Write a message to try." }, 400);
+      const r = await this.desk().receive({ channel: "web", key: `try:${caller.userId}`, name: "You, trying it", text, test: true });
+      return json({ thread: this.office.customers.threadView(r.thread.id), notes: r.notes });
+    }
     if (post && path === "/api/documents") return this.upload(request, caller);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
     const channel = /^\/api\/channels\/([a-z]+)\/(connect|callback)$/.exec(path);
@@ -285,6 +390,18 @@ export class Office extends Agent<Env> {
     const doc = /^\/api\/documents\/([^/]+)\/(read|scan)$/.exec(path);
     if (post && doc) return this.readStored(decodeURIComponent(doc[1]!), doc[2] as "read" | "scan", request);
     if (path === "/api/prefs") return this.prefs(request, caller);
+    if (request.method === "GET" && path === "/api/routines") return json({ routines: routinesView(this.office, Date.now(), this.social().nextWake()) });
+    const runRoutine = /^\/api\/routines\/([a-z-]+)\/run$/.exec(path);
+    if (post && runRoutine) {
+      if (caller.role !== "owner") return json({ error: "Only the owner can run a routine." }, 403);
+      try {
+        return json(await runNow(this.office, runRoutine[1]!, this.routineHost()));
+      } catch (e) {
+        if (e instanceof RoutineError) return json({ error: e.message }, 409);
+        if (e instanceof Error && e.message.startsWith("Unknown routine")) return json({ error: "Routine not found" }, 404);
+        throw e;
+      }
+    }
     if (path === "/api/whatsapp" || path === "/api/whatsapp/code") return this.whatsappRoute(request, caller, path);
 
     if (request.method === "GET" && /^\/api\/exports\/(gstr3b|tds)\//.test(path)) {
@@ -301,6 +418,7 @@ export class Office extends Agent<Env> {
 
     if (/^\/api\/desk\/[^/]+$/.test(path) && post) await this.send([res.body as StagedChange]);
     if (path.startsWith("/api/channels") && request.method !== "GET") await this.syncRoutes();
+    if (request.method !== "GET" && (path === `/api/hiring/${CS_AGENT}` || path === "/api/customers/widget")) await this.syncCustomerRoutes();
     if (path === "/api/settings") {
       if (request.method !== "GET") {
         await this.scheduleDigest();
@@ -419,7 +537,7 @@ export class Office extends Agent<Env> {
       const t = await this.vault.get(c.id);
       if (t) for (const r of this.routeIds(c.platform, [t.account, ...Object.values(t.extra)])) want.add(`${r.kind}|${r.id}`);
     }
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     for (const w of want) {
       const [kind, id] = w.split("|") as [RouteKind, string];
       await plane.claimRoute(this.officeId!, kind, id);
@@ -491,12 +609,20 @@ export class Office extends Agent<Env> {
       if (t) for (const id of [t.account, ...Object.values(t.extra)]) if (id) own.add(id);
     }
     const byPlatform = new Map(connected.map((c) => [PLATFORM_NAMES[c.platform], c.id]));
-    const raws = parseMetaDelivery(body, own, Date.now(), (from) => people.has(from.replace(/\D/g, "")))
-      .filter((m) => !m.externalId || !handled.has(m.externalId))
-      .map((m) => ({ ...m, channelId: byPlatform.get(m.platform) ?? "" }))
-      .filter((m) => m.channelId);
+    const delivered = parseMetaDelivery(body, own, Date.now(), (from) => people.has(from.replace(/\D/g, ""))).filter((m) => !m.externalId || !handled.has(m.externalId));
+    const { customers, rest } = splitCustomerDms(delivered, this.office.hired(CS_AGENT));
+    const desk = this.desk();
+    for (const m of customers) await desk.receive(m).catch((e) => this.log("customer message failed", e));
+    const raws = rest.map((m) => ({ ...m, channelId: byPlatform.get(m.platform) ?? "" })).filter((m) => m.channelId);
     const r = this.office.receiveMessages(raws);
-    return { received: r.added.length, leads: r.leads, replied: r.replied, office };
+    return { received: r.added.length, leads: r.leads, replied: r.replied, office, customers: customers.length };
+  }
+
+  /** Mail to the support address. Mail from someone in the office is ignored; they answer from the desk. */
+  private async receiveSupport(mail: SupportMail) {
+    if (!this.office.hired(CS_AGENT)) return { outcome: "ignored" };
+    const r = await this.desk().receive(toSupportInbound(mail));
+    return { outcome: r.outcome, thread: r.thread.id };
   }
 
   /** Someone in this office, on the shared number. The Worker found them and chose this office; replies go back on the shared number. */
@@ -661,60 +787,88 @@ export class Office extends Agent<Env> {
     return { received: mail.docs.length, read: results.length };
   }
 
-  /** Approved reminders leave from the shared address under the business's name; replies go to the business. */
-  private async send(items: StagedChange[]) {
+  /**
+   * Approved reminders leave from the shared address under the business's name; replies go to the business.
+   * Each records when it went, or why it did not and how many times it was tried, so the morning can try again.
+   */
+  private async send(items: StagedChange[]): Promise<{ sent: number; failed: number }> {
+    let sent = 0;
+    let failed = 0;
     for (const it of items) {
       if (it.kind !== "reminder" || it.status !== "approved") continue;
-      const p = it.payload as { to?: string; subject?: string; body?: string; partyId?: string };
+      const p = it.payload as { to?: string; subject?: string; body?: string; partyId?: string; sentAt?: string; sendError?: string; attempts?: number; triedAt?: string };
+      if (p.sentAt) continue;
       const ref = { kind: "party" as const, id: p.partyId ?? null };
+      p.attempts = (p.attempts ?? 0) + 1;
+      p.triedAt = new Date().toISOString();
       if (!this.env.MAILER || !p.to || !p.subject || !p.body) {
+        p.sendError = "Email is not set up for this office.";
         this.office.log("credit-controller", `Could not send the reminder to ${p.to ?? "the customer"}: email is not set up for this office.`, ref);
+        failed++;
         continue;
       }
       try {
         const replyTo = this.office.settings().reminderPolicy.sendFrom || this.office.books.business.email || undefined;
         const raw = plainMessage({ fromName: this.office.books.business.name || this.businessName, from: this.env.MAIL_FROM, to: p.to, replyTo, subject: p.subject, body: p.body });
         await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, p.to, raw));
+        p.sentAt = new Date().toISOString();
+        delete p.sendError;
+        sent++;
       } catch (e) {
-        this.office.log("credit-controller", `Could not send the reminder to ${p.to}: ${e instanceof Error ? e.message : String(e)}`, ref);
+        p.sendError = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+        this.office.log("credit-controller", `Could not send the reminder to ${p.to}: ${p.sendError}`, ref);
+        failed++;
       }
     }
+    return { sent, failed };
   }
 
-  /** Each morning: trusted agents do their routine work, and the owners hear what is waiting. */
+  /** Each morning: every routine in turn, each recorded on its own, and the digest last with what they found. */
   async daily() {
     if (!this.officeId || this.kv("office:purged")) return;
     const row = await this.plane().office(this.officeId);
     if (!row || row.status !== "active") return;
     this.fresh();
-    const done = this.office.runTrusted();
-    await this.send(done);
-    await this.socialMorning();
+    await morningRound(this.office, this.routineHost());
+    await this.afterChange();
+    this.commit();
+  }
+
+  /** The owners hear what is waiting and what the routines found: on WhatsApp if they asked and it allows, otherwise by email. */
+  private async digest(notes: string[]): Promise<StepResult> {
+    const officeId = this.officeId!;
+    const name = this.office.books.business.name || this.businessName;
     const pending = this.office.pending();
-    const users = await this.plane().members(this.officeId);
+    const users = await this.plane().members(officeId);
     const onWhatsApp = await this.whatsappDigests(pending.length);
     const owners = users.filter((u) => u.role === "owner" && !onWhatsApp.has(u.userId));
-    if (this.env.MAILER && owners.length && (pending.length || done.length)) {
-      const link = this.env.BETTER_AUTH_URL ? `${this.env.BETTER_AUTH_URL.replace(/\/$/, "")}/desk?office=${this.officeId}` : "";
+    let emailed = 0;
+    let failed = 0;
+    if (this.env.MAILER && owners.length && (pending.length || notes.length)) {
+      const link = this.env.BETTER_AUTH_URL ? `${this.env.BETTER_AUTH_URL.replace(/\/$/, "")}/desk?office=${officeId}` : "";
       const body = [
-        `Good morning. ${pending.length ? `${pending.length} ${pending.length === 1 ? "thing is" : "things are"} waiting on your desk at ${row.name}.` : `Nothing is waiting on your desk at ${row.name}.`}`,
+        `Good morning. ${pending.length ? `${pending.length} ${pending.length === 1 ? "thing is" : "things are"} waiting on your desk at ${name}.` : `Nothing is waiting on your desk at ${name}.`}`,
         "",
         ...pending.slice(0, 12).map((s) => `- ${s.title}`),
         ...(pending.length > 12 ? [`- and ${pending.length - 12} more`] : []),
-        ...(done.length ? ["", "Done on their own since yesterday:", ...done.map((s) => `- ${s.title} (${s.decidedBy})`)] : []),
+        ...(notes.length ? ["", "From this morning's routines:", ...notes.map((n) => `- ${n}`)] : []),
         ...(link ? ["", link] : []),
       ].join("\n");
       for (const o of owners) {
         try {
-          const subject = pending.length ? `${row.name}: ${pending.length} waiting on your desk` : `${row.name} this morning`;
-          await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, o.email, plainMessage({ fromName: `${row.name} · The Office`, from: this.env.MAIL_FROM, to: o.email, subject, body })));
+          const subject = pending.length ? `${name}: ${pending.length} waiting on your desk` : `${name} this morning`;
+          await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, o.email, plainMessage({ fromName: `${name} · The Office`, from: this.env.MAIL_FROM, to: o.email, subject, body })));
+          emailed++;
         } catch (e) {
+          failed++;
           this.office.log("office-manager", `Could not send the morning digest to ${o.email}: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
     }
-    this.office.log("office-manager", `Morning round: ${done.length ? `${done.length} routine ${done.length === 1 ? "task" : "tasks"} done by trusted agents; ` : ""}${pending.length} waiting on your desk.`);
-    this.commit();
+    this.office.log("office-manager", `Morning round: ${notes.length ? `${notes.join(" ")} ` : ""}${pending.length} waiting on your desk.`);
+    const reached = emailed + onWhatsApp.size;
+    if (!reached && !failed) return { outcome: "nothing", summary: pending.length || notes.length ? "No owner could be reached: email is not set up and nobody gets it on WhatsApp." : "Nothing to report this morning.", counts: { email: 0, whatsapp: 0, waiting: pending.length } };
+    return { outcome: failed ? (reached ? "partial" : "failed") : "ok", summary: `Sent to ${reached} ${reached === 1 ? "owner" : "people"}${onWhatsApp.size ? `, ${onWhatsApp.size} on WhatsApp` : ""}${failed ? `; ${failed} could not be reached` : ""}. ${pending.length} waiting on the desk.`, counts: { email: emailed, whatsapp: onWhatsApp.size, waiting: pending.length, failed } };
   }
 
   /** Everyone in this office who asked for the digest on WhatsApp gets it there if WhatsApp allows; returns who was reached. */
@@ -743,18 +897,21 @@ export class Office extends Agent<Env> {
    * The Social Media Manager's morning: numbers and comments from each connected channel,
    * anything overdue published or held back, and from the 25th, next month's calendar drafted for the desk.
    */
-  private async socialMorning() {
-    if (!this.office.hired("social-media-manager")) return;
-    try {
-      const pulled = await this.social().pull();
-      if (pulled.metrics) this.office.log("social-media-manager", `Updated the results of ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"} from the platforms.`);
-      this.office.publishDue(new Date().toISOString());
-      const month = nextMonth(this.day.slice(0, 7));
-      if (Number(this.day.slice(8, 10)) >= 25 && !this.office.books.calendars.some((c) => c.month === month && c.status !== "superseded")) this.office.draftCalendar(month);
-      await this.afterChange();
-    } catch (e) {
-      this.log("social morning failed", e);
-    }
+  private async socialMorning(): Promise<StepResult> {
+    const pulled = await this.social().pull();
+    if (pulled.metrics) this.office.log("social-media-manager", `Updated the results of ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"} from the platforms.`);
+    const published = await this.publishNow();
+    const month = nextMonth(this.day.slice(0, 7));
+    const draft = Number(this.day.slice(8, 10)) >= 25 && !this.office.books.calendars.some((c) => c.month === month && c.status !== "superseded");
+    if (draft) this.office.draftCalendar(month);
+    await this.afterChange();
+    const parts = [
+      pulled.metrics ? `results for ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"}` : "",
+      pulled.messages ? `${pulled.messages} new ${pulled.messages === 1 ? "comment or review" : "comments and reviews"}` : "",
+      published.counts?.published ? `${published.counts.published} overdue ${published.counts.published === 1 ? "post" : "posts"} published` : "",
+      draft ? "next month's calendar drafted for your desk" : "",
+    ].filter(Boolean);
+    return parts.length ? { outcome: published.outcome === "failed" || published.outcome === "partial" ? "partial" : "ok", summary: `${parts.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()), counts: { metrics: pulled.metrics, messages: pulled.messages, published: published.counts?.published ?? 0, calendar: draft ? 1 : 0 } } : { outcome: "nothing", summary: "Nothing new from the platforms, and no post was overdue.", counts: { metrics: 0, messages: 0, published: 0, calendar: 0 } };
   }
 }
 

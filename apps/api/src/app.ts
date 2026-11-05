@@ -1,5 +1,9 @@
 import {
   AcceptInvitation,
+  ACCOUNT_ROUTES,
+  ChatPost,
+  ConsentRequest,
+  RightsRequest,
   DeleteOffice,
   InviteRequest,
   type InviteResult,
@@ -15,6 +19,8 @@ import { Hono, type Context } from "hono";
 import { makeAuth, sendMail, verificationRequired } from "./auth";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "./caller";
 import type { Env } from "./env";
+import { AccountRecords } from "./account";
+import { type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { parseInbound } from "./mail";
 import { planMeta } from "./routing";
@@ -98,6 +104,41 @@ app.get("/media/:office/:id", async (c) => {
   return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream", "cache-control": "public, max-age=600", "x-content-type-options": "nosniff" } });
 });
 
+/* ---------- The website chat: public, on the business's own site; the key decides the office ---------- */
+
+const CHAT_CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400" };
+const WIDGET_KEY = /^w[a-z0-9]{8,40}$/;
+
+app.get("/w/:file", async (c) => {
+  const key = c.req.param("file").replace(/\.js$/, "");
+  if (!WIDGET_KEY.test(key) || !(await cp(c.env).routeFor("widget", key))) return c.text("// This chat is not switched on.", 404, { "content-type": "text/javascript" });
+  return c.body(widgetScript(key, new URL(c.req.url).origin, c.env.TURNSTILE_SITE_KEY ?? null), 200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=300" });
+});
+
+app.options("/api/chat/:key", (c) => c.body(null, 204, CHAT_CORS));
+
+app.get("/api/chat/:key", async (c) => {
+  const key = c.req.param("key");
+  const visitor = c.req.query("visitor") ?? "";
+  const officeId = WIDGET_KEY.test(key) ? await cp(c.env).routeFor("widget", key) : null;
+  if (!officeId || !ChatPost.shape.visitor.safeParse(visitor).success) return c.json(NOT_FOUND, 404, CHAT_CORS);
+  const res = await toOffice(c.env, internal("/internal/chat-messages", { visitor }), system(officeId));
+  return c.body(await res.text(), res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
+});
+
+app.post("/api/chat/:key", async (c) => {
+  const key = c.req.param("key");
+  const officeId = WIDGET_KEY.test(key) ? await cp(c.env).routeFor("widget", key) : null;
+  if (!officeId) return c.json(NOT_FOUND, 404, CHAT_CORS);
+  const parsed = ChatPost.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Write a message to send." }, 400, CHAT_CORS);
+  const ip = c.req.header("cf-connecting-ip") ?? null;
+  if (c.env.CHAT_LIMIT && !(await c.env.CHAT_LIMIT.limit({ key: `${key}:${ip ?? parsed.data.visitor}` })).success) return c.json({ error: "That is a lot of messages at once. Wait a minute and try again." }, 429, CHAT_CORS);
+  if (!(await turnstileOk(c.env.TURNSTILE_SECRET, parsed.data.turnstile, ip))) return c.json({ error: "Tick the box to show you are a person, then send again." }, 403, CHAT_CORS);
+  const res = await toOffice(c.env, internal("/internal/chat", { visitor: parsed.data.visitor, text: parsed.data.text, name: parsed.data.name ?? null }), system(officeId));
+  return c.body(await res.text(), res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
+});
+
 /* ---------- Everything else needs someone signed in ---------- */
 
 app.use("/api/*", async (c, next) => {
@@ -110,7 +151,44 @@ app.use("/api/*", async (c, next) => {
 
 app.get("/api/me", async (c) => {
   const user = c.get("user");
-  return c.json({ user, offices: await cp(c.env).officesOf(user.id), verificationRequired: verificationRequired(c.env) } satisfies Me);
+  const records = new AccountRecords(c.env.DB);
+  return c.json({
+    user,
+    offices: await cp(c.env).officesOf(user.id),
+    verificationRequired: verificationRequired(c.env),
+    consentNeeded: await records.consentNeeded(user.id),
+    deletionRequested: await records.deletionRequested(user.id),
+  } satisfies Me);
+});
+
+/* ---------- A person's own rights: what they accepted, a copy of their data, and deletion ---------- */
+
+app.post(ACCOUNT_ROUTES.consent, async (c) => {
+  const parsed = ConsentRequest.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Say which documents you accept." }, 400);
+  const country = (c.req.raw as { cf?: { country?: string } }).cf?.country ?? c.req.header("cf-ipcountry") ?? null;
+  const stale = await new AccountRecords(c.env.DB).accept(c.get("user").id, parsed.data.documents, country);
+  return stale ? c.json({ error: stale }, 409) : c.json({ ok: true });
+});
+
+app.get(ACCOUNT_ROUTES.accountExport, async (c) => {
+  const data = await new AccountRecords(c.env.DB).exportFor(c.get("user").id);
+  if (!data) return c.json(NOT_FOUND, 404);
+  return new Response(JSON.stringify(data, null, 2), { headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="my-account.json"', "cache-control": "no-store" } });
+});
+
+app.get(ACCOUNT_ROUTES.accountRequests, async (c) => c.json({ requests: await new AccountRecords(c.env.DB).requests(c.get("user").id) }));
+
+app.post(ACCOUNT_ROUTES.accountRequests, async (c) => {
+  const parsed = RightsRequest.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Invalid request" }, 400);
+  const r = await new AccountRecords(c.env.DB).requestDeletion(c.get("user"), parsed.data.note ?? null);
+  return "error" in r ? c.json(r, 409) : c.json(r, 201);
+});
+
+app.delete(`${ACCOUNT_ROUTES.accountRequests}/:id`, async (c) => {
+  const done = await new AccountRecords(c.env.DB).withdraw(c.get("user").id, c.req.param("id"));
+  return done ? c.json({ ok: true }) : c.json(NOT_FOUND, 404);
 });
 
 app.post("/api/offices", async (c) => {
@@ -332,7 +410,16 @@ app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 /** Mail to `<slug>@INGEST_DOMAIN`: the address alone says which office it is for; any other address is refused. */
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
-  const officeId = await cp(env).routeFor("email", message.to.trim().toLowerCase());
+  const to = message.to.trim().toLowerCase();
+  const support = await cp(env).routeFor("support_email", to);
+  if (support) {
+    const mail = await parseInbound(message.raw);
+    const body: SupportMail = { from: mail.from ?? message.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, inReplyTo: mail.inReplyTo };
+    const res = await toOffice(env, internal("/internal/support-email", body), system(support));
+    if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
+    return;
+  }
+  const officeId = await cp(env).routeFor("email", to);
   if (!officeId) {
     message.setReject("There is no office at this address.");
     return;
