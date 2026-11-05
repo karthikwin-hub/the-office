@@ -35,7 +35,7 @@ export class SocialHost {
     private readonly office: OfficeService,
     private readonly vault: TokenVault,
     private readonly adapters: Adapters,
-    private readonly opts: { base: string; mediaSecret: string | undefined; kv: Kv; now?: () => number },
+    private readonly opts: { base: string; officeId: string; mediaSecret: string | undefined; kv: Kv; now?: () => number },
   ) {}
 
   private now() {
@@ -111,7 +111,7 @@ export class SocialHost {
     let error: PlatformError;
     if ("a" in r) {
       try {
-        const media = this.opts.mediaSecret ? await signedMedia(this.opts.mediaSecret, this.opts.base, this.office.books.media.filter((m) => v.mediaIds.includes(m.id)), this.now()) : [];
+        const media = this.opts.mediaSecret ? await signedMedia(this.opts.mediaSecret, this.opts.base, this.opts.officeId, this.office.books.media.filter((m) => v.mediaIds.includes(m.id)), this.now()) : [];
         if (v.mediaIds.length && !media.length) throw new PlatformError("Pictures need SOCIAL_TOKEN_KEY set to make their links", "not_set_up");
         const done = await r.a.publish(r.t, v, media);
         delete retries[key];

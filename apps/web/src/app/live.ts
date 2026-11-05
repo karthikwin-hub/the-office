@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { officePath } from "../api/client";
 
 /**
  * The Office says "changed" over a WebSocket whenever the books move, and every
@@ -25,7 +26,7 @@ export function useLiveUpdates(enabled: boolean): "connected" | "polling" | "off
     };
     const connect = () => {
       if (stopped) return;
-      socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/live`);
+      socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${officePath("/api/live")}`);
       socket.onopen = () => {
         retry = 0;
         setState("connected");

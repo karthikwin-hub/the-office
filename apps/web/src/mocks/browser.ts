@@ -3,6 +3,7 @@ import { dispatch, mockConnect, OfficeService, runMockEffects } from "@office/en
 import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
 import { setupWorker } from "msw/browser";
+import { mockMe, mockOfficeAdmin } from "./office";
 import { mockWhatsApp } from "./whatsapp";
 
 const USERS: Record<Role, { name: string; email: string }> = {
@@ -70,6 +71,8 @@ const handler = http.all("/api/*", async ({ request }) => {
     const asset = getOffice().addMedia({ id: `media-u${Date.now().toString(36)}`, url: URL.createObjectURL(file), kind: "image", alt: String(form.get("alt") ?? ""), skuId: (form.get("skuId") as string | null) || null, rights: form.get("rights") === "generated" ? "generated" : "own", width: Number(form.get("width")) || null, height: Number(form.get("height")) || null });
     return HttpResponse.json(asset);
   }
+  if (url.pathname === "/api/me") return mockMe(role, USERS, getOffice());
+  if (url.pathname.startsWith("/api/office-admin")) return (await mockOfficeAdmin(request, url.pathname, role, getOffice(), USERS))!;
   if (url.pathname.startsWith("/api/whatsapp")) {
     const res = await mockWhatsApp(request, url.pathname, role, getOffice(), USERS[role]);
     if (res) {

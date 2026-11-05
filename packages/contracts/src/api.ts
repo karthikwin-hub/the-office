@@ -507,7 +507,7 @@ export const WhatsAppStatus = z.object({
 });
 export type WhatsAppStatus = z.infer<typeof WhatsAppStatus>;
 export const WhatsAppChange = z.object({ language: z.union([z.literal("auto"), WaLanguage]), digest: z.boolean() }).partial().strict();
-export const JoinCode = z.object({ code: z.string().regex(/^\d{4}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
+export const JoinCode = z.object({ code: z.string().regex(/^\d{6}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
 export type JoinCode = z.infer<typeof JoinCode>;
 /** The demo phone on the mock site: a typed message, or one of the sample voice notes. */
 export const WhatsAppDemoMessage = z.object({ text: z.string().max(2000).optional(), voice: z.string().optional() });
@@ -517,9 +517,67 @@ export type WhatsAppDemoReply = z.infer<typeof WhatsAppDemoReply>;
 export const Session = z.object({ user: z.object({ name: z.string(), email: z.string() }), role: Role, mode: z.enum(["mock", "live"]) });
 export type Session = z.infer<typeof Session>;
 
+/* ---------- Offices: one account, any number of businesses ---------- */
+
+export const OfficeStatus = z.enum(["active", "suspended", "deleting"]);
+export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus });
+export type OfficeSummary = z.infer<typeof OfficeSummary>;
+/** Who is signed in and which offices they can open. Nothing about any office's books. */
+export const Me = z.object({
+  user: z.object({ id: z.string(), name: z.string(), email: z.string(), emailVerified: z.boolean() }),
+  offices: z.array(OfficeSummary),
+  /** Opening an office or accepting an invitation needs a confirmed address. */
+  verificationRequired: z.boolean(),
+});
+export type Me = z.infer<typeof Me>;
+export const OpenOffice = z.object({ name: z.string().trim().min(2).max(80) });
+export const InvitationPeek = z.object({ officeName: z.string(), email: z.string(), role: Role });
+export type InvitationPeek = z.infer<typeof InvitationPeek>;
+export const AcceptInvitation = z.object({ token: z.string().min(20).max(100) });
+
+/** The owner's view of the office as an account: its people, invitations, address and history. */
+export const OfficeAdmin = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: OfficeStatus,
+  ingestEmail: z.string(),
+  /** When a deleted office is purged for good, if it is being deleted. */
+  purgeAt: IsoDateTime.nullable(),
+  members: z.array(z.object({ userId: z.string(), name: z.string(), email: z.string(), role: Role, since: IsoDateTime, you: z.boolean() })),
+  invitations: z.array(z.object({ email: z.string(), role: Role, invitedBy: z.string(), expiresAt: IsoDateTime })),
+  audit: z.array(z.object({ actor: z.string(), action: z.string(), detail: z.string().nullable(), at: IsoDateTime })),
+});
+export type OfficeAdmin = z.infer<typeof OfficeAdmin>;
+export const OfficeRename = z.object({ name: z.string().trim().min(2).max(80) });
+export const InviteRequest = z.object({ email: z.string().trim().email().max(200), role: Role.default("accountant") });
+/** The link works once, for 14 days; the owner can pass it on themselves if the email does not arrive. */
+export const InviteResult = z.object({ email: z.string(), link: z.string(), emailed: z.boolean(), expiresAt: IsoDateTime });
+export type InviteResult = z.infer<typeof InviteResult>;
+export const RoleChange = z.object({ role: Role });
+export const TransferRequest = z.object({ userId: z.string().min(1) });
+/** Deleting asks for the business name, typed out. */
+export const DeleteOffice = z.object({ confirm: z.string() });
+
 /* ---------- Routes ---------- */
 
+/** Routes for the account, outside any office. */
+export const ACCOUNT_ROUTES = {
+  me: "/api/me",
+  offices: "/api/offices",
+  invitation: (token: string) => `/api/invitations/${encodeURIComponent(token)}`,
+  acceptInvitation: "/api/invitations/accept",
+} as const;
+
+/** Every route below is inside one office: the app sends it as `/api/o/<office id>/...`. */
 export const ROUTES = {
+  officeAdmin: "/api/office-admin",
+  officeRestore: "/api/office-admin/restore",
+  officeInvitations: "/api/office-admin/invitations",
+  officeInvitation: (email: string) => `/api/office-admin/invitations/${encodeURIComponent(email)}`,
+  officeMember: (userId: string) => `/api/office-admin/members/${encodeURIComponent(userId)}`,
+  officeTransfer: "/api/office-admin/transfer",
+  officeLeave: "/api/office-admin/leave",
+  officeExport: "/api/office-admin/export",
   session: "/api/session",
   office: "/api/office",
   agent: (id: string) => `/api/agents/${id}`,

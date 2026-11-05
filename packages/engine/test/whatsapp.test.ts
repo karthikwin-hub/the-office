@@ -34,7 +34,11 @@ describe("WhatsApp: reading what people send", () => {
     expect(parseCommand("Good morning")).toEqual({ kind: "desk" });
     expect(parseCommand("नमस्ते")).toEqual({ kind: "desk" });
     expect(parseCommand("help")).toEqual({ kind: "help" });
-    expect(parseCommand("JOIN 4821")).toEqual({ kind: "join", code: "4821" });
+    expect(parseCommand("JOIN 482193")).toEqual({ kind: "join", code: "482193" });
+    expect(parseCommand("JOIN 4821").kind).toBe("ask");
+    expect(parseCommand("switch")).toEqual({ kind: "switch", n: null });
+    expect(parseCommand("Switch 2")).toEqual({ kind: "switch", n: 2 });
+    expect(parseCommand("बदलो 1")).toEqual({ kind: "switch", n: 1 });
     expect(parseCommand("1 yes, 2 later 3 no")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "later" }, { n: 3, action: "reject" }] });
     expect(parseCommand("1 haan 2 nahi 3 baad mein")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "reject" }, { n: 3, action: "later" }] });
     expect(parseCommand("१ हाँ २ नहीं")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "reject" }] });

@@ -39,15 +39,24 @@ async function signedIn(email, password, name) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
+  const picker = page.locator(".office-choice").first();
+  await Promise.race([page.locator(".topbar-business").waitFor(), picker.waitFor()]);
+  if (await picker.isVisible()) await picker.click();
   await page.locator(".topbar-business").waitFor();
   return page;
 }
 
 const owner = await signedIn(ownerEmail, ownerPassword, "owner");
+/** Every office request names the office: `/api/desk` is `/api/o/<office>/desk`. */
+const officeId = await owner.evaluate(() => localStorage.getItem("office.active"));
+check(Boolean(officeId), `the owner is in office ${officeId}`);
+const o = (path) => `/api/o/${officeId}/${path.replace(/^\/api\//, "")}`;
+const other = await fetch(`${base}${o("/api/desk")}`);
+check(other.status === 401, `the office refuses a request with no session (${other.status})`);
 check(await owner.getByRole("button", { name: "Sign out" }).isVisible(), "owner is signed in");
 
 // The background reader takes emailed PDFs as soon as the office opens.
-const unread = async (page) => page.evaluate(async () => (await (await fetch("/api/documents/unread")).json()).length);
+const unread = async (page) => page.evaluate(async (path) => (await (await fetch(path)).json()).length, o("/api/documents/unread"));
 let left = await unread(owner);
 for (let i = 0; i < 20 && left > 0; i++) {
   await owner.waitForTimeout(1000);
@@ -76,8 +85,9 @@ await acct.screenshot({ path: join(out, "desk-accountant.png") });
 const bill = owner.locator(".approval:not(.approval-decided)").filter({ hasText: /post bill|send a reminder/i }).first();
 const title = (await bill.locator("h3, h2").first().textContent())?.trim() ?? "";
 await bill.locator(".btn-primary").click();
-await owner.waitForTimeout(800);
-check(!(await owner.getByText(title, { exact: true }).isVisible()), `owner approved "${title}"`);
+const pending = owner.locator(".approval:not(.approval-decided)").filter({ has: owner.getByText(title, { exact: true }) });
+for (let i = 0; i < 10 && (await pending.count()) > 0; i++) await owner.waitForTimeout(300);
+check((await pending.count()) === 0, `owner approved "${title}"`);
 let gone = false;
 for (let i = 0; i < 10 && !gone; i++) {
   await acct.waitForTimeout(500);
@@ -91,31 +101,35 @@ await owner.locator('input[type="file"]').setInputFiles(join(resolve(import.meta
 const setAside = owner.locator(".intake").getByText(/already recorded|set aside/i).first();
 await setAside.waitFor({ timeout: 20_000 }).catch(() => undefined);
 check(await setAside.isVisible(), "an uploaded copy of a recorded bill is set aside");
-const stored = await owner.evaluate(async () => {
-  const docs = await (await fetch("/api/documents")).json();
-  const up = docs.find((d) => d.channel === "upload" && d.file.startsWith("/api/files/"));
+const stored = await owner.evaluate(async ([path, office]) => {
+  const docs = await (await fetch(path)).json();
+  const up = docs.find((d) => d.channel === "upload" && d.file.startsWith(`/api/o/${office}/files/`));
   return up ? (await fetch(up.file)).headers.get("content-type") : null;
-});
+}, [o("/api/documents"), officeId]);
 check(stored === "application/pdf", `the upload is served back from R2 (${stored})`);
 await owner.screenshot({ path: join(out, "room-accountant-upload.png") });
 
-const session = await acct.evaluate(async () => (await fetch("/api/session")).json());
+const session = await acct.evaluate(async (path) => (await fetch(path)).json(), o("/api/session"));
 check(session.role === "accountant" && session.mode === "live", "accountant session is live and read-only");
-const spoof = await acct.evaluate(async () => (await fetch("/api/hiring/marketer", { method: "POST", headers: { "content-type": "application/json", "x-office-as": "owner" }, body: '{"hired":true}' })).status);
+const spoof = await acct.evaluate(async (path) => (await fetch(path, { method: "POST", headers: { "content-type": "application/json", "x-office-as": "owner" }, body: '{"hired":true}' })).status, o("/api/hiring/marketer"));
 check(spoof === 403, `accountant cannot hire, even claiming to be the owner (${spoof})`);
+const elsewhere = await acct.evaluate(async () => (await fetch("/api/o/off_aaaaaaaaaaaaaaaa/desk")).status);
+check(elsewhere === 404, `an office the accountant is not in does not exist for them (${elsewhere})`);
+const old = await owner.evaluate(async () => (await fetch("/api/desk")).status);
+check(old === 404, `the old single-office paths are gone (${old})`);
 
 // Social media: demo channels without a stored sign-in post by hand, and nothing reaches the Office unsigned.
-const social = await owner.evaluate(async () => (await fetch("/api/reports/social")).json());
+const social = await owner.evaluate(async (path) => (await fetch(path)).json(), o("/api/reports/social"));
 check(social.channels.every((c) => c.mode === "manual" || c.connectedAt), "channels without a stored sign-in are posted by hand");
 const unsigned = await fetch(`${base}/api/hooks/meta`, { method: "POST", headers: { "content-type": "application/json" }, body: '{"object":"instagram","entry":[]}' });
 check(unsigned.status === 401, `an unsigned Meta webhook is refused (${unsigned.status})`);
 const handshake = await fetch(`${base}/api/hooks/meta?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=1`);
 check(handshake.status === 403, `a webhook handshake with the wrong token is refused (${handshake.status})`);
-const media = await fetch(`${base}/media/media-u1?exp=9999999999&sig=forged`);
+const media = await fetch(`${base}/media/${officeId}/media-u1?exp=9999999999&sig=forged`);
 check(media.status === 404, `a forged media link finds nothing (${media.status})`);
-const acctConnect = await acct.evaluate(async () => (await fetch("/api/channels/instagram/connect", { redirect: "manual" })).status);
+const acctConnect = await acct.evaluate(async (path) => (await fetch(path, { redirect: "manual" })).status, o("/api/channels/instagram/connect"));
 check(acctConnect === 403, `the accountant cannot connect a channel (${acctConnect})`);
-const acctVoice = await acct.evaluate(async () => (await fetch("/api/social/voice", { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" })).status);
+const acctVoice = await acct.evaluate(async (path) => (await fetch(path, { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" })).status, o("/api/social/voice"));
 check(acctVoice === 403, `the accountant cannot change the brand voice (${acctVoice})`);
 
 await owner.goto(`${base}/rooms/social-media-manager`);
@@ -126,16 +140,16 @@ await owner.screenshot({ path: join(out, "room-social-media-manager.png"), fullP
 const manual = social.posts.flatMap((p) => p.variants.filter((v) => v.status === "scheduled" && social.channels.find((c) => c.id === v.channelId)?.mode === "manual").map((v) => [p.id, v.channelId]))[0];
 if (manual) {
   const [postId, channelId] = manual;
-  const pack = await owner.evaluate(async ([p, c]) => (await fetch(`/api/social/posts/${p}/variants/${c}/pack`)).json(), manual);
+  const pack = await owner.evaluate(async (path) => (await fetch(path)).json(), o(`/api/social/posts/${postId}/variants/${channelId}/pack`));
   check(pack.text?.length > 0 && pack.steps?.length > 0, `a publishing pack is ready for ${channelId}`);
   const posted = await owner.evaluate(
-    async ([p, c]) => (await fetch(`/api/social/posts/${p}/variants/${c}/posted`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: `https://example.com/e2e/${p}/${c}` }) })).json(),
-    manual,
+    async ([path, url]) => (await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) })).json(),
+    [o(`/api/social/posts/${postId}/variants/${channelId}/posted`), `https://example.com/e2e/${postId}/${channelId}`],
   );
   check(posted.variants?.find((v) => v.channelId === channelId)?.status === "published", `Mark as posted records ${postId} on ${channelId}`);
 }
 
-await owner.goto(`${base}/api/channels/instagram/connect`);
+await owner.goto(`${base}${o("/api/channels/instagram/connect")}`);
 await owner.waitForURL(/\/settings/);
 check(/connect_error=/.test(owner.url()), "connecting without the platform's keys comes back with a reason");
 await owner.locator("#channels").waitFor();

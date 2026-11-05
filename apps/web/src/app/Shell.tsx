@@ -1,26 +1,35 @@
 import type { AskResponse } from "@office/contracts";
 import { dateLabel } from "@office/engine";
 import { CoveringNote, FigureContext, SourceViewer } from "@office/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { account, ApiError, isLive, viewingAs } from "../api/client";
 import { q, useAsk } from "../api/queries";
 import { useBackgroundReader } from "../intake/intake";
 import { useApplySkin } from "./prefs";
-import { SignIn } from "./SignIn";
+import { OfficeGate, OfficeSwitcher } from "./Offices";
 import { useLiveUpdates } from "./live";
 
-/** In the live office nothing loads until someone has signed in. */
+/** In the live app nothing of an office loads until someone has signed in and chosen an office they are in. */
 export function Shell() {
+  if (!isLive) return <OfficeShell />;
+  return (
+    <OfficeGate>
+      <SessionGate />
+    </OfficeGate>
+  );
+}
+
+function SessionGate() {
   const session = useQuery(q.session());
-  if (isLive && session.error instanceof ApiError && session.error.status === 401) return <SignIn />;
-  if (isLive && !session.data)
+  if (!session.data)
     return session.error ? (
       <main className="signin">
         <p className="form-error" role="alert">
-          The office could not be reached. {session.error.message}
+          The office could not be reached. {session.error instanceof ApiError && session.error.status === 404 ? "You are not in this office any more." : session.error.message}
         </p>
+        <a href="/">Go to my offices</a>
       </main>
     ) : null;
   return <OfficeShell />;
@@ -29,14 +38,13 @@ export function Shell() {
 function OfficeShell() {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const office = useQuery(q.office());
   const session = useQuery(q.session());
   const role = viewingAs();
   const live = useLiveUpdates(isLive);
   useBackgroundReader(isLive);
   useApplySkin();
-  const signOut = useMutation({ mutationFn: account.signOut, onSettled: () => qc.resetQueries() });
+  const signOut = useMutation({ mutationFn: account.signOut, onSettled: () => location.assign("/") });
 
   const figures = useMemo(
     () => ({
@@ -52,9 +60,7 @@ function OfficeShell() {
         Skip to content
       </a>
       <header className="topbar">
-        <Link to="/" className="topbar-business">
-          {office.data?.business.name ?? "The Office"}
-        </Link>
+        <OfficeSwitcher fallback={office.data?.business.name ?? ""} />
         <nav className="topbar-nav" aria-label="Spaces">
           <Link to="/" activeOptions={{ exact: true }} activeProps={{ "aria-current": "page" }}>
             Floor

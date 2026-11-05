@@ -5,21 +5,22 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 const STATE_TTL_MS = 10 * 60_000;
 
-type State = { p: Platform; n: string; exp: number; by: string };
+type State = { p: Platform; n: string; exp: number; by: string; o: string };
 
 /**
- * The `state` sent to a platform's sign-in page: who started it, for which platform, until when, signed.
+ * The `state` sent to a platform's sign-in page: who started it, in which office, for which platform,
+ * until when, signed. The callback has one address for every office, so the office comes from here.
  * The PKCE verifier is derived from it, so nothing has to be stored while the owner is away signing in.
  */
-export async function newState(secret: string, platform: Platform, by: string, now = Date.now()): Promise<{ state: string; verifier: string }> {
-  const body: State = { p: platform, n: b64url(crypto.getRandomValues(new Uint8Array(16))), exp: now + STATE_TTL_MS, by };
+export async function newState(secret: string, platform: Platform, by: string, officeId: string, now = Date.now()): Promise<{ state: string; verifier: string }> {
+  const body: State = { p: platform, n: b64url(crypto.getRandomValues(new Uint8Array(16))), exp: now + STATE_TTL_MS, by, o: officeId };
   const payload = b64url(enc.encode(JSON.stringify(body)));
   const key = await subkey(secret, "state", "HMAC");
   const state = `${payload}.${b64url(await crypto.subtle.sign("HMAC", key, enc.encode(payload)))}`;
   return { state, verifier: await verifierFor(key, body.n) };
 }
 
-export async function readState(secret: string, platform: string, state: string | null, now = Date.now()): Promise<{ by: string; verifier: string } | null> {
+export async function readState(secret: string, platform: string, state: string | null, now = Date.now()): Promise<{ by: string; verifier: string; officeId: string } | null> {
   const [payload, sig] = (state ?? "").split(".");
   if (!payload || !sig) return null;
   const key = await subkey(secret, "state", "HMAC");
@@ -31,8 +32,8 @@ export async function readState(secret: string, platform: string, state: string 
   }
   if (!ok) return null;
   const body = JSON.parse(dec.decode(fromB64url(payload))) as State;
-  if (body.p !== platform || body.exp < now) return null;
-  return { by: body.by, verifier: await verifierFor(key, body.n) };
+  if (body.p !== platform || body.exp < now || typeof body.o !== "string") return null;
+  return { by: body.by, verifier: await verifierFor(key, body.n), officeId: body.o };
 }
 
 async function verifierFor(key: CryptoKey, nonce: string): Promise<string> {

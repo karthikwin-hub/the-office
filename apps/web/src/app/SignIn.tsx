@@ -1,18 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { account } from "../api/client";
 
-type Mode = "sign-in" | "join" | "open";
+type Mode = "sign-in" | "sign-up";
 
 /**
- * The front door. The first person in opens the office and becomes its owner;
- * after that, only people the owner has invited can join.
+ * The front door. Anyone can make an account; an account on its own sees nothing.
+ * It opens an office of its own, or joins one from an invitation link.
  */
-export function SignIn() {
+export function SignIn({ invited }: { invited: boolean }) {
   const qc = useQueryClient();
-  const status = useQuery({ queryKey: ["auth-status"], queryFn: account.status, retry: false });
-  const [chosen, setChosen] = useState<Mode | null>(null);
-  const mode: Mode = chosen ?? (status.data && !status.data.hasOwner ? "open" : "sign-in");
+  const [mode, setMode] = useState<Mode>(invited ? "sign-up" : "sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,13 +24,12 @@ export function SignIn() {
     submit.mutate();
   };
 
-  const heading = mode === "open" ? "Open your office" : mode === "join" ? "Join the office" : "Sign in";
-  const lede =
-    mode === "open"
-      ? "You are the first one in, so this account will own the office: it approves the team's work, hires and changes settings."
-      : mode === "join"
-        ? "Use the email address the owner invited. Accountants can read everything, download returns and answer the Auditor."
-        : "Welcome back.";
+  const heading = mode === "sign-in" ? "Sign in" : invited ? "Join the office" : "Make an account";
+  const lede = invited
+    ? "You were invited to an office. Sign in, or make an account with the address the invitation went to."
+    : mode === "sign-in"
+      ? "Welcome back."
+      : "Then open your office, or join one from an invitation link. Each business's books are seen only by the people in it.";
 
   return (
     <main className="signin" id="main">
@@ -41,7 +38,7 @@ export function SignIn() {
         <h1>{heading}</h1>
         <p className="muted">{lede}</p>
         <form onSubmit={onSubmit} className="signin-form">
-          {mode !== "sign-in" ? (
+          {mode === "sign-up" ? (
             <div className="field">
               <label htmlFor="name">Your name</label>
               <input id="name" className="input" autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
@@ -63,7 +60,7 @@ export function SignIn() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            {mode !== "sign-in" ? <span className="muted">At least 10 characters.</span> : null}
+            {mode === "sign-up" ? <span className="muted">At least 10 characters.</span> : null}
           </div>
           {submit.error ? (
             <p className="form-error" role="alert">
@@ -71,28 +68,26 @@ export function SignIn() {
             </p>
           ) : null}
           <button type="submit" className="btn btn-primary" disabled={submit.isPending}>
-            {submit.isPending ? "One moment" : mode === "open" ? "Open the office" : mode === "join" ? "Join" : "Sign in"}
+            {submit.isPending ? "One moment" : mode === "sign-in" ? "Sign in" : "Make the account"}
           </button>
         </form>
-        {status.data?.hasOwner ? (
-          <p className="signin-switch">
-            {mode === "sign-in" ? (
-              <>
-                Invited by the owner?{" "}
-                <button type="button" className="link-button" onClick={() => setChosen("join")}>
-                  Join the office
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button type="button" className="link-button" onClick={() => setChosen("sign-in")}>
-                  Sign in
-                </button>
-              </>
-            )}
-          </p>
-        ) : null}
+        <p className="signin-switch">
+          {mode === "sign-in" ? (
+            <>
+              New here?{" "}
+              <button type="button" className="link-button" onClick={() => setMode("sign-up")}>
+                Make an account
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button type="button" className="link-button" onClick={() => setMode("sign-in")}>
+                Sign in
+              </button>
+            </>
+          )}
+        </p>
       </div>
     </main>
   );

@@ -52,6 +52,37 @@ type WaRaw = {
   audio?: { id?: string; mime_type?: string; voice?: boolean };
 };
 
+/**
+ * One delivery can carry entries for several pages and numbers, and so for several offices.
+ * Each piece is one entry as a delivery of its own, with the ids that say whose it is:
+ * the page or account id, and for WhatsApp the receiving phone number's id.
+ */
+export type MetaPiece = { body: Delivery; object: string; entryId: string; phoneNumberId: string | null };
+export function metaPieces(body: unknown): MetaPiece[] {
+  const d = (body ?? {}) as Delivery;
+  const object = str(d.object);
+  return (Array.isArray(d.entry) ? d.entry : []).map((e) => {
+    const phone = (e.changes ?? []).map((c) => str((c.value?.metadata as { phone_number_id?: unknown } | undefined)?.phone_number_id)).find(Boolean) ?? null;
+    return { body: { object: d.object, entry: [e] }, object, entryId: str(e.id), phoneNumberId: phone };
+  });
+}
+
+/** A WhatsApp piece cut down to one message (and its sender's contact), so each sender's message goes only to their office. */
+export function waMessagePieces(piece: MetaPiece): { from: string; body: Delivery }[] {
+  const out: { from: string; body: Delivery }[] = [];
+  for (const e of piece.body.entry ?? [])
+    for (const c of e.changes ?? []) {
+      if (c.field !== "messages") continue;
+      const v = c.value ?? {};
+      for (const m of (v.messages ?? []) as WaRaw[]) {
+        if (!m.from) continue;
+        const contacts = ((v.contacts ?? []) as { wa_id?: string }[]).filter((x) => x.wa_id === m.from);
+        out.push({ from: m.from, body: { object: piece.body.object, entry: [{ ...e, changes: [{ field: c.field, value: { ...v, messages: [m], contacts } }] }] } });
+      }
+    }
+  return out;
+}
+
 /** Every WhatsApp message in a delivery, with its photo, PDF or voice note if it has one. */
 export function parseWhatsAppMessages(body: unknown, now = Date.now()): WaIncoming[] {
   const d = body as Delivery;

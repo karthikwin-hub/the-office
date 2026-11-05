@@ -3,7 +3,7 @@ import { readTextLayer } from "@office/engine";
 import { loadPdfJs } from "@office/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { api, isLive } from "../api/client";
+import { api, isLive, officePath } from "../api/client";
 
 /**
  * The browser reads each PDF's text layer before anything is sent, so the
@@ -54,7 +54,7 @@ export async function uploadDocument(file: File): Promise<IngestResult> {
 
 /** Reads a document already in the office, such as a PDF that arrived by email. */
 export async function readStored(doc: Document): Promise<IngestResult> {
-  const data = await fetch(doc.file, { credentials: "include" }).then((r) => {
+  const data = await fetch(officePath(doc.file), { credentials: "include" }).then((r) => {
     if (!r.ok) throw new Error(`Could not open ${doc.id}`);
     return r.arrayBuffer();
   });
@@ -92,7 +92,7 @@ export function useBackgroundReader(enabled: boolean) {
       busy.current = true;
       try {
         const unread = await api.unread();
-        for (const doc of unread.filter((d) => d.file.endsWith(".pdf") || d.file.startsWith("/api/files/"))) await readStored(doc).catch(() => undefined);
+        for (const doc of unread.filter((d) => d.file.endsWith(".pdf") || /^\/api\/(o\/[^/]+\/)?files\//.test(d.file))) await readStored(doc).catch(() => undefined);
         if (unread.length) await qc.invalidateQueries({ predicate: (x) => touchesBooks(x.queryKey) });
       } finally {
         busy.current = false;

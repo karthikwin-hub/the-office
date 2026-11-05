@@ -1,10 +1,9 @@
-import type { Role } from "@office/contracts";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
-import { count, eq, isNull, and } from "drizzle-orm";
+import { EmailMessage } from "cloudflare:email";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "./env";
+import { plainMessage } from "./mail";
 import * as schema from "./schema";
 
 /**
@@ -38,6 +37,25 @@ export async function verifyPassword({ hash, password }: { hash: string; passwor
   return diff === 0;
 }
 
+/** People confirm their address before they open an office or accept an invitation, unless this is a local test. */
+export const verificationRequired = (env: Pick<Env, "EMAIL_VERIFICATION">) => env.EMAIL_VERIFICATION !== "off";
+
+/** One plain message from the platform's address; false when mail is not set up here. */
+export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM">, to: string, subject: string, body: string, fromName = "The Office"): Promise<boolean> {
+  if (!env.MAILER) return false;
+  try {
+    await env.MAILER.send(new EmailMessage(env.MAIL_FROM, to, plainMessage({ fromName, from: env.MAIL_FROM, to, subject, body })));
+    return true;
+  } catch (e) {
+    console.error("mail not sent", e instanceof Error ? e.message : "unknown error");
+    return false;
+  }
+}
+
+/**
+ * Anyone may make an account. An account on its own sees nothing: it opens an office of its
+ * own, or joins one through an invitation link. Which offices it is in lives in `membership`.
+ */
 export function makeAuth(env: Env) {
   const db = drizzle(env.DB, { schema });
   return betterAuth({
@@ -47,43 +65,18 @@ export function makeAuth(env: Env) {
     trustedOrigins: env.BETTER_AUTH_URL ? [env.BETTER_AUTH_URL] : [],
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
     emailAndPassword: { enabled: true, minPasswordLength: 10, password: { hash: hashPassword, verify: verifyPassword } },
-    user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
-    session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
-    databaseHooks: {
-      user: {
-        create: {
-          /** The first person to sign up owns the office; after that only invited addresses may join. */
-          before: async (u) => {
-            const [{ n }] = (await db.select({ n: count() }).from(schema.user)) as [{ n: number }];
-            if (n === 0) return { data: { ...u, role: "owner" satisfies Role } };
-            const email = u.email.toLowerCase();
-            const invite = await db.query.invitation.findFirst({ where: and(eq(schema.invitation.email, email), isNull(schema.invitation.acceptedAt)) });
-            if (!invite) throw new APIError("FORBIDDEN", { message: "This office is invitation only. Ask the owner to invite this email address." });
-            return { data: { ...u, role: invite.role } };
-          },
-          after: async (u) => {
-            await db.update(schema.invitation).set({ acceptedAt: new Date() }).where(eq(schema.invitation.email, u.email.toLowerCase()));
-          },
-        },
+    emailVerification: {
+      sendOnSignUp: verificationRequired(env),
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendMail(env, user.email, "Confirm your email for The Office", [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join("\n"));
       },
     },
+    user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
+    // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
+    session: { cookieCache: { enabled: false } },
+    rateLimit: { enabled: env.DATA_MODE === "live", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 } } },
   });
 }
 
 export type Auth = ReturnType<typeof makeAuth>;
-export type Member = { id: string; name: string; email: string; role: Role };
-
-export async function members(env: Env): Promise<{ users: Member[]; invited: { email: string; role: Role }[] }> {
-  const db = drizzle(env.DB, { schema });
-  const users = await db.select({ id: schema.user.id, name: schema.user.name, email: schema.user.email, role: schema.user.role }).from(schema.user);
-  const invited = await db.select({ email: schema.invitation.email, role: schema.invitation.role }).from(schema.invitation).where(isNull(schema.invitation.acceptedAt));
-  return { users, invited };
-}
-
-export async function invite(env: Env, email: string, by: string): Promise<void> {
-  const db = drizzle(env.DB, { schema });
-  await db
-    .insert(schema.invitation)
-    .values({ email: email.toLowerCase(), role: "accountant", invitedBy: by, createdAt: new Date() })
-    .onConflictDoUpdate({ target: schema.invitation.email, set: { invitedBy: by, createdAt: new Date(), acceptedAt: null } });
-}

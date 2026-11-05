@@ -16,11 +16,13 @@
   // INSTAGRAM_APP_ID/SECRET, THREADS_APP_ID/SECRET, WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE, LINKEDIN_CLIENT_ID/SECRET, X_CLIENT_ID/SECRET.
   "vars": {
     "DATA_MODE": "live",
-    "OFFICE_ID": "kaveri-electricals",
     "MAIL_FROM": "office@the-office.example",
-    "INGEST_EMAIL": "bills@the-office.example",
+    // Each office gets <slug>@INGEST_DOMAIN; an Email Routing catch-all on this domain sends its mail to the Worker.
+    "INGEST_DOMAIN": "in.the-office.example",
     "BETTER_AUTH_URL": "https://the-office.the-office-agents.workers.dev"
   },
+  // Nightly, offices deleted more than 30 days ago are purged.
+  "triggers": { "crons": ["30 21 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

@@ -18,6 +18,12 @@ import {
   type PeopleReport,
   type Prefs,
   ROUTES,
+  ACCOUNT_ROUTES,
+  type InvitationPeek,
+  type InviteResult,
+  type Me,
+  type OfficeAdmin,
+  type OfficeSummary,
   type SalesReport,
   type SalesTeamReport,
   type Session,
@@ -51,6 +57,23 @@ export class ApiError extends Error {
 export const isLive = import.meta.env.VITE_DATA !== "mock" && import.meta.env.VITE_DATA !== "hybrid";
 
 let liveRole: Session["role"] | null = null;
+let activeOffice: string | null = null;
+
+/** Which office every request below goes to. Set once, before the office's screens load; switching reloads the page. */
+export function setActiveOffice(id: string | null) {
+  activeOffice = id;
+}
+
+/**
+ * The one place an office's requests get its prefix: `/api/desk` becomes `/api/o/<office>/desk`.
+ * Account routes, sign-in and paths that already name an office pass through. Mockups have one office and no prefix.
+ */
+const ACCOUNT_PATH = /^\/api\/(o\/|auth\/|me$|offices$|invitations(\/|$))/;
+
+export function officePath(path: string): string {
+  if (!isLive || !activeOffice || !path.startsWith("/api/") || ACCOUNT_PATH.test(path.replace(/\?.*$/, ""))) return path;
+  return `/api/o/${activeOffice}/${path.slice("/api/".length)}`;
+}
 
 /** The live office takes the role from the signed-in account; in mockups, `?as=accountant` previews the office as the accountant sees it. */
 export function viewingAs(): "owner" | "accountant" {
@@ -63,7 +86,7 @@ export function viewingAs(): "owner" | "accountant" {
 async function call<T>(path: string, init?: { method?: string; body?: unknown; query?: Record<string, string | undefined> }): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(init?.query ?? {})) if (v) qs.set(k, v);
-  const res = await fetch(qs.size ? `${path}?${qs}` : path, {
+  const res = await fetch(qs.size ? `${officePath(path)}?${qs}` : officePath(path), {
     method: init?.method ?? "GET",
     headers: { "content-type": "application/json", "x-office-as": viewingAs() },
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
@@ -84,12 +107,32 @@ async function auth(path: string, body?: unknown): Promise<void> {
   }
 }
 
+/** The account, outside any office: who is signed in, their offices, opening one, invitations. */
 export const account = {
-  status: () => call<{ hasOwner: boolean }>("/api/auth-status"),
+  me: () => call<Me>(ACCOUNT_ROUTES.me),
   signIn: (email: string, password: string) => auth("sign-in/email", { email, password, rememberMe: true }),
-  signUp: (name: string, email: string, password: string) => auth("sign-up/email", { name, email, password }),
+  signUp: (name: string, email: string, password: string) => auth("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
   signOut: () => auth("sign-out"),
-  invite: (email: string) => call<{ invited: string }>("/api/invites", { method: "POST", body: { email } }),
+  resendVerification: (email: string) => auth("send-verification-email", { email, callbackURL: location.pathname + location.search }),
+  openOffice: (name: string) => call<OfficeSummary>(ACCOUNT_ROUTES.offices, { method: "POST", body: { name } }),
+  peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.invitation(token)),
+  restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),
+  acceptInvitation: (token: string) => call<{ officeId: string; role: Session["role"] }>(ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: { token } }),
+};
+
+/** The office as an account: its name, people and invitations, export and deletion. */
+export const officeAdmin = {
+  get: () => call<OfficeAdmin>(ROUTES.officeAdmin),
+  rename: (name: string) => call<{ ok: true }>(ROUTES.officeAdmin, { method: "PATCH", body: { name } }),
+  invite: (email: string, role: Session["role"]) => call<InviteResult>(ROUTES.officeInvitations, { method: "POST", body: { email, role } }),
+  revoke: (email: string) => call<{ ok: true }>(ROUTES.officeInvitation(email), { method: "DELETE" }),
+  setRole: (userId: string, role: Session["role"]) => call<{ ok: true }>(ROUTES.officeMember(userId), { method: "PUT", body: { role } }),
+  remove: (userId: string) => call<{ ok: true }>(ROUTES.officeMember(userId), { method: "DELETE" }),
+  transfer: (userId: string) => call<{ ok: true }>(ROUTES.officeTransfer, { method: "POST", body: { userId } }),
+  leave: () => call<{ ok: true }>(ROUTES.officeLeave, { method: "POST" }),
+  deleteOffice: (confirm: string) => call<{ ok: true; purgeAt: string }>(ROUTES.officeAdmin, { method: "DELETE", body: { confirm } }),
+  restore: () => call<{ ok: true }>(ROUTES.officeRestore, { method: "POST" }),
+  exportAll: () => download(ROUTES.officeExport, "office-export.zip"),
 };
 
 export const api = {
@@ -120,7 +163,7 @@ export const api = {
   readDocument: (id: string, items: TextItem[]) => call<IngestResult>(ROUTES.readDocument(id), { method: "POST", body: { items } }),
   /** A page with no text, pictured in the browser, for the vision model. Live office only. */
   scanDocument: async (id: string, image: Blob): Promise<IngestResult> => {
-    const res = await fetch(`/api/documents/${encodeURIComponent(id)}/scan`, { method: "POST", body: image, headers: { "content-type": image.type }, credentials: "include" });
+    const res = await fetch(officePath(`/api/documents/${encodeURIComponent(id)}/scan`), { method: "POST", body: image, headers: { "content-type": image.type }, credentials: "include" });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(res.status, err.error ?? res.statusText);
@@ -128,7 +171,7 @@ export const api = {
     return res.json() as Promise<IngestResult>;
   },
   upload: async (form: FormData): Promise<IngestResult> => {
-    const res = await fetch(ROUTES.documents, { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    const res = await fetch(officePath(ROUTES.documents), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(res.status, err.error ?? res.statusText);
@@ -159,13 +202,13 @@ export const api = {
   /** Live: the platform's sign-in page, and back to Settings. Mockups: connects at once. */
   connectChannel: async (platform: string): Promise<Channel | null> => {
     if (isLive) {
-      location.assign(ROUTES.socialConnect(platform));
+      location.assign(officePath(ROUTES.socialConnect(platform)));
       return null;
     }
     return call<Channel>(ROUTES.socialConnect(platform), { method: "POST" });
   },
   uploadMedia: async (form: FormData): Promise<MediaAsset> => {
-    const res = await fetch(ROUTES.socialMedia, { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    const res = await fetch(officePath(ROUTES.socialMedia), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(res.status, err.error ?? res.statusText);
@@ -179,7 +222,7 @@ export const api = {
  * skip the role header, and in mockups the service worker never sees navigations.
  */
 export async function download(path: string, fallbackName: string): Promise<void> {
-  const res = await fetch(path, { headers: { "x-office-as": viewingAs() }, credentials: "include" });
+  const res = await fetch(officePath(path), { headers: { "x-office-as": viewingAs() }, credentials: "include" });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string };
     throw new ApiError(res.status, err.error ?? res.statusText);

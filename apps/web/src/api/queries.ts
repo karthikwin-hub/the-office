@@ -1,8 +1,10 @@
 import type { Decision, TrustLevel } from "@office/contracts";
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, isLive } from "./client";
+import { account, api, isLive, officeAdmin } from "./client";
 
 export const q = {
+  me: () => queryOptions({ queryKey: ["me"], queryFn: account.me, staleTime: Infinity, retry: false }),
+  officeAdmin: () => queryOptions({ queryKey: ["office-admin"], queryFn: officeAdmin.get }),
   session: () => queryOptions({ queryKey: ["session"], queryFn: api.session, staleTime: Infinity, retry: false }),
   office: () => queryOptions({ queryKey: ["office"], queryFn: api.office, refetchInterval: isLive ? false : 20_000 }),
   agent: (id: string) => queryOptions({ queryKey: ["agent", id], queryFn: () => api.agent(id) }),

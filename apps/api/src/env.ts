@@ -8,12 +8,13 @@ export type Env = {
   Office: DurableObjectNamespace<Office>;
   MAILER?: SendEmail;
   DATA_MODE: string;
-  /** One office per deployment for now; the Durable Object is named after it. */
-  OFFICE_ID: string;
   /** "sample" opens a new office with the Kaveri Electricals sample books (local testing); otherwise it starts empty. */
   OFFICE_SEED?: string;
   MAIL_FROM: string;
-  INGEST_EMAIL: string;
+  /** Each office gets `<slug>@INGEST_DOMAIN`; a catch-all Email Routing rule sends that domain's mail to this Worker. */
+  INGEST_DOMAIN: string;
+  /** "off" lets people open offices and accept invitations without confirming their address (local testing only). */
+  EMAIL_VERIFICATION?: string;
   BETTER_AUTH_URL: string;
   /** Set with `wrangler secret put`, never in a file. */
   BETTER_AUTH_SECRET: string;

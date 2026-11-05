@@ -20,13 +20,14 @@ export const newSession = (language: WaLanguage = "en"): WaSession => ({ list: [
 export type WaPart = { text: string; translate?: boolean };
 export type WaMessage = { id: string; text: string; at: string; /** said in a voice note, so it is repeated back first */ heard?: boolean; /** the question in English, when it was asked in another language */ english?: string; language?: WaLanguage | null };
 export type WaTurn = { parts: WaPart[]; session: WaSession; decided: StagedChange[]; duplicate: boolean };
-export type WaOptions = { base: string; /** the person chose a language in Settings rather than "auto" */ fixedLanguage?: WaLanguage | null };
+export type WaOptions = { base: string; /** the person chose a language in Settings rather than "auto" */ fixedLanguage?: WaLanguage | null; /** the office's id, added to every link */ office?: string };
 
 export type WaAction = "approve" | "reject" | "later";
 export type WaCommand =
   | { kind: "desk" }
   | { kind: "help" }
   | { kind: "join"; code: string }
+  | { kind: "switch"; n: number | null }
   | { kind: "decide"; items: { n: number | "all"; action: WaAction }[] }
   | { kind: "show"; n: number }
   | { kind: "ask"; text: string };
@@ -54,8 +55,10 @@ const actionOf = (w: string): WaAction | null => (inSet(w, WORDS.yes) ? "approve
 /** What a message asks for. Anything that is not a command is a question for the Office Manager. */
 export function parseCommand(text: string): WaCommand {
   const raw = text.trim();
-  const join = /^join\s*(\d{4})$/i.exec(asciiDigits(raw));
+  const join = /^join\s*(\d{6})$/i.exec(asciiDigits(raw));
   if (join) return { kind: "join", code: join[1]! };
+  const sw = /^(switch|badlo|बदलो)(?:\s+(\d{1,2}))?$/i.exec(asciiDigits(raw));
+  if (sw) return { kind: "switch", n: sw[2] ? Number(sw[2]) : null };
   const w = words(raw);
   if (!w.length) return { kind: "desk" };
   if (w.length <= 3 && (w.every((x) => inSet(x, WORDS.help)) || raw === "?")) return { kind: "help" };
@@ -119,8 +122,10 @@ const firstSentence = (s: string, max = 110) => {
   const one = s.split(/(?<=[.!?])\s/)[0] ?? s;
   return one.length > max ? `${one.slice(0, max - 1).trimEnd()}…` : one;
 };
-const deskLink = (base: string) => `${base.replace(/\/$/, "")}/desk`;
-export const figureLink = (base: string, figureId: string) => `${base.replace(/\/$/, "")}/?figure=${encodeURIComponent(figureId)}`;
+/** Links name the office, so someone in several businesses lands in the right one. */
+const withOffice = (office: string | undefined) => (office ? `office=${encodeURIComponent(office)}` : "");
+const deskLink = (base: string, office?: string) => `${base.replace(/\/$/, "")}/desk${office ? `?${withOffice(office)}` : ""}`;
+export const figureLink = (base: string, figureId: string, office?: string) => `${base.replace(/\/$/, "")}/?figure=${encodeURIComponent(figureId)}${office ? `&${withOffice(office)}` : ""}`;
 
 /** A short digest and the numbered list; the numbers are remembered until the next list. */
 export function deskParts(office: OfficeService, person: WaPerson, session: WaSession, opts: WaOptions & { morning?: boolean }): { parts: WaPart[]; session: WaSession } {
@@ -136,7 +141,7 @@ export function deskParts(office: OfficeService, person: WaPerson, session: WaSe
     const who = AGENT_BY_ID[it.agentId]?.short ?? "";
     parts.push({ text: `${i + 1}. ${it.title}${who ? ` (${who})` : ""}\n   ${firstSentence(it.summary)}`, translate: true });
   }
-  if (items.length > shown.length) parts.push({ text: `${phrase("more", lang, { count: items.length - shown.length })} ${deskLink(opts.base)}` });
+  if (items.length > shown.length) parts.push({ text: `${phrase("more", lang, { count: items.length - shown.length })} ${deskLink(opts.base, opts.office)}` });
   if (person.role === "owner") parts.push({ text: phrase("reply", lang) });
   return { parts, session: { ...session, list } };
 }
@@ -150,13 +155,13 @@ export function addToList(session: WaSession, item: StagedChange): { n: number; 
 }
 
 /** An answer from the Office Manager, with each figure followed by the link that opens where it came from. */
-export function answerText(answer: Note, base: string): string {
+export function answerText(answer: Note, base: string, office?: string): string {
   let links = 0;
   return answer
     .map((s) => {
       if (!("figureId" in s) || links >= 3) return s.text;
       links++;
-      return `${s.text} (${figureLink(base, s.figureId)})`;
+      return `${s.text} (${figureLink(base, s.figureId, office)})`;
     })
     .join("");
 }
@@ -178,6 +183,9 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
     case "join":
       parts.push({ text: phrase("linked", lang) });
       break;
+    case "switch":
+      parts.push({ text: phrase("oneOffice", lang) });
+      break;
     case "help":
       parts.push({ text: phrase("help", lang) });
       break;
@@ -195,7 +203,7 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
         parts.push({ text: `${cmd.n}. ${item.title}\n${item.summary}`, translate: true });
         if (item.status !== "pending") parts.push({ text: phrase("gone", lang, { n: cmd.n }) });
         else if (person.role === "owner" && !REVIEW_ON_DESK.has(item.kind)) parts.push({ text: phrase("replyOne", lang, { n: cmd.n }) });
-        else if (person.role === "owner") parts.push({ text: `${phrase("review", lang, { n: cmd.n })} ${deskLink(opts.base)}` });
+        else if (person.role === "owner") parts.push({ text: `${phrase("review", lang, { n: cmd.n })} ${deskLink(opts.base, opts.office)}` });
       }
       break;
     }
@@ -225,7 +233,7 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
         else if (item.status !== "pending") parts.push({ text: phrase("gone", lang, { n: t.n }) });
         else if (fingerprint(item) !== l.print) parts.push({ text: phrase("changed", lang, { n: t.n }) });
         else if (t.action === "later") parts.push({ text: phrase("later", lang, { n: t.n }) });
-        else if (REVIEW_ON_DESK.has(item.kind)) parts.push({ text: `${phrase("review", lang, { n: t.n })} ${deskLink(opts.base)}` });
+        else if (REVIEW_ON_DESK.has(item.kind)) parts.push({ text: `${phrase("review", lang, { n: t.n })} ${deskLink(opts.base, opts.office)}` });
         else {
           const d = office.decide(item.id, { action: t.action, note: "Decided on WhatsApp" }, person.name);
           decided.push(d);
@@ -236,7 +244,7 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
     }
     case "ask": {
       const a = office.ask(msg.english ?? cmd.text);
-      parts.push({ text: answerText(a.answer, opts.base), translate: true });
+      parts.push({ text: answerText(a.answer, opts.base, opts.office), translate: true });
       break;
     }
   }

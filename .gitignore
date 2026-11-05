@@ -8,6 +8,8 @@ storybook-static/
 .venv/
 __pycache__/
 test-results/
+# Control-plane exports from tools/admin: account data
+backups/
 
 # Proprietary Anthropic skills: dev-time only, never redistributed
 .cursor/skills/pdf/

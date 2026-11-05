@@ -2,9 +2,10 @@ import { type Business, Gstin, type Settings } from "@office/contracts";
 import { inr } from "@office/engine";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { account, api, isLive } from "../api/client";
+import { api } from "../api/client";
 import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
+import { OfficeSettings } from "./SettingsOffice";
 import { SkinPicker } from "./SettingsSkin";
 import { SocialSettings } from "./SettingsSocial";
 import { WhatsAppSettings } from "./SettingsWhatsApp";
@@ -15,36 +16,6 @@ export function SettingsScreen() {
     <Page ready={Boolean(settings.data)} error={settings.error}>
       {settings.data ? <SettingsForm s={settings.data} /> : null}
     </Page>
-  );
-}
-
-/** Accountants join by invitation; the address is all the owner needs to give. */
-function InviteForm() {
-  const qc = useQueryClient();
-  const [email, setEmail] = useState("");
-  const send = useMutation({
-    mutationFn: () => account.invite(email),
-    onSuccess: () => {
-      setEmail("");
-      void qc.invalidateQueries({ queryKey: ["settings"] });
-    },
-  });
-  return (
-    <form
-      className="field-inline"
-      onSubmit={(e) => {
-        e.preventDefault();
-        send.mutate();
-      }}
-    >
-      <label htmlFor="invite">Invite your accountant</label>
-      <input id="invite" className="input" type="email" required placeholder="name@firm.in" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <button type="submit" className="btn" disabled={send.isPending}>
-        Invite
-      </button>
-      {send.data ? <span role="status">Invited {send.data.invited}. They can join from the sign-in page.</span> : null}
-      {send.error ? <span className="form-error">{send.error.message}</span> : null}
-    </form>
   );
 }
 
@@ -171,23 +142,7 @@ function SettingsForm({ s }: { s: Settings }) {
           </dl>
         </Section>
       )}
-      <Section title="Who can sign in">
-        <ul className="people">
-          {s.users.map((u) => (
-            <li key={u.email}>
-              <strong>{u.name}</strong> <span className="muted">{u.email}</span>
-              <span>{u.role === "owner" ? "Owner: approves work, hires and changes settings" : "Accountant: reads everything, downloads returns, answers the Auditor"}</span>
-            </li>
-          ))}
-          {s.invited?.map((u) => (
-            <li key={u.email}>
-              <strong>Invited</strong> <span className="muted">{u.email}</span>
-              <span>Can join as the accountant with this address</span>
-            </li>
-          ))}
-        </ul>
-        {isLive && owner ? <InviteForm /> : null}
-      </Section>
+      <OfficeSettings />
       <Section title="Getting documents in">
         <p>
           Forward bills and invoices to <strong className="num">{s.ingestEmail}</strong>, or upload them on the Accountant's room. The Accountant reads each one within a few minutes.

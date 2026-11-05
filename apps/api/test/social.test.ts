@@ -21,7 +21,7 @@ function sqlStorage(): SqlStorage {
   return {
     exec(query: string, ...params: (string | number)[]) {
       const st = db.prepare(query);
-      const rows = /^\s*select/i.test(query) ? st.all(...params) : (st.run(...params), []);
+      const rows = /^\s*(select|pragma)/i.test(query) ? st.all(...params) : (st.run(...params), []);
       return { toArray: () => rows };
     },
   } as unknown as SqlStorage;
@@ -69,26 +69,37 @@ describe("tokens at rest", () => {
     vault.drop("ch-x");
     expect(vault.has("ch-x")).toBe(false);
   });
+
+  it("seals each office's tokens with its own key, and moves old rows to it on read", async () => {
+    const sql = sqlStorage();
+    await new TokenVault(sql, SECRET).put("ch-x", tokens);
+    const a = new TokenVault(sql, SECRET, "off_a");
+    expect(await a.get("ch-x")).toEqual(tokens);
+    expect(sql.exec<{ key_version: number }>("SELECT key_version FROM social_tokens").toArray()[0]!.key_version).toBe(1);
+    expect(await new TokenVault(sql, SECRET, "off_b").get("ch-x")).toBeNull();
+    expect(await new TokenVault(sql, SECRET, "off_a").get("ch-x")).toEqual(tokens);
+  });
 });
 
 describe("signed media links", () => {
-  it("accepts its own unexpired signature and nothing else", async () => {
+  it("accepts its own unexpired signature, for its own office, and nothing else", async () => {
     const exp = Math.floor(Date.now() / 1000) + 600;
-    const sig = await signMedia(SECRET, "media-u1", exp);
-    expect(await verifyMedia(SECRET, "media-u1", String(exp), sig)).toBe(true);
-    expect(await verifyMedia(SECRET, "media-u2", String(exp), sig)).toBe(false);
-    expect(await verifyMedia(SECRET, "media-u1", String(exp + 1), sig)).toBe(false);
-    expect(await verifyMedia("other-secret-value", "media-u1", String(exp), sig)).toBe(false);
-    expect(await verifyMedia(SECRET, "media-u1", String(exp), sig, (exp + 1) * 1000)).toBe(false);
-    expect(await verifyMedia(SECRET, "../docs/doc-1", String(exp), sig)).toBe(false);
+    const sig = await signMedia(SECRET, "off_a", "media-u1", exp);
+    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp), sig)).toBe(true);
+    expect(await verifyMedia(SECRET, "off_b", "media-u1", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(SECRET, "off_a", "media-u2", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp + 1), sig)).toBe(false);
+    expect(await verifyMedia("other-secret-value", "off_a", "media-u1", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp), sig, (exp + 1) * 1000)).toBe(false);
+    expect(await verifyMedia(SECRET, "off_a", "../docs/doc-1", String(exp), sig)).toBe(false);
   });
 
   it("signs uploads and passes static samples through as absolute links", async () => {
-    const out = await signedMedia(SECRET, "https://office.example/", [
-      { id: "media-u9", url: "/api/social/media/media-u9", kind: "image", alt: "", skuId: null, rights: "own", width: null, height: null },
+    const out = await signedMedia(SECRET, "https://office.example/", "off_a", [
+      { id: "media-u9", url: "/api/o/off_a/social/media/media-u9", kind: "image", alt: "", skuId: null, rights: "own", width: null, height: null },
       { id: "media-01", url: "/samples/media-01.svg", kind: "image", alt: "", skuId: null, rights: "own", width: null, height: null },
     ]);
-    expect(out[0]!.url).toMatch(/^https:\/\/office\.example\/media\/media-u9\?exp=\d+&sig=[\w-]+$/);
+    expect(out[0]!.url).toMatch(/^https:\/\/office\.example\/media\/off_a\/media-u9\?exp=\d+&sig=[\w-]+$/);
     expect(out[1]!.url).toBe("https://office.example/samples/media-01.svg");
   });
 });
@@ -130,17 +141,17 @@ describe("Meta webhooks", () => {
 
 describe("sign-in state", () => {
   it("round-trips for its platform and gives the same PKCE verifier back", async () => {
-    const { state, verifier } = await newState(SECRET, "x", "anil@kaveri.in");
+    const { state, verifier } = await newState(SECRET, "x", "anil@kaveri.in", "off_a");
     const back = await readState(SECRET, "x", state);
-    expect(back).toEqual({ by: "anil@kaveri.in", verifier });
+    expect(back).toEqual({ by: "anil@kaveri.in", verifier, officeId: "off_a" });
     expect(verifier).toMatch(/^[\w-]{43}$/);
     expect(await challengeFor(verifier)).toMatch(/^[\w-]{43}$/);
   });
 
   it("refuses another platform, a tampered state and an expired one", async () => {
-    const { state } = await newState(SECRET, "instagram", "anil@kaveri.in", Date.now() - 11 * 60_000);
+    const { state } = await newState(SECRET, "instagram", "anil@kaveri.in", "off_a", Date.now() - 11 * 60_000);
     expect(await readState(SECRET, "instagram", state)).toBeNull();
-    const ok = (await newState(SECRET, "instagram", "a")).state;
+    const ok = (await newState(SECRET, "instagram", "a", "off_a")).state;
     expect(await readState(SECRET, "facebook", ok)).toBeNull();
     expect(await readState(SECRET, "instagram", `${ok}x`)).toBeNull();
     expect(await readState("other-secret-value", "instagram", ok)).toBeNull();
@@ -272,7 +283,7 @@ describe("publishing from the Office", () => {
     const kv = new Map<string, string>();
     let now = Date.parse("2026-11-05T13:05:00Z");
     const fake = { platform: "instagram", publish: async () => ({ externalId: "m-1", url: "https://www.instagram.com/p/m1/" }), ...adapter } as ChannelAdapter;
-    const host = new SocialHost(office, vault, { instagram: fake }, { base: "https://o.example", mediaSecret: SECRET, kv: (k, v) => (v === undefined ? (kv.get(k) ?? null) : (kv.set(k, v), v)), now: () => now });
+    const host = new SocialHost(office, vault, { instagram: fake }, { base: "https://o.example", officeId: "off_a", mediaSecret: SECRET, kv: (k, v) => (v === undefined ? (kv.get(k) ?? null) : (kv.set(k, v), v)), now: () => now });
     return { office, host, kv, tick: (ms: number) => (now += ms) };
   };
 
