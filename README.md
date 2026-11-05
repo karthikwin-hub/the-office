@@ -29,6 +29,7 @@ The proprietary `pdf` and `xlsx` skills under `.cursor/skills` are not in git; c
 ```sh
 pnpm dev                 # mock demo in the browser, no backend
 pnpm test && pnpm typecheck
+pnpm docs                # rebuilds docs/handbook/the-office-handbook.html from the Markdown in docs/handbook
 
 # Live Worker locally, with a fresh office (add --var OFFICE_SEED:sample for the Kaveri sample books)
 cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler dev --port 8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787'

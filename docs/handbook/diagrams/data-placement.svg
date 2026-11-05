@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" role="img" aria-labelledby="t4">
+  <title id="t4">Where data lives: the D1 control plane, one SQLite database per office, and R2 files under each office's prefix</title>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.4}
+    .key{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .t{font-size:15px;fill:#2A2D31;font-weight:600}
+    .s{font-size:12.5px;fill:#5A6270}
+    .lab{font-size:12px;fill:#27408B}
+  </style>
+  <rect class="box" x="10" y="20" width="290" height="290" rx="4"/>
+  <text class="t" x="26" y="48">D1: the control plane</text>
+  <text class="lab" x="26" y="70">shared, holds no books</text>
+  <text class="s" x="26" y="98">user, session, account</text>
+  <text class="s" x="26" y="120">office (name, slug, status)</text>
+  <text class="s" x="26" y="142">membership (office, person, role)</text>
+  <text class="s" x="26" y="164">invitation (token hash only)</text>
+  <text class="s" x="26" y="186">route (kind, external id, office)</text>
+  <text class="s" x="26" y="208">wa_link, wa_code (WhatsApp)</text>
+  <text class="s" x="26" y="230">audit (who did what)</text>
+
+  <rect class="key" x="335" y="20" width="290" height="290" rx="4"/>
+  <text class="t" x="351" y="48">Office Durable Object</text>
+  <text class="lab" x="351" y="70">one private SQLite per business</text>
+  <text class="s" x="351" y="98">the books: parties, invoices, bills,</text>
+  <text class="s" x="351" y="116">payments, documents, returns</text>
+  <text class="s" x="351" y="140">staged changes and decisions</text>
+  <text class="s" x="351" y="162">team log, hiring and trust levels</text>
+  <text class="s" x="351" y="184">social posts, channels, messages</text>
+  <text class="s" x="351" y="206">platform tokens, sealed with a key</text>
+  <text class="s" x="351" y="224">derived for this office only</text>
+  <text class="s" x="351" y="248">quota counters, schema version</text>
+
+  <rect class="box" x="660" y="20" width="290" height="290" rx="4"/>
+  <text class="t" x="676" y="48">R2: files</text>
+  <text class="lab" x="676" y="70">one bucket, a prefix per office</text>
+  <text class="s" x="676" y="98">o/&lt;officeId&gt;/docs/...</text>
+  <text class="s" x="676" y="116">original PDFs and their text</text>
+  <text class="s" x="676" y="140">o/&lt;officeId&gt;/media/...</text>
+  <text class="s" x="676" y="158">images for social posts</text>
+  <text class="s" x="676" y="186">served only under the office's</text>
+  <text class="s" x="676" y="204">own path, or by a signed link</text>
+  <text class="s" x="676" y="222">that names the office</text>
+</svg>

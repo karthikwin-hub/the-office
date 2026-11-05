@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" role="img" aria-labelledby="t2">
+  <title id="t2">Request path: browser, session, membership, Durable Object identity check, books</title>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker>
+    <marker id="r2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#B42318"/></marker>
+  </defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.4}
+    .key{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .no{fill:#FBEDEC;stroke:#B42318;stroke-width:1.4}
+    .t{font-size:14.5px;fill:#2A2D31;font-weight:600}
+    .s{font-size:12px;fill:#5A6270}
+    .lab{font-size:12px;fill:#27408B}
+    .rl{font-size:12px;fill:#B42318}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a2)}
+    .rn{stroke:#B42318;stroke-width:1.3;fill:none;marker-end:url(#r2);stroke-dasharray:5 4}
+  </style>
+  <rect class="box" x="10" y="60" width="150" height="90" rx="4"/>
+  <text class="t" x="24" y="86">Browser</text><text class="s" x="24" y="108">GET /api/o/</text><text class="s" x="24" y="126">off_x/desk</text>
+
+  <rect class="key" x="200" y="60" width="160" height="90" rx="4"/>
+  <text class="t" x="214" y="86">1. Session</text><text class="s" x="214" y="108">better-auth cookie</text><text class="s" x="214" y="126">checked against D1</text>
+
+  <rect class="key" x="400" y="60" width="170" height="90" rx="4"/>
+  <text class="t" x="414" y="86">2. Membership</text><text class="s" x="414" y="108">office id format, then</text><text class="s" x="414" y="126">membership row in D1</text>
+
+  <rect class="key" x="610" y="60" width="160" height="90" rx="4"/>
+  <text class="t" x="624" y="86">3. To the office</text><text class="s" x="624" y="108">Durable Object named</text><text class="s" x="624" y="126">off_x, signed caller</text>
+
+  <rect class="key" x="810" y="60" width="140" height="90" rx="4"/>
+  <text class="t" x="824" y="86">4. Office</text><text class="s" x="824" y="108">caller office must</text><text class="s" x="824" y="126">equal its own id</text>
+
+  <path class="ln" d="M160 105H200"/>
+  <path class="ln" d="M360 105H400"/>
+  <path class="ln" d="M570 105H610"/>
+  <path class="ln" d="M770 105H810"/>
+
+  <rect class="no" x="200" y="220" width="160" height="60" rx="4"/><text class="t" x="214" y="246">401</text><text class="s" x="214" y="266">not signed in</text>
+  <rect class="no" x="400" y="220" width="170" height="60" rx="4"/><text class="t" x="414" y="246">404</text><text class="s" x="414" y="266">not a member: no such office</text>
+  <rect class="no" x="610" y="220" width="160" height="60" rx="4"/><text class="t" x="624" y="246">423 / 404</text><text class="s" x="624" y="266">suspended / deleting</text>
+  <rect class="no" x="810" y="220" width="140" height="60" rx="4"/><text class="t" x="824" y="246">refused</text><text class="s" x="824" y="266">mismatched caller</text>
+  <path class="rn" d="M280 150V220"/>
+  <path class="rn" d="M485 150V220"/>
+  <path class="rn" d="M690 150V220"/>
+  <path class="rn" d="M880 150V220"/>
+  <text class="lab" x="10" y="36">Headers a browser sends (for example x-office-as) are discarded; the Worker sets the caller itself.</text>
+  <text class="rl" x="10" y="312">Every refusal looks the same to an outsider: another business's office is indistinguishable from one that does not exist.</text>
+</svg>
