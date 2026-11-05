@@ -1,6 +1,6 @@
 # Roadmap
 
-> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. The next phase is go-live readiness, which is mostly configuration (secrets, email, domain, privacy notice) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
+> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. The next phase is go-live readiness, which is mostly configuration (email, domain, privacy notice; the secrets are now set) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
 
 ## Overview
 
@@ -69,7 +69,7 @@
 
 | Work | Detail |
 | --- | --- |
-| Secrets on live | Put `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` (none are set today) |
+| Secrets on live | Done 5 November 2026: `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` are in Infisical and on the live Worker |
 | Sending email | A provider that can reach any address; `MAIL_FROM` on our domain; SPF, DKIM, DMARC |
 | Receiving email | Email Routing catch-all on an inbound subdomain; `INGEST_DOMAIN` set |
 | Domain | Custom domain on the Worker; auth URL and platform redirects updated |

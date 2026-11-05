@@ -39,6 +39,8 @@ Put with `wrangler secret put <NAME>` through Infisical, for example:
 infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 ```
 
+`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing. Run it yourself, not through an agent.
+
 | Name | Required | Purpose |
 | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | Yes | Signs sessions |
@@ -108,7 +110,7 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | 2 | Sending: a provider able to reach any address; `MAIL_FROM` on our domain; SPF, DKIM, DMARC | Engineering | **Open, blocks sign-up** |
 | 3 | Receiving: Email Routing catch-all on `in.<domain>`; set `INGEST_DOMAIN` | Engineering | Open |
 | 4 | Custom domain on the Worker; update `BETTER_AUTH_URL` and redirect URIs | Engineering | Open |
-| 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | **Open: no secrets are set on the live Worker (checked 5 November 2026); sign-in falls back to the library's default secret, and channels, media links and WhatsApp are disabled** |
+| 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | Done 5 November 2026 with `tools/admin/set-secrets.sh` |
 | 6 | Meta app reviewed and live (Pages, Instagram, Threads, WhatsApp, webhooks) | Business and engineering | Per platform |
 | 7 | WhatsApp Business number verified and display name approved | Business | Per account |
 | 8 | Privacy notice and terms covering accounting data, AI processing and WhatsApp | Business and legal | Open |
