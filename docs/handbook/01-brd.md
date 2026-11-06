@@ -1,5 +1,7 @@
 # Business requirements
 
+> **Name.** The product is sold as **Agentic Office by Snilld AI** (snilldai.com). "The Office" in this handbook means the same product; code names keep `office`.
+
 > **In one paragraph.** The Office gives the owner of a small business a team of AI agents (an Accountant, a Credit Controller, a Tax Clerk, an Auditor, a Social Media Manager and more) that work inside the owner's own books, show their work on an office floor plan, and change nothing until the owner approves. Every figure can be opened down to the document it came from. The problem it solves is universal: owners everywhere pay someone to keep their books and have no easy way to check the work. India is the first market, because the compliance load is heavy, business already runs on WhatsApp, and owner-operators are underserved. The product core is market-neutral; country-specific rules live in a jurisdiction pack. The US, EU, UK and Australia are designed for in this handbook, and nothing is built for them until there is interest or traction.
 
 ## 1. The problem

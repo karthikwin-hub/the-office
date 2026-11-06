@@ -1,3 +1,4 @@
+import { BRAND } from "@office/contracts";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { EmailMessage } from "cloudflare:email";
@@ -41,7 +42,7 @@ export async function verifyPassword({ hash, password }: { hash: string; passwor
 export const verificationRequired = (env: Pick<Env, "EMAIL_VERIFICATION">) => env.EMAIL_VERIFICATION !== "off";
 
 /** One plain message from the platform's address; false when mail is not set up here. */
-export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM">, to: string, subject: string, body: string, fromName = "The Office"): Promise<boolean> {
+export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM">, to: string, subject: string, body: string, fromName: string = BRAND.name): Promise<boolean> {
   if (!env.MAILER) return false;
   try {
     await env.MAILER.send(new EmailMessage(env.MAIL_FROM, to, plainMessage({ fromName, from: env.MAIL_FROM, to, subject, body })));
@@ -69,7 +70,7 @@ export function makeAuth(env: Env) {
       sendOnSignUp: verificationRequired(env),
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendMail(env, user.email, "Confirm your email for The Office", [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join("\n"));
+        await sendMail(env, user.email, `Confirm your email for ${BRAND.name}`, [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join("\n"));
       },
     },
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },

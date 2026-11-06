@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { account } from "../api/client";
-import { currentDocuments, LegalFooter } from "./Legal";
+import { BrandPlate, currentDocuments, LegalFooter } from "./Legal";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -41,7 +41,7 @@ export function SignIn({ invited }: { invited: boolean }) {
   return (
     <main className="signin" id="main">
       <div className="signin-door">
-        <p className="signin-plate">The Office</p>
+        <BrandPlate />
         <h1>{heading}</h1>
         <p className="muted">{lede}</p>
         <form onSubmit={onSubmit} className="signin-form">

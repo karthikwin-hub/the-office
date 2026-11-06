@@ -1,12 +1,12 @@
 # Subprocessors
 
-> **Draft for legal review.** Version 2026-11-05.2. We give [30] days' notice on this page, and by email to owners, before adding a subprocessor.
+> **Draft for legal review.** Version 2026-11-06. We give [30] days' notice on this page, and by email to owners, before adding a subprocessor.
 
-These are the companies that receive personal data so that The Office can work, and what each one receives.
+These are the companies that receive personal data so that Agentic Office can work, and what each one receives.
 
 | Company | Service | What it receives | Where | Always used? |
 | --- | --- | --- | --- | --- |
-| Cloudflare, Inc. | Workers and Durable Objects (the application and each office's storage) | Everything in The Office | Cloudflare's global network | Yes |
+| Cloudflare, Inc. | Workers and Durable Objects (the application and each office's storage) | Everything in Agentic Office | Cloudflare's global network | Yes |
 | Cloudflare, Inc. | D1 (accounts, sign-ins, offices, memberships, consent records, audit) | Account data | Cloudflare's global network | Yes |
 | Cloudflare, Inc. | R2 (documents, pictures, voice notes) | Files the business uploads or emails in | Cloudflare's global network | Yes |
 | Cloudflare, Inc. | Workers AI (reading documents, transcribing voice notes, translating, understanding customer messages) | The text, images or audio being read; inference only, not used for training | Cloudflare's global network | When an agent reads something |

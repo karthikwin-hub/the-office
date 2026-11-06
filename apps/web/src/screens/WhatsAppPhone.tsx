@@ -1,3 +1,4 @@
+import { BRAND } from "@office/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -59,7 +60,7 @@ export function WhatsAppPhone() {
     <div className="wa-demo">
       <div className="wa-phone" aria-label="The office on WhatsApp">
         <div className="wa-phone-head">
-          <span className="wa-phone-name">The Office</span>
+          <span className="wa-phone-name">{BRAND.name}</span>
           <span className="wa-phone-sub">{isLive ? "an example" : "demo, answering from these books"}</span>
         </div>
         <div className="wa-phone-chat" aria-live="polite">

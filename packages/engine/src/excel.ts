@@ -1,3 +1,4 @@
+import { BRAND } from "@office/contracts";
 import type { Cell, Workbook, Worksheet } from "exceljs";
 import { dateLabel, monthLabel, quarterLabel } from "./dates";
 import { itcFor, outwardFor, setOff } from "./gst";
@@ -68,7 +69,7 @@ async function newBook(l: Ledger): Promise<Workbook> {
   const mod = await import("exceljs");
   const ExcelJS = (mod as unknown as { default?: typeof mod }).default ?? mod;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "The Office";
+  wb.creator = BRAND.name;
   wb.created = excelDate(l.asOf);
   return wb;
 }
@@ -227,7 +228,7 @@ export async function gstr3bWorkbook(l: Ledger, period: string): Promise<ExportF
   put(sum.getCell("E20"), "=E10-SUM(C16:E16)", { tone: "formula", fmt: MONEY, result: rupees(so.carriedForward.sgstPaise) });
 
   notes(wb, l, [
-    ["Source", `Posted sales invoices and purchase bills dated in ${monthLabel(period)}, as held by The Office on ${dateLabel(l.asOf)}. Each row names the invoice or bill it came from.`],
+    ["Source", `Posted sales invoices and purchase bills dated in ${monthLabel(period)}, as held by ${BRAND.name} on ${dateLabel(l.asOf)}. Each row names the invoice or bill it came from.`],
     ["Input credit", itc.has2b ? "Credit is claimed only for bills the supplier has reported in GSTR-2B (CGST Act s.16(2)(aa)). Bills marked No are held back and can be claimed in the month they appear." : "No GSTR-2B statement was on file, so all credit in the books is shown as provisional. Check it against GSTR-2B before filing."],
     ["Set-off", "Integrated tax credit is used first, against integrated, then central, then state tax. Central tax credit is used against central then integrated tax, and state tax credit against state then integrated tax. Central and state credit never cross (CGST Act s.49, rule 88A)."],
     ["Cess", "Nil. None of the goods sold attract compensation cess; the value is typed in, not computed."],
@@ -318,7 +319,7 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
   if (!rep.receivable.length) label(rs.getCell(6, 1), "No customer deducted TDS on invoices this quarter.");
 
   notes(wb, l, [
-    ["Source", `Posted purchase bills dated in ${quarterLabel(quarter)}, as held by The Office on ${dateLabel(l.asOf)}. Each row names the bill it came from.`],
+    ["Source", `Posted purchase bills dated in ${quarterLabel(quarter)}, as held by ${BRAND.name} on ${dateLabel(l.asOf)}. Each row names the bill it came from.`],
     ["Amount liable", "The amount the rate applies to. For section 194Q it is only the part of the year's purchases from that supplier above ₹50 lakh; for the other sections it is the bill's taxable value."],
     ["Thresholds", "194C: ₹1 lakh a year per contractor. 194J: ₹50,000 a year. 194H: ₹20,000 a year. 194I: ₹50,000 a month. 194Q: purchases above ₹50 lakh a year, and only when our turnover last year exceeded ₹10 crore."],
     ["Rates", "Typed in from the rules for each deductee (Finance Act 2025). A rule change needs the rate column updated, not the formulas."],

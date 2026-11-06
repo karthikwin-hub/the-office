@@ -1,6 +1,7 @@
 import {
   AcceptInvitation,
   ACCOUNT_ROUTES,
+  BRAND,
   ChatPost,
   ConsentRequest,
   RightsRequest,
@@ -246,7 +247,7 @@ const ownerOnly = (c: Ctx) => (c.get("caller").role === "owner" ? null : c.json(
 /** For the Lived-in office's small talk: the weather near the person looking, never stored with them. */
 app.get(`/api/o/:office${ROUTES.weather.slice(4)}`, async (c) => {
   const cache = (globalThis as { caches?: { default?: Parameters<typeof weatherFor>[1]["cache"] } }).caches?.default ?? null;
-  const userAgent = `the-office/1.0 (${c.env.BETTER_AUTH_URL}; ${c.env.MAIL_FROM})`;
+  const userAgent = `agentic-office/1.0 (${c.env.BETTER_AUTH_URL}; ${c.env.MAIL_FROM})`;
   const weather = await weatherFor(c.req.raw.cf as Where | undefined, { fetcher: (u, i) => fetch(u, i), cache, userAgent });
   return c.json({ weather }, 200, { "cache-control": "private, max-age=900" });
 });
@@ -317,7 +318,7 @@ app.post("/api/o/:office/office-admin/invitations", async (c) => {
     c.env,
     email,
     `${caller.name} invited you to ${office.name}`,
-    [`${caller.name} invited you to ${office.name} on The Office, ${what}.`, "", "Open this link to join. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
+    [`${caller.name} invited you to ${office.name} on ${BRAND.name}, ${what}.`, "", "Open this link to join. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
     office.name,
   );
   return c.json({ email, link, emailed, expiresAt: iso(expiresAt) } satisfies InviteResult);

@@ -246,7 +246,7 @@ The drafts are in `docs/legal/` and are already published at `/legal/...` on the
    Every address used here must be a real, monitored mailbox.
 
 2. **Lawyer review.** Send `privacy-notice.md`, `terms.md`, `data-processing.md`, `subprocessors.md` and the customer AI notice template, `customer-notice-template.md`. Ask them to also confirm the breach-notice timelines in `docs/handbook/05-configuration.md`, section 10.
-3. **Apply the changes** in a branch: replace every bracketed item, apply the lawyer's edits, and replace "The Office" with the product's public name ("Agentic Office", by Snilld AI) if Puja confirms the rename has been made in the product.
+3. **Apply the changes** in a branch: replace every bracketed item and apply the lawyer's edits. The documents already use the public name, Agentic Office; the company behind it is Snilld AI, whose legal name goes in the brackets.
 4. **Raise the versions**, otherwise nobody is asked to accept the new text. In `packages/contracts/src/legal.ts`, set the `version` of every changed document (`terms`, `privacy`) to the day's date, for example `"2026-11-20"`, and put the same date in the "Version" line at the top of each changed document.
 5. Check nothing is left in brackets:
 

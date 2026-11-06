@@ -1,9 +1,9 @@
-import type { Me, OfficeSummary } from "@office/contracts";
+import { BRAND, type Me, type OfficeSummary } from "@office/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { account, ApiError, isLive, setActiveOffice } from "../api/client";
 import { q } from "../api/queries";
-import { ConsentGate, LegalFooter } from "./Legal";
+import { BrandPlate, ConsentGate, LegalFooter } from "./Legal";
 import { SignIn } from "./SignIn";
 
 const ACTIVE_KEY = "office.active";
@@ -62,7 +62,7 @@ function Door({ title, lede, children }: { title: string; lede?: ReactNode; chil
   return (
     <main className="signin" id="main">
       <div className="signin-door">
-        <p className="signin-plate">The Office</p>
+        <BrandPlate />
         <h1>{title}</h1>
         {lede ? <p className="muted">{lede}</p> : null}
         {children}
@@ -228,7 +228,7 @@ function OpenOffice({ me }: { me: Me }) {
 export function OfficeSwitcher({ fallback }: { fallback: string }) {
   const me = useQuery({ ...q.me(), enabled: isLive });
   const current = me.data?.offices.find((o) => o.id === localStorage.getItem(ACTIVE_KEY));
-  const name = fallback || current?.name || "The Office";
+  const name = fallback || current?.name || BRAND.name;
   const others = me.data?.offices.filter((o) => o.id !== current?.id && o.status === "active") ?? [];
   if (!isLive)
     return (

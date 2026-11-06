@@ -5,3 +5,4 @@ export * from "./routines";
 export * from "./customer";
 export * from "./legal";
 export * from "./living";
+export * from "./brand";

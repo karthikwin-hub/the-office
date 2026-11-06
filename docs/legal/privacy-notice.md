@@ -1,19 +1,19 @@
 # Privacy notice
 
-> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-05.2.
+> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-06.
 
-This notice explains what The Office does with personal data: what it collects, why, where it is kept, for how long, who else sees it, and what you can do about it. It is a separate document from the [terms of service](/legal/terms) so that you can read it on its own.
+This notice explains what Agentic Office does with personal data: what it collects, why, where it is kept, for how long, who else sees it, and what you can do about it. It is a separate document from the [terms of service](/legal/terms) so that you can read it on its own.
 
 ## Who we are, and our two roles
 
-The Office is run by [legal name of the company], [registered address], India ("we").
+Agentic Office is run by [legal name of the company], [registered address], India ("we").
 
 We have two different roles, and this notice says which one applies to each piece of data.
 
 - **For your account** (your name, email address, password, the offices you belong to, your WhatsApp link and your preferences) we decide why and how the data is used. Under India's Digital Personal Data Protection Act, 2023 we are the **data fiduciary** for it.
 - **For a business's books and its customers' messages** we act on the business's instructions. The business is the data fiduciary towards its own customers, suppliers and staff, and we are its **data processor**. The [data processing terms](/legal/data-processing) set out what we do for the business.
 
-If you are a customer of a business that uses The Office and you want your data corrected or deleted, ask that business first. We will help it answer you.
+If you are a customer of a business that uses Agentic Office and you want your data corrected or deleted, ask that business first. We will help it answer you.
 
 ## What we collect, and why
 
@@ -34,9 +34,9 @@ If you are a customer of a business that uses The Office and you want your data 
 
 We do not sell personal data, use it for advertising, or build profiles of people.
 
-## AI in The Office
+## AI in Agentic Office
 
-Several agents in The Office read text with AI models run by Cloudflare Workers AI. They read bills and invoices, transcribe and translate WhatsApp voice notes, and work out what a customer's message is about.
+Several agents in Agentic Office read text with AI models run by Cloudflare Workers AI. They read bills and invoices, transcribe and translate WhatsApp voice notes, and work out what a customer's message is about.
 
 - The models are used for **inference only**. Cloudflare does not use what they read to train models, and neither do we.
 - The Customer Service agent **does not write its own replies**. It answers only from the business's saved answers, the business facts the owner wrote, and lookups in the books (an order's status, an invoice balance). Anything else goes to a person at the business.
@@ -51,7 +51,7 @@ Several agents in The Office read text with AI models run by Cloudflare Workers 
 
 ## Where the data is
 
-The Office runs on Cloudflare's global network. Data may be stored and processed outside India, including in the European Union and the United States. We rely on Cloudflare's security and transfer commitments, listed with every other company that receives data in the [subprocessors list](/legal/subprocessors).
+Agentic Office runs on Cloudflare's global network. Data may be stored and processed outside India, including in the European Union and the United States. We rely on Cloudflare's security and transfer commitments, listed with every other company that receives data in the [subprocessors list](/legal/subprocessors).
 
 ## How long we keep it
 
@@ -59,7 +59,7 @@ The Office runs on Cloudflare's global network. Data may be stored and processed
 - **Customer conversations:** 12 months by default, deleted each morning once they are older than the period the business chose.
 - **Your account:** until you delete it. Your name may stay in an office's audit record (who approved what) for as long as the business must keep its accounts.
 - **Security records** (sign-ins, refused requests, audit of changes): 1 year.
-- **Backups:** Cloudflare keeps point-in-time copies of the databases for up to 30 days. Data deleted from The Office leaves those copies within 30 days.
+- **Backups:** Cloudflare keeps point-in-time copies of the databases for up to 30 days. Data deleted from Agentic Office leaves those copies within 30 days.
 
 ## Your rights
 
@@ -82,7 +82,7 @@ We acknowledge a grievance within [48 hours] and answer within [30 days].
 
 ## Children
 
-The Office is for businesses and the people who work in them. It is not meant for anyone under 18, and we do not knowingly hold a child's account.
+Agentic Office is for businesses and the people who work in them. It is not meant for anyone under 18, and we do not knowingly hold a child's account.
 
 ## Security
 

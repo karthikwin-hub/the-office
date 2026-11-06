@@ -1,4 +1,4 @@
-import { ambientFrom, checkPersonaNames, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import { ambientFrom, BRAND, checkPersonaNames, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -865,7 +865,7 @@ export class Office extends Agent<Env> {
       for (const o of owners) {
         try {
           const subject = pending.length ? `${name}: ${pending.length} waiting on your desk` : `${name} this morning`;
-          await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, o.email, plainMessage({ fromName: `${name} · The Office`, from: this.env.MAIL_FROM, to: o.email, subject, body })));
+          await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, o.email, plainMessage({ fromName: `${name} · ${BRAND.name}`, from: this.env.MAIL_FROM, to: o.email, subject, body })));
           emailed++;
         } catch (e) {
           failed++;

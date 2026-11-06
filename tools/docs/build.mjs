@@ -102,7 +102,7 @@ const nav = toc
   .join("");
 
 const cover = `<section class="cover" id="top">
-  <p class="cover-mark">The Office</p>
+  <p class="cover-mark">Agentic Office by Snilld AI</p>
   <h1 class="cover-title">Product and technical handbook</h1>
   <p class="cover-lede">AI agents that keep a small business's books, show their work and change nothing without the owner's approval. India first; built to travel.</p>
   <dl class="cover-meta">
@@ -120,12 +120,12 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Office: product and technical handbook</title>
+<title>Agentic Office: product and technical handbook</title>
 <style>${css}</style>
 </head>
 <body>
 <aside class="sidebar" aria-label="Contents">
-  <a class="brand" href="#top">The Office <span>Handbook</span></a>
+  <a class="brand" href="#top">Agentic Office <span>Handbook</span></a>
   <nav><ol>${nav}</ol></nav>
   <p class="sidebar-foot">Version ${escape(version)} · ${escape(today)}</p>
 </aside>

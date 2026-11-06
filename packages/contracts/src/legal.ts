@@ -5,8 +5,8 @@ import { z } from "zod";
  * everyone once more on their next visit; the consent record keeps which version each person saw.
  */
 export const LEGAL_DOCUMENTS = {
-  terms: { title: "Terms of service", version: "2026-11-05", path: "/legal/terms" },
-  privacy: { title: "Privacy notice", version: "2026-11-05.2", path: "/legal/privacy" },
+  terms: { title: "Terms of service", version: "2026-11-06", path: "/legal/terms" },
+  privacy: { title: "Privacy notice", version: "2026-11-06", path: "/legal/privacy" },
 } as const;
 export type LegalDocument = keyof typeof LEGAL_DOCUMENTS;
 export const LegalDocumentId = z.enum(["terms", "privacy"]);

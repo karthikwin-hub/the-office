@@ -1,13 +1,13 @@
 # Data processing terms
 
-> **Draft for legal review.** These terms describe what we do with personal data on behalf of a business. They are written to fit India's DPDP Act now, and to be extended for the EU GDPR and Australia's Privacy Act later. Text in [square brackets] must be completed. Version 2026-11-05.
+> **Draft for legal review.** These terms describe what we do with personal data on behalf of a business. They are written to fit India's DPDP Act now, and to be extended for the EU GDPR and Australia's Privacy Act later. Text in [square brackets] must be completed. Version 2026-11-06.
 
 These terms form part of the [terms of service](/legal/terms) between [legal name of the company] ("we") and each business that opens an office ("the business").
 
 ## 1. Roles
 
 - The business is the **data fiduciary** (controller) for the personal data in its office: its customers, suppliers, staff, and the people who write to it.
-- We are its **data processor**. We process that data only to provide The Office, on the business's documented instructions. Using the product (uploading, approving, connecting a channel, hiring an agent) is such an instruction.
+- We are its **data processor**. We process that data only to provide Agentic Office, on the business's documented instructions. Using the product (uploading, approving, connecting a channel, hiring an agent) is such an instruction.
 
 ## 2. What we process
 
@@ -36,13 +36,13 @@ We will:
 
 The business will:
 
-- have a lawful basis to give us the data, and tell its customers about its use of The Office, including the AI assistant (the [customer notice template](/legal/ai-notice) helps);
+- have a lawful basis to give us the data, and tell its customers about its use of Agentic Office, including the AI assistant (the [customer notice template](/legal/ai-notice) helps);
 - not upload more personal data than it needs;
 - choose a retention period for customer conversations that suits its own obligations.
 
 ## 5. Transfers outside India
 
-The Office runs on Cloudflare's global network, so data may be processed outside India. We do not transfer data to any country the Government of India has restricted. [For the EU: standard contractual clauses to be added.]
+Agentic Office runs on Cloudflare's global network, so data may be processed outside India. We do not transfer data to any country the Government of India has restricted. [For the EU: standard contractual clauses to be added.]
 
 ## 6. Liability
 

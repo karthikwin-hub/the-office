@@ -1,4 +1,4 @@
-import { LEGAL_DOCUMENTS, LEGAL_PAGES, type LegalPage, type Me } from "@office/contracts";
+import { BRAND, LEGAL_DOCUMENTS, LEGAL_PAGES, type LegalPage, type Me } from "@office/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
@@ -19,13 +19,21 @@ export function LegalScreen() {
   const known = (LEGAL_PAGES as readonly string[]).includes(page);
   return (
     <main className="legal" id="main">
-      <p className="signin-plate">
-        <a href="/">The Office</a>
-      </p>
+      <BrandPlate home />
       {known ? <article dangerouslySetInnerHTML={{ __html: pages[page as LegalPage] }} /> : <h1>There is no page here</h1>}
       <LegalFooter />
     </main>
   );
+}
+
+/** The name on the door of every page outside an office. */
+export function BrandPlate({ home = false }: { home?: boolean }) {
+  const name = (
+    <>
+      {BRAND.name} <span className="signin-plate-by">by {BRAND.maker}</span>
+    </>
+  );
+  return <p className="signin-plate">{home ? <a href="/">{name}</a> : name}</p>;
 }
 
 export function LegalFooter() {
@@ -51,7 +59,7 @@ export function ConsentGate({ me }: { me: Me }) {
   return (
     <main className="signin" id="main">
       <div className="signin-door consent-gate">
-        <p className="signin-plate">The Office</p>
+        <BrandPlate />
         <h1>{me.offices.length ? "We have updated our terms" : "Before you start"}</h1>
         <p className="muted">
           Please read {changed.map((d, i) => (
@@ -62,7 +70,7 @@ export function ConsentGate({ me }: { me: Me }) {
               </a>
             </span>
           ))}
-          . They say what The Office does with your data and your business's, and what you agree to.
+          . They say what {BRAND.name} does with your data and your business's, and what you agree to.
         </p>
         <label className="check">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />

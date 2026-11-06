@@ -1079,6 +1079,11 @@
   display: grid;
   gap: var(--s-3);
 }
+.signin-plate-by {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
 .signin-plate {
   justify-self: start;
   font-size: var(--step--1);

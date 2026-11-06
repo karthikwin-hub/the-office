@@ -1,4 +1,6 @@
-# The Office
+# Agentic Office by Snilld AI
+
+Called "The Office" in older documents and in code names (`@office/*`, the `the-office` Worker); the public name is set once in `packages/contracts/src/brand.ts`.
 
 AI agents on an office floor plan for a small Indian business. Every figure links to the documents it was added up from, and each agent works under a trust level the owner sets.
 
