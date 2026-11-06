@@ -30,8 +30,130 @@ export const Business = z.object({
    * Invoices and bills brought forward from before it count towards balances, but never towards returns or sales.
    */
   booksFrom: IsoDate.optional(),
+  /** What the Compliance Officer needs to know about the company. Changed only through the compliance profile, never by the business form. */
+  compliance: z.lazy(() => ComplianceProfile).optional(),
 });
 export type Business = z.infer<typeof Business>;
+
+/* ---------- The company, for the Compliance Officer ---------- */
+
+export const Director = z.object({
+  id: z.string(),
+  name: z.string().max(120),
+  din: z.string().max(8).default(""),
+  designation: z.string().max(60).default("Director"),
+  appointedOn: IsoDate.nullable().default(null),
+  /** The last DIR-3 KYC. From 31 March 2026 it is due once every three financial years, by 30 June. */
+  kycDoneOn: IsoDate.nullable().default(null),
+  dscExpiresOn: IsoDate.nullable().default(null),
+  /** Signs MCA forms: has a Business User login on the MCA portal with this DSC associated. */
+  mcaSigner: z.boolean().default(false),
+});
+export type Director = z.infer<typeof Director>;
+
+export const Shareholder = z.object({
+  id: z.string(),
+  name: z.string().max(120),
+  shares: z.number().int().min(0),
+  /** MGT-7 and MGT-7A ask for the number of shareholders by gender. */
+  gender: z.enum(["male", "female", "other", "entity"]).default("entity"),
+  foreign: z.boolean().default(false),
+});
+export type Shareholder = z.infer<typeof Shareholder>;
+
+export const LoanKind = z.enum(["director", "shareholder", "related_company", "bank", "nbfc", "other"]);
+export const CompanyLoan = z.object({
+  id: z.string(),
+  lender: z.string().max(120),
+  kind: LoanKind,
+  amountPaise: Paise,
+  takenOn: IsoDate,
+  /** A secured loan creates a charge that is registered with the ROC (CHG-1), and satisfied when repaid (CHG-4). */
+  secured: z.boolean().default(false),
+  closedOn: IsoDate.nullable().default(null),
+});
+export type CompanyLoan = z.infer<typeof CompanyLoan>;
+
+/** Something that happened to the company and starts an ROC clock. Most are recorded from changes to the profile. */
+export const CompanyEventKind = z.enum([
+  "director_joined",
+  "director_left",
+  "director_contact_changed",
+  "office_moved",
+  "authorised_capital_changed",
+  "shares_allotted",
+  "charge_created",
+  "charge_satisfied",
+  "special_resolution",
+  "ben1_received",
+  "auditor_resigned",
+]);
+export type CompanyEventKind = z.infer<typeof CompanyEventKind>;
+export const CompanyEvent = z.object({
+  id: z.string(),
+  kind: CompanyEventKind,
+  on: IsoDate,
+  detail: z.string().max(300),
+  /** Shares allotted by private placement have 15 days for PAS-3; other allotments 30. */
+  privatePlacement: z.boolean().optional(),
+  /** Shares allotted to someone outside India also need FC-GPR. */
+  foreign: z.boolean().optional(),
+  /** Recorded by the office from a change to the profile, rather than added by hand. */
+  auto: z.boolean().default(false),
+});
+export type CompanyEvent = z.infer<typeof CompanyEvent>;
+
+/** Yes/no answers that switch whole groups of rules on. */
+export const ComplianceFlags = z.object({
+  foreignInvestment: z.boolean().default(false),
+  exportsUnderLut: z.boolean().default(false),
+  jobWork: z.boolean().default(false),
+  demat: z.boolean().default(false),
+  foreignPayments: z.boolean().default(false),
+  sft: z.boolean().default(false),
+  transferPricing: z.boolean().default(false),
+  salaryTds: z.boolean().default(false),
+});
+export type ComplianceFlags = z.infer<typeof ComplianceFlags>;
+
+export const ComplianceProfile = z.object({
+  cin: z.string().max(21).default(""),
+  incorporatedOn: IsoDate.nullable().default(null),
+  /** The ROC the company reports to; the mapping changed on 16 February 2026. */
+  roc: z.string().max(60).default(""),
+  registeredOffice: z.string().max(300).default(""),
+  authorisedCapitalPaise: Paise.default(0),
+  paidUpCapitalPaise: Paise.nullable().default(null),
+  /** A holding or subsidiary company is never a small company, however small it is. */
+  holdingOrSubsidiary: z.boolean().default(false),
+  netProfitPaise: Paise.nullable().default(null),
+  netWorthPaise: Paise.nullable().default(null),
+  directors: z.array(Director).default([]),
+  shareholders: z.array(Shareholder).default([]),
+  loans: z.array(CompanyLoan).default([]),
+  auditor: z.string().max(120).default(""),
+  /** The financial year whose AGM appoints or re-appoints the auditor, for example "2026-27". */
+  auditorTermEndsFy: z.string().regex(/^\d{4}-\d{2}$/).nullable().default(null),
+  /** AGMs held, by the financial year they adopt the accounts of ("2025-26"). */
+  agms: z.array(z.object({ fy: z.string().regex(/^\d{4}-\d{2}$/), heldOn: IsoDate })).default([]),
+  plannedAgmOn: IsoDate.nullable().default(null),
+  boardMeetings: z.array(IsoDate).default([]),
+  gstFrequency: z.enum(["monthly", "quarterly"]).nullable().default(null),
+  pf: z.boolean().nullable().default(null),
+  esi: z.boolean().nullable().default(null),
+  /** The state whose professional tax applies; blank uses the GSTIN's state. */
+  ptState: z.string().max(2).default(""),
+  taxAudit: z.enum(["auto", "yes", "no"]).default("auto"),
+  /** The CA's estimate of this year's income tax, which replaces the office's own. */
+  estimatedTaxPaise: Paise.nullable().default(null),
+  flags: ComplianceFlags.default({}),
+  events: z.array(CompanyEvent).default([]),
+  /** Dates before this are not chased: the calendar starts when the company first answered. */
+  calendarFrom: IsoDate.nullable().default(null),
+  /** The company's master data as last pasted from the MCA portal. */
+  masterData: z.object({ checkedOn: IsoDate, fields: z.record(z.string()) }).nullable().default(null),
+});
+export type ComplianceProfile = z.infer<typeof ComplianceProfile>;
 
 export const Contact = z.object({ name: z.string(), phone: z.string(), email: z.string() });
 
@@ -55,6 +177,15 @@ export const Party = z.object({
   supplyKind: z.enum(["goods", "service", "professional", "rent", "commission"]).optional(),
   tdsSection: TdsSection.nullable().optional(),
   tdsRateBp: z.number().int().optional(),
+  /** A supplier's Udyam registration. Micro and small suppliers must be paid within 45 days. */
+  udyamCategory: z.enum(["micro", "small", "medium", "none"]).optional(),
+  udyamNumber: z.string().max(19).optional(),
+  /** Traders registered on Udyam do not have the MSMED Act's payment protection. */
+  udyamActivity: z.enum(["manufacturing", "services", "trading"]).optional(),
+  /** Credit days agreed in writing. Without a written agreement the limit is 15 days; with one, at most 45. */
+  writtenCreditDays: z.number().int().min(0).max(365).optional(),
+  /** A related party for the financial statements (AOC-2 and the notes). */
+  related: z.boolean().optional(),
 });
 export type Party = z.infer<typeof Party>;
 
@@ -249,6 +380,7 @@ const ReturnBase = {
   dueOn: IsoDate,
   filedBy: z.string(),
 };
+/** "26Q" is the quarterly TDS return's key in the books; from tax year 2026-27 the return itself is Form 140. */
 export const FiledReturn = z.discriminatedUnion("form", [
   z.object({ ...ReturnBase, form: z.literal("GSTR-1"), data: Gstr1 }),
   z.object({ ...ReturnBase, form: z.literal("GSTR-3B"), data: Gstr3b }),
@@ -579,6 +711,16 @@ export const Rfq = z.object({
 });
 export type Rfq = z.infer<typeof Rfq>;
 
+export const Assignee = z.enum(["owner", "ca", "cs"]);
+export type Assignee = z.infer<typeof Assignee>;
+export const SrnStatus = z.enum(["draft", "pay_fees", "under_processing", "resubmission", "approved", "rejected"]);
+export type SrnStatus = z.infer<typeof SrnStatus>;
+
+/**
+ * One filing, payment or meeting the company owes. The calendar works most of them out from the
+ * profile and the books; what is stored is the tracking (who has it, when it was filed and the proof)
+ * and anything added by hand. `id` is `<rule>:<period>` for a worked-out item.
+ */
 export const ComplianceEvent = z.object({
   id: z.string(),
   date: IsoDate,
@@ -586,6 +728,31 @@ export const ComplianceEvent = z.object({
   description: z.string(),
   authority: z.string(),
   status: z.enum(["upcoming", "done", "overdue"]),
+  ruleId: z.string().optional(),
+  period: z.string().optional(),
+  source: z.enum(["rule", "check", "event", "manual"]).optional(),
+  assignee: Assignee.nullable().optional(),
+  /** Someone is working on it, or it is ready for the filer. Filed and late are worked out. */
+  progress: z.enum(["preparing", "ready"]).nullable().optional(),
+  filedOn: IsoDate.nullable().optional(),
+  /** The acknowledgement, challan or SRN number from the portal. */
+  ack: z.string().max(80).optional(),
+  proof: z.object({ file: z.string(), name: z.string().max(200) }).nullable().optional(),
+  snoozedUntil: IsoDate.nullable().optional(),
+  snoozeReason: z.string().max(300).optional(),
+  /** An MCA filing's service request: the signed PDF is due within 15 days of it. */
+  srn: z
+    .object({
+      number: z.string().max(20),
+      createdOn: IsoDate,
+      challan: z.string().max(40).default(""),
+      status: SrnStatus,
+      remarks: z.string().max(1000).default(""),
+      resubmitBy: IsoDate.nullable().default(null),
+    })
+    .optional(),
+  updatedBy: z.string().optional(),
+  updatedAt: IsoDateTime.optional(),
 });
 export type ComplianceEvent = z.infer<typeof ComplianceEvent>;
 
@@ -734,6 +901,7 @@ export const StagedKind = z.enum([
   "customer_reply",
   "handoff",
   "onboarding",
+  "compliance_action",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

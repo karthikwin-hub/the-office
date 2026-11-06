@@ -9,6 +9,7 @@ import { cashReport } from "./reports";
 import { expectedTdsByBill } from "./tds";
 import { performance, socialInvoices } from "./social/metrics";
 import { marketingReport, operationsReport, payrollFor } from "./teams";
+import { complianceView } from "./compliance";
 
 const sum = (rows: TraceRow[]) => rows.reduce((a, r) => a + r.amountPaise, 0);
 
@@ -119,6 +120,17 @@ export function trace(l: Ledger, figureId: string): Trace {
 
   if (kind === "marketing") {
     return build("Slow-moving stock at cost", marketingReport(l).slowMovers.map((s) => ({ label: s.name, detail: `${s.onHand} on hand, ${s.soldLast60} sold in 60 days`, date: l.asOf, amountPaise: s.stockValuePaise, docId: null, region: null })));
+  }
+
+  if (kind === "compliance" && sub === "at-risk") {
+    const v = complianceView(l.books, l.asOf);
+    const rows: TraceRow[] = [
+      ...v.obligations
+        .filter((o) => o.lateCostPaise && (o.state === "late" || (o.state !== "filed" && o.state !== "snoozed" && o.daysLeft <= 7)))
+        .map((o) => ({ label: o.form, detail: o.state === "late" ? `${o.title}: ${-o.daysLeft} days late. ${o.lateCostNote}` : `${o.title}: a week's delay. ${o.lateCostNote}`, date: o.dueOn, amountPaise: o.lateCostPaise, docId: null, region: null })),
+      ...v.checks.filter((c) => c.tone === "red" && c.amountPaise).map((c) => ({ label: c.title, detail: c.summary, date: l.asOf, amountPaise: c.amountPaise, docId: null, region: null })),
+    ];
+    return build("At risk from late filings and the checks on the books", rows);
   }
 
   if (kind === "operations") {

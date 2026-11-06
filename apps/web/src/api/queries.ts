@@ -1,6 +1,6 @@
 import type { Decision, TrustLevel } from "@office/contracts";
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { account, api, isLive, officeAdmin } from "./client";
+import { account, api, compliance, isLive, officeAdmin } from "./client";
 
 export const q = {
   me: () => queryOptions({ queryKey: ["me"], queryFn: account.me, staleTime: Infinity, retry: false }),
@@ -34,6 +34,10 @@ export const q = {
   customers: () => queryOptions({ queryKey: ["customers"], queryFn: api.customers, refetchInterval: isLive ? false : 15_000 }),
   thread: (id: string) => queryOptions({ queryKey: ["customers", "thread", id], queryFn: () => api.thread(id) }),
   orders: () => queryOptions({ queryKey: ["orders"], queryFn: api.orders }),
+  compliance: () => queryOptions({ queryKey: ["report", "compliance"], queryFn: compliance.view }),
+  complianceAudit: () => queryOptions({ queryKey: ["report", "compliance", "audit"], queryFn: compliance.audit }),
+  compliancePack: (id: string) => queryOptions({ queryKey: ["report", "compliance", "pack", id], queryFn: () => compliance.pack(id) }),
+  booksRecord: () => queryOptions({ queryKey: ["books-record"], queryFn: compliance.booksRecord }),
 };
 
 /** Any change in the office whose effects reach beyond one screen: everything but documents refetches. */

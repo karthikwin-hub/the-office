@@ -76,6 +76,62 @@ VENDORS = [
     ("V08", "Patil Sales Agency", "Pune", "27", "individual", False, "commission", "194H", 200, "C"),
 ]
 
+# Suppliers' Udyam registration: (category, activity, Udyam number, credit days agreed in writing or None)
+# Deccan Lighting is a micro manufacturer with no written agreement, so 15 days apply.
+UDYAM = {
+    "V01": ("small", "manufacturing", "UDYAM-MH-26-0041872", 45),
+    "V02": ("none", None, None, None),
+    "V03": ("micro", "manufacturing", "UDYAM-TS-02-0118344", None),
+    "V04": ("none", None, None, None),
+    "V05": ("none", None, None, None),
+    "V06": ("none", None, None, None),
+    "V08": ("micro", "services", "UDYAM-MH-26-0213095", 30),
+}
+
+# What the Compliance Officer knows about the company (paise for money).
+COMPLIANCE = {
+    "cin": "U31900PN2012PTC143857",
+    "incorporatedOn": "2012-07-18",
+    "roc": "ROC Pune",
+    "registeredOffice": "Plot 14, Bhosari MIDC, Pune 411026, Maharashtra",
+    "authorisedCapitalPaise": 5_00_00_000_00,
+    "paidUpCapitalPaise": 3_20_00_000_00,
+    "holdingOrSubsidiary": False,
+    "netProfitPaise": 3_85_00_000_00,
+    "netWorthPaise": 21_40_00_000_00,
+    "directors": [
+        {"id": "dir-1", "name": "Anil Kaveri", "din": "05512847", "designation": "Managing Director", "appointedOn": "2012-07-18", "kycDoneOn": "2025-09-12", "dscExpiresOn": "2027-08-30", "mcaSigner": True},
+        {"id": "dir-2", "name": "Sunita Kaveri", "din": "05512903", "designation": "Director", "appointedOn": "2012-07-18", "kycDoneOn": "2025-09-15", "dscExpiresOn": "2026-12-10", "mcaSigner": True},
+        {"id": "dir-3", "name": "Rohan Kaveri", "din": "10984412", "designation": "Director", "appointedOn": "2026-10-20", "kycDoneOn": None, "dscExpiresOn": "2028-10-14", "mcaSigner": False},
+    ],
+    "shareholders": [
+        {"id": "sh-1", "name": "Anil Kaveri", "shares": 1_920_000, "gender": "male", "foreign": False},
+        {"id": "sh-2", "name": "Sunita Kaveri", "shares": 960_000, "gender": "female", "foreign": False},
+        {"id": "sh-3", "name": "Rohan Kaveri", "shares": 320_000, "gender": "male", "foreign": False},
+    ],
+    "loans": [
+        {"id": "loan-1", "lender": "HDFC Bank (cash credit)", "kind": "bank", "amountPaise": 2_50_00_000_00, "takenOn": "2023-04-10", "secured": True, "closedOn": None},
+        {"id": "loan-2", "lender": "Anil Kaveri", "kind": "director", "amountPaise": 40_00_000_00, "takenOn": "2025-06-01", "secured": False, "closedOn": None},
+    ],
+    "auditor": "Gokhale & Bapat, Chartered Accountants",
+    "auditorTermEndsFy": "2026-27",
+    "agms": [{"fy": "2024-25", "heldOn": "2025-09-24"}, {"fy": "2025-26", "heldOn": "2026-09-26"}],
+    "plannedAgmOn": None,
+    "boardMeetings": ["2025-11-14", "2026-02-12", "2026-05-22", "2026-08-28"],
+    "gstFrequency": "monthly",
+    "pf": True,
+    "esi": True,
+    "ptState": "27",
+    "taxAudit": "auto",
+    "estimatedTaxPaise": None,
+    "flags": {"foreignInvestment": False, "exportsUnderLut": False, "jobWork": False, "demat": False, "foreignPayments": False, "sft": False, "transferPricing": False, "salaryTds": False},
+    "events": [
+        {"id": "evt-director_joined-2026-10-20-1", "kind": "director_joined", "on": "2026-10-20", "detail": "Rohan Kaveri (DIN 10984412) joined the board.", "auto": True},
+    ],
+    "calendarFrom": "2026-10-01",
+    "masterData": None,
+}
+
 # (id, name, hsn, unit, gst rate %, price rupees, category)
 SKUS = [
     ("SKU-101", "FR PVC wire 1.0 sq mm, 90 m coil", "8544", "ROL", 18, 1450, "Cables"),

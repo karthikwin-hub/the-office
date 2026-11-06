@@ -268,27 +268,6 @@ export function OrdersView({ report }: { report: OperationsReport }) {
   );
 }
 
-export function ComplianceView({ report, compact }: { report: OperationsReport; compact?: boolean }) {
-  const rows = compact ? report.compliance.filter((c) => c.status !== "done").slice(0, 6) : report.compliance;
-  return (
-    <Section title="Filing and payment calendar">
-      <ul className="filings">
-        {rows.map((c) => (
-          <li key={c.id} className={c.status === "overdue" ? "is-red" : undefined}>
-            <span className="filings-form">{c.form}</span>
-            <span>{c.description}</span>
-            <span className="muted num">
-              {shortDate(c.date)}
-              {c.status === "upcoming" ? `, in ${count(c.daysLeft, "day")}` : ""}
-            </span>
-            <span>{c.status === "done" ? "Done" : c.status === "overdue" ? "Overdue" : c.authority}</span>
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
 /* ---------- People ---------- */
 
 export function PayrollView({ report }: { report: PeopleReport }) {

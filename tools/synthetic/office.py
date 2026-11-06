@@ -186,17 +186,25 @@ def build(rng, business, parties, skus, invoices, bills, employees_src, as_of: d
             {"vendorName": "Volta Protect", "ratePaise": 2_960_00, "leadDays": 14, "terms": "15 days credit"},
         ]},
     ]
+    # Tracking for the calendar the Compliance Officer works out: what was filed, who has what, and one item added by hand.
+    def track(rule, period, form, date, description, authority, **kw):
+        status = "done" if kw.get("filedOn") else "upcoming"
+        return {"id": f"{rule}:{period}", "date": date, "form": form, "description": description, "authority": authority, "status": status, "ruleId": rule, "period": period, "source": "rule", "updatedBy": kw.pop("by", "Rajesh Mehta"), "updatedAt": kw.pop("at", f"{kw.get('filedOn', '2026-11-03')}T18:10:00+05:30"), **kw}
+
     compliance = [
-        {"id": "cmp-01", "date": "2026-11-07", "form": "TDS payment", "description": "Deposit TDS deducted in October (Challan ITNS 281)", "authority": "Income Tax", "status": "upcoming"},
-        {"id": "cmp-02", "date": "2026-11-11", "form": "GSTR-1", "description": "Outward supplies for October 2026", "authority": "GST", "status": "upcoming"},
-        {"id": "cmp-03", "date": "2026-11-15", "form": "PF and ESI", "description": "Contributions for October wages", "authority": "EPFO / ESIC", "status": "upcoming"},
-        {"id": "cmp-04", "date": "2026-11-20", "form": "GSTR-3B", "description": "Summary return and tax payment for October 2026", "authority": "GST", "status": "upcoming"},
-        {"id": "cmp-05", "date": "2026-11-29", "form": "MGT-7", "description": "Annual return for FY 2025-26", "authority": "MCA", "status": "upcoming"},
-        {"id": "cmp-06", "date": "2026-11-30", "form": "Professional tax", "description": "Maharashtra PT for October salaries", "authority": "State", "status": "upcoming"},
-        {"id": "cmp-07", "date": "2026-12-15", "form": "Advance tax", "description": "Third instalment, 75% of estimated tax", "authority": "Income Tax", "status": "upcoming"},
-        {"id": "cmp-08", "date": "2026-10-31", "form": "26Q", "description": "TDS return for July to September", "authority": "Income Tax", "status": "done"},
-        {"id": "cmp-09", "date": "2026-10-30", "form": "AOC-4", "description": "Financial statements for FY 2025-26", "authority": "MCA", "status": "done"},
-        {"id": "cmp-10", "date": "2026-10-20", "form": "GSTR-3B", "description": "Summary return for September 2026", "authority": "GST", "status": "done"},
+        track("advance-tax", "2026-27-15", "Advance tax", "2026-06-15", "Advance tax, first instalment", "Income Tax", filedOn="2026-06-13", ack="CIN 0510308 13062026 41102"),
+        track("advance-tax", "2026-27-45", "Advance tax", "2026-09-15", "Advance tax, second instalment", "Income Tax", filedOn="2026-09-14", ack="CIN 0510308 14092026 52817"),
+        track("tds-deposit", "2026-09", "TDS challan", "2026-10-07", "Deposit TDS deducted in September", "Income Tax", filedOn="2026-10-06", ack="CIN 0510308 06102026 30441"),
+        track("ims", "2026-09", "IMS", "2026-10-14", "Review purchase invoices on IMS", "GST", filedOn="2026-10-13"),
+        track("pf", "2026-09", "PF ECR", "2026-10-15", "Provident fund for September", "EPFO", filedOn="2026-10-14", ack="TRRN 1022610004417"),
+        track("esi", "2026-09", "ESI", "2026-10-15", "ESI for September", "ESIC", filedOn="2026-10-14", ack="ESIC challan 22102026118"),
+        track("tax-audit", "2025-26", "Form 3CA-3CD", "2026-10-21", "Tax audit report for FY 2025-26", "Income Tax", filedOn="2026-10-18", ack="ACK 714398220181026", assignee="ca"),
+        track("aoc4", "2025-26", "AOC-4 XBRL", "2026-12-31", "Financial statements for FY 2025-26", "MCA", filedOn="2026-10-24", ack="AB1234567", assignee="cs",
+              srn={"number": "AB1234567", "createdOn": "2026-10-24", "challan": "", "status": "approved", "remarks": "", "resubmitBy": None}),
+        track("msme1", "2026-27-H1", "MSME-1", "2026-10-31", "Dues to micro and small suppliers, April to September", "MCA", filedOn="2026-10-29", ack="AB2209183", assignee="cs"),
+        track("mgt7", "2025-26", "MGT-7", "2027-01-31", "Annual return for FY 2025-26", "MCA", assignee="cs", progress="preparing", by="Rajesh Mehta"),
+        track("itr", "2025-26", "ITR-6", "2026-11-21", "Company income-tax return for FY 2025-26", "Income Tax", assignee="ca", progress="ready", by="Rajesh Mehta"),
+        {"id": "man-20261101-1", "date": "2026-11-30", "form": "Factory licence", "description": "Renew the factory licence with DISH Maharashtra", "authority": "State", "status": "upcoming", "source": "manual", "assignee": "owner", "updatedBy": "Anil Kaveri", "updatedAt": "2026-11-01T11:20:00+05:30"},
     ]
 
     # ------------------------------------------------------------ people
@@ -220,7 +228,7 @@ def build(rng, business, parties, skus, invoices, bills, employees_src, as_of: d
     def add(hh, mm, agent, text, kind=None, ref=None, d=as_of):
         log.append({"id": f"log-{len(log) + 1:03d}", "at": at(d, hh, mm), "agentId": agent, "text": text, "ref": {"kind": kind, "id": ref} if kind else None})
 
-    add(8, 30, "compliance-officer", "Checked the filing calendar: TDS payment for October is due on 7 November.", "compliance", "cmp-01")
+    add(8, 30, "compliance-officer", "Checked the filing calendar: TDS deducted in October is due on 7 November.", "compliance", "tds-deposit:2026-10")
     add(8, 45, "office-manager", "Prepared the morning digest and emailed it to Anil Kaveri.")
     for i, b in enumerate(nov_bills):
         vendor = party[b["partyId"]]

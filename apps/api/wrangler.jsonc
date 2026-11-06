@@ -27,6 +27,9 @@
     "APP_DOMAIN": "office.snilld.in",
     // Who may use the console's view of every business: comma-separated, each must sign in with a confirmed address.
     "PLATFORM_OWNERS": "puja@snilldai.com"
+    // The daily copy of the books on servers in India (Companies (Accounts) Rules, rule 3(5)): add INDIA_BACKUP_ENDPOINT,
+    // INDIA_BACKUP_BUCKET and INDIA_BACKUP_REGION here for an S3-compatible bucket in an Indian region, and put
+    // INDIA_BACKUP_ACCESS_KEY_ID and INDIA_BACKUP_SECRET_ACCESS_KEY as secrets. Until then the backup is skipped and Settings says so.
   },
   // A deploy replaces the Worker's custom domains with exactly this list, so every customer's address must be here.
   "routes": [

@@ -4,7 +4,7 @@ import { dateLabel, monthLabel, quarterLabel } from "./dates";
 import { itcFor, outwardFor, setOff } from "./gst";
 import type { Ledger } from "./ledger";
 import { tdsReport } from "./reports";
-import { SECTION_NOTE, TDS_RULES, tdsDepositDue } from "./tds";
+import { NEW_ACT, SECTION_NOTE, TDS_RULES, tdsDepositDue } from "./tds";
 
 /**
  * Working papers for the GSTR-3B and 26Q returns. Figures copied from the books
@@ -237,7 +237,7 @@ export async function gstr3bWorkbook(l: Ledger, period: string): Promise<ExportF
   return finish(wb, `GSTR3B_${l.books.business.gstin}_${period}.xlsx`);
 }
 
-/** 26Q working for a quarter: deductions by bill, a section summary and TDS customers owe us. */
+/** The quarterly TDS return's working (Form 140, or 26Q before tax year 2026-27): deductions by bill, a section summary and TDS customers owe us. */
 export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFile> {
   const rep = tdsReport(l, quarter);
   const wb = await newBook(l);
@@ -246,7 +246,7 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
   const rs = wb.addWorksheet("Deducted by customers", { views: [{ state: "frozen", ySplit: 5 }] });
 
   heading(ds, l, `TDS deductions, ${quarterTitle(quarter)}`);
-  header(ds, 5, ["Bill", "Date", "Deductee", "PAN", "Section", "Amount liable", "Rate", "TDS as per rules", "TDS booked", "Short (excess)", "Deposit due", "Reported in 26Q"], [16, 12, 32, 13, 9, 15, 8, 15, 15, 15, 12, 15]);
+  header(ds, 5, ["Bill", "Date", "Deductee", "PAN", "Section", "Amount liable", "Rate", "TDS as per rules", "TDS booked", "Short (excess)", "Deposit due", `Reported in ${rep.returnForm}`], [16, 12, 32, 13, 9, 15, 8, 15, 15, 15, 12, 15]);
   const deds = [...rep.deductions].sort((a, b) => (a.date === b.date ? (a.billId < b.billId ? -1 : 1) : a.date < b.date ? -1 : 1));
   let r = 6;
   for (const d of deds) {
@@ -278,8 +278,9 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
   }
   ds.autoFilter = { from: "A5", to: `L${dLast}` };
 
-  heading(ss, l, `26Q working, ${quarterTitle(quarter)}`);
-  header(ss, 5, ["Section", "Nature of payment", "Rate", "Deductees", "Amount liable", "TDS as per rules", "TDS booked", "Short (excess)"], [10, 32, 22, 11, 16, 16, 16, 16]);
+  const newAct = rep.returnForm === "Form 140";
+  heading(ss, l, `${rep.returnForm} working, ${quarterTitle(quarter)}`);
+  header(ss, 5, ["Section", newAct ? "Nature of payment, section 393 and payment code" : "Nature of payment", "Rate", "Deductees", "Amount liable", "TDS as per rules", "TDS booked", "Short (excess)"], [10, newAct ? 58 : 32, 22, 11, 16, 16, 16, 16]);
   const D = "Deductions";
   const sections = Object.keys(TDS_RULES).sort() as (keyof typeof TDS_RULES)[];
   r = 6;
@@ -287,7 +288,7 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
     const rows = deds.filter((d) => d.section === s);
     const sec = `${D}!$E$6:$E$${dLast}`;
     put(ss.getCell(r, 1), s);
-    label(ss.getCell(r, 2), TDS_RULES[s].nature);
+    label(ss.getCell(r, 2), newAct ? `${TDS_RULES[s].nature}: ${NEW_ACT[s].ref}, code ${NEW_ACT[s].codes}` : TDS_RULES[s].nature);
     label(ss.getCell(r, 3), TDS_RULES[s].rateLabel);
     put(ss.getCell(r, 4), `=SUMPRODUCT((${sec}=A${r})/COUNTIFS(${D}!$D$6:$D$${dLast},${D}!$D$6:$D$${dLast},${sec},${sec}))`, { tone: "formula", fmt: "0", result: new Set(rows.map((d) => d.pan)).size });
     put(ss.getCell(r, 5), `=SUMIFS(${D}!$F$6:$F$${dLast},${sec},A${r})`, { tone: "formula", fmt: MONEY, result: rupees(rows.reduce((a, d) => a + d.basePaise, 0)) });
@@ -305,7 +306,7 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
     cell.border = { top: RULE };
   }
 
-  heading(rs, l, `TDS deducted by customers under section 194Q, ${quarterTitle(quarter)}`);
+  heading(rs, l, `TDS deducted by customers on purchases from us (${rep.returnForm === "26Q" ? "section 194Q" : "section 393, code 1031"}), ${quarterTitle(quarter)}`);
   header(rs, 5, ["Invoice", "Customer", "Expected", "Credited in Form 26AS", "Not yet credited"], [14, 34, 15, 20, 16]);
   r = 6;
   for (const x of rep.receivable) {
@@ -322,11 +323,12 @@ export async function tdsWorkbook(l: Ledger, quarter: string): Promise<ExportFil
     ["Source", `Posted purchase bills dated in ${quarterLabel(quarter)}, as held by ${BRAND.name} on ${dateLabel(l.asOf)}. Each row names the bill it came from.`],
     ["Amount liable", "The amount the rate applies to. For section 194Q it is only the part of the year's purchases from that supplier above ₹50 lakh; for the other sections it is the bill's taxable value."],
     ["Thresholds", "194C: ₹1 lakh a year per contractor. 194J: ₹50,000 a year. 194H: ₹20,000 a year. 194I: ₹50,000 a month. 194Q: purchases above ₹50 lakh a year, and only when our turnover last year exceeded ₹10 crore."],
+    ["Income-tax Act 2025", "From 1 April 2026 the same deductions are made under section 393: 194C is 393(1) Sl. 6(i), codes 1023/1024; 194H is Sl. 1(ii), code 1006; 194I is Sl. 2(ii), code 1009; 194J is Sl. 6(iii), code 1027; 194Q is Sl. 8(ii), code 1031. The return is Form 140 (formerly 26Q)."],
     ["Rates", "Typed in from the rules for each deductee (Finance Act 2025). A rule change needs the rate column updated, not the formulas."],
     ["Deposit due", "The 7th of the following month; 30 April for deductions made in March."],
     ["Section numbers", SECTION_NOTE],
   ]);
-  return finish(wb, `26Q_${l.books.business.tan}_${quarter}.xlsx`);
+  return finish(wb, `${newAct ? "Form140" : "26Q"}_${l.books.business.tan}_${quarter}.xlsx`);
 }
 
 /** File downloads served beside dispatch(): returns null for paths that are not exports. */

@@ -3,17 +3,27 @@ import {
   AskRequest,
   BrandVoice,
   ChannelSetup,
+  ComplianceAssign,
+  ComplianceFiling,
+  ComplianceManual,
+  ComplianceSnooze,
+  ComplianceSrn,
   CsSettingsInput,
+  EventInput,
   FactsInput,
   HiringChange,
   ImportCheck,
   MarkPosted,
+  MasterDataPaste,
   MediaAsset,
   MetricsImport,
+  type Obligation,
   OrderChange,
   OrderInput,
   OrdersImport,
   OwnerReply,
+  ProfileInput,
+  PartyMsme,
   ReadRequest,
   type Role,
   ROUTINE_BY_ID,
@@ -32,6 +42,23 @@ import type { OfficeService } from "./office";
 import { cashReport, gstReport, salesReport, tdsReport } from "./reports";
 import { marketingReport, operationsReport, peopleReport, salesTeamReport, socialReport } from "./teams";
 import { trace } from "./trace";
+import { dateLabel } from "./dates";
+import {
+  addEvent,
+  addManual,
+  assign,
+  checkMasterData,
+  ComplianceError,
+  complianceView,
+  filingPack,
+  markFiled,
+  recordSrn,
+  removeManual,
+  reopen,
+  saveProfile,
+  snooze,
+  workingPaper,
+} from "./compliance";
 
 export type ApiRequest = { method: string; path: string; query: URLSearchParams; body?: unknown; role: Role; user: { name: string; email: string }; mode: "mock" | "live" };
 export type ApiResult = { status: number; body: unknown };
@@ -48,6 +75,12 @@ const ACCOUNTANT_CAN_DECIDE = new Set(["audit_flag", "share_file"]);
  * mock environment both call this, so the mockups and the API cannot drift.
  */
 export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
+  const res = routeRequest(office, req);
+  if (req.method !== "GET" && res.status < 400) office.recordEdits(req.user.name);
+  return res;
+}
+
+function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
   const l = office.ledger;
   const q = (k: string) => req.query.get(k) ?? undefined;
   const parts = req.path.replace(/^\/api\//, "").split("/").map(decodeURIComponent);
@@ -130,6 +163,17 @@ export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
       return l.doc(a) ? ok(office.documentView(a)) : notFound("Document");
     }
     if (get && head === "parties" && a) return l.findParty(a) ? ok(office.partyView(a)) : notFound("Party");
+    if (req.method === "PUT" && head === "parties" && a && b === "msme") {
+      const party = l.findParty(a);
+      if (!party) return notFound("Party");
+      if (party.kind !== "vendor") return bad("Udyam details are kept for suppliers.");
+      const parsed = PartyMsme.safeParse(req.body ?? {});
+      if (!parsed.success) return bad("Check the Udyam number (UDYAM-XX-00-0000000) and the credit days.");
+      const m = parsed.data;
+      Object.assign(party, { udyamCategory: m.udyamCategory, udyamNumber: m.udyamNumber || undefined, udyamActivity: m.udyamActivity ?? undefined, writtenCreditDays: m.writtenCreditDays ?? undefined, related: m.related || undefined });
+      office.log("compliance-officer", `${req.user.name} recorded ${party.name} as ${m.udyamCategory === "none" ? "not registered on Udyam" : `a ${m.udyamCategory} enterprise${m.udyamActivity ? ` in ${m.udyamActivity}` : ""}`}${m.writtenCreditDays !== null ? `, ${m.writtenCreditDays} days agreed in writing` : ""}.`, { kind: "party", id: party.id });
+      return ok(office.partyView(a));
+    }
     if (req.method === "POST" && head === "ask") {
       const parsed = AskRequest.safeParse(req.body);
       if (!parsed.success) return { status: 400, body: { error: "Ask a question in up to 500 characters." } };
@@ -158,6 +202,8 @@ export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
     if (head === "routines") return routines(office, req, parts.slice(1));
     if (head === "customers") return customers(office, req, parts.slice(1));
     if (head === "orders") return orders(office, req, parts.slice(1));
+    if (head === "compliance") return compliance(office, req, parts.slice(1));
+    if (head === "books-record") return booksRecord(office, req, parts.slice(1));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/^(No|Unknown) /.test(msg)) return { status: 404, body: { error: msg } };
@@ -216,6 +262,120 @@ function customers(office: OfficeService, req: ApiRequest, parts: string[]): Api
     if (!parsed.success) return bad("An answer needs a title and the reply to send.");
     return ok(id ? cs.updateAnswer(id, parsed.data) : cs.addAnswer(parsed.data));
   }
+  return notFound("Route");
+}
+
+/**
+ * The Compliance Officer's calendar. Owner and accountant alike keep it: answer the profile, mark items
+ * filed with the acknowledgement and proof, hand them to each other, and record the SRN of an MCA form.
+ */
+function compliance(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const [what, id, sub] = parts;
+  const books = office.books;
+  const at = office.nowIst();
+  const by = req.user.name;
+  const done = (o: Obligation, text: string) => {
+    office.log("compliance-officer", `${by} ${text}`, { kind: "compliance", id: o.id });
+    return ok(o);
+  };
+  const read = <T>(schema: { safeParse: (v: unknown) => { success: boolean; data?: T } }): T | null => {
+    const r = schema.safeParse(req.body ?? {});
+    return r.success ? (r.data as T) : null;
+  };
+  try {
+    if (req.method === "GET" && !what) return ok(complianceView(books, office.asOf));
+    if (req.method === "GET" && what === "audit") return ok({ entries: books.teamLog.filter((e) => e.ref?.kind === "compliance" || e.agentId === "compliance-officer").sort((x, y) => (x.at < y.at ? 1 : -1)).slice(0, 200) });
+    if (req.method === "GET" && what === "papers" && id) {
+      const p = workingPaper(books, id, office.asOf);
+      return p ? ok(p) : notFound("Working paper");
+    }
+    if (what === "profile" && req.method === "PUT") {
+      const input = read(ProfileInput);
+      if (!input) return bad("Check the profile: dates as YYYY-MM-DD, DINs of eight digits and amounts in paise.");
+      const r = saveProfile(books, input, office.asOf);
+      office.log("compliance-officer", `${by} updated the company profile${r.events.length ? `; ${r.events.length === 1 ? "one change starts" : `${r.events.length} changes start`} an ROC clock: ${r.events.map((e) => e.detail).join(" ")}` : "."}`, { kind: "compliance", id: null });
+      return ok(complianceView(books, office.asOf));
+    }
+    if (what === "master-data" && req.method === "POST") {
+      const input = read(MasterDataPaste);
+      if (!input) return bad("Paste the company's master data from the MCA portal.");
+      const rows = checkMasterData(books, input.text, office.asOf);
+      const off = rows.filter((r) => !r.ok);
+      office.log("compliance-officer", `${by} checked the MCA master data: ${off.length ? `${off.length} difference${off.length === 1 ? "" : "s"} (${off.map((r) => r.field).join(", ")})` : "everything matches"}.`, { kind: "compliance", id: null });
+      return ok({ rows });
+    }
+    if (what === "events" && req.method === "POST") {
+      const input = read(EventInput);
+      if (!input) return bad("An event needs what happened, the date and a line about it.");
+      const e = addEvent(books, input);
+      office.log("compliance-officer", `${by} recorded: ${e.detail}`, { kind: "compliance", id: null });
+      return ok(complianceView(books, office.asOf));
+    }
+    if (what === "items" && !id && req.method === "POST") {
+      const input = read(ComplianceManual);
+      if (!input) return bad("An item needs a name and a due date.");
+      return done(addManual(books, input, by, at), `added "${input.form}" to the calendar, due ${dateLabel(input.dueOn)}.`);
+    }
+    if (what === "items" && id && !sub && req.method === "DELETE") {
+      removeManual(books, id);
+      office.log("compliance-officer", `${by} removed an item added by hand.`, { kind: "compliance", id });
+      return ok({ removed: id });
+    }
+    if (what === "items" && id && sub === "pack" && req.method === "GET") {
+      const pack = filingPack(books, id, office.asOf);
+      return pack ? ok(pack) : notFound("Filing pack");
+    }
+    if (what === "items" && id && sub === "filed" && req.method === "POST") {
+      const input = read(ComplianceFiling);
+      if (!input) return bad("Give the date it was filed.");
+      const o = markFiled(books, id, input, by, at);
+      return done(o, `marked ${o.form} filed on ${dateLabel(input.filedOn)}${input.ack ? ` (${input.ack})` : ""}${input.proof ? ", with proof attached" : ""}.`);
+    }
+    if (what === "items" && id && sub === "filed" && req.method === "DELETE") {
+      const o = reopen(books, id, by, at);
+      return done(o, `reopened ${o.form}: it is no longer marked filed.`);
+    }
+    if (what === "items" && id && sub === "assign" && req.method === "POST") {
+      const input = read(ComplianceAssign);
+      if (!input) return bad("Choose the owner, the CA or the CS.");
+      const o = assign(books, id, input, by, at);
+      const who = input.assignee === "owner" ? "the owner" : input.assignee ? `the ${input.assignee.toUpperCase()}` : "nobody";
+      return done(o, `${input.progress === "ready" ? "marked ready to file" : input.progress === "preparing" ? "started preparing" : "handed"} ${o.form}${input.progress ? "" : ` to ${who}`}.`);
+    }
+    if (what === "items" && id && sub === "snooze" && req.method === "POST") {
+      const input = read(ComplianceSnooze);
+      if (!input) return bad("Give a date to snooze until, and why.");
+      const o = snooze(books, id, input, by, at);
+      return done(o, input.until ? `snoozed ${o.form} until ${dateLabel(input.until)}${input.reason ? `: ${input.reason}` : ""}.` : `brought ${o.form} back from snooze.`);
+    }
+    if (what === "items" && id && sub === "srn" && req.method === "POST") {
+      const input = read(ComplianceSrn);
+      if (!input) return bad("An SRN needs its number, date and status.");
+      const o = recordSrn(books, id, input, by, at);
+      return done(o, `recorded SRN ${input.number} for ${o.form}: ${input.status.replace(/_/g, " ")}${input.resubmitBy ? `, resubmit by ${dateLabel(input.resubmitBy)}` : ""}.`);
+    }
+    if (what === "proof" && req.method === "POST" && req.mode === "mock") {
+      const body = (req.body ?? {}) as { name?: unknown };
+      const name = typeof body.name === "string" && body.name ? body.name.slice(0, 200) : "proof.pdf";
+      return ok({ file: `mock-proof-${Date.now()}`, name });
+    }
+  } catch (e) {
+    if (e instanceof ComplianceError) return { status: 422, body: { error: e.message } };
+    throw e;
+  }
+  return notFound("Route");
+}
+
+/** The books' own record for the auditor and the ROC: the edit log, the backup in India and who keeps the books. */
+function booksRecord(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const [what] = parts;
+  if (req.method !== "GET") return notFound("Route");
+  if (!what) return ok(office.booksRecord());
+  if (what === "edits") {
+    const limit = Math.min(500, Math.max(1, Number(req.query.get("limit") ?? 100) || 100));
+    return ok({ entries: office.edits.list({ coll: req.query.get("coll") ?? undefined, recordId: req.query.get("record") ?? undefined, limit }) });
+  }
+  if (what === "auditor-statement") return ok(office.auditorStatement(req.query.get("fy") ?? undefined));
   return notFound("Route");
 }
 

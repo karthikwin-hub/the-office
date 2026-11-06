@@ -2,6 +2,7 @@ import { ROUTINE_BY_ID, ROUTINES, type RoutineOutcome, type RoutineRun, type Rou
 import { AGENT_BY_ID } from "@office/contracts";
 import { addDays, dateLabel } from "./dates";
 import type { OfficeService } from "./office";
+import { dueReminders } from "./compliance";
 
 /** Where a routine's runs are kept: the office's own SQLite when live, memory in the mockups and tests. */
 export interface RoutineLog {
@@ -138,8 +139,13 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
     case "compliance-due":
       return runRoutine(office, id, trigger, () => {
         const due = office.complianceDue(7);
-        for (const d of due) notes.push(`${d.form} due ${dateLabel(d.date)}${d.daysLeft <= 0 ? " (today or overdue)" : ` in ${plural(d.daysLeft, "day")}`}.`);
-        return due.length ? { summary: due.map((d) => `${d.form} by ${dateLabel(d.date)}`).join("; "), counts: { due: due.length } } : { outcome: "nothing", summary: "Nothing is due in the next seven days.", counts: { due: 0 } };
+        const nudge = new Set(dueReminders(office.books, office.asOf).map((o) => o.id));
+        for (const d of due) if (nudge.has(d.id)) notes.push(`${d.line}${d.assignee ? ` (${d.assignee === "owner" ? "you" : d.assignee.toUpperCase()} to do)` : ""}`);
+        const late = due.filter((d) => d.state === "late");
+        if (nudge.size) office.log("compliance-officer", `Reminded you about ${plural(nudge.size, "filing")}: ${due.filter((d) => nudge.has(d.id)).map((d) => d.form).join(", ")}.`, { kind: "report", id: "compliance" });
+        return due.length
+          ? { summary: `${due.map((d) => `${d.form} ${d.state === "late" ? `late since ${dateLabel(d.dueOn)}` : `by ${dateLabel(d.dueOn)}`}`).join("; ")}.`, counts: { due: due.length, late: late.length, reminded: nudge.size } }
+          : { outcome: "nothing", summary: "Nothing is due in the next seven days.", counts: { due: 0, late: 0, reminded: 0 } };
       });
     case "handoff-chase":
       return runRoutine(office, id, trigger, () => {

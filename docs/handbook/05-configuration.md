@@ -25,6 +25,7 @@
 | `APP_DOMAIN` | Optional. The bare domain shows the product page, `app.<APP_DOMAIN>` is the app, `console.<APP_DOMAIN>` the platform console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host (the console at `/?platform`) | `office.snilld.in` |
 | `PLATFORM_OWNERS` | Comma-separated addresses that may use the platform console: every business's account, onboarding, suspending. Each signs in with a confirmed address; no one else gets past a 403 | `puja@snilldai.com` |
 | `TURNSTILE_SITE_KEY` | Optional. The public Turnstile site key the website chat shows; set together with `TURNSTILE_SECRET` | Not set (the chat relies on the rate limit) |
+| `INDIA_BACKUP_ENDPOINT`, `INDIA_BACKUP_BUCKET`, `INDIA_BACKUP_REGION` | The S3-compatible bucket in an Indian region that holds the daily copy of every office's books (for example an `ap-south-1` endpoint); set with the two `INDIA_BACKUP_*` secrets. See section 4d | Not set (the copy is skipped and Settings says so) |
 
 Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
 
@@ -60,6 +61,7 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | For LinkedIn | LinkedIn app |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For X | X app (OAuth 2.0) |
 | `TURNSTILE_SECRET` | Optional, for the website chat | Verifies the Turnstile token on each chat message; without it the chat accepts messages within the rate limit |
+| `INDIA_BACKUP_ACCESS_KEY_ID`, `INDIA_BACKUP_SECRET_ACCESS_KEY` | For companies' books (rule 3(5)) | A key that may only put objects into the India bucket; signs each upload with AWS Signature Version 4 |
 
 In Infisical (environment `dev`), the Cloudflare deploy token for the Snilld account is held as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
 
@@ -87,6 +89,17 @@ The chat snippet a business pastes into its website loads `/w/<key>.js` and talk
 ## 4c. Bringing in existing books
 
 Nothing to configure. The templates are static files at `/templates/parties.csv`, `/templates/products.csv` and `/templates/open-items.csv` (from `apps/web/public/templates/`). `POST /api/o/<office>/onboarding/check` reads the files and changes nothing; `POST /api/o/<office>/onboarding/stage` stores each CSV in R2 under the office's `docs/` prefix and puts one `onboarding` item on the Desk. Both are open to the owner and the accountant; only the owner approves, at any trust level. Limits: 2,000 rows and 1 MB a file, 3 files a request; the staged item must fit in about 1.5 MB, as it is kept in one row of the office's SQLite. The first approved import sets `business.booksFrom`, which then cannot change.
+
+## 4d. Compliance
+
+**The office prepares and reminds; you or your CA file on the government portals.** Nothing here logs in to the GST, income-tax, TRACES or MCA portals, and no portal credentials or DSCs are ever stored.
+
+- **The calendar** needs no configuration. It is computed in the engine (`packages/engine/src/compliance`) from the profile in Settings and the books. A government extension goes in `overrides.ts` with its circular number and date, and takes effect for every office on the next deploy.
+- **Routes** are under `/api/o/<office>/compliance` (`ROUTES.compliance*` in `packages/contracts`): the view, the profile, the master-data check, events, manual items, mark filed and reopen, assign, snooze, the SRN, papers and the filing pack, the books record, the edit log and the auditor's statement. The owner and the accountant may use all of them; marking filed and assigning are written to the item's trail with the person's name.
+- **Proof of filing** is posted as a form to `/api/o/<office>/compliance/proof` (PDF, PNG, JPEG or WebP, 10 MB at most) and kept in `DOCS` with the office's other files.
+- **Reminders** come from the `compliance-due` routine of the Compliance Officer: 7 days, 2 days and on the day, then weekly while late, in the morning digest, by email and on WhatsApp.
+- **The edit log** is the `book_edits` table in each office's SQLite. Triggers refuse any update or delete, and each entry carries the hash of the one before. When an office is deleted, its books and log are written to `DOCS` under `retained/<officeId>/` with a keep-until date eight years on, before the office is purged.
+- **The daily copy in India** runs at the end of each office's morning routines once the three `INDIA_BACKUP_*` settings and two secrets are set. Each office writes `<officeId>/<date>.json.gz` (the books and the edit log), replacing the copy from the same day. Give the bucket a lifecycle rule that keeps objects for at least eight years. The last copy and any error show in Settings, under **Books record**.
 
 ## 5. Social channels and WhatsApp
 
@@ -145,6 +158,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 | 10 | Backups before every migration; rollback rehearsed once | Engineering | Process in place |
 | 11 | Monitoring: Workers observability alerts on error rate | Engineering | Open |
 | 12 | Migrations `0003_legal.sql` (consent and deletion requests) and `0004_office_locale.sql` (office locale) applied to the live database | Engineering | Open: `pnpm run deploy` through Infisical applies them before deploying |
+| 13 | A bucket in an Indian region for the daily copy of companies' books (rule 3(5) of the Companies (Accounts) Rules); `INDIA_BACKUP_*` settings and secrets set | Business and engineering | Open: code done; until it is set, Settings tells each company its books have no India copy |
 
 ## 9. Legal checklist
 

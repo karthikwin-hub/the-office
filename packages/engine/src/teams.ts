@@ -5,6 +5,7 @@ import type { Ledger } from "./ledger";
 import { divHalfUp, inrShort, pctOf } from "./money";
 import { checkPost } from "./social/checks";
 import { performance } from "./social/metrics";
+import { buildObligations } from "./compliance/calendar";
 
 function soldSince(l: Ledger, days: number): Map<string, number> {
   const from = addDays(l.asOf, -days);
@@ -155,7 +156,16 @@ export function operationsReport(l: Ledger): OperationsReport {
     return { ...r, recommended: best.vendorName, reason: `${best.ratePaise === min ? "Lowest price" : `${Math.round((best.ratePaise / min - 1) * 1000) / 10}% above the lowest price`}, ${best.leadDays}-day lead time, ${best.terms.toLowerCase()}.` };
   });
   const toReorder = stock.filter((s) => s.status === "reorder");
-  const next = l.books.compliance.filter((c) => c.status === "upcoming").sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+  const compliance = buildObligations(l.books, l.asOf).map((o) => ({
+    id: o.id,
+    date: o.dueOn,
+    form: o.form,
+    description: o.title,
+    authority: o.authority,
+    status: o.state === "filed" ? ("done" as const) : o.state === "late" ? ("overdue" as const) : ("upcoming" as const),
+    daysLeft: o.daysLeft,
+  }));
+  const next = compliance.find((c) => c.status === "upcoming");
   return {
     note: [
       { text: `${toReorder.length} SKUs are at or below their reorder point. Excess stock worth ` },
@@ -166,15 +176,27 @@ export function operationsReport(l: Ledger): OperationsReport {
     stock,
     purchaseOrders: l.books.purchaseOrders.map((p) => ({ id: p.id, number: p.number, vendor: l.party(p.vendorId).name, date: p.date, status: p.status, lines: p.lines.length, totalPaise: p.totalPaise })),
     rfqs,
-    compliance: l.books.compliance.map((c) => ({ ...c, daysLeft: daysBetween(l.asOf, c.date) })).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    compliance,
   };
 }
 
-/** Maharashtra professional tax slabs (men): nil to ₹7,500, ₹175 to ₹10,000, then ₹200 (₹300 in February). */
-function professionalTax(grossPaise: number, period: string): number {
-  if (grossPaise <= 7_500_00) return 0;
-  if (grossPaise <= 10_000_00) return 175_00;
-  return period.endsWith("-02") ? 300_00 : 200_00;
+/** Monthly professional tax slabs by state code: [gross up to, tax] in rupees, the last applying above. February's extra in Maharashtra and Karnataka makes up the ₹2,500 a year. */
+const PT_SLABS: Record<string, { slabs: [number, number][]; february?: number }> = {
+  "27": { slabs: [[7_500, 0], [10_000, 175], [Infinity, 200]], february: 300 },
+  "29": { slabs: [[24_999, 0], [Infinity, 200]], february: 300 },
+  "36": { slabs: [[15_000, 0], [20_000, 150], [Infinity, 200]] },
+  "37": { slabs: [[15_000, 0], [20_000, 150], [Infinity, 200]] },
+  "24": { slabs: [[11_999, 0], [Infinity, 200]] },
+  "19": { slabs: [[10_000, 0], [15_000, 110], [25_000, 130], [40_000, 150], [Infinity, 200]] },
+};
+
+/** Professional tax for one month's gross, on the slabs for men; states without one (or not covered) give nil. */
+export function professionalTax(grossPaise: number, period: string, state = "27"): number {
+  const s = PT_SLABS[state];
+  if (!s) return 0;
+  const rupees = grossPaise / 100;
+  const tax = s.slabs.find(([upTo]) => rupees <= upTo)![1];
+  return (tax === s.slabs.at(-1)![1] && s.february && period.endsWith("-02") ? s.february : tax) * 100;
 }
 
 export function payrollFor(l: Ledger, period: string): PayrollLine[] {
@@ -188,7 +210,7 @@ export function payrollFor(l: Ledger, period: string): PayrollLine[] {
     const esiApplies = e.monthlyGrossPaise <= 21_000_00;
     const esiEmployee = esiApplies ? Math.ceil(pctOf(earned, 75) / 100) * 100 : 0;
     const esiEmployer = esiApplies ? Math.ceil(pctOf(earned, 325) / 100) * 100 : 0;
-    const pt = professionalTax(e.monthlyGrossPaise, period);
+    const pt = professionalTax(e.monthlyGrossPaise, period, l.books.business.compliance?.ptState || l.books.business.stateCode);
     return {
       employeeId: e.id,
       name: e.name,
@@ -234,7 +256,7 @@ export function peopleReport(l: Ledger, period?: string): PeopleReport {
     assumptions: [
       "Basic pay is taken as half of gross; PF is 12% of basic, capped at the ₹15,000 wage ceiling.",
       "ESI applies to gross up to ₹21,000 a month: 0.75% employee, 3.25% employer.",
-      "Maharashtra professional tax on the slabs for men; women earning up to ₹25,000 are exempt, so mark them in Settings.",
+      `Professional tax on ${l.stateName(l.books.business.compliance?.ptState || l.books.business.stateCode)}'s slabs for men${PT_SLABS[l.books.business.compliance?.ptState || l.books.business.stateCode] ? "" : " (not yet covered, so none is deducted)"}; some states exempt women up to a higher salary.`,
       "No salary TDS: every employee is within the new-regime rebate. Confirm declarations each year.",
     ],
   };

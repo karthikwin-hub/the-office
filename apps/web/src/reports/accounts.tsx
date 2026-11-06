@@ -323,7 +323,7 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
     { id: "rate", header: "Rate", cell: (r) => `${r.ruleRateBp / 100}%${r.bookedRateBp !== r.ruleRateBp ? `, booked at ${r.bookedRateBp / 100}%` : ""}`, numeric: true },
     { id: "e", header: "Should be", cell: (r) => <Amount paise={r.expectedPaise} rupees />, sortBy: (r) => r.expectedPaise, numeric: true },
     { id: "k", header: "In the books", cell: (r) => <Amount paise={r.bookedPaise} rupees tone={r.bookedPaise < r.expectedPaise ? "red" : undefined} />, numeric: true },
-    { id: "f", header: "In 26Q", cell: (r) => (r.filedPaise === null ? <span className="muted">Not filed yet</span> : <Amount paise={r.filedPaise} rupees tone={r.filedPaise < r.expectedPaise ? "red" : undefined} />), numeric: true },
+    { id: "f", header: `In ${report.returnForm}`, cell: (r) => (r.filedPaise === null ? <span className="muted">Not filed yet</span> : <Amount paise={r.filedPaise} rupees tone={r.filedPaise < r.expectedPaise ? "red" : undefined} />), numeric: true },
   ];
   const missing = report.receivable.filter((r) => r.creditedPaise < r.expectedPaise);
   return (
@@ -332,8 +332,8 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
       <div className="toolbar">
         <PeriodPicker value={report.quarter} options={report.quarters} label={quarterLabel} onChange={onQuarter} name="Quarter" />
         <div className="toolbar-actions">
-          <DownloadButton path={exportUrl.tds(report.quarter)} filename={`26Q_${report.quarter}.xlsx`}>
-            Download 26Q workings
+          <DownloadButton path={exportUrl.tds(report.quarter)} filename={`${report.returnForm === "26Q" ? "26Q" : "Form140"}_${report.quarter}.xlsx`}>
+            Download {report.returnForm} workings
           </DownloadButton>
         </div>
       </div>
@@ -343,7 +343,8 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
           rows={report.bySection}
           rowKey={(r) => r.section}
           columns={[
-            { id: "s", header: "Section", cell: (r) => r.section },
+            { id: "s", header: "Section", cell: (r) => (r.reference === r.section ? r.section : <span title={`Formerly section ${r.section}`}>{r.reference}</span>) },
+            { id: "code", header: "Payment code", cell: (r) => r.code || <span className="muted">None before April 2026</span>, secondary: true },
             { id: "n", header: "Nature of payment", cell: (r) => r.nature },
             { id: "r", header: "Rate", cell: (r) => r.rate, secondary: true },
             { id: "c", header: "Deductees", cell: (r) => r.deductees, numeric: true, secondary: true },
@@ -362,7 +363,7 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
         <LedgerTable caption="All TDS deductions" rows={report.deductions} columns={cols} rowKey={(r) => r.billId} initialSort={{ id: "d" }} limit={12} />
       </Section>
       <Section title="TDS your customers deducted from you">
-        <p className="section-lede">Customers who deduct TDS under 194Q must deposit it against your PAN. Credits missing from Form 26AS cannot be claimed in your income-tax return.</p>
+        <p className="section-lede">Customers who deduct TDS on purchases from you (section 393, code 1031; formerly 194Q) must deposit it against your PAN. Credits missing from Form 26AS cannot be claimed in your income-tax return.</p>
         <LedgerTable
           caption="TDS receivable against Form 26AS"
           rows={report.receivable}

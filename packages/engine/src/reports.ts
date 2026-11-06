@@ -1,10 +1,10 @@
-import type { CashReport, GstReport, SalesReport, TdsReport } from "@office/contracts";
+import type { CashReport, GstReport, SalesReport, TdsReport, TdsSection } from "@office/contracts";
 import { paymentBehaviour, openInvoices } from "./ageing";
 import { addDays, dateLabel, monthKey, monthLabel, nextMonth, quarterLabel, quarterMonths, quarterOf, weekStart } from "./dates";
 import { gstDueDates, itcFor, outwardFor, setOff } from "./gst";
 import type { Ledger } from "./ledger";
 import { inrShort } from "./money";
-import { expectedCustomerTds, expectedTdsByBill, SECTION_NOTE, TDS_RULES, tdsDepositDue } from "./tds";
+import { expectedCustomerTds, expectedTdsByBill, SECTION_NOTE, TDS_RULES, tdsDepositDue, tdsRef, tdsReturnDue, tdsReturnForm } from "./tds";
 
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0);
 
@@ -165,6 +165,7 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
   const q = quarter ?? quarters[0]!;
   const months = new Set(quarterMonths(q));
   const expected = expectedTdsByBill(l);
+  const form = tdsReturnForm(q);
   const filed = l.books.filedReturns.find((r) => r.form === "26Q" && r.period === q);
   const filedByBill = filed && filed.form === "26Q" ? new Map(filed.data.deductions.map((d) => [d.billId, d.tdsPaise])) : null;
   const deductions: TdsReport["deductions"] = [];
@@ -217,13 +218,24 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
       ...(short > 100
         ? [{ text: "The books deducted " }, { text: inrShort(short), figureId: `tds:short:${q}`, tone: "red" as const }, { text: " less than the rules require. " }]
         : [{ text: "The books match the rules. " }]),
-      { text: filed ? `The 26Q return was filed on ${dateLabel(filed.filedOn ?? filed.dueOn)}.` : "The 26Q return for this quarter is not due yet." },
+      {
+        text: filed
+          ? `The ${form} return was filed on ${dateLabel(filed.filedOn ?? filed.dueOn)}.`
+          : tdsReturnDue(q) < l.asOf
+            ? `The ${form} return was due on ${dateLabel(tdsReturnDue(q))} and your accountant has not shared it yet.`
+            : `The ${form} return for this quarter is due on ${dateLabel(tdsReturnDue(q))}.`,
+      },
     ],
     bySection: [...bySection.entries()]
       .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      .map(([section, s]) => ({ section, nature: TDS_RULES[section as keyof typeof TDS_RULES].nature, rate: TDS_RULES[section as keyof typeof TDS_RULES].rateLabel, deductees: s.deductees.size, basePaise: s.base, tdsPaise: s.tds, figureId: `tds:section:${section}:${q}` })),
+      .map(([section, s]) => {
+        const sec = section as TdsSection;
+        const ref = tdsRef(sec, quarterMonths(q)[0]! + "-01");
+        return { section, reference: ref.reference, code: ref.code, nature: TDS_RULES[sec].nature, rate: TDS_RULES[sec].rateLabel, deductees: s.deductees.size, basePaise: s.base, tdsPaise: s.tds, figureId: `tds:section:${section}:${q}` };
+      }),
     deductions,
     receivable,
+    returnForm: form,
     sectionNote: SECTION_NOTE,
   };
 }

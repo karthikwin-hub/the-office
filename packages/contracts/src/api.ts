@@ -4,9 +4,13 @@ import {
   AgentState,
   Bill,
   Business,
+  Assignee,
   Campaign,
+  CompanyEvent,
   ComplianceEvent,
+  ComplianceProfile,
   Document,
+  SrnStatus,
   FestivalDate,
   Invoice,
   IsoDate,
@@ -203,12 +207,26 @@ export const TdsReport = z.object({
   quarters: z.array(z.string()),
   note: Note,
   bySection: z.array(
-    z.object({ section: z.string(), nature: z.string(), rate: z.string(), deductees: z.number().int(), basePaise: Paise, tdsPaise: Paise, figureId: z.string() }),
+    z.object({
+      section: z.string(),
+      /** How the section is cited for this quarter: "194C" up to March 2026, "393(1) Sl. 6(i)" after. */
+      reference: z.string(),
+      /** The Income-tax Act 2025 payment code(s), blank for quarters before tax year 2026-27. */
+      code: z.string(),
+      nature: z.string(),
+      rate: z.string(),
+      deductees: z.number().int(),
+      basePaise: Paise,
+      tdsPaise: Paise,
+      figureId: z.string(),
+    }),
   ),
   deductions: z.array(TdsDeduction),
   receivable: z.array(
     z.object({ invoiceId: z.string(), number: z.string(), customer: z.string(), expectedPaise: Paise, creditedPaise: Paise, docId: z.string() }),
   ),
+  /** "Form 140" from tax year 2026-27, "26Q" before. */
+  returnForm: z.string(),
   sectionNote: z.string(),
 });
 export type TdsReport = z.infer<typeof TdsReport>;
@@ -338,6 +356,148 @@ export const OperationsReport = z.object({
   compliance: z.array(ComplianceEvent.extend({ daysLeft: z.number().int() })),
 });
 export type OperationsReport = z.infer<typeof OperationsReport>;
+
+/* ---------- The Compliance Officer ---------- */
+
+export const ObligationState = z.enum(["upcoming", "preparing", "ready", "filed", "late", "snoozed"]);
+export type ObligationState = z.infer<typeof ObligationState>;
+
+/** One line of the calendar: what it is, when it is due, what missing it costs, and who is doing it. */
+export const Obligation = z.object({
+  id: z.string(),
+  ruleId: z.string(),
+  period: z.string(),
+  form: z.string(),
+  title: z.string(),
+  authority: z.string(),
+  dueOn: IsoDate,
+  daysLeft: z.number().int(),
+  state: ObligationState,
+  source: z.enum(["rule", "check", "event", "manual"]),
+  assignee: Assignee.nullable(),
+  /** The tax or fee to pay with it, when the books can tell. */
+  amountPaise: Paise.nullable(),
+  /** What it has cost so far if late; what a week's delay would cost if not. */
+  lateCostPaise: Paise,
+  lateCostNote: z.string(),
+  /** The plain line for the owner, for example "Pay ₹42,300 TDS by Thursday or it costs ₹634 a month". */
+  line: z.string(),
+  why: z.string(),
+  documents: z.array(z.string()),
+  portal: z.object({ name: z.string(), url: z.string() }),
+  /** A government extension that moved the date or waived the late fee. */
+  override: z.object({ circular: z.string(), note: z.string() }).nullable(),
+  /** The worst that can happen, shown next to the item. */
+  risk: z.string().nullable(),
+  filedOn: IsoDate.nullable(),
+  ack: z.string().nullable(),
+  proof: z.object({ file: z.string(), name: z.string() }).nullable(),
+  snoozedUntil: IsoDate.nullable(),
+  snoozeReason: z.string().nullable(),
+  srn: ComplianceEvent.shape.srn,
+  /** Working papers the office can prepare for it. */
+  papers: z.boolean(),
+  /** An MCA form, with a filing pack. */
+  mca: z.boolean(),
+});
+export type Obligation = z.infer<typeof Obligation>;
+
+export const ComplianceCheck = z.object({
+  id: z.string(),
+  title: z.string(),
+  tone: z.enum(["red", "amber", "green"]),
+  summary: z.string(),
+  amountPaise: Paise,
+  rows: z.array(z.object({ label: z.string(), detail: z.string(), amountPaise: Paise.nullable(), ref: Ref.nullable() })),
+  /** A proposal the Compliance Officer can put on the owner's desk. */
+  proposal: z.object({ id: z.string(), label: z.string() }).nullable(),
+});
+export type ComplianceCheck = z.infer<typeof ComplianceCheck>;
+
+export const ProfileAnswer = z.object({ id: z.string(), question: z.string(), answered: z.boolean() });
+export const ComplianceView = z.object({
+  asOf: IsoDate,
+  note: Note,
+  profile: ComplianceProfile,
+  answers: z.array(ProfileAnswer),
+  /** Paid-up capital up to ₹10 crore and turnover up to ₹100 crore, and not a holding or subsidiary company. */
+  small: z.object({ value: z.boolean().nullable(), reason: z.string() }),
+  atRiskPaise: Paise,
+  obligations: z.array(Obligation),
+  checks: z.array(ComplianceCheck),
+  /** Over the calendar shown: what was filed on time and late, and what the late ones cost. */
+  health: z.object({ filedOnTime: z.number().int(), filedLate: z.number().int(), open: z.number().int(), lateFeesPaise: Paise }),
+});
+export type ComplianceView = z.infer<typeof ComplianceView>;
+
+export const ComplianceFiling = z.object({ filedOn: IsoDate, ack: z.string().trim().max(80).default(""), proof: z.object({ file: z.string().max(500), name: z.string().max(200) }).nullable().optional() }).strict();
+export const ComplianceAssign = z.object({ assignee: Assignee.nullable(), progress: z.enum(["preparing", "ready"]).nullable().optional() }).strict();
+export const ComplianceSnooze = z.object({ until: IsoDate.nullable(), reason: z.string().trim().max(300).default("") }).strict();
+export const ComplianceManual = z.object({ form: z.string().trim().min(1).max(60), dueOn: IsoDate, description: z.string().trim().max(300).default(""), authority: z.string().trim().max(60).default("Other") }).strict();
+export const ComplianceSrn = z
+  .object({ number: z.string().trim().min(1).max(20), createdOn: IsoDate, challan: z.string().trim().max(40).default(""), status: SrnStatus, remarks: z.string().trim().max(1000).default(""), resubmitBy: IsoDate.nullable().default(null) })
+  .strict();
+export const MasterDataPaste = z.object({ text: z.string().min(20).max(20_000) }).strict();
+export const EventInput = CompanyEvent.pick({ kind: true, on: true, detail: true, privatePlacement: true, foreign: true }).strict();
+export const ProfileInput = ComplianceProfile;
+/** A supplier's Udyam registration and agreed credit days, for the MSME 45-day rule. */
+export const PartyMsme = z
+  .object({
+    udyamCategory: z.enum(["micro", "small", "medium", "none"]),
+    udyamNumber: z.string().trim().toUpperCase().regex(/^(UDYAM-[A-Z]{2}-\d{2}-\d{7})?$/).default(""),
+    udyamActivity: z.enum(["manufacturing", "services", "trading"]).nullable().default(null),
+    writtenCreditDays: z.number().int().min(0).max(365).nullable().default(null),
+    related: z.boolean().default(false),
+  })
+  .strict();
+export type PartyMsme = z.infer<typeof PartyMsme>;
+
+/** A row of the company's MCA master data compared with the profile. */
+export const MasterCheck = z.object({ field: z.string(), portal: z.string(), office: z.string(), ok: z.boolean(), note: z.string() });
+export type MasterCheck = z.infer<typeof MasterCheck>;
+
+/** Everything the CA/CS needs to file one MCA form. */
+export const FilingPack = z.object({
+  obligationId: z.string(),
+  form: z.string(),
+  title: z.string(),
+  dueOn: IsoDate,
+  master: z.object({ checkedOn: IsoDate.nullable(), rows: z.array(MasterCheck), status: z.string().nullable() }),
+  prefill: z.array(z.object({ label: z.string(), value: z.string(), from: z.string() })),
+  attachments: z.array(z.object({ name: z.string(), note: z.string() })),
+  signers: z.array(z.object({ name: z.string(), din: z.string(), ok: z.boolean(), note: z.string() })),
+  srn: ComplianceEvent.shape.srn,
+  steps: z.array(z.string()),
+});
+export type FilingPack = z.infer<typeof FilingPack>;
+
+/** A download the office prepares in the browser: CSV text and its file name. */
+export const Paper = z.object({ filename: z.string(), mime: z.string(), content: z.string() });
+export type Paper = z.infer<typeof Paper>;
+
+/* ---------- The books' edit log (Companies (Accounts) Rules 2014, rule 3) ---------- */
+
+export const BookEdit = z.object({
+  seq: z.number().int(),
+  at: IsoDateTime,
+  by: z.string(),
+  coll: z.string(),
+  recordId: z.string(),
+  action: z.enum(["create", "change", "delete", "baseline"]),
+  /** The fields that changed, old and new. */
+  changes: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })),
+  hash: z.string(),
+});
+export type BookEdit = z.infer<typeof BookEdit>;
+
+export const BooksRecordView = z.object({
+  /** Who keeps the books online and where, for the company's annual intimation to the ROC (rule 3(6)) in AOC-4. */
+  provider: z.object({ name: z.string(), address: z.string(), servers: z.string(), backup: z.string() }),
+  editLog: z.object({ since: IsoDateTime.nullable(), entries: z.number().int(), thisYear: z.number().int(), intact: z.boolean(), latest: z.array(BookEdit) }),
+  backup: z.object({ configured: z.boolean(), lastAt: IsoDateTime.nullable(), lastError: z.string().nullable(), where: z.string() }),
+  retentionYears: z.number().int(),
+});
+export type BooksRecordView = z.infer<typeof BooksRecordView>;
 
 export const PayrollLine = z.object({
   employeeId: z.string(),
@@ -656,6 +816,7 @@ export const ROUTES = {
   onboardingCheck: "/api/onboarding/check",
   onboardingStage: "/api/onboarding/stage",
   party: (id: string) => `/api/parties/${id}`,
+  partyMsme: (id: string) => `/api/parties/${encodeURIComponent(id)}/msme`,
   ask: "/api/ask",
   hiring: "/api/hiring",
   hire: (agentId: string) => `/api/hiring/${agentId}`,
@@ -695,4 +856,21 @@ export const ROUTES = {
   ambient: "/api/ambient",
   personas: "/api/personas",
   weather: "/api/weather",
+  compliance: "/api/compliance",
+  complianceProfile: "/api/compliance/profile",
+  complianceMaster: "/api/compliance/master-data",
+  complianceEvents: "/api/compliance/events",
+  complianceManual: "/api/compliance/items",
+  complianceItem: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}`,
+  complianceFiled: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}/filed`,
+  complianceAssign: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}/assign`,
+  complianceSnooze: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}/snooze`,
+  complianceSrn: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}/srn`,
+  compliancePack: (id: string) => `/api/compliance/items/${encodeURIComponent(id)}/pack`,
+  compliancePaper: (id: string) => `/api/compliance/papers/${encodeURIComponent(id)}`,
+  complianceProof: "/api/compliance/proof",
+  complianceAudit: "/api/compliance/audit",
+  booksRecord: "/api/books-record",
+  booksEdits: "/api/books-record/edits",
+  auditorStatement: "/api/books-record/auditor-statement",
 } as const;

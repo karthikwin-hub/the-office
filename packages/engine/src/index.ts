@@ -19,3 +19,5 @@ export * from "./social";
 export * from "./whatsapp-desk";
 export * from "./routines";
 export * from "./customer";
+export * from "./compliance";
+export * from "./bookslog";

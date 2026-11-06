@@ -23,6 +23,21 @@ function useMedia(query: string) {
   return match;
 }
 
+/** Until the six compliance questions are answered, the filing calendar is only partly known. */
+function CalendarNudge() {
+  const view = useQuery(q.compliance());
+  const open = view.data?.answers.filter((a) => !a.answered).length ?? 0;
+  if (!open) return null;
+  return (
+    <p className="floor-setup">
+      {`Answer ${open === view.data!.answers.length ? "" : "the last "}${count(open, "question")} to build your filing calendar. `}
+      <Link to="/settings" hash="compliance">
+        Answer them in Settings
+      </Link>
+    </p>
+  );
+}
+
 export function FloorScreen() {
   const office = useQuery(q.office());
   const [prefs, setPrefs] = usePrefs();
@@ -69,6 +84,7 @@ export function FloorScreen() {
                   .
                 </p>
               ) : null}
+              {v.rooms.some((r) => r.agentId === "compliance-officer" && r.hired) ? <CalendarNudge /> : null}
             </div>
             <FloorPlan
               rooms={v.rooms}

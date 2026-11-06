@@ -1,0 +1,200 @@
+/* ---------- The Compliance Officer ---------- */
+.compliance-nudge {
+  margin: 0 0 var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--carbon-tint);
+  border-left: 3px solid var(--carbon);
+  max-width: 80ch;
+}
+.compliance-register {
+  margin-top: var(--s-4);
+}
+.obligations,
+.compliance-checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 2px solid var(--graphite);
+}
+.obligations > li {
+  border-bottom: var(--rule-soft);
+}
+.obligation-line {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr) 11rem auto;
+  gap: var(--s-4);
+  padding: var(--s-2) 0;
+  align-items: baseline;
+}
+.obligation-form {
+  font-weight: 700;
+}
+.obligation-meta {
+  color: var(--graphite-soft);
+  font-size: var(--step--1);
+}
+.obligations > li.is-red .obligation-line,
+.is-red {
+  color: var(--stamp-red);
+}
+.obligations > li.is-red .obligation-meta {
+  color: var(--stamp-red);
+}
+.obligations > li.is-done .obligation-line {
+  color: var(--graphite-soft);
+}
+.obligation-detail {
+  margin: 0 0 var(--s-4) 8rem;
+  padding: var(--s-4);
+  background: var(--sheet);
+  border-left: 3px solid var(--plan-line);
+  color: var(--graphite);
+}
+.obligation-detail-standalone {
+  margin-top: var(--s-5);
+}
+.obligation-detail-standalone .obligation-detail {
+  margin-left: 0;
+}
+.obligation-actions {
+  display: grid;
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+}
+.obligation-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: flex-end;
+}
+.obligation-form-row .field {
+  margin: 0;
+}
+.compliance-profile .input[type="date"],
+.obligation-form-row .input[type="date"],
+.row-editor .input[type="date"] {
+  text-align: left;
+  max-width: 12rem;
+}
+.obligation-form-row .field-wide {
+  flex: 1 1 20rem;
+}
+.obligation-snooze summary,
+.master-paste summary,
+.event-form summary {
+  cursor: pointer;
+  margin-bottom: var(--s-2);
+}
+.master-paste,
+.event-form {
+  margin-top: var(--s-4);
+}
+.master-paste textarea {
+  width: 100%;
+  font-size: var(--step--1);
+}
+.plain-list {
+  margin: 0;
+  padding-left: var(--s-4);
+}
+.plain-list li + li {
+  margin-top: var(--s-1);
+}
+.filing-pack {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: var(--rule);
+}
+.filing-pack h4 {
+  font-size: var(--step-1);
+  margin: 0 0 var(--s-3);
+}
+.filing-pack h5 {
+  font-size: var(--step-0);
+  margin: var(--s-4) 0 var(--s-2);
+}
+.pack-steps {
+  margin: 0;
+  padding-left: var(--s-5);
+}
+.compliance-checks > li {
+  padding: var(--s-3) 0 var(--s-3) var(--s-4);
+  border-bottom: var(--rule-soft);
+  border-left: 3px solid var(--plan-line);
+}
+.compliance-checks > li.check-red {
+  border-left-color: var(--stamp-red);
+  background: var(--red-tint);
+}
+.compliance-checks > li.check-amber {
+  border-left-color: var(--carbon);
+}
+.compliance-checks > li.check-green {
+  border-left-color: var(--cleared-green);
+}
+.check-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-right: var(--s-4);
+}
+.compliance-checks p {
+  margin: var(--s-1) 0;
+  max-width: 80ch;
+}
+.audit-trail {
+  list-style: none;
+  padding: 0;
+}
+
+/* Settings: the company profile */
+.compliance-profile fieldset {
+  margin-top: var(--s-5);
+}
+.form-check {
+  display: flex;
+  gap: var(--s-2);
+  align-items: baseline;
+}
+.flag-list {
+  display: grid;
+  gap: var(--s-2);
+}
+.row-editor {
+  list-style: none;
+  padding: 0;
+  margin: var(--s-3) 0;
+}
+.row-editor > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: flex-end;
+  padding: var(--s-3) 0;
+  border-bottom: var(--rule-soft);
+}
+.row-cell {
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--step--1);
+}
+.row-cell .input {
+  min-width: 8rem;
+}
+
+@media (max-width: 720px) {
+  .obligation-line {
+    grid-template-columns: 6rem minmax(0, 1fr);
+    gap: 0 var(--s-3);
+  }
+  .obligation-line > :nth-child(n + 3) {
+    grid-column: 2;
+  }
+  .obligation-line > button {
+    justify-self: start;
+    margin-top: var(--s-2);
+  }
+  .obligation-detail {
+    margin-left: 0;
+  }
+}

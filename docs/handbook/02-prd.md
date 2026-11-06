@@ -39,10 +39,13 @@ Personas are written for any market. The Indian examples are illustrations.
 | Customer Service | Front office | Answers the business's own customers on WhatsApp (the business's number), email and a website chat: order status, balance, business facts and saved answers, all looked up in the books. Hands refunds, complaints and anything it cannot ground to the owner, who can reply from the Desk or WhatsApp. See [Customer service](08-customer-service.md) | First version built | Core |
 | Sales Rep, Quote Desk, Account Manager | Sales | Leads, tax-correct quotations from the price list, reorder predictions | Preview on the books | Core |
 | Marketer, Market Watcher | Marketing | Promotes slow-moving products around the festival calendar, tracks competitor prices | Preview on the books | Core (calendar is per market) |
-| Storekeeper, Buyer, Compliance Officer | Operations | Reorder points, vendor quote comparison, filing calendar | Preview on the books | Core, filing calendar per pack |
+| Compliance Officer | Operations | Builds the company's own filing calendar from a short profile (GST, TDS under the Income-tax Act 2025, income tax, MCA, PF, ESI and professional tax), runs checks on the books (MSME 45-day payments, DPT-3, advance tax, TDS gaps, thresholds, the 180-day credit rule), prepares the papers and the MCA filing pack, and reminds before each date. See section 9 | Built | Core mechanism; India pack rules |
+| Storekeeper, Buyer | Operations | Reorder points, vendor quote comparison | Preview on the books | Core |
 | Payroll Clerk | People | Payroll summary and payslip runs for approval | Preview on the books | Pack-specific statutory rules |
 
 "Preview on the books" means the room, its reports and its approval cards work from the office's books, but the agent has no live outside data source yet.
+
+**The office prepares and reminds; you or your CA file on the government portals.** No agent logs in to the GST, income-tax, TRACES or MCA portals, signs with a DSC or pays a challan. This line appears in the Compliance Officer's room and on every filing pack.
 
 ## 4. Trust levels
 
@@ -90,6 +93,10 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 | F17 | As an owner, I see what the office did while I slept | A Routines page lists every scheduled job (trusted work, reminders, social, reorder check, filings due, customers waiting, the digest, scheduled posts) with its last run, outcome and 90 days of history; each can be paused and run now | Core |
 | F18 | As a person, I control my own account data | Sign-up records acceptance of the current terms and privacy notice; a changed version asks once more; Settings downloads a copy of my account and files an audited deletion request, which an operator completes | Core, with law per pack |
 | F19 | As a business that already keeps books, I start with what I have | Three CSV templates (customers and suppliers, products and stock, unpaid invoices and bills); every row checked with its row number and what to fix; one Desk card the owner approves, all or nothing; a fixed start date for the books; unpaid items from before it count towards ageing, reminders and statements but never towards returns or sales, and each links back to its row in the stored file | Core method; India pack fields (GSTIN, PAN, HSN, TDS section) |
+| F20 | As an owner, I see only the filings that apply to my company, and what each costs if missed | A short profile (most of it filled from the books) decides each rule; every item says why it applies, its due date (including a government extension, with its circular), the amount where the books know it, and the late fee and interest per day; a register shows rupees at risk, late items, the next 30 days and late fees paid this year | India pack |
+| F21 | As an owner or my CA, I track each filing to done | Mark filed with the date, acknowledgement or challan number and proof (PDF or image up to 10 MB, stored with the office's files); assign to the owner or the CA with a note; snooze with a reason; reopen; add our own items; every change appears in the item's trail with who made it; reminders 7 days, 2 days and on the day, then weekly while late, in the digest, email and WhatsApp | Core mechanism |
+| F22 | As a CA, I file MCA forms without retyping | For AOC-4, MGT-7 and MGT-7A, ADT-1, DPT-3, MSME-1 and DIR-3 KYC: the company's master data pasted from the MCA portal checked against the profile, values to type in, the attachment checklist, who signs and whether their DSC is in date, the steps, and the SRN with resubmission tracking | India pack |
+| F23 | As an owner, a change in the company raises its ROC filing | Recording a new or departing director, an allotment, a change in authorised capital, a charge, a move of the registered office, a special resolution or a casual auditor vacancy raises DIR-12, PAS-3, SH-7, CHG-1, INC-22, MGT-14 or ADT-1 with its 15- or 30-day clock | India pack |
 
 ## 7. Non-functional requirements
 
@@ -104,12 +111,14 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 | Fair use | Daily allowance per office | 400 AI calls and 250 MB of uploads per office per day; customer service has its own 150 of those calls so a busy chat cannot stop the books being read; the website chat is rate-limited per visitor | Core |
 | Reliability | One office's failure does not affect others | One Durable Object per office | Core |
 | Performance | Floor and Desk load in under two seconds on a mid-range phone | Static assets on the edge; live updates over a WebSocket | Core |
-| Auditability | Who did what, when | Office history in Settings and the control-plane audit table | Core |
+| Auditability | Who did what, when | Office history in Settings and the control-plane audit table; a field-level edit log of every change to the books (old and new value, who, when), hash-chained and append-only, kept eight years | Core |
+| Books in India | Companies (Accounts) Rules 2014, rule 3 | A daily copy of each office's books in an Indian region, once `INDIA_BACKUP_*` is configured; the auditor's rule 11(g) statement downloadable from Settings | India pack |
 
 ## 8. Settings
 
 - **Business:** name and legal name, tax identifiers (PAN, GSTIN, TAN and state in the India pack), address, contact details, bank, start of the financial year.
 - **Bring in your books:** the start date of the books (fixed by the first approved import) and the three templates, checked here and approved on the Desk.
+- **Compliance:** the company's profile (company, meetings and auditor, tax and payroll, the yes-or-no questions, directors, loans and shareholders), events for the ROC, and the master data pasted from the MCA portal. **Books record:** where the books are kept, the India copy, the edit log and the auditor's statement.
 - **Routine:** the time of the daily digest, and the reminder policy (days overdue before the first, firm and final reminder, and the sending address).
 - **Office:** people and roles, invitations, the office's inbound email address, handover, history, export, delete.
 - **Channels:** connect social accounts or post by hand; brand voice; posting hours.
@@ -121,7 +130,27 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
   - when nobody is working and nothing was logged for a minute, two of them may meet at the tea point, at most once every one to two minutes, about the time of day, the weather near you, a festival on the calendar, a birthday, a work anniversary or month end;
   - it is a picture only: it reads the same office view as the Floor, changes nothing an agent does, takes no clicks, is hidden from screen readers, and stands still for anyone who has asked their system for reduced motion.
 
-## 9. What would change for another market
+## 9. Compliance
+
+The Compliance Officer turns a private limited company's statutory work into one calendar the owner and the CA share. **The office prepares and reminds; you or your CA file on the government portals.**
+
+**The calendar is the company's own.** Each rule is a small function that decides whether it applies from the profile and the books, and when it is due:
+
+- **GST:** GSTR-1 and GSTR-3B monthly, or quarterly with PMT-06 under QRMP below ₹5 crore; IMS, GSTR-9 and 9C, ITC-04, the LUT, the 30 November cut-off for last year's credit, invoice series.
+- **TDS:** deposit by the 7th (30 April for March), quarterly returns, salary certificates. Payments from 1 April 2026 fall under the Income-tax Act 2025: section 393 with its payment codes, returns on Form 138 and 140 and certificates on Form 130. Earlier payments keep the old sections and Form 24Q and 26Q, decided by the date of payment, never the date of the bill.
+- **Income tax:** advance tax instalments, the tax audit, the return, transfer pricing and SFT where they apply.
+- **MCA:** the first and each later AGM, AOC-4, MGT-7 or MGT-7A, ADT-1, DIR-3 KYC (every three years), DPT-3, MSME-1, PAS-6, FLA, CSR-2, INC-20A, MBP-1 and DIR-8, board meetings (four a year, or one each half-year for a small company); and the event filings in F23.
+- **People:** PF and ESI by the 15th, professional tax by state.
+
+A government extension is entered once, with its circular, and moves the due date of every office it covers; the item shows the original date beside the new one.
+
+**Checks from the books** run with the calendar, each red, amber or green with the figures behind it: suppliers registered as micro or small and owed beyond 45 days (with the section 43B(h) disallowance and the MSME-1 it triggers); loans from others that belong in DPT-3; the advance tax due on profit so far; vendors paid above a TDS threshold with no TDS; the limits that change what is filed (e-invoicing, GSTR-9 and 9C, tax audit, small company, XBRL, the MGT-8 certificate, shares in demat); purchase bills unpaid for 180 days whose credit must be reversed; reverse charge; and payments abroad. A check that can be acted on proposes a Desk card, such as paying micro and small suppliers first.
+
+**The owner and the CA see it differently.** The owner sees a register (rupees at risk, late, the next 30 days, late fees this year) and lanes for late, this week, this month and later. The accountant role opens on the CA view: the same items as a working table filtered by authority, the papers to download, and the trail of every change.
+
+**The company's books meet rule 3 of the Companies (Accounts) Rules.** Every change to the books is written to a field-level edit log in the office (old and new value, who and when), hash-chained so a changed entry shows, and refused by the database if anyone tries to edit or delete it. The books and the log are kept eight years, including after an office is deleted. A daily copy goes to storage in India once configured. Settings shows where the books are kept, for the AOC-4, and downloads the auditor's rule 11(g) statement and the log.
+
+## 10. What would change for another market
 
 | Area | Core stays | Pack changes |
 | --- | --- | --- |

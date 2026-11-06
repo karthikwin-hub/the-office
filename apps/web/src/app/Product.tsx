@@ -5,7 +5,7 @@ import { appUrl, demoUrl, hasAppDomain } from "./site";
 const TEAM: { role: string; does: string }[] = [
   { role: "Accountant", does: "Reads the bills and invoices you email, upload or send on WhatsApp, and stages each entry against the document it came from." },
   { role: "Credit Controller", does: "Ages what customers owe and drafts reminders that move from polite to firm to final." },
-  { role: "Tax Clerk", does: "Works out GST and TDS from the books and prepares GSTR-1, GSTR-3B and 26Q files for your accountant." },
+  { role: "Tax Clerk", does: "Works out GST and TDS from the books and prepares GSTR-1, GSTR-3B and the quarterly TDS return (Form 140 under the new Income-tax Act) for your accountant." },
   { role: "Auditor", does: "Compares what was filed with the books and explains each difference in plain words." },
   { role: "Social Media Manager", does: "Plans posts around your stock and the festival calendar, and publishes only what you approve." },
   { role: "Customer Service", does: "Answers customers on your website and by email from your price list and their own invoices." },

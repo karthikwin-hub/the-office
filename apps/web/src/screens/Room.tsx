@@ -8,7 +8,8 @@ import { q, useDecide, useHire } from "../api/queries";
 import { useReadStored, useUpload } from "../intake/intake";
 import { AgeingView, FilingList } from "../reports/accounts";
 import { InboxThreads, SocialRoomPanel, useApprovalBody } from "../reports/social";
-import { CampaignsView, ComplianceView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
+import { ComplianceReport, ComplianceRoomCard } from "../reports/compliance";
+import { CampaignsView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
 import { count, isOwner, Page, PageHead, Register, Section, shortDate, theAgent, time, useApprovalContext } from "./common";
 import { WhatsAppPhone } from "./WhatsAppPhone";
 import { CustomerServicePanel } from "./CustomerService";
@@ -190,7 +191,7 @@ function WorkPanel({ agentId, preview }: { agentId: string; preview?: boolean })
     case "buyer":
       return p(<Q k="operations">{(d) => <OrdersView report={d} />}</Q>);
     case "compliance-officer":
-      return p(<Q k="operations">{(d) => <ComplianceView report={d} compact />}</Q>);
+      return p(<ComplianceReport>{(d) => <ComplianceRoomCard view={d} />}</ComplianceReport>);
     case "payroll-clerk":
       return p(<Q k="people">{(d) => <PayrollView report={d} />}</Q>);
     case "customer-service":

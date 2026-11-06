@@ -56,4 +56,14 @@ export type Env = {
   CHAT_LIMIT?: RateLimit;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
+  /**
+   * The daily copy of every office's books on servers in India (Companies (Accounts) Rules, rule 3(5)): an S3-compatible
+   * bucket in an Indian region. The endpoint, bucket and region are plain vars; the two keys are secrets. Without all five
+   * the backup is skipped and Settings says so.
+   */
+  INDIA_BACKUP_ENDPOINT?: string;
+  INDIA_BACKUP_BUCKET?: string;
+  INDIA_BACKUP_REGION?: string;
+  INDIA_BACKUP_ACCESS_KEY_ID?: string;
+  INDIA_BACKUP_SECRET_ACCESS_KEY?: string;
 };

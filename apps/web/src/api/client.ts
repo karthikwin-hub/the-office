@@ -62,6 +62,19 @@ import {
   PLATFORM_ROUTES,
   type PlatformInvited,
   type PlatformView,
+  type Assignee,
+  type BookEdit,
+  type BooksRecordView,
+  type CompanyEvent,
+  type ComplianceProfile,
+  type ComplianceView,
+  type FilingPack,
+  type MasterCheck,
+  type Obligation,
+  type Paper,
+  type SrnStatus,
+  type LogEntry,
+  type PartyMsme,
 } from "@office/contracts";
 
 export class ApiError extends Error {
@@ -214,6 +227,7 @@ export const api = {
   },
   document: (id: string) => call<DocumentView>(ROUTES.document(id)),
   party: (id: string) => call<PartyView>(ROUTES.party(id)),
+  saveMsme: (id: string, m: PartyMsme) => call<PartyView>(ROUTES.partyMsme(id), { method: "PUT", body: m }),
   ask: (question: string) => call<AskResponse>(ROUTES.ask, { method: "POST", body: { question } }),
   hiring: () => call<HiringView>(ROUTES.hiring),
   hire: (agentId: string, change: { hired?: boolean; trustLevel?: TrustLevel }) => call<AgentState>(ROUTES.hire(agentId), { method: "POST", body: change }),
@@ -272,6 +286,49 @@ export const api = {
     return res.json() as Promise<MediaAsset>;
   },
 };
+
+/** The Compliance Officer: the filing calendar, its checks and what the CA/CS needs to file. */
+export const compliance = {
+  view: () => call<ComplianceView>(ROUTES.compliance),
+  audit: () => call<{ entries: LogEntry[] }>(ROUTES.complianceAudit),
+  saveProfile: (p: ComplianceProfile) => call<ComplianceView>(ROUTES.complianceProfile, { method: "PUT", body: p }),
+  checkMaster: (text: string) => call<{ rows: MasterCheck[] }>(ROUTES.complianceMaster, { method: "POST", body: { text } }),
+  addEvent: (e: Pick<CompanyEvent, "kind" | "on" | "detail"> & { privatePlacement?: boolean; foreign?: boolean }) => call<ComplianceView>(ROUTES.complianceEvents, { method: "POST", body: e }),
+  addManual: (m: { form: string; dueOn: string; description?: string; authority?: string }) => call<Obligation>(ROUTES.complianceManual, { method: "POST", body: m }),
+  removeManual: (id: string) => call<{ removed: string }>(ROUTES.complianceItem(id), { method: "DELETE" }),
+  pack: (id: string) => call<FilingPack>(ROUTES.compliancePack(id)),
+  paper: (id: string) => call<Paper>(ROUTES.compliancePaper(id)),
+  markFiled: (id: string, f: { filedOn: string; ack: string; proof?: { file: string; name: string } | null }) => call<Obligation>(ROUTES.complianceFiled(id), { method: "POST", body: f }),
+  reopen: (id: string) => call<Obligation>(ROUTES.complianceFiled(id), { method: "DELETE" }),
+  assign: (id: string, a: { assignee: Assignee | null; progress?: "preparing" | "ready" | null }) => call<Obligation>(ROUTES.complianceAssign(id), { method: "POST", body: a }),
+  snooze: (id: string, s: { until: string | null; reason: string }) => call<Obligation>(ROUTES.complianceSnooze(id), { method: "POST", body: s }),
+  srn: (id: string, s: { number: string; createdOn: string; challan: string; status: SrnStatus; remarks: string; resubmitBy: string | null }) => call<Obligation>(ROUTES.complianceSrn(id), { method: "POST", body: s }),
+  /** The challan, acknowledgement or approval, kept with the office's files. Mockups keep only the name. */
+  uploadProof: async (file: File): Promise<{ file: string; name: string }> => {
+    if (!isLive) return call(ROUTES.complianceProof, { method: "POST", body: { name: file.name } });
+    const form = new FormData();
+    form.set("file", file);
+    const res = await fetch(officePath(ROUTES.complianceProof), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new ApiError(res.status, err.error ?? res.statusText);
+    }
+    return res.json() as Promise<{ file: string; name: string }>;
+  },
+  booksRecord: () => call<BooksRecordView>(ROUTES.booksRecord),
+  edits: (opts: { coll?: string; record?: string; limit?: number } = {}) => call<{ entries: BookEdit[] }>(ROUTES.booksEdits, { query: { coll: opts.coll, record: opts.record, limit: opts.limit ? String(opts.limit) : undefined } }),
+  auditorStatement: (fy?: string) => call<Paper>(ROUTES.auditorStatement, { query: { fy } }),
+};
+
+/** Hands a paper the office prepared to the browser as a file. */
+export function savePaper(p: Paper) {
+  const url = URL.createObjectURL(new Blob([p.content], { type: p.mime }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: p.filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /**
  * Fetches a file and hands it to the browser as a download. A plain link would

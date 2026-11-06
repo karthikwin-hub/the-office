@@ -1,8 +1,10 @@
-import { AGEING_BUCKETS } from "@office/contracts";
+import { AGEING_BUCKETS, type Party, type PartyMsme, type PartyView } from "@office/contracts";
 import { Amount, ApprovalCard, LedgerTable, Stamp } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { q, useDecide } from "../api/queries";
+import { useState } from "react";
+import { api } from "../api/client";
+import { q, useChange, useDecide } from "../api/queries";
 import { DocLink } from "../reports/accounts";
 import { isOwner, Page, PageHead, Section, shortDate } from "./common";
 
@@ -68,6 +70,7 @@ export function PartyScreen() {
               />
             </Section>
           ) : null}
+          {p.kind === "vendor" ? <MsmeCard partyId={p.id} party={p} /> : null}
           <Section title="Recent activity">
             <LedgerTable
               caption="Recent invoices and payments"
@@ -83,5 +86,65 @@ export function PartyScreen() {
         </>
       ) : null}
     </Page>
+  );
+}
+
+/** A supplier's Udyam registration: micro and small suppliers must be paid within 45 days, or 15 without a written agreement. */
+function MsmeCard({ partyId, party }: { partyId: string; party: Party }) {
+  const change = useChange<PartyView>();
+  const [m, setM] = useState({ udyamCategory: party.udyamCategory ?? "none", udyamNumber: party.udyamNumber ?? "", udyamActivity: party.udyamActivity ?? "", days: party.writtenCreditDays === undefined ? "" : String(party.writtenCreditDays), related: party.related ?? false });
+  const protectedSupplier = (m.udyamCategory === "micro" || m.udyamCategory === "small") && m.udyamActivity !== "trading";
+  const days = m.days.trim() === "" ? null : Number(m.days);
+  return (
+    <Section title="MSME registration">
+      <p className="section-lede">
+        {protectedSupplier
+          ? `Pay within ${days === null ? 15 : Math.min(45, days)} days of each bill. Later than that, the expense is not allowed for income tax until paid, interest at three times the bank rate is owed, and the company reports it on MSME-1.`
+          : "Only micro and small manufacturers and service providers have the MSMED Act's 45-day protection; traders and medium enterprises do not."}
+      </p>
+      <form
+        className="obligation-form-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const body: PartyMsme = { udyamCategory: m.udyamCategory, udyamNumber: m.udyamNumber.trim(), udyamActivity: (m.udyamActivity || null) as PartyMsme["udyamActivity"], writtenCreditDays: days, related: m.related };
+          change.mutate(() => api.saveMsme(partyId, body));
+        }}
+      >
+        <div className="field">
+          <label htmlFor="msme-cat">Udyam category</label>
+          <select id="msme-cat" className="input" value={m.udyamCategory} onChange={(e) => setM({ ...m, udyamCategory: e.target.value as PartyMsme["udyamCategory"] })}>
+            <option value="none">Not registered</option>
+            <option value="micro">Micro</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="msme-act">Registered for</label>
+          <select id="msme-act" className="input" value={m.udyamActivity} onChange={(e) => setM({ ...m, udyamActivity: e.target.value as typeof m.udyamActivity })}>
+            <option value="">Not known</option>
+            <option value="manufacturing">Manufacturing</option>
+            <option value="services">Services</option>
+            <option value="trading">Trading</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="msme-no">Udyam number</label>
+          <input id="msme-no" className="input code" placeholder="UDYAM-MH-26-0012345" maxLength={19} value={m.udyamNumber} onChange={(e) => setM({ ...m, udyamNumber: e.target.value })} />
+        </div>
+        <div className="field">
+          <label htmlFor="msme-days">Credit days agreed in writing</label>
+          <input id="msme-days" className="input num" inputMode="numeric" placeholder="None" value={m.days} onChange={(e) => setM({ ...m, days: e.target.value.replace(/\D/g, "") })} />
+        </div>
+        <label className="form-check">
+          <input type="checkbox" checked={m.related} onChange={(e) => setM({ ...m, related: e.target.checked })} /> A related party
+        </label>
+        <button type="submit" className="btn" disabled={change.isPending}>
+          Save MSME details
+        </button>
+        {change.isSuccess ? <span role="status">Saved</span> : null}
+        {change.error ? <span className="form-error">{change.error.message}</span> : null}
+      </form>
+    </Section>
   );
 }

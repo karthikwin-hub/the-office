@@ -30,7 +30,7 @@ function ImportReturn({ onImported }: { onImported: (period: string) => void }) 
           ? imp.error.message
           : imp.data
             ? `${imp.data.form} for ${periodLabel(imp.data.period)}: ${imp.data.summary}. ${imp.data.findings ? `${imp.data.findings} difference${imp.data.findings === 1 ? "" : "s"}.` : "Matches the books."}`
-            : "GSTR-1, GSTR-3B or GSTR-2B JSON from the portal, or 26Q as CSV."}
+            : "GSTR-1, GSTR-3B or GSTR-2B JSON from the portal, or the TDS return (Form 140 or 26Q) as CSV."}
       </span>
     </div>
   );

@@ -40,19 +40,19 @@ describe("compliance due", () => {
   it("returns filings due within the window, soonest first", () => {
     const o = new OfficeService(loadBooks(), { asOf: "2026-11-04" });
     const due = o.complianceDue(7);
-    expect(due.every((d) => d.daysLeft <= 7)).toBe(true);
-    expect([...due].sort((a, b) => (a.date < b.date ? -1 : 1))).toEqual(due);
+    expect(due.every((d) => d.daysLeft <= 7 && d.state !== "filed")).toBe(true);
+    expect([...due].sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1))).toEqual(due);
     expect(due.some((d) => d.form === "GSTR-1")).toBe(true);
   });
 
-  it("puts the filings and reorders into the morning digest", async () => {
+  it("nudges seven days ahead with what missing it costs, and puts reorders into the morning digest", async () => {
     const o = new OfficeService(loadBooks(), { asOf: "2026-11-04" });
-    o.setHiring("tax-clerk", { hired: true });
+    o.setHiring("compliance-officer", { hired: true });
     o.setHiring("storekeeper", { hired: true });
     const seen: string[][] = [];
     await morningRound(o, host(seen));
     const notes = seen[0]!;
-    expect(notes.some((n) => /GSTR-1 due/.test(n))).toBe(true);
+    expect(notes.some((n) => /^GSTR-1 for October 2026 by /.test(n))).toBe(true);
     if (o.reorderCheck().items.length) expect(notes.some((n) => n.includes("reorder level"))).toBe(true);
   });
 });

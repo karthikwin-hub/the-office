@@ -5,7 +5,8 @@ import { useState, type ReactNode } from "react";
 import { q } from "../api/queries";
 import { AgeingView, CashView, GstView, SalesView, TdsView } from "../reports/accounts";
 import { CalendarView, PostsView, SocialInboxView, SocialResultsView } from "../reports/social";
-import { CampaignsView, ComplianceView, FestivalsView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
+import { ComplianceView } from "../reports/compliance";
+import { CampaignsView, FestivalsView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
 import { Page, PageHead, theAgent } from "./common";
 
 type Tab = { id: string; label: string; agent: string; render: () => { ready: boolean; error?: unknown; node: ReactNode } };
@@ -23,6 +24,7 @@ function useTabs(team: string): Tab[] {
   const so = useQuery({ ...q.social(), enabled: team === "social" });
   const op = useQuery({ ...q.operations(), enabled: team === "operations" });
   const pe = useQuery({ ...q.people(), enabled: team === "people" });
+  const cm = useQuery({ ...q.compliance(), enabled: team === "operations" });
   const r = <T,>(x: { data?: T; error: unknown }, f: (d: T) => ReactNode) => () => ({ ready: Boolean(x.data), error: x.error, node: x.data ? f(x.data) : null });
 
   switch (team) {
@@ -58,7 +60,7 @@ function useTabs(team: string): Tab[] {
       return [
         { id: "stock", label: "Stock", agent: "storekeeper", render: r(op, (d) => <StockView report={d} />) },
         { id: "orders", label: "Buying", agent: "buyer", render: r(op, (d) => <OrdersView report={d} />) },
-        { id: "compliance", label: "Compliance", agent: "compliance-officer", render: r(op, (d) => <ComplianceView report={d} />) },
+        { id: "compliance", label: "Compliance", agent: "compliance-officer", render: r(cm, (d) => <ComplianceView view={d} />) },
       ];
     case "people":
       return [{ id: "payroll", label: "Payroll", agent: "payroll-clerk", render: r(pe, (d) => <PayrollView report={d} />) }];

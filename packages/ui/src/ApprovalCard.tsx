@@ -20,6 +20,7 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   customer_reply: { verb: "Send reply", done: "Reply sent" },
   handoff: { verb: "Send your answer", done: "Answered" },
   onboarding: { verb: "Bring into the books", done: "Brought into the books" },
+  compliance_action: { verb: "Agree", done: "Agreed" },
 };
 
 /** Payload fields the owner may rewrite before approving. */

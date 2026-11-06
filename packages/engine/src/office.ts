@@ -3,6 +3,7 @@ import type {
   AskResponse,
   Bill,
   Books,
+  BooksRecordView,
   Decision,
   DeskView,
   Document,
@@ -13,7 +14,9 @@ import type {
   Invoice,
   Kpi,
   LogEntry,
+  Obligation,
   OfficeView,
+  Paper,
   PartyView,
   BrandVoice,
   Channel,
@@ -28,7 +31,7 @@ import type {
   StagedChange,
   TrustLevel,
 } from "@office/contracts";
-import { AGENT_BY_ID, AGENTS, PLATFORM_NAMES, PROMOTION_RULES } from "@office/contracts";
+import { AGENT_BY_ID, AGENTS, BOOKS_PROVIDER, BRAND, PLATFORM_NAMES, PROMOTION_RULES } from "@office/contracts";
 import { textHash } from "./social/channels";
 import { checkPost } from "./social/checks";
 import { isThankYou, leadFrom, newMessage } from "./social/inbox";
@@ -49,9 +52,12 @@ import { CustomerService } from "./customer/desk";
 import type { OrderSource } from "./customer/orders";
 import { type CsStore, MemoryCsStore } from "./customer/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
+import { buildObligations, complianceProposals, complianceView } from "./compliance";
+import { fyOf } from "./compliance/profile";
+import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YEARS, type Snapshot, snapshot, verifyChain } from "./bookslog";
 
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
-const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding"]);
+const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -95,6 +101,10 @@ export type OfficeOptions = {
   /** Where customer conversations are kept; memory unless the host has storage. */
   conversations?: CsStore;
   orderSources?: OrderSource[];
+  /** Where the books' edit log is kept; memory unless the host has storage. */
+  edits?: EditLog;
+  /** The host's daily copy of the books in India, if it makes one. */
+  backup?: () => BooksRecordView["backup"];
 };
 
 export class OfficeService {
@@ -103,6 +113,9 @@ export class OfficeService {
   private settingsState: Settings;
   readonly routines: RoutineLog;
   readonly customers: CustomerService;
+  readonly edits: EditLog;
+  private snap: Snapshot;
+  private backupStatus: () => BooksRecordView["backup"];
 
   constructor(books: Books, opts: OfficeOptions = {}) {
     this.books = books;
@@ -122,6 +135,57 @@ export class OfficeService {
       digestTime: "08:45",
       reminderPolicy: { firstAfterDays: DEFAULT_POLICY.firstAfterDays, firmAfterDays: DEFAULT_POLICY.firmAfterDays, finalAfterDays: DEFAULT_POLICY.finalAfterDays, sendFrom: books.business.email },
     };
+    this.edits = opts.edits ?? new MemoryEditLog();
+    this.snap = snapshot(books);
+    if (!this.edits.count()) this.edits.append([baselineEntry(books, BRAND.name, istNow(this.asOf))]);
+    this.backupStatus = opts.backup ?? (() => ({ configured: false, lastAt: null, lastError: null, where: "The demo office keeps no backup." }));
+  }
+
+  /** Writes whatever changed in the books since the last call to the edit log, as done by `by`. Returns the number of entries. */
+  recordEdits(by: string): number {
+    const next = snapshot(this.books);
+    const entries = diffSnapshots(this.snap, next, by, istNow(this.asOf));
+    this.snap = next;
+    if (entries.length) this.edits.append(entries);
+    return entries.length;
+  }
+
+  /** What an auditor and the ROC need about how these books are kept. */
+  booksRecord(): BooksRecordView {
+    const all = this.edits.all();
+    const fyStart = `${fyOf(this.asOf)}-04-01`;
+    return {
+      provider: { ...BOOKS_PROVIDER },
+      editLog: { since: all[0]?.at ?? null, entries: all.length, thisYear: all.filter((e) => e.at.slice(0, 10) >= fyStart).length, intact: verifyChain(all), latest: this.edits.list({ limit: 20 }) },
+      backup: this.backupStatus(),
+      retentionYears: RETENTION_YEARS,
+    };
+  }
+
+  /** The auditor's working note for Rule 11(g) of the Companies (Audit and Auditors) Rules: is there an edit log, did it run all year, was it tampered with. */
+  auditorStatement(fy?: string): Paper {
+    const start = fy ? Number(fy.slice(0, 4)) : fyOf(this.asOf);
+    const from = `${start}-04-01`;
+    const to = `${start + 1}-03-31`;
+    const all = this.edits.all();
+    const inYear = all.filter((e) => e.at.slice(0, 10) >= from && e.at.slice(0, 10) <= to);
+    const since = all[0]?.at.slice(0, 10) ?? null;
+    const intact = verifyChain(all);
+    const label = `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
+    const lines = [
+      `Edit log statement for ${this.books.business.legalName}, financial year ${label}`,
+      `Prepared by ${BRAND.name} on ${dateLabel(this.asOf)} for the statutory auditor (Rule 11(g), Companies (Audit and Auditors) Rules 2014).`,
+      "",
+      `1. The books of account are kept in ${BRAND.name}, provided by ${BOOKS_PROVIDER.name}. It records an edit log of every change to the books: the record, each field changed with its old and new value, who made the change and when.`,
+      "2. The edit log cannot be switched off by the company or by any user; there is no setting for it.",
+      `3. The log ${since ? `has run since ${dateLabel(since)}` : "has no entries yet"}${since && since <= from ? `, so it operated throughout ${label}` : since ? `, so for ${label} it covers the period from ${dateLabel(since > from ? since : from)}` : ""}. It holds ${inYear.length} entries for the year and ${all.length} in all.`,
+      `4. Each entry carries a SHA-256 hash of the entry before it. The chain was checked on ${dateLabel(this.asOf)}: ${intact ? "it is complete and no entry has been altered or removed" : "IT IS BROKEN, which means an entry was altered or removed; raise this with the provider"}.`,
+      `5. The books and the edit log are kept for ${RETENTION_YEARS} years from the end of the year they relate to, including after the company stops using ${BRAND.name}.`,
+      `6. ${BOOKS_PROVIDER.backup}: ${this.backupStatus().configured ? `the last copy was taken ${this.backupStatus().lastAt ? dateLabel(this.backupStatus().lastAt!) : "not yet"}` : "not set up for this office"}.`,
+      "",
+      "The auditor should still test the log on a sample of transactions; this statement does not replace that.",
+    ];
+    return { filename: `Edit_log_statement_${label}.txt`, mime: "text/plain", content: lines.join("\n") + "\n" };
   }
 
   get asOf() {
@@ -144,7 +208,11 @@ export class OfficeService {
   /** Stored proposals plus the ones computed from the books right now. */
   allStaged(): StagedChange[] {
     const stored = new Map(this.books.staged.map((s) => [s.id, s]));
-    const computed = [...(this.hired("credit-controller") ? draftReminders(this.ledger, { ...DEFAULT_POLICY, ...this.settingsState.reminderPolicy }) : []), ...(this.hired("auditor") ? auditFlags(this.ledger) : [])];
+    const computed = [
+      ...(this.hired("credit-controller") ? draftReminders(this.ledger, { ...DEFAULT_POLICY, ...this.settingsState.reminderPolicy }) : []),
+      ...(this.hired("auditor") ? auditFlags(this.ledger) : []),
+      ...(this.hired("compliance-officer") ? complianceProposals(this.books, this.asOf) : []),
+    ];
     for (const c of computed) if (!stored.has(c.id)) stored.set(c.id, c);
     return [...stored.values()].filter((s) => this.hired(s.agentId) || s.status !== "pending");
   }
@@ -314,10 +382,15 @@ export class OfficeService {
         const o = operationsReport(l);
         if (agentId === "buyer") return [{ label: "Open requests for quotes", value: String(o.rfqs.length) }];
         if (agentId === "compliance-officer") {
-          const next = o.compliance.filter((c) => c.status === "upcoming");
+          const v = complianceView(this.books, this.asOf);
+          const open = v.obligations.filter((c) => c.state !== "filed" && c.state !== "snoozed");
+          const late = open.filter((c) => c.state === "late");
+          const next = open.find((c) => c.state !== "late");
           return [
-            { label: "Next filing", value: next[0] ? `${next[0].form}, ${next[0].daysLeft} days` : "None" },
-            { label: "Due in 30 days", value: String(next.filter((c) => c.daysLeft <= 30).length) },
+            { label: "At risk", value: inrShort(v.atRiskPaise), figureId: "compliance:at-risk", ...(v.atRiskPaise ? { tone: "red" as const } : {}) },
+            { label: "Next filing", value: next ? `${next.form}, ${next.daysLeft === 0 ? "today" : `${next.daysLeft} days`}` : "None" },
+            { label: "Late", value: String(late.length), ...(late.length ? { tone: "red" as const } : {}) },
+            { label: "Due in 30 days", value: String(open.filter((c) => c.daysLeft >= 0 && c.daysLeft <= 30).length) },
           ];
         }
         return [
@@ -391,15 +464,9 @@ export class OfficeService {
     return { items: low.map((s) => s.name), drafted, covered: low.every((s) => onOrder.has(s.skuId)) };
   }
 
-  /** Returns and filings due within `days`, or overdue, from the compliance calendar and the GST returns not yet filed. */
-  complianceDue(days: number): { form: string; date: string; daysLeft: number }[] {
-    const o = operationsReport(this.ledger);
-    const out = o.compliance.filter((c) => c.status !== "done" && c.daysLeft <= days).map((c) => ({ form: c.form, date: c.date, daysLeft: c.daysLeft }));
-    for (const f of gstReport(this.ledger).filings) {
-      const left = Math.round((Date.parse(`${f.dueOn}T00:00:00Z`) - Date.parse(`${this.asOf}T00:00:00Z`)) / 86_400_000);
-      if (f.status !== "filed" && left <= days && !out.some((x) => x.form === f.form && x.date === f.dueOn)) out.push({ form: f.form, date: f.dueOn, daysLeft: left });
-    }
-    return out.sort((a, b) => (a.date < b.date ? -1 : 1));
+  /** Filings and payments due within `days`, or late, from the company's calendar. */
+  complianceDue(days: number): Obligation[] {
+    return buildObligations(this.books, this.asOf).filter((o) => o.state !== "filed" && o.state !== "snoozed" && o.daysLeft <= days);
   }
 
   agentRoom(agentId: string): AgentRoomView {
@@ -853,6 +920,13 @@ export class OfficeService {
       case "payroll_run":
         this.log("payroll-clerk", "Released payslips.");
         break;
+      case "compliance_action":
+        this.log(
+          "compliance-officer",
+          p.checkId === "msme" ? "Micro and small suppliers go first in the next payment run; the Credit Controller's cash plan now shows them." : p.checkId === "advance-tax" ? "Advance tax is set aside in the cash plan for the next instalment." : `Done: ${item.title}.`,
+          { kind: "compliance", id: String(p.checkId ?? "") },
+        );
+        break;
       case "customer_reply":
       case "handoff":
         this.customers.decided(item, true);
@@ -1215,7 +1289,8 @@ export class OfficeService {
       const current = this.books.business;
       const gstin = current.gstin || rest.business.gstin;
       const derived = gstin ? { stateCode: gstin.slice(0, 2), pan: gstin.slice(2, 12) } : {};
-      Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom }, derived);
+      Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom, compliance: current.compliance }, derived);
+      if (!current.compliance) delete current.compliance;
     }
     this.settingsState = { ...this.settingsState, ...rest, business: this.books.business };
     return this.settingsState;

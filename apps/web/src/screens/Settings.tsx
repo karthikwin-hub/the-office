@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
 import { AccountSettings } from "./SettingsAccount";
+import { BooksRecordSettings, ComplianceSettings } from "./SettingsCompliance";
 import { OfficeSettings } from "./SettingsOffice";
 import { OnboardingSettings } from "./SettingsOnboarding";
 import { SkinPicker } from "./SettingsSkin";
@@ -80,7 +81,7 @@ function BusinessForm({ b }: { b: Business }) {
               <span>₹</span>
               <input id="b-turnover" className="input num" inputMode="numeric" value={form.turnover} onChange={set("turnover")} />
             </div>
-            <span className="field-help">Above ₹10 crore, you deduct TDS under 194Q on large purchases.</span>
+            <span className="field-help">Above ₹10 crore, you deduct TDS on large purchases (section 393, code 1031; formerly 194Q).</span>
           </div>
           {text("accountantFirm", "Accountant's firm")}
           <div className="field field-wide">
@@ -139,11 +140,13 @@ function SettingsForm({ s }: { s: Settings }) {
             <div><dt>PAN</dt><dd className="num">{b.pan}</dd></div>
             <div><dt>TAN</dt><dd className="num">{b.tan}</dd></div>
             <div><dt>Address</dt><dd>{b.address}</dd></div>
-            <div><dt>Turnover last year</dt><dd>{inr(b.prevYearTurnoverPaise, { symbol: true, rupees: true })}, so TDS under 194Q applies to purchases above ₹50 lakh from one supplier</dd></div>
+            <div><dt>Turnover last year</dt><dd>{inr(b.prevYearTurnoverPaise, { symbol: true, rupees: true })}{b.prevYearTurnoverPaise > 10 * 1e9 ? ", so TDS on purchases (section 393, code 1031; formerly 194Q) applies above ₹50 lakh from one supplier" : ""}</dd></div>
             <div><dt>Accountant</dt><dd>{b.accountantFirm}</dd></div>
           </dl>
         </Section>
       )}
+      <ComplianceSettings b={b} />
+      <BooksRecordSettings />
       <OfficeSettings />
       <AccountSettings />
       <Section title="Getting documents in">

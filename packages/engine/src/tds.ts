@@ -13,10 +13,9 @@ type Rule = {
 };
 
 /**
- * Deduction rules for FY 2026-27 as amended by the Finance Act 2025.
- * Section numbers follow the Income-tax Act, 1961. From 1 April 2026 the
- * Income-tax Act, 2025 consolidates these deductions under section 393; confirm
- * the new references with your chartered accountant before filing.
+ * Deduction rules as amended by the Finance Act 2025. The books keep the 1961 Act's section as
+ * the key; `tdsRef` gives the Income-tax Act 2025 reference and payment code for anything paid
+ * or credited from 1 April 2026.
  */
 export const TDS_RULES: Record<TdsSection, Rule> = {
   "194C": {
@@ -51,8 +50,58 @@ export const TDS_RULES: Record<TdsSection, Rule> = {
   },
 };
 
+/** The day the Income-tax Act 2025 took over from the 1961 Act. */
+export const NEW_ACT_FROM = "2026-04-01";
+
+/** Section 393's table entry and the payment code the TDS challan and Form 140 ask for. */
+export const NEW_ACT: Record<TdsSection, { ref: string; code: (payee?: Pick<Party, "entity">) => string; codes: string }> = {
+  "194C": { ref: "393(1) Sl. 6(i)", code: (p) => (p?.entity === "individual" ? "1023" : "1024"), codes: "1023 (individuals and HUFs), 1024 (others)" },
+  "194H": { ref: "393(1) Sl. 1(ii)", code: () => "1006", codes: "1006" },
+  "194I": { ref: "393(1) Sl. 2(ii)", code: () => "1009", codes: "1009" },
+  "194J": { ref: "393(1) Sl. 6(iii)", code: () => "1027", codes: "1027" },
+  "194Q": { ref: "393(1) Sl. 8(ii)", code: () => "1031", codes: "1031" },
+};
+
+/** How a deduction is cited on a given date: the 1961 section before 1 April 2026, section 393 and its code after. */
+export function tdsRef(section: TdsSection, onDate: string, payee?: Pick<Party, "entity">): { reference: string; code: string; label: string } {
+  if (onDate < NEW_ACT_FROM) return { reference: section, code: "", label: `section ${section}` };
+  const n = NEW_ACT[section];
+  const code = payee ? n.code(payee) : n.codes;
+  return { reference: n.ref, code, label: `section ${n.ref} (code ${code}, formerly ${section})` };
+}
+
+/** Reads a section as a return cites it: "194J", "393(1) Sl. 6(iii)" or the payment code "1027". */
+export function sectionFromCited(text: string): TdsSection | null {
+  const t = text.replace(/\s+/g, " ").trim();
+  const old = /(19\d[A-Z])\b/.exec(t);
+  if (old && old[1]! in TDS_RULES) return old[1] as TdsSection;
+  for (const [section, n] of Object.entries(NEW_ACT) as [TdsSection, (typeof NEW_ACT)[TdsSection]][]) {
+    if (t.replace(/\s/g, "").toLowerCase().includes(n.ref.replace(/\s/g, "").toLowerCase())) return section;
+    if (n.codes.split(/\D+/).filter(Boolean).some((c) => new RegExp(`(^|\\D)${c}(\\D|$)`).test(t))) return section;
+  }
+  return null;
+}
+
+/** The first day of a quarter like "FY2026-27-Q2". */
+function quarterStart(quarter: string): string {
+  const fy = Number(quarter.slice(2, 6));
+  const q = Number(quarter.slice(-1));
+  return [`${fy}-04-01`, `${fy}-07-01`, `${fy}-10-01`, `${fy + 1}-01-01`][q - 1]!;
+}
+
+/** The quarterly return for deductions other than salary: Form 140 from tax year 2026-27, 26Q before. */
+export function tdsReturnForm(quarter: string): "Form 140" | "26Q" {
+  return quarterStart(quarter) >= NEW_ACT_FROM ? "Form 140" : "26Q";
+}
+
+/** "tax year 2026-27" under the new Act, "FY 2025-26" before it. `fyStart` is the year the period begins in. */
+export function taxYearLabel(fyStart: number): string {
+  const span = `${fyStart}-${String((fyStart + 1) % 100).padStart(2, "0")}`;
+  return fyStart >= 2026 ? `tax year ${span}` : `FY ${span}`;
+}
+
 export const SECTION_NOTE =
-  "Section numbers follow the Income-tax Act, 1961. The Income-tax Act, 2025 consolidates these deductions under section 393 from 1 April 2026; confirm the new references with your chartered accountant.";
+  "From 1 April 2026 the Income-tax Act 2025 applies: deductions are made under section 393 and each payment carries a code on the challan and the return, and the quarterly return is Form 140 (formerly 26Q). Anything paid or credited up to 31 March 2026 keeps its 1961 Act section and is reported on 26Q.";
 
 /** 194Q applies only to buyers whose turnover exceeded ₹10 crore in the previous year */
 export const SECTION_194Q_TURNOVER = 10_00_00_000_00;
@@ -138,8 +187,8 @@ export function tdsDepositDue(deductionDate: string): string {
   return `${ny}-${String(nm).padStart(2, "0")}-07`;
 }
 
-/** Quarterly statement due dates for 26Q */
-export function tds26qDue(quarter: string): string {
+/** The quarterly return's due date (Form 140, and 26Q before it): 31 July, 31 October, 31 January and 31 May. */
+export function tdsReturnDue(quarter: string): string {
   const fy = Number(quarter.slice(2, 6));
   const q = Number(quarter.slice(-1));
   return [`${fy}-07-31`, `${fy}-10-31`, `${fy + 1}-01-31`, `${fy + 1}-05-31`][q - 1]!;

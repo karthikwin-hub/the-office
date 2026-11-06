@@ -1,5 +1,7 @@
 import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
-import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
+import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RETENTION_YEARS, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
+import { backupKey, backupTarget, gzip, putObject, retainedKey } from "./backup";
+import { SqlEditLog } from "./edits";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
@@ -51,6 +53,7 @@ const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = { facebook: "meta_page"
  */
 export class Office extends Agent<Env> {
   private store!: BooksStore;
+  private edits!: SqlEditLog;
   private runs!: SqlRoutineLog;
   private conversations!: SqlCsStore;
   private office!: OfficeService;
@@ -102,6 +105,7 @@ export class Office extends Agent<Env> {
     this.csAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "cs_ai"));
 
     this.store = new BooksStore(sql);
+    this.edits = new SqlEditLog(sql);
     this.runs = new SqlRoutineLog(sql);
     this.conversations = new SqlCsStore(sql);
     this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
@@ -203,7 +207,7 @@ export class Office extends Agent<Env> {
 
   private open(books: OfficeService["books"]) {
     this.day = istDate();
-    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations });
+    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, edits: this.edits, backup: () => this.backupStatus() });
     const saved = this.kv("settings");
     if (saved) this.office.updateSettings(JSON.parse(saved));
     this.social().reconcile();
@@ -214,7 +218,9 @@ export class Office extends Agent<Env> {
     if (istDate() !== this.day) this.open(this.office.books);
   }
 
-  private commit() {
+  /** Saves the books, after writing what changed to the edit log as done by `by`. */
+  private commit(by = BRAND.name) {
+    this.office.recordEdits(by);
     const changed = this.store.save(this.office.books);
     const { users: _u, ...settings } = this.office.settings();
     const before = this.kv("settings");
@@ -351,6 +357,7 @@ export class Office extends Agent<Env> {
     try {
       const res = await this.route(request, caller);
       if (request.method !== "GET" || res.status === 302) {
+        this.office.recordEdits(caller.name);
         await this.afterChange();
         this.commit();
       }
@@ -391,6 +398,7 @@ export class Office extends Agent<Env> {
       return json({ thread: this.office.customers.threadView(r.thread.id), notes: r.notes });
     }
     if (post && path === "/api/documents") return this.upload(request, caller);
+    if (post && path === ROUTES.complianceProof) return this.uploadProof(request, caller);
     if (post && (path === ROUTES.onboardingCheck || path === ROUTES.onboardingStage)) return this.onboarding(request, caller, path === ROUTES.onboardingStage);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
     const channel = /^\/api\/channels\/([a-z]+)\/(connect|callback)$/.exec(path);
@@ -463,6 +471,14 @@ export class Office extends Agent<Env> {
 
   /** The end of a deleted office: its storage and alarms go. The Worker removes its files and rows. */
   private async purge() {
+    if (this.office) {
+      const at = new Date().toISOString();
+      const keepUntil = `${new Date().getUTCFullYear() + RETENTION_YEARS + 1}-03-31`;
+      await this.env.DOCS.put(retainedKey(this.officeId!, at), JSON.stringify({ office: this.officeId, purgedAt: at, keepUntil, books: this.office.books, edits: this.edits.all() }), {
+        httpMetadata: { contentType: "application/json" },
+        customMetadata: { keepUntil, reason: "Companies Act s.128(5): books and their edit log are kept for eight years" },
+      });
+    }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS office_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
@@ -868,6 +884,48 @@ export class Office extends Agent<Env> {
     await morningRound(this.office, this.routineHost());
     await this.afterChange();
     this.commit();
+    await this.backupToIndia();
+  }
+
+  /** Today's copy of the books and the edit log, on servers in India. A failure is recorded and shown in Settings, and tried again tomorrow. */
+  private async backupToIndia() {
+    const target = backupTarget(this.env);
+    if (!target) return;
+    const at = new Date().toISOString();
+    try {
+      const body = await gzip(JSON.stringify({ office: this.officeId, at, books: this.office.books, edits: this.edits.all() }));
+      await putObject(target, backupKey(this.officeId!, istDate()), body, "application/gzip");
+      this.kv("backup:last", JSON.stringify({ at, error: null }));
+    } catch (e) {
+      this.log("backup to India failed", e);
+      const prev = JSON.parse(this.kv("backup:last") ?? "{}") as { at?: string | null };
+      this.kv("backup:last", JSON.stringify({ at: prev.at ?? null, error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  private backupStatus() {
+    const target = backupTarget(this.env);
+    const last = JSON.parse(this.kv("backup:last") ?? "{}") as { at?: string | null; error?: string | null };
+    return {
+      configured: Boolean(target),
+      lastAt: last.at ?? null,
+      lastError: last.error ?? null,
+      where: target ? `${new URL(target.endpoint).host}, region ${target.region}` : "Not set up yet: the platform owner adds the bucket in India.",
+    };
+  }
+
+  /** Proof of filing for a calendar item: the challan, acknowledgement or approval letter, kept with the office's files. */
+  private async uploadProof(request: Request, caller: Caller): Promise<Response> {
+    const form = await request.formData();
+    const file = form.get("file") as File | string | null;
+    if (!(file instanceof File)) return json({ error: "Attach a file." }, 400);
+    if (file.size > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    if (!isPdf && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PDF or a picture (PNG, JPEG or WebP)." }, 415);
+    take(this.kv.bind(this), istDate(), "upload", file.size);
+    const id = `proof-${crypto.randomUUID()}`;
+    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), { httpMetadata: { contentType: isPdf ? "application/pdf" : file.type }, customMetadata: { filename: file.name, by: caller.email } });
+    return json({ file: fileUrl(this.officeId!, id), name: file.name.slice(0, 200) });
   }
 
   /** The owners hear what is waiting and what the routines found: on WhatsApp if they asked and it allows, otherwise by email. */
@@ -876,7 +934,7 @@ export class Office extends Agent<Env> {
     const name = this.office.books.business.name || this.businessName;
     const pending = this.office.pending();
     const users = await this.plane().members(officeId);
-    const onWhatsApp = await this.whatsappDigests(pending.length);
+    const onWhatsApp = await this.whatsappDigests(pending.length, notes);
     const owners = users.filter((u) => u.role === "owner" && !onWhatsApp.has(u.userId));
     let emailed = 0;
     let failed = 0;
@@ -909,7 +967,8 @@ export class Office extends Agent<Env> {
   }
 
   /** Everyone in this office who asked for the digest on WhatsApp gets it there if WhatsApp allows; returns who was reached. */
-  private async whatsappDigests(waiting: number): Promise<Set<string>> {
+  private async whatsappDigests(waiting: number, notes: string[]): Promise<Set<string>> {
+    const found = notes.length ? `\n\n*From this morning's routines*\n${notes.map((n) => `• ${n}`).join("\n")}` : "";
     const reached = new Set<string>();
     const keys = this.sharedWaKeys();
     if (!keys) return reached;
@@ -919,8 +978,8 @@ export class Office extends Agent<Env> {
       const how = digestChannel({ wantsWhatsApp: link.digest, lastAt: sessionFor(kv, link.phone).lastAt, now: Date.now(), template: Boolean(keys.template) });
       const heading = (await plane.officesOf(link.userId)).filter((o) => o.status === "active").length > 1 ? this.businessName : undefined;
       try {
-        if (how === "whatsapp") await sendText(keys, link.phone, await morningDigest(this.waDeps(keys), link.phone, link, link.language === "auto" ? null : link.language, heading));
-        else if (how === "template") await sendTemplate(keys, link.phone, `${heading ? `${heading}: ` : ""}${waiting} waiting on your desk. Reply desk to see them.`);
+        if (how === "whatsapp") await sendText(keys, link.phone, `${await morningDigest(this.waDeps(keys), link.phone, link, link.language === "auto" ? null : link.language, heading)}${found}`);
+        else if (how === "template") await sendTemplate(keys, link.phone, `${heading ? `${heading}: ` : ""}${waiting} waiting on your desk${notes.length ? ` and ${notes.length} ${notes.length === 1 ? "note" : "notes"} from the routines` : ""}. Reply desk to see them.`);
         else continue;
         reached.add(link.userId);
       } catch (e) {

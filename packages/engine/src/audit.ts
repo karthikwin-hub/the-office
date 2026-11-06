@@ -3,7 +3,7 @@ import { dateLabel, monthLabel, quarterLabel, quarterMonths } from "./dates";
 import { computeGstr1, itcFor, outwardFor } from "./gst";
 import type { Ledger } from "./ledger";
 import { fromR2, inr, inrShort } from "./money";
-import { expectedCustomerTds, expectedTdsByBill, TDS_RULES } from "./tds";
+import { expectedCustomerTds, expectedTdsByBill, NEW_ACT_FROM, TDS_RULES, tdsRef, tdsReturnForm } from "./tds";
 
 type Audit = { comparisons: Comparison[]; findings: Finding[]; matched: boolean };
 
@@ -137,6 +137,7 @@ function audit26q(l: Ledger, r: Extract<FiledReturn, { form: "26Q" }>): Audit {
   const months = new Set(quarterMonths(r.period));
   const filedByBill = new Map(r.data.deductions.map((d) => [d.billId, d]));
   const bills = l.postedBills.filter((b) => months.has(b.date.slice(0, 7)));
+  const returnForm = tdsReturnForm(r.period);
   let expectedTotal = 0;
   const findings: Finding[] = [];
   const shortByVendor = new Map<string, { bills: typeof bills; short: number; bookedBp: number; ruleBp: number }>();
@@ -152,8 +153,8 @@ function audit26q(l: Ledger, r: Extract<FiledReturn, { form: "26Q" }>): Audit {
         severity: "high",
         form: "26Q",
         period: r.period,
-        title: `TDS of ${inrShort(b.tds?.amountPaise ?? e.amountPaise)} on ${vendor.name}'s bill ${b.number} is missing from the 26Q`,
-        explanation: `The books show TDS under section ${e.section} deducted on bill ${b.number} dated ${dateLabel(b.date)}, but the return for ${quarterLabel(r.period)} does not include it. ${vendor.name} will not get credit in their Form 26AS, and the department will treat the deduction as unreported.`,
+        title: `TDS of ${inrShort(b.tds?.amountPaise ?? e.amountPaise)} on ${vendor.name}'s bill ${b.number} is missing from the ${returnForm}`,
+        explanation: `The books show TDS under ${tdsRef(e.section, b.date, vendor).label} deducted on bill ${b.number} dated ${dateLabel(b.date)}, but the return for ${quarterLabel(r.period)} does not include it. ${vendor.name} will not get credit in their Form 26AS, and the department will treat the deduction as unreported.`,
         action: "Ask your accountant to file a correction statement for the quarter.",
         impactPaise: b.tds?.amountPaise ?? e.amountPaise,
         evidence: [{ label: `Bill ${b.number}`, ref: { kind: "document", id: b.docId, region: "totals.taxable" } }],
@@ -176,7 +177,7 @@ function audit26q(l: Ledger, r: Extract<FiledReturn, { form: "26Q" }>): Audit {
       form: "26Q",
       period: r.period,
       title: `TDS on ${vendor.name} deducted at ${s.bookedBp / 100}% instead of ${s.ruleBp / 100}%: short by ${inrShort(s.short)}`,
-      explanation: `${s.bills.length} bill${s.bills.length === 1 ? "" : "s"} for ${quarterLabel(r.period)} were treated as ${s.bookedBp === 200 ? "technical services (2%)" : `${s.bookedBp / 100}%`}. These are ${TDS_RULES[section].nature.toLowerCase()} under section ${section}, which attract ${TDS_RULES[section].rateLabel}. Short deduction makes the business liable for the difference plus interest at 1% a month, and the expense can be partly disallowed.`,
+      explanation: `${s.bills.length} bill${s.bills.length === 1 ? "" : "s"} for ${quarterLabel(r.period)} were treated as ${s.bookedBp === 200 ? "technical services (2%)" : `${s.bookedBp / 100}%`}. These are ${TDS_RULES[section].nature.toLowerCase()} under ${tdsRef(section, s.bills[0]!.date, vendor).label}, which attract ${TDS_RULES[section].rateLabel}. Short deduction makes the business liable for the difference plus interest at 1% a month, and the expense can be partly disallowed.`,
       action: "Deposit the shortfall with interest and file a correction statement.",
       impactPaise: s.short,
       evidence: s.bills.map((b) => ({ label: `Bill ${b.number}`, ref: { kind: "document" as const, id: b.docId, region: "totals.taxable" } })),
@@ -207,7 +208,7 @@ function audit26as(l: Ledger, quarter: string): Finding[] {
       form: "Form 26AS",
       period: quarter,
       title: `${party.name} deducted ${inrShort(amount)} TDS on ${inv.number} but it is not in your Form 26AS`,
-      explanation: `${party.name} paid invoice ${inv.number} net of TDS under section 194Q. Until they report it in their own TDS return, the credit will not appear in your Form 26AS and you cannot claim it against your income tax.`,
+      explanation: `${party.name} paid invoice ${inv.number} net of TDS on purchases (${inv.date < NEW_ACT_FROM ? "section 194Q" : "section 393, code 1031"}). Until they report it in their own TDS return, the credit will not appear in your Form 26AS and you cannot claim it against your income tax.`,
       action: `Ask ${party.contact.name} at ${party.name} to include it in a correction statement.`,
       impactPaise: amount,
       evidence: [{ label: `Invoice ${inv.number}`, ref: { kind: "document", id: inv.docId, region: "totals.taxable" } }],
@@ -241,7 +242,7 @@ export function auditReport(l: Ledger, period?: string): AuditReport {
     period: selected,
     periods,
     note: !selected
-      ? [{ text: "Your accountant has not shared any filed returns yet. Import a GSTR-1, GSTR-3B or 26Q and the Auditor will check it against the books." }]
+      ? [{ text: "Your accountant has not shared any filed returns yet. Import a GSTR-1, GSTR-3B or TDS return (Form 140 or 26Q) and the Auditor will check it against the books." }]
       : findings.length === 0
         ? [{ text: `Everything your accountant filed for ${periodLabel(selected)} matches the books.` }]
         : [

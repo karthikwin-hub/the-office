@@ -2,7 +2,7 @@ import { type FiledReturn, Gstr1, Gstr2b, Gstr3b, type TdsReturnRow, TdsSection 
 import { quarterOf } from "./dates";
 import { parseAmount, parseDate } from "./extract";
 import type { Ledger } from "./ledger";
-import { tds26qDue } from "./tds";
+import { sectionFromCited, tdsReturnDue, tdsReturnForm } from "./tds";
 import { gstDueDates } from "./gst";
 
 /**
@@ -85,10 +85,10 @@ function parse26q(l: Ledger, text: string): Imported {
   if (!head) throw new ImportError("The CSV is empty.");
   const at = Object.fromEntries(Object.entries(COLUMNS).map(([k, re]) => [k, head.findIndex((h) => re.test(h))])) as Record<keyof typeof COLUMNS, number>;
   const missing = Object.entries(at).filter(([k, i]) => i < 0 && k !== "deducteeName" && k !== "bill").map(([k]) => k);
-  if (missing.length) throw new ImportError(`The 26Q CSV needs columns for ${missing.join(", ")}. Found: ${head.join(", ")}.`);
+  if (missing.length) throw new ImportError(`The TDS return CSV (Form 140 or 26Q) needs columns for ${missing.join(", ")}. Found: ${head.join(", ")}.`);
   const deductions: TdsReturnRow[] = body.map((r, n) => {
     const get = (k: keyof typeof COLUMNS) => (at[k] >= 0 ? (r[at[k]] ?? "") : "");
-    const section = TdsSection.safeParse(get("section").replace(/^.*?(19\d[A-Z])$/, "$1"));
+    const section = TdsSection.safeParse(sectionFromCited(get("section")));
     const paidOn = parseDate(get("paidOn"));
     const depositedOn = parseDate(get("depositedOn"));
     const amount = parseAmount(get("amountPaidPaise"));
@@ -100,9 +100,9 @@ function parse26q(l: Ledger, text: string): Imported {
   });
   if (!deductions.length) throw new ImportError("The CSV has a header but no deductions.");
   const quarter = quarterOf(deductions[0]!.paidOn);
-  const filed: FiledReturn = { id: `26q-${quarter}`, form: "26Q", period: quarter, status: "filed", filedOn: null, sharedOn: null, dueOn: tds26qDue(quarter), filedBy: l.books.business.accountantFirm, data: { tan: l.books.business.tan, quarter, deductions } };
+  const filed: FiledReturn = { id: `26q-${quarter}`, form: "26Q", period: quarter, status: "filed", filedOn: null, sharedOn: null, dueOn: tdsReturnDue(quarter), filedBy: l.books.business.accountantFirm, data: { tan: l.books.business.tan, quarter, deductions } };
   const unmatched = deductions.filter((d) => !d.billId).length;
-  return { kind: "return", form: "26Q", period: quarter, filed, summary: `${deductions.length} deductions${unmatched ? `, ${unmatched} not matched to a bill` : ""}` };
+  return { kind: "return", form: "26Q", period: quarter, filed, summary: `${tdsReturnForm(quarter)}: ${deductions.length} deductions${unmatched ? `, ${unmatched} not matched to a bill` : ""}` };
 }
 
 export function importReturn(l: Ledger, content: string, filedOn: string | null): Imported {
@@ -137,5 +137,5 @@ export function importReturn(l: Ledger, content: string, filedOn: string | null)
   }
   const twoB = flatten2b(raw);
   if (twoB) return { kind: "gstr2b", period: twoB.period, statement: twoB, summary: `${twoB.data.docdata.b2b.length} supplier invoices` };
-  throw new ImportError("This file is not a GSTR-1, GSTR-3B or GSTR-2B JSON, or a 26Q CSV.");
+  throw new ImportError("This file is not a GSTR-1, GSTR-3B or GSTR-2B JSON, or a TDS return CSV (Form 140 or 26Q).");
 }

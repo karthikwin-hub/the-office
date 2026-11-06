@@ -107,6 +107,15 @@ for vid, name, city, state, entity, registered, supply, section, bp, template in
             "tdsRateBp": bp,
         }
     )
+    if vid in cat.UDYAM:
+        category, activity, number, days = cat.UDYAM[vid]
+        parties[-1]["udyamCategory"] = category
+        if activity:
+            parties[-1]["udyamActivity"] = activity
+        if number:
+            parties[-1]["udyamNumber"] = number
+        if days is not None:
+            parties[-1]["writtenCreditDays"] = days
     parties[-1]["_template"] = template
 
 party_by_id = {p["id"]: p for p in parties}
@@ -793,7 +802,7 @@ def public(record: dict) -> dict:
 out = {
     "seed": SEED,
     "generatedFor": iso(AS_OF),
-    "business": cat.BUSINESS,
+    "business": {**cat.BUSINESS, "compliance": cat.COMPLIANCE},
     "states": cat.STATES,
     "parties": [public(p) for p in parties],
     "skus": skus,
