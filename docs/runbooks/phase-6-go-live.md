@@ -86,16 +86,16 @@ Write the answers into the Log.
 **Check:**
 
 ```sh
-infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler whoami'
+infisical run --env=dev --silent -- sh tools/admin/cf.sh whoami
 ```
 
-It names the Snilld account. If it names any other account, stop and ask.
+It names the Snilld account. If it names any other account, stop and ask. If it says the token is not in Infisical, check the secret's name and that it is in environment `dev`.
 
 ### 1c. Create the database and the file store
 
 ```sh
-infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler d1 create office --location apac'
-infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler r2 bucket create office-docs'
+infisical run --env=dev --silent -- sh tools/admin/cf.sh d1 create office --location apac
+infisical run --env=dev --silent -- sh tools/admin/cf.sh r2 bucket create office-docs
 ```
 
 The first command prints a `database_id`. In your branch, replace `SNILLD_D1_DATABASE_ID` in `apps/api/wrangler.jsonc` with it. Keep the name `office` and the bucket name `office-docs`; the code expects them.
