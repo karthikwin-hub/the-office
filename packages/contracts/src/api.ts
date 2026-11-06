@@ -521,7 +521,14 @@ export type Session = z.infer<typeof Session>;
 /* ---------- Offices: one account, any number of businesses ---------- */
 
 export const OfficeStatus = z.enum(["active", "suspended", "deleting"]);
-export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus, locale: OfficeLocale });
+/** An office's own address is `<subdomain>.<APP_DOMAIN>`: lower-case letters, digits and inner hyphens, 2 to 32 long. */
+export const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
+/** Labels that are ours, never an office's: `console` signs people in, `demo` is the sample office. */
+export const RESERVED_SUBDOMAINS = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
+export const subdomainProblem = (label: string): string | null =>
+  !SUBDOMAIN.test(label) ? "Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit." : RESERVED_SUBDOMAINS.has(label) ? `"${label}" is kept for the product itself; choose another.` : null;
+
+export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus, locale: OfficeLocale, subdomain: z.string().nullable().default(null) });
 export type OfficeSummary = z.infer<typeof OfficeSummary>;
 /** Who is signed in and which offices they can open. Nothing about any office's books. */
 export const Me = z.object({
@@ -546,6 +553,8 @@ export const OfficeAdmin = z.object({
   name: z.string(),
   status: OfficeStatus,
   ingestEmail: z.string(),
+  /** The office's own web address, once an operator has given it one. */
+  address: z.string().nullable().default(null),
   locale: OfficeLocale,
   /** When a deleted office is purged for good, if it is being deleted. */
   purgeAt: IsoDateTime.nullable(),

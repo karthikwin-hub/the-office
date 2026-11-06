@@ -9,7 +9,7 @@ import { b64url } from "./social/tokens";
  */
 
 export type OfficeStatus = "active" | "suspended" | "deleting";
-export type OfficeRow = { id: string; name: string; slug: string; status: OfficeStatus; createdBy: string | null; createdAt: number; deletedAt: number | null; locale: OfficeLocale };
+export type OfficeRow = { id: string; name: string; slug: string; status: OfficeStatus; createdBy: string | null; createdAt: number; deletedAt: number | null; locale: OfficeLocale; subdomain: string | null };
 export type RouteKind = "email" | "wa_phone" | "meta_page" | "ig_account" | "threads" | "linkedin" | "x" | "support_email" | "widget";
 export type Member = { userId: string; name: string; email: string; role: Role; since: number };
 export type Invitation = { email: string; role: Role; invitedBy: string; createdAt: number; expiresAt: number };
@@ -50,9 +50,9 @@ export async function hashToken(token: string): Promise<string> {
 }
 
 type LocaleDb = { country: string; currency: string; locale: string; time_zone: string };
-type OfficeDb = { id: string; name: string; slug: string; status: OfficeStatus; created_by: string | null; created_at: number; deleted_at: number | null } & LocaleDb;
+type OfficeDb = { id: string; name: string; slug: string; status: OfficeStatus; created_by: string | null; created_at: number; deleted_at: number | null; subdomain?: string | null } & LocaleDb;
 const localeOf = (r: LocaleDb): OfficeLocale => readLocale({ country: r.country, currency: r.currency, locale: r.locale, timeZone: r.time_zone });
-const toOffice = (r: OfficeDb): OfficeRow => ({ id: r.id, name: r.name, slug: r.slug, status: r.status, createdBy: r.created_by, createdAt: r.created_at, deletedAt: r.deleted_at, locale: localeOf(r) });
+const toOffice = (r: OfficeDb): OfficeRow => ({ id: r.id, name: r.name, slug: r.slug, status: r.status, createdBy: r.created_by, createdAt: r.created_at, deletedAt: r.deleted_at, locale: localeOf(r), subdomain: r.subdomain ?? null });
 
 export class ControlPlane {
   constructor(
@@ -77,14 +77,14 @@ export class ControlPlane {
   }
 
   /** An office being deleted disappears for everyone but its owners, who may still restore it. */
-  async officesOf(userId: string): Promise<{ id: string; name: string; role: Role; status: OfficeStatus; locale: OfficeLocale }[]> {
+  async officesOf(userId: string): Promise<{ id: string; name: string; role: Role; status: OfficeStatus; locale: OfficeLocale; subdomain: string | null }[]> {
     const { results } = await this.db
       .prepare(
-        "SELECT o.id, o.name, o.status, o.country, o.currency, o.locale, o.time_zone, m.role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ? AND (o.status != 'deleting' OR m.role = 'owner') ORDER BY o.name",
+        "SELECT o.id, o.name, o.status, o.country, o.currency, o.locale, o.time_zone, o.subdomain, m.role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ? AND (o.status != 'deleting' OR m.role = 'owner') ORDER BY o.name",
       )
       .bind(userId)
-      .all<{ id: string; name: string; status: OfficeStatus; role: Role } & LocaleDb>();
-    return results.map((r) => ({ id: r.id, name: r.name, role: r.role, status: r.status, locale: localeOf(r) }));
+      .all<{ id: string; name: string; status: OfficeStatus; role: Role; subdomain: string | null } & LocaleDb>();
+    return results.map((r) => ({ id: r.id, name: r.name, role: r.role, status: r.status, locale: localeOf(r), subdomain: r.subdomain ?? null }));
   }
 
   /** Opens a new, empty office owned by this person, with its own email-in address. */
@@ -99,7 +99,7 @@ export class ControlPlane {
     if ((counts?.total ?? 0) >= OPEN_LIMIT.total) return { error: "You have opened as many offices as one account may. Write to us if you need more." };
     const name = input.name.trim().slice(0, 80);
     for (let i = 0; i < 5; i++) {
-      const row: OfficeRow = { id: newOfficeId(), name, slug: slugFor(name), status: "active", createdBy: input.owner.id, createdAt: at, deletedAt: null, locale };
+      const row: OfficeRow = { id: newOfficeId(), name, slug: slugFor(name), status: "active", createdBy: input.owner.id, createdAt: at, deletedAt: null, locale, subdomain: null };
       const taken = await this.db.prepare("SELECT 1 FROM office WHERE id = ? OR slug = ?").bind(row.id, row.slug).first();
       if (taken) continue;
       await this.db.batch([

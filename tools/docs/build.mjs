@@ -108,8 +108,8 @@ const cover = `<section class="cover" id="top">
   <dl class="cover-meta">
     <div><dt>Version</dt><dd>${escape(version)}</dd></div>
     <div><dt>Date</dt><dd>${escape(today)}</dd></div>
-    <div><dt>Live</dt><dd><a href="https://the-office.the-office-agents.workers.dev">the-office.the-office-agents.workers.dev</a></dd></div>
-    <div><dt>Demo</dt><dd><a href="https://the-office-mock.the-office-agents.workers.dev">the-office-mock.the-office-agents.workers.dev</a></dd></div>
+    <div><dt>Live</dt><dd><a href="https://office.snilld.in">office.snilld.in</a></dd></div>
+    <div><dt>Demo</dt><dd><a href="https://demo.office.snilld.in">demo.office.snilld.in</a></dd></div>
   </dl>
   <ol class="cover-contents">${toc.map((d) => `<li><a href="#${d.id}"><span class="nav-num">${d.n}</span>${d.text}</a></li>`).join("")}</ol>
   <p class="cover-note">Audience: the team, consultants and partners. Each part opens with a one-paragraph summary; technical detail follows.</p>

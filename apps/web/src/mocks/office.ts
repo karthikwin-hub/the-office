@@ -31,7 +31,7 @@ export function mockMe(role: Role, users: Record<Role, Person>, office: OfficeSe
   const u = users[role];
   return HttpResponse.json({
     user: { id: role === "owner" ? "u-anil" : "u-rajesh", name: u.name, email: u.email, emailVerified: true },
-    offices: [{ id: OFFICE_ID, name: office.books.business.name, role, status: "active", locale: INDIA }],
+    offices: [{ id: OFFICE_ID, name: office.books.business.name, role, status: "active", locale: INDIA, subdomain: null }],
     verificationRequired: false,
     consentNeeded: [],
     deletionRequested: false,
@@ -52,6 +52,7 @@ export async function mockOfficeAdmin(request: Request, path: string, role: Role
     name: office.books.business.name,
     status: s.status,
     ingestEmail: office.settings().ingestEmail,
+    address: null,
     locale: INDIA,
     purgeAt: s.purgeAt,
     members: s.members.map((m) => ({ ...m, you: m.userId === me })),

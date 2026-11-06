@@ -11,11 +11,13 @@
 //   backup                               the whole control plane as SQL, into backups/
 //   forget-user <email>                  removes a person's account, sessions, memberships, WhatsApp link and consent records (DPDP request)
 //   requests [done <id>]                 lists the open "Delete my account" requests, or completes one
+//   subdomain <office> <label>           gives an office its own address, <label>.APP_DOMAIN, in two runs (see below)
+//   subdomain <office> --remove          takes it away again; the office opens on the console
 //
 // Add --local to work on `wrangler dev`'s database instead.
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -25,8 +27,14 @@ const local = args.includes("--local");
 const [command, ...rest] = args.filter((a) => a !== "--local");
 const OFFICE = /^(off_[a-z2-9]{16}|kaveri-electricals)$/;
 const KINDS = new Set(["email", "wa_phone", "meta_page", "ig_account", "threads", "linkedin", "x", "support_email", "widget"]);
-const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN_OFFICE_AGENTS };
+const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE };
 const lit = (v) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
+const CONFIG = join(api, "wrangler.jsonc");
+const configVar = (name) => new RegExp(`"${name}":\\s*"([^"]+)"`).exec(readFileSync(CONFIG, "utf8"))?.[1] ?? null;
+// The same rules as `subdomainProblem` in packages/contracts/src/api.ts.
+const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
+const RESERVED = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
+const END_OF_CUSTOMERS = "// customers end";
 
 function wrangler(...a) {
   return execFileSync(join(api, "node_modules/.bin/wrangler"), a, { cwd: api, env, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
@@ -65,6 +73,43 @@ function forgetUser(email) {
   console.log(`Removed ${u.name}'s account from ${offices.length} offices. Their name may remain in those offices' books, where the business keeps it as a record.`);
 }
 
+/**
+ * An office's own address takes two runs. The first adds `<label>.APP_DOMAIN` to the Worker's custom domains in
+ * wrangler.jsonc, to be committed and deployed. The second checks that the address answers, then switches the office
+ * over: from then on the console sends its people there. With --local only the database changes.
+ */
+async function subdomain(o, label) {
+  const domain = local ? "office.localhost" : configVar("APP_DOMAIN");
+  if (!domain) fail("APP_DOMAIN is not set in apps/api/wrangler.jsonc.");
+  const text = readFileSync(CONFIG, "utf8");
+  if (label === "--remove") {
+    const [row] = sql(`SELECT subdomain FROM office WHERE id = ${lit(o.id)}`);
+    if (!row?.subdomain) fail(`${o.name} has no address of its own.`);
+    sql(`UPDATE office SET subdomain = NULL WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", "removed")}`);
+    const line = new RegExp(`^.*"${row.subdomain}\\.${domain.replace(/\./g, "\\.")}".*\\n`, "m");
+    if (!local && line.test(text)) writeFileSync(CONFIG, text.replace(line, ""));
+    console.log(`${o.name} opens on the console again.${local ? "" : ` Removed ${row.subdomain}.${domain} from wrangler.jsonc: commit and deploy to take the address down.`}`);
+    return;
+  }
+  if (!SUBDOMAIN.test(label)) fail("Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit.");
+  if (RESERVED.has(label)) fail(`"${label}" is kept for the product itself; choose another.`);
+  const [taken] = sql(`SELECT id, name FROM office WHERE subdomain = ${lit(label)}`);
+  if (taken && taken.id !== o.id) fail(`${label}.${domain} already belongs to ${taken.name} (${taken.id}).`);
+  const host = `${label}.${domain}`;
+  if (!local && !text.includes(`"${host}"`)) {
+    if (!text.includes(END_OF_CUSTOMERS)) fail(`Could not find "${END_OF_CUSTOMERS}" in apps/api/wrangler.jsonc.`);
+    writeFileSync(CONFIG, text.replace(END_OF_CUSTOMERS, `{ "pattern": "${host}", "custom_domain": true },\n    ${END_OF_CUSTOMERS}`));
+    console.log(`Added ${host} to apps/api/wrangler.jsonc for ${o.name}.\nNext: commit it, deploy, wait a few minutes for the certificate, then run this same command again.`);
+    return;
+  }
+  if (!local) {
+    const health = await fetch(`https://${host}/api/health`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (health?.appDomain !== domain) fail(`https://${host} is not answering as the office yet. Check the deploy finished; a new certificate can take up to 15 minutes. Then run this again.`);
+  }
+  sql(`UPDATE office SET subdomain = ${lit(label)} WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", host)}`);
+  console.log(`${o.name} now opens on ${local ? "http" : "https"}://${host}${local ? ":8787" : ""}. Its people are sent there from the console.`);
+}
+
 switch (command) {
   case "list": {
     const rows = sql(`SELECT o.id, o.name, o.status, o.created_at,
@@ -95,7 +140,7 @@ switch (command) {
     sql(`INSERT INTO invitation (office_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (${lit(o.id)}, ${lit(email)}, 'owner', ${lit(hash)}, 'admin', ${at}, ${at + 14 * 86400_000})
       ON CONFLICT (office_id, email) DO UPDATE SET role = 'owner', token_hash = excluded.token_hash, invited_by = 'admin', created_at = excluded.created_at, expires_at = excluded.expires_at, accepted_at = NULL;
       ${audit(o.id, "invitation.sent", `${email} as owner`)}`);
-    const base = local ? "http://localhost:8787" : "https://the-office.the-office-agents.workers.dev";
+    const base = local ? "http://localhost:8787" : configVar("BETTER_AUTH_URL");
     console.log(`Owner invitation for ${email} to ${o.name}, good for 14 days. Send them this link:\n${base}/?invite=${token}`);
     break;
   }
@@ -146,7 +191,11 @@ switch (command) {
     console.log(`Request ${id} is done.`);
     break;
   }
+  case "subdomain": {
+    await subdomain(office(rest[0]), rest[1] ?? "");
+    break;
+  }
   default:
-    console.log(`Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user, requests. See the top of ${import.meta.filename}.`);
+    console.log(`Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user, requests, subdomain. See the top of ${import.meta.filename}.`);
     process.exit(command ? 1 : 0);
 }

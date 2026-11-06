@@ -4,7 +4,7 @@
 #
 #   sh tools/admin/set-secrets.sh
 #
-# Needs: infisical login, openssl, and the Cloudflare token in Infisical as CLOUDFLARE_API_TOKEN_OFFICE_AGENTS.
+# Needs: infisical login, openssl, and the Cloudflare token in Infisical as CLOUDFLARE_API_TOKEN_SNILLD_OFFICE.
 # Setting BETTER_AUTH_SECRET for the first time signs everyone out once.
 set -eu
 
@@ -23,7 +23,7 @@ for name in $NAMES; do
 done
 
 for name in $NAMES; do
-  infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS\" ./node_modules/.bin/wrangler secret put $name" >/dev/null
+  infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE\" ./node_modules/.bin/wrangler secret put $name" >/dev/null
   echo "$name: put on the live Worker"
 done
 
@@ -32,7 +32,7 @@ done
 for name in TURNSTILE_SECRET; do
   present=$(infisical run --env="$ENV" --silent -- sh -c "[ -n \"\${$name:-}\" ] && echo yes || echo no")
   if [ "$present" = "yes" ]; then
-    infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS\" ./node_modules/.bin/wrangler secret put $name" >/dev/null
+    infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE\" ./node_modules/.bin/wrangler secret put $name" >/dev/null
     echo "$name: put on the live Worker"
   else
     echo "$name: not in Infisical, skipped (optional)"
@@ -40,4 +40,4 @@ for name in TURNSTILE_SECRET; do
 done
 
 echo "Secrets on the live Worker now:"
-infisical run --env="$ENV" --silent -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler secret list' | grep -o '"name": "[A-Z_]*"'
+infisical run --env="$ENV" --silent -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler secret list' | grep -o '"name": "[A-Z_]*"'

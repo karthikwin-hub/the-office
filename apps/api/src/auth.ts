@@ -54,16 +54,34 @@ export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM">, to: strin
 }
 
 /**
+ * Where sign-in may come from, and the domain its cookie is for. With APP_DOMAIN, every office's own address
+ * and the console share one sign-in; Better Auth compares a wildcard with the host, port included.
+ */
+export function authScope(env: Pick<Env, "BETTER_AUTH_URL" | "APP_DOMAIN">, host?: string): { origins: string[]; cookieDomain: string | null } {
+  const origins = env.BETTER_AUTH_URL ? [new URL(env.BETTER_AUTH_URL).origin] : [];
+  const domain = env.APP_DOMAIN?.toLowerCase();
+  if (!domain || !env.BETTER_AUTH_URL) return { origins, cookieDomain: null };
+  const base = new URL(env.BETTER_AUTH_URL);
+  const port = base.port ? `:${base.port}` : "";
+  origins.push(`${base.protocol}//${domain}${port}`, `*.${domain}${port}`);
+  const name = host?.toLowerCase().replace(/:\d+$/, "");
+  return { origins, cookieDomain: name && (name === domain || name.endsWith(`.${domain}`)) ? domain : null };
+}
+
+/**
  * Anyone may make an account. An account on its own sees nothing: it opens an office of its
  * own, or joins one through an invitation link. Which offices it is in lives in `membership`.
  */
-export function makeAuth(env: Env) {
+export function makeAuth(env: Env, host?: string) {
   const db = drizzle(env.DB, { schema });
+  const { origins, cookieDomain } = authScope(env, host);
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
-    trustedOrigins: env.BETTER_AUTH_URL ? [env.BETTER_AUTH_URL] : [],
+    trustedOrigins: origins,
+    // Cookies on a parent domain are refused on any other host, so other hosts (workers.dev, localhost) keep their own.
+    advanced: cookieDomain ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } } : undefined,
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
     emailAndPassword: { enabled: true, minPasswordLength: 10, password: { hash: hashPassword, verify: verifyPassword } },
     emailVerification: {

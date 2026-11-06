@@ -6,9 +6,13 @@
 
 | Environment | URL | Data | Purpose |
 | --- | --- | --- | --- |
-| Live | https://the-office.the-office-agents.workers.dev | Real offices (D1 `office`, R2 `office-docs`) | Pilots |
-| Demo | https://the-office-mock.the-office-agents.workers.dev | Sample books in the browser, no backend | Sales conversations, reviews |
+| Live | https://office.snilld.in (product page), https://console.office.snilld.in (sign-in), `https://<customer>.office.snilld.in` (each office given its own address) | Real offices (D1 `office`, R2 `office-docs`) in the Snilld Cloudflare account | Pilots |
+| Demo | https://demo.office.snilld.in | Sample books in the browser, no backend | Sales conversations, reviews |
 | Local | `wrangler dev` on a developer machine | Local D1, R2 and Durable Object state | Development and end-to-end checks |
+
+Until the move in the go-live runbook (`docs/runbooks/phase-6-go-live.md`, Part 1), live and demo ran on workers.dev addresses in a separate Cloudflare account ("the-office-agents"). The move is needed because a Worker can only use custom domains on a zone in its own account, and `snilld.in` is in the Snilld account.
+
+**One address per office.** `console.office.snilld.in` is where people sign up, sign in and choose an office. An office given its own address (`admin.mjs subdomain`) opens on `<subdomain>.office.snilld.in`, and the console sends its people there. One sign-in covers every address: the session cookie is set for `office.snilld.in`. Each customer's address is a Workers custom domain with its own free certificate, listed under `routes` in `apps/api/wrangler.jsonc`, because a deploy replaces the Worker's custom domains with exactly that list. A wildcard route would need Cloudflare's Advanced Certificate Manager (about $10 a month for the zone), since the free certificate covers only one level below `snilld.in`.
 
 ## 2. The options
 

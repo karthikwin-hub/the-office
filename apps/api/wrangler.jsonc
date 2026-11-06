@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "the-office",
-  "account_id": "d3b8b7d744513171ea57b5b424391de9",
+  // The Snilld account, which also holds the snilld.in zone: a Worker's custom domains must be on a zone in its own account.
+  "account_id": "SNILLD_ACCOUNT_ID",
   "main": "src/index.ts",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -16,18 +17,27 @@
   // INSTAGRAM_APP_ID/SECRET, THREADS_APP_ID/SECRET, WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE, LINKEDIN_CLIENT_ID/SECRET, X_CLIENT_ID/SECRET.
   "vars": {
     "DATA_MODE": "live",
-    "MAIL_FROM": "office@the-office.example",
+    "MAIL_FROM": "office@mail.office.snilld.in",
     // Each office gets <slug>@INGEST_DOMAIN; an Email Routing catch-all on this domain sends its mail to the Worker.
-    "INGEST_DOMAIN": "in.the-office.example",
-    "BETTER_AUTH_URL": "https://the-office.the-office-agents.workers.dev"
+    "INGEST_DOMAIN": "in.office.snilld.in",
+    // The console, where people sign in. The bare APP_DOMAIN is the product page; an office with a subdomain opens on <subdomain>.APP_DOMAIN.
+    "BETTER_AUTH_URL": "https://console.office.snilld.in",
+    "APP_DOMAIN": "office.snilld.in"
   },
+  // A deploy replaces the Worker's custom domains with exactly this list, so every customer's address must be here.
+  "routes": [
+    { "pattern": "office.snilld.in", "custom_domain": true },
+    { "pattern": "console.office.snilld.in", "custom_domain": true },
+    // customers: one line each, added by `node tools/admin/admin.mjs subdomain <office> <label>`
+    // customers end
+  ],
   // Nightly, offices deleted more than 30 days ago are purged.
   "triggers": { "crons": ["30 21 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "office",
-      "database_id": "9c39f2e1-42ff-4cfc-8fd6-d55075a10cdb",
+      "database_id": "SNILLD_D1_DATABASE_ID",
       "migrations_dir": "migrations"
     }
   ],

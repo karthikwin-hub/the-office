@@ -1,7 +1,8 @@
 import { createHmac } from "node:crypto";
-import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, ROUTES } from "@office/contracts";
+import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, ROUTES, subdomainProblem } from "@office/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, purgeDeleted, receiveEmail } from "../src/app";
+import { authScope } from "../src/auth";
 import { CALLER_HEADER, type Caller } from "../src/caller";
 import type { Env } from "../src/env";
 import { docKey, mediaKey } from "../src/keys";
@@ -521,6 +522,49 @@ describe("suspending, deleting and purging", () => {
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(423);
     expect((await call(w, bina, inOffice(A, ROUTES.desk))).status).toBe(404);
     expect(w.seen).toEqual([]);
+  });
+});
+
+describe("an office on its own address", () => {
+  const CONSOLE = "http://console.office.localhost:8787";
+  const at = (host: string, w: World, who: Person | null, path: string, init: RequestInit = {}) =>
+    app.request(`${host}${path}`, { ...init, headers: { origin: host, ...(typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}) } }, w.env);
+
+  it("signs in once on the console and is signed in on every office address", async () => {
+    const w = makeEnv();
+    Object.assign(w.env, { BETTER_AUTH_URL: CONSOLE, APP_DOMAIN: "office.localhost" });
+    const res = await at(CONSOLE, w, null, "/api/auth/sign-up/email", { method: "POST", body: JSON.stringify({ name: "Anil Kulkarni", email: "anil@kaveri.test", password: "a-long-password-1" }) });
+    expect(res.status).toBe(200);
+    const set = (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie();
+    expect(set.every((c) => /domain=office\.localhost/i.test(c))).toBe(true);
+    const anil = { cookie: set.map((c) => c.split(";")[0]).join("; ") } as Person;
+    const opened = await at(CONSOLE, w, anil, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Kaveri Electricals" }) });
+    const A = ((await opened.json()) as { id: string }).id;
+    await w.db.prepare("UPDATE office SET subdomain = 'kaveri' WHERE id = ?").bind(A).run();
+    expect(await (await at("http://office.localhost:8787", w, null, "/api/health")).json()).toMatchObject({ appDomain: "office.localhost" });
+    const me = (await (await at("http://kaveri.office.localhost:8787", w, anil, ACCOUNT_ROUTES.me)).json()) as { offices: { id: string; subdomain: string | null }[] };
+    expect(me.offices).toEqual([expect.objectContaining({ id: A, subdomain: "kaveri" })]);
+    const signIn = await at("http://kaveri.office.localhost:8787", w, null, "/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email: "anil@kaveri.test", password: "a-long-password-1" }) });
+    expect(signIn.status).toBe(200);
+    const elsewhere = await at("http://kaveri.elsewhere.localhost:8787", w, anil, "/api/auth/sign-out", { method: "POST", body: "{}" });
+    expect(elsewhere.status).toBe(403);
+  });
+
+  it("keeps a host-only cookie on any host outside APP_DOMAIN", () => {
+    const env = { BETTER_AUTH_URL: "https://console.office.snilld.in", APP_DOMAIN: "office.snilld.in" };
+    expect(authScope(env, "kaveri.office.snilld.in")).toEqual({ origins: ["https://console.office.snilld.in", "https://office.snilld.in", "*.office.snilld.in"], cookieDomain: "office.snilld.in" });
+    expect(authScope(env, "the-office.example.workers.dev").cookieDomain).toBeNull();
+    expect(authScope(env, "evil-office.snilld.in").cookieDomain).toBeNull();
+    expect(authScope({ BETTER_AUTH_URL: BASE }, "localhost:8787")).toEqual({ origins: [BASE], cookieDomain: null });
+  });
+
+  it("refuses labels that are not an address, or are ours", () => {
+    expect(subdomainProblem("kaveri")).toBeNull();
+    expect(subdomainProblem("mehta-and-co")).toBeNull();
+    expect(subdomainProblem("console")).toMatch(/kept/);
+    expect(subdomainProblem("Kaveri")).toMatch(/lower-case/);
+    expect(subdomainProblem("-kaveri")).toMatch(/lower-case/);
+    expect(subdomainProblem("k")).toMatch(/lower-case/);
   });
 });
 

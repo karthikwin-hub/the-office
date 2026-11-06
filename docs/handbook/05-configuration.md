@@ -19,9 +19,10 @@
 | Name | Meaning | Live value today |
 | --- | --- | --- |
 | `DATA_MODE` | `live` for the real Worker | `live` |
-| `MAIL_FROM` | The address mail is sent from | Placeholder (`office@the-office.example`); must be replaced |
-| `INGEST_DOMAIN` | Each office receives mail at `<slug>@INGEST_DOMAIN` | Placeholder (`in.the-office.example`); must be replaced |
-| `BETTER_AUTH_URL` | The public URL used in links and cookies | The live workers.dev URL |
+| `MAIL_FROM` | The address mail is sent from | `office@mail.office.snilld.in` (sending set up in the go-live runbook, Part 2) |
+| `INGEST_DOMAIN` | Each office receives mail at `<slug>@INGEST_DOMAIN` | `in.office.snilld.in` (Email Routing on that subdomain, runbook Part 3) |
+| `BETTER_AUTH_URL` | The console: sign-in, invitation and confirmation links, and the social sign-in callbacks | `https://console.office.snilld.in` |
+| `APP_DOMAIN` | Optional. The bare domain shows the product page, `console.<APP_DOMAIN>` is the console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host | `office.snilld.in` |
 | `TURNSTILE_SITE_KEY` | Optional. The public Turnstile site key the website chat shows; set together with `TURNSTILE_SECRET` | Not set (the chat relies on the rate limit) |
 
 Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
@@ -58,7 +59,7 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For X | X app (OAuth 2.0) |
 | `TURNSTILE_SECRET` | Optional, for the website chat | Verifies the Turnstile token on each chat message; without it the chat accepts messages within the rate limit |
 
-In Infisical (environment `dev`), the Cloudflare deploy token is held as `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time.
+In Infisical (environment `dev`), the Cloudflare deploy token for the Snilld account is held as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
 
 > **Rule:** no `.env` or `.dev.vars` files. Commands that need secrets run as `infisical run --env=dev -- <command>`.
 
@@ -102,7 +103,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 
 ## 6. Domain and schedule
 
-- **Custom domain:** add the domain to Cloudflare, attach it to the `the-office` Worker as a custom domain, then update `BETTER_AUTH_URL` and every platform redirect URI to it.
+- **Custom domain:** the platforms' redirect URIs use the console, `https://console.office.snilld.in/api/channels/<platform>/callback`, for every office; after connecting, the owner is sent back to their own office's address.
 - **Cron:** `30 21 * * *` (21:30 UTC, 03:00 in India) purges offices deleted more than 30 days ago.
 - **Per-office alarms:** each office schedules its own daily digest (default 08:45 office time) and social publishing.
 
@@ -121,15 +122,17 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | `forget-user <email>` | Removes a person's account, sessions, memberships, WhatsApp link and consent records; refuses if they are the only owner of an office |
 | `requests` | Lists open account deletion requests made from Settings, oldest first |
 | `requests done <id>` | Completes a deletion request: runs `forget-user` for that person and marks the request done |
+| `subdomain <office> <label>` | Gives an office its own address, `<label>.office.snilld.in`, in two runs: the first adds the custom domain to `wrangler.jsonc` (commit and deploy), the second checks the address answers and switches the office over. Labels are 2 to 32 lower-case letters, digits or hyphens; `console`, `demo`, `www`, `api`, `mail`, `in` and a few more are refused |
+| `subdomain <office> --remove` | Takes the address away (commit and deploy afterwards); the office opens on the console again |
 
 ## 8. Go-live checklist
 
 | # | Item | Owner | Status |
 | --- | --- | --- | --- |
-| 1 | Own a domain and add it to Cloudflare | Business | Open |
-| 2 | Sending: a provider able to reach any address; `MAIL_FROM` on our domain; SPF, DKIM, DMARC | Engineering | **Open, blocks sign-up** |
-| 3 | Receiving: Email Routing catch-all on `in.<domain>`; set `INGEST_DOMAIN` | Engineering | Open |
-| 4 | Custom domain on the Worker; update `BETTER_AUTH_URL` and redirect URIs | Engineering | Open |
+| 1 | The product in the Snilld Cloudflare account, beside the `snilld.in` zone | Business and engineering | Open: config ready (`office.snilld.in`), the move is runbook Part 1 |
+| 2 | Sending: a provider able to reach any address; `MAIL_FROM` on `mail.office.snilld.in`; SPF, DKIM, DMARC | Engineering | **Open, blocks sign-up** |
+| 3 | Receiving: Email Routing catch-all on `in.office.snilld.in` | Engineering | Open: `INGEST_DOMAIN` set |
+| 4 | `office.snilld.in`, `console.office.snilld.in` and `demo.office.snilld.in` on the Workers; redirect URIs on the console | Engineering | Open: in config, attached by the first deploy in the Snilld account |
 | 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | Done 5 November 2026 with `tools/admin/set-secrets.sh` |
 | 6 | Meta app reviewed and live (Pages, Instagram, Threads, WhatsApp, webhooks) | Business and engineering | Per platform |
 | 7 | WhatsApp Business number verified and display name approved | Business | Per account |

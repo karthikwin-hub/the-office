@@ -16,6 +16,11 @@ export type Env = {
   /** "off" lets people open offices and accept invitations without confirming their address (local testing only). */
   EMAIL_VERIFICATION?: string;
   BETTER_AUTH_URL: string;
+  /**
+   * When set (for example `office.snilld.in`), BETTER_AUTH_URL is the console on `console.<APP_DOMAIN>`, the bare domain shows
+   * the product page, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`. One sign-in covers them all.
+   */
+  APP_DOMAIN?: string;
   /** Set with `wrangler secret put`, never in a file. */
   BETTER_AUTH_SECRET: string;
   /**

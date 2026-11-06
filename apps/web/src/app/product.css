@@ -1,0 +1,312 @@
+/* The product page on the bare app domain. The office's own drafting sheet: plan grid, carbon ink, one red stamp. */
+
+.product {
+  min-height: 100dvh;
+  color: var(--graphite);
+  background:
+    linear-gradient(var(--plan-line-soft) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, var(--plan-line-soft) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--paper);
+}
+
+.product-bar,
+.product main,
+.product-foot {
+  width: min(100% - 2 * var(--s-5), 1120px);
+  margin-inline: auto;
+}
+
+.product-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-block: var(--s-5);
+}
+.product-bar .signin-plate {
+  margin: 0;
+}
+.product-bar nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+}
+.product-bar nav a:not(.btn) {
+  color: var(--graphite);
+}
+
+.product-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: var(--s-8);
+  align-items: center;
+  padding-block: var(--s-8) var(--s-8);
+  border-bottom: var(--wall) solid var(--graphite);
+}
+.product-pitch h1 {
+  font-size: clamp(2.1rem, 1.3rem + 3vw, 3.6rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--graphite);
+  margin: 0 0 var(--s-5);
+  max-width: 17ch;
+}
+.product-lede {
+  font-size: var(--step-1);
+  line-height: 1.45;
+  max-width: 40ch;
+  margin: 0 0 var(--s-6);
+}
+.product-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+/* The proof: a figure, a carbon leader line, and the sheet it points into. */
+.proof {
+  margin: 0;
+  display: grid;
+  gap: 0;
+  justify-items: start;
+}
+.proof-figure {
+  display: grid;
+  gap: 2px;
+  padding: var(--s-4) var(--s-5);
+  background: var(--carbon);
+  color: var(--on-carbon);
+  border-radius: var(--radius-panel);
+  position: relative;
+  z-index: 1;
+}
+.proof-figure strong {
+  font-size: var(--step-4);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.proof-figure .proof-meta {
+  font-size: var(--step--1);
+  opacity: 0.85;
+}
+.proof-sheet {
+  width: 100%;
+  margin-top: var(--s-7);
+  margin-left: var(--s-6);
+  background: var(--sheet-base);
+  border: var(--wall) solid var(--graphite);
+  border-radius: var(--radius-panel);
+  padding: var(--s-5);
+  position: relative;
+  box-shadow: var(--shadow-panel);
+}
+/* The leader: down from the figure's corner, into the marked line. */
+.proof-sheet::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--s-6) * -1 + var(--s-6));
+  top: calc(var(--s-7) * -1 - var(--wall));
+  height: calc(100% - 3.1rem + var(--s-7));
+  width: var(--s-5);
+  border-left: var(--wall) dashed var(--carbon);
+  border-bottom: var(--wall) dashed var(--carbon);
+  pointer-events: none;
+}
+.proof-doc {
+  display: grid;
+  margin: 0 0 var(--s-4);
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+}
+.proof-doc strong {
+  color: var(--graphite);
+  font-size: var(--step-0);
+}
+.proof table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+.proof th,
+.proof td {
+  text-align: left;
+  padding: 6px var(--s-2);
+  border-bottom: var(--rule-soft);
+}
+.proof thead th {
+  font-weight: 500;
+  color: var(--graphite-soft);
+  border-bottom: var(--rule);
+}
+.proof .num {
+  text-align: right;
+}
+.proof .proof-hit th,
+.proof .proof-hit td {
+  font-weight: 700;
+  background: var(--carbon-wash);
+  border-bottom: var(--wall) solid var(--carbon);
+}
+.proof-stamp {
+  position: absolute;
+  right: var(--s-5);
+  top: var(--s-4);
+  margin: 0;
+  padding: 2px var(--s-2);
+  border: var(--wall) solid var(--cleared-green);
+  border-radius: var(--radius-control);
+  color: var(--cleared-green);
+  font-weight: 700;
+  font-size: var(--step--1);
+  transform: rotate(-4deg);
+}
+.proof figcaption {
+  margin: var(--s-4) 0 0 var(--s-6);
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+}
+
+.product-section {
+  padding-block: var(--s-8) 0;
+}
+.product-section h2 {
+  font-size: var(--step-3);
+  line-height: var(--leading-tight);
+  margin: 0 0 var(--s-5);
+}
+.product-note {
+  max-width: 60ch;
+  margin: calc(var(--s-3) * -1) 0 var(--s-5);
+  color: var(--graphite-soft);
+}
+
+.product-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: var(--wall) solid var(--graphite);
+}
+.product-steps li {
+  counter-increment: step;
+  padding: var(--s-5) var(--s-5) var(--s-5) 0;
+}
+.product-steps li + li {
+  padding-left: var(--s-5);
+  border-left: var(--rule);
+}
+.product-steps h3::before {
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  margin-right: var(--s-2);
+  border-radius: 50%;
+  border: var(--wall) solid var(--carbon);
+  color: var(--carbon);
+  font-size: var(--step--1);
+  vertical-align: 0.15em;
+}
+.product-steps h3 {
+  font-size: var(--step-1);
+  margin: 0 0 var(--s-2);
+}
+.product-steps p {
+  margin: 0;
+  max-width: 34ch;
+}
+
+.product-team {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--s-7);
+}
+.product-team div {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: var(--s-4);
+  padding-block: var(--s-4);
+  border-top: var(--rule);
+}
+.product-team dt {
+  font-weight: 700;
+  color: var(--carbon);
+}
+.product-team dd {
+  margin: 0;
+}
+
+.product-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-7);
+}
+.product-split p {
+  max-width: 48ch;
+  margin: 0;
+}
+
+.product-foot {
+  margin-top: var(--s-8);
+  padding-block: var(--s-5) var(--s-6);
+  border-top: var(--wall) solid var(--graphite);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--step--1);
+}
+.product-foot nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+}
+.product-foot p {
+  margin: 0;
+}
+.product a:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 860px) {
+  .product-hero,
+  .product-split {
+    grid-template-columns: 1fr;
+    gap: var(--s-7);
+  }
+  .product-steps,
+  .product-team {
+    grid-template-columns: 1fr;
+  }
+  .product-steps li + li {
+    padding-left: 0;
+    border-left: 0;
+    border-top: var(--rule);
+  }
+  .product-team div {
+    grid-template-columns: 1fr;
+    gap: var(--s-1);
+  }
+  .proof-sheet {
+    margin-left: var(--s-4);
+    width: calc(100% - var(--s-4));
+  }
+}
+@media (max-width: 520px) {
+  .product-bar nav a:not(.btn) {
+    display: none;
+  }
+  .proof-stamp {
+    position: static;
+    display: inline-block;
+    margin-top: var(--s-3);
+  }
+}

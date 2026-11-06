@@ -5,6 +5,7 @@ import { useState } from "react";
 import { isLive, officeAdmin } from "../api/client";
 import { q } from "../api/queries";
 import { goToOffice } from "../app/Offices";
+import { consoleUrl } from "../app/site";
 import { isOwner, Section } from "./common";
 
 const ROLE_NOTE: Record<Role, string> = {
@@ -27,7 +28,7 @@ function OfficePanel({ a }: { a: OfficeAdmin }) {
   const setRole = useMutation({ mutationFn: ({ userId, role }: { userId: string; role: Role }) => officeAdmin.setRole(userId, role), onSettled: refresh });
   const remove = useMutation({ mutationFn: officeAdmin.remove, onSettled: refresh });
   const revoke = useMutation({ mutationFn: officeAdmin.revoke, onSettled: refresh });
-  const leave = useMutation({ mutationFn: officeAdmin.leave, onSuccess: () => (isLive ? location.assign("/") : refresh()) });
+  const leave = useMutation({ mutationFn: officeAdmin.leave, onSuccess: () => (isLive ? location.assign(consoleUrl("/")) : refresh()) });
   const me = a.members.find((m) => m.you);
   const err = setRole.error ?? remove.error ?? revoke.error ?? leave.error;
 
@@ -41,6 +42,14 @@ function OfficePanel({ a }: { a: OfficeAdmin }) {
             {owner ? <span className="muted"> · change it under Business</span> : null}
           </dd>
         </div>
+        {a.address ? (
+          <div>
+            <dt>Web address</dt>
+            <dd className="num">
+              <a href={a.address}>{a.address.replace(/^https:\/\//, "")}</a>
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Email for bills</dt>
           <dd className="num">{a.ingestEmail}</dd>
@@ -209,7 +218,7 @@ function Handover({ a, onDone }: { a: OfficeAdmin; onDone: () => void }) {
 function OwnerTools({ a }: { a: OfficeAdmin }) {
   const [confirm, setConfirm] = useState("");
   const exportAll = useMutation({ mutationFn: officeAdmin.exportAll });
-  const del = useMutation({ mutationFn: () => officeAdmin.deleteOffice(confirm), onSuccess: () => (isLive ? location.assign("/") : undefined) });
+  const del = useMutation({ mutationFn: () => officeAdmin.deleteOffice(confirm), onSuccess: () => (isLive ? location.assign(consoleUrl("/")) : undefined) });
   const restore = useMutation({ mutationFn: officeAdmin.restore, onSuccess: () => (isLive ? goToOffice(a.id) : undefined) });
   return (
     <>
@@ -274,6 +283,7 @@ const ACTIONS: Record<string, string> = {
   "office.suspended": "suspended the office",
   "office.transferred": "handed the office over",
   "office.exported": "downloaded everything",
+  "office.subdomain": "set the office's own address:",
   "invitation.sent": "invited",
   "invitation.revoked": "revoked the invitation for",
   "invitation.accepted": "joined",

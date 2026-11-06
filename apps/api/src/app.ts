@@ -59,8 +59,9 @@ const internal = (path: string, body: unknown) => new Request(`https://office.in
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-app.get("/api/health", (c) => c.json({ ok: true, mode: c.env.DATA_MODE }));
-app.on(["GET", "POST"], "/api/auth/*", (c) => makeAuth(c.env).handler(c.req.raw));
+/** Public. The web app reads `appDomain` before anything else, to know whether this host is the product page, the console or an office. */
+app.get("/api/health", (c) => c.json({ ok: true, mode: c.env.DATA_MODE, appDomain: c.env.APP_DOMAIN || null }));
+app.on(["GET", "POST"], "/api/auth/*", (c) => makeAuth(c.env, new URL(c.req.url).host).handler(c.req.raw));
 
 /* ---------- Webhooks: no session; the signature is the check, and the route table decides the office ---------- */
 
@@ -145,7 +146,7 @@ app.post("/api/chat/:key", async (c) => {
 /* ---------- Everything else needs someone signed in ---------- */
 
 app.use("/api/*", async (c, next) => {
-  const session = await makeAuth(c.env).api.getSession({ headers: c.req.raw.headers });
+  const session = await makeAuth(c.env, new URL(c.req.url).host).api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.json({ error: "Sign in to continue." }, 401);
   const u = session.user;
   c.set("user", { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified) });
@@ -285,6 +286,7 @@ app.get("/api/o/:office/office-admin", async (c) => {
     name: office.name,
     status: office.status,
     ingestEmail: emailRoutes.some((r) => r.externalId === primary) ? primary : (emailRoutes[0]?.externalId ?? primary),
+    address: c.env.APP_DOMAIN && office.subdomain ? `https://${office.subdomain}.${c.env.APP_DOMAIN}` : null,
     locale: office.locale,
     purgeAt: office.status === "deleting" && office.deletedAt ? iso(office.deletedAt + PURGE_AFTER_MS) : null,
     members: members.map((m) => ({ userId: m.userId, name: m.name, email: m.email, role: m.role, since: iso(m.since), you: m.userId === caller.userId })),

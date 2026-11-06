@@ -9,7 +9,7 @@ AI agents on an office floor plan for a small Indian business. Every figure link
 - `packages/contracts`, `packages/engine`, `packages/fixtures`, `packages/ui`: schemas, the books and agents, the Kaveri Electricals sample business, shared components.
 - `tools`: synthetic data, screenshots, live end-to-end checks, export verification.
 
-Live: https://the-office.the-office-agents.workers.dev · Demo: https://the-office-mock.the-office-agents.workers.dev
+Live: https://office.snilld.in (sign-in at https://console.office.snilld.in, each customer on `<customer>.office.snilld.in`). Demo: https://demo.office.snilld.in. Both run in the Snilld Cloudflare account; the move there is Part 1 of `docs/runbooks/phase-6-go-live.md`.
 
 ## New machine
 
@@ -34,7 +34,11 @@ pnpm test && pnpm typecheck
 pnpm docs                # rebuilds docs/handbook/the-office-handbook.html from the Markdown in docs/handbook
 
 # Live Worker locally, with a fresh office (add --var OFFICE_SEED:sample for the Kaveri sample books)
-cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler dev --port 8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787'
+cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler dev --port 8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787'
+
+# The same with one address per office: open http://office.localhost:8787 (product page) and
+# http://console.office.localhost:8787; give an office an address with `node tools/admin/admin.mjs subdomain <office> <label> --local`
+#   --var BETTER_AUTH_URL:http://console.office.localhost:8787 --var APP_DOMAIN:office.localhost
 ```
 
 ## Deploy
@@ -42,13 +46,11 @@ cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLA
 Both builds write to `apps/web/dist`, so build and deploy one at a time.
 
 ```sh
-# Live
-pnpm build
-cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler d1 migrations apply office --remote && ./node_modules/.bin/wrangler deploy'
+# Live: build, migrate, deploy
+infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy'
 
 # Demo
-pnpm build:mock
-cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS" ./node_modules/.bin/wrangler deploy -c ../web/wrangler.mock.jsonc'
+infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy:mock'
 ```
 
 Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`; see the comment in `apps/api/wrangler.jsonc`. `sh tools/admin/set-secrets.sh` creates the two required ones in Infisical if missing and puts them on the live Worker, without printing values; run it yourself.

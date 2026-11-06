@@ -2,15 +2,31 @@
 
 This is a working runbook for the person carrying out Phase 6 of the roadmap (`docs/handbook/06-roadmap.md`). Follow the parts in order. Each step says what to do, how to check it worked, and when to stop and ask.
 
-**The goal:** a new person can sign up, confirm their email, open an office, email a bill to the office and approve it, all on our own domain, with every item in the go-live checklist (`docs/handbook/05-configuration.md`, section 8) closed.
+**The goal:** a new person can sign up, confirm their email, open an office, email a bill to the office and approve it, all on `office.snilld.in`, and a customer's office opens on its own address such as `kaveri.office.snilld.in`. Every item in the go-live checklist (`docs/handbook/05-configuration.md`, section 8) is closed.
 
 ## Before you start
+
+### Where everything lives
+
+The product belongs to Snilld, so it runs in the **Snilld Cloudflare account**, the same account that holds the `snilld.in` domain (and the DNS for Clubs and Sports OS). A Worker can only use a domain in its own account, which is why the product moves there in Part 1. It ran in a separate account ("the-office-agents") until now; nothing in that account needs to be kept.
+
+| Address | What it is |
+| --- | --- |
+| `office.snilld.in` | The product page: what the product is, with Sign in and Try the demo |
+| `console.office.snilld.in` | Where people sign up, sign in, open an office and accept invitations |
+| `<customer>.office.snilld.in` | One customer's office, for example `kaveri.office.snilld.in`. Added per customer in Part 5b |
+| `demo.office.snilld.in` | The demo with sample books |
+| `in.office.snilld.in` | Inbound email: each office gets `<office-slug>@in.office.snilld.in` |
+| `mail.office.snilld.in` | Outbound email: the product sends from `office@mail.office.snilld.in` |
+
+It is the same pattern as Clubs (`console.clubs.snilld.in`, `<club>.clubs.snilld.in`) and Sports OS, with one difference: those run on our VM with a wildcard certificate, while this runs on Cloudflare Workers, where each customer's address is added as its own custom domain with its own free certificate.
 
 ### Ground rules
 
 - **Secrets never go in files, chat, screenshots or tickets.** No `.env` or `.dev.vars` files. Anything that needs a secret runs as `infisical run --env=dev -- <command>`. Refer to secrets by their name only.
-- **Every Cloudflare command runs through Infisical**, using the project's deploy token. The token is stored in Infisical as `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` and is passed to wrangler as `CLOUDFLARE_API_TOKEN`. Do not use `wrangler login`; on this machine it is signed in to a different Cloudflare account.
-- **Do not change the existing DNS records of `snilldai.com`** (the website and Puja's mailbox depend on them). We only add new records on subdomains. If Cloudflare offers to replace or delete an existing record, stop and ask.
+- **Every Cloudflare command runs through Infisical**, using the Snilld deploy token from Part 1. It is stored in Infisical as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` and is passed to wrangler as `CLOUDFLARE_API_TOKEN`. Do not use `wrangler login`; on this machine it is signed in to a different company's account.
+- **Do not touch the existing records of `snilld.in`.** Clubs, Sports OS, `cdn.snilld.in` and the `snilld.in` and `www` redirects depend on them. Never create a wildcard record (`*.snilld.in` or `*.office.snilld.in`); it would swallow other products' hosts. Every record this runbook needs is under `office.snilld.in`, and Cloudflare creates most of them itself.
+- **Do not change anything on `snilldai.com`**, in particular its MX records (the company's mail).
 - **Write down what you did** in the "Log" table at the end of this file as you go: date, step, result. It becomes the record that Phase 6 is closed.
 
 ### Access you need
@@ -19,9 +35,8 @@ Ask Puja for these before starting:
 
 | Access | Why |
 | --- | --- |
-| Cloudflare dashboard, account `d3b8b7d744513171ea57b5b424391de9` ("the-office-agents"), with permission to edit Workers, DNS and Email | Domains, email, monitoring |
-| The DNS of `snilldai.com`: either it is already on Cloudflare, or login to the registrar where it is hosted | Adding subdomains |
-| Infisical, project for The Office, environment `dev`, read access | Running deploys and the admin tool |
+| Cloudflare dashboard, the **Snilld** account, with permission to edit Workers, D1, R2, DNS and Email for `snilld.in`, and to create API tokens | Everything in Parts 1 to 5 |
+| Infisical, project for The Office, environment `dev`, permission to **add** a secret | Storing the new deploy token, running deploys and the admin tool |
 | The GitHub repository, permission to open pull requests | Config changes |
 | A personal Gmail or Outlook address that has never been used with The Office | The final sign-up test |
 
@@ -42,66 +57,76 @@ All tests must pass before you change anything. If they do not, stop and ask.
 
 Write the answers into the Log.
 
-1. **Which domain.** This runbook assumes these names on `snilldai.com`:
-
-   | Name | Used for |
-   | --- | --- |
-   | `app.snilldai.com` | The live product |
-   | `demo.snilldai.com` | The demo with sample books |
-   | `in.snilldai.com` | Inbound email: each office gets `<office-slug>@in.snilldai.com` |
-   | `mail.snilldai.com` | Outbound email: the product sends from `office@mail.snilldai.com` |
-
-   If Puja prefers a separate product domain (for example `agenticoffice.in`), use it everywhere below instead. A separate domain is simpler if `snilldai.com` is not on Cloudflare or its mailbox provider makes changes risky.
-
-2. **Who the grievance officer is**, and the company's legal name and registered address (needed in Part 6).
+1. **Who the grievance officer is**, and the company's legal name and registered address (needed in Part 6).
+2. **The first customer's address.** A short word they recognise, usually the business's name: `kaveri`, not `kaveri-electricals-pvt-ltd`. Lower-case letters, digits and hyphens, 2 to 32 long. Some words are ours and refused: `console`, `demo`, `www`, `app`, `api`, `admin`, `mail`, `in`, `help`, `support` and a few more.
 
 ---
 
-## Part 1: Put the domain on Cloudflare
+## Part 1: Move the product into the Snilld account
 
-Everything else depends on this.
+### 1a. Check the domain and note the account ID
 
-1. In the Cloudflare dashboard, open the account above, then **Websites** (or **Domains**). Check whether `snilldai.com` is listed.
-2. **If it is listed and "Active":** go to Part 2.
-3. **If it is not listed:** stop and talk to Puja. Moving a domain's DNS to Cloudflare means copying every existing record (the website, the mailbox's MX, SPF and verification records) first. It is not hard, but it must be planned so the website and email do not go down. The alternative is a new domain bought on Cloudflare directly (about $10 to $15 a year), which needs no migration.
+1. In the Cloudflare dashboard, switch to the **Snilld** account (account menu at the top left).
+2. Open **Domains** (or **Websites**). `snilld.in` must be listed as **Active**. If it is not there, stop and ask: it may be in another account.
+3. Copy the **Account ID**. It is on the account's home page (**Account details**, or the right-hand column of the domain's Overview page), a 32-character code. It is not a secret.
+4. In a new branch, replace `SNILLD_ACCOUNT_ID` with it in both `apps/api/wrangler.jsonc` and `apps/web/wrangler.mock.jsonc`.
 
-**Check:** the domain shows as **Active** under the account `d3b8b7d744513171ea57b5b424391de9`.
+**Check:** `rg -n SNILLD_ACCOUNT_ID apps` finds nothing.
+
+### 1b. Create the deploy token
+
+1. In the dashboard, open **My Profile → API Tokens → Create Token**, and start from the template **Edit Cloudflare Workers**.
+2. Name it `agentic-office-deploy`. Add these permissions to the ones the template has:
+   - **Account → D1 → Edit**
+   - **Zone → DNS → Edit**
+   - **Zone → SSL and Certificates → Edit** (each address gets its own certificate)
+3. Under **Account Resources**, choose **Include → Snilld** (only this account). Under **Zone Resources**, choose **Include → Specific zone → snilld.in**.
+4. Create it. Cloudflare shows the token once. **Paste it straight into Infisical**, project for The Office, environment `dev`, as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. Do not paste it anywhere else, and close the page.
+
+**Check:**
+
+```sh
+infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler whoami'
+```
+
+It names the Snilld account. If it names any other account, stop and ask.
+
+### 1c. Create the database and the file store
+
+```sh
+infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler d1 create office --location apac'
+infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler r2 bucket create office-docs'
+```
+
+The first command prints a `database_id`. In your branch, replace `SNILLD_D1_DATABASE_ID` in `apps/api/wrangler.jsonc` with it. Keep the name `office` and the bucket name `office-docs`; the code expects them.
+
+**Check:** `rg -n "SNILLD_" apps` finds nothing.
 
 ---
 
 ## Part 2: Sending email (checklist item 2, blocks sign-up)
 
-Today the product can only send mail to addresses verified on the Cloudflare account. That is why new sign-ups on live cannot confirm their email. We need sending that reaches any address.
+Today the product can only send mail to addresses verified on the Cloudflare account. That is why new sign-ups cannot confirm their email. We need sending that reaches any address.
 
-The code sends through Cloudflare's `send_email` binding (`MAILER` in `apps/api/wrangler.jsonc`). The first choice is **Cloudflare Email Sending**, because it needs no code change.
+The code sends through Cloudflare's `send_email` binding (`MAILER` in `apps/api/wrangler.jsonc`), from `MAIL_FROM`, which is already set to `office@mail.office.snilld.in`. The first choice is **Cloudflare Email Sending**, because it needs no code change.
 
-### 2a. Enable Cloudflare Email Sending on `mail.snilldai.com`
+### 2a. Enable Cloudflare Email Sending on `mail.office.snilld.in`
 
-1. In the dashboard, open **Email** (it may be under **Compute & AI → Email Service**, menu names change; search for "Email Sending").
-2. Choose **Onboard a domain** (or **Add sending domain**) and enter `mail.snilldai.com`.
-3. Cloudflare shows the DNS records it needs: SPF (TXT), DKIM (TXT or CNAME) and usually an MX record for bounces, all on `mail.snilldai.com`. Let Cloudflare add them. They are on the subdomain only, so the main domain is not affected.
+1. In the Snilld account, open **Email** (it may be under **Compute & AI → Email Service**; menu names change, so search for "Email Sending").
+2. Choose **Onboard a domain** (or **Add sending domain**) and enter `mail.office.snilld.in`.
+3. Cloudflare shows the DNS records it needs: SPF (TXT), DKIM (TXT or CNAME) and usually an MX record for bounces, all on `mail.office.snilld.in`. Let Cloudflare add them. If it wants to add or change any record on `snilld.in` itself, stop and ask.
 4. Wait until the domain shows as **Verified** (minutes to an hour).
-5. **If Email Sending is not offered on the account, or it says it can only send to verified addresses:** stop. Tell Puja and the engineer. The fallback is a sending service (Amazon SES, Postmark or Resend). That needs a small code change in `apps/api/src/auth.ts` and `apps/api/src/office-agent.ts`, a new secret, and a new line in the subprocessors list. It is an engineering task, not part of this runbook.
+5. **If Email Sending is not offered on the account, or it says it can only send to verified addresses:** stop. Tell Puja and the engineer. The fallback is Resend, which Clubs and Sports OS already use (`support@snilldai.com`). That needs a small code change in `apps/api/src/auth.ts` and `apps/api/src/office-agent.ts`, a new secret, and a new line in the subprocessors list. It is an engineering task, not part of this runbook.
 
 ### 2b. Add DMARC
 
-In **DNS → Records**, add:
+In **Domains → snilld.in → DNS → Records**, add:
 
 | Type | Name | Content |
 | --- | --- | --- |
-| TXT | `_dmarc.mail` | `v=DMARC1; p=none; rua=mailto:puja@snilldai.com` |
+| TXT | `_dmarc.mail.office` | `v=DMARC1; p=none; rua=mailto:puja@snilldai.com` |
 
 `p=none` only reports. After four clean weeks of reports, change it to `p=quarantine`.
-
-### 2c. Point the product at the new address
-
-In a new branch, edit `apps/api/wrangler.jsonc`:
-
-```jsonc
-"MAIL_FROM": "office@mail.snilldai.com",
-```
-
-Do not deploy yet. Parts 3 and 4 change the same file, so they all go out together in Part 5.
 
 **Check (after the deploy in Part 5):** sign up with your personal Gmail address. The confirmation email arrives within a minute and is not in spam. In Gmail, open the message, choose **Show original**, and confirm `SPF: PASS`, `DKIM: PASS` and `DMARC: PASS`. Screenshot that panel (it has no secrets) for the Log.
 
@@ -109,73 +134,48 @@ Do not deploy yet. Parts 3 and 4 change the same file, so they all go out togeth
 
 ## Part 3: Receiving email (checklist item 3)
 
-Each office receives bills at `<office-slug>@in.snilldai.com`. Cloudflare Email Routing hands that mail to the Worker.
+Each office receives bills at `<office-slug>@in.office.snilld.in`. Cloudflare Email Routing hands that mail to the Worker. `INGEST_DOMAIN` in `apps/api/wrangler.jsonc` is already set to `in.office.snilld.in`.
 
-1. In the dashboard, open the domain, then **Email → Email Routing**.
-2. **Important:** if Email Routing is not yet enabled on `snilldai.com`, Cloudflare will offer to add MX records to the main domain. **Do not accept that if `snilldai.com` already receives mail elsewhere** (for example Google Workspace for `puja@snilldai.com`): it would stop that mail. Instead, look for **Settings → Subdomains** and add `in.snilldai.com`. Cloudflare then adds MX and SPF records for `in.snilldai.com` only. If the dashboard gives no way to enable routing without touching the main domain's MX, stop and ask.
+Do this after the first deploy in Part 5 (the Worker `the-office` must exist in the account to be chosen), then come back for the check.
+
+1. In the Snilld account, open **Domains → snilld.in → Email → Email Routing**.
+2. **Important:** if Email Routing is not yet enabled on `snilld.in`, Cloudflare will offer to add MX records to `snilld.in` itself. **Do not accept.** Instead, look for **Settings → Subdomains** and add `in.office.snilld.in`. Cloudflare then adds MX and SPF records for `in.office.snilld.in` only. If the dashboard gives no way to enable routing without adding records to `snilld.in` itself, stop and ask.
 3. Under **Routing rules**, edit the **Catch-all address**: action **Send to a Worker**, Worker **the-office**. Turn it **on**.
-4. In your branch, edit `apps/api/wrangler.jsonc`:
 
-   ```jsonc
-   "INGEST_DOMAIN": "in.snilldai.com",
-   ```
-
-**Check (after Part 5):** in the live app, open an office and copy its email-in address from Settings. It must end in `@in.snilldai.com`. From your personal mailbox, send a PDF bill to it. Within a minute or two it appears in the Accountant's room, and a card appears on the Desk.
+**Check:** in the live app, open an office and copy its email-in address from Settings. It must end in `@in.office.snilld.in`. From your personal mailbox, send a PDF bill to it. Within a minute or two it appears in the Accountant's room, and a card appears on the Desk.
 
 ---
 
-## Part 4: Custom domains (checklist item 4)
+## Part 4: The addresses (checklist item 4)
 
-### 4a. Live on `app.snilldai.com`
+The product page, the console and the demo are already in the config: `office.snilld.in` and `console.office.snilld.in` under `routes` in `apps/api/wrangler.jsonc`, and `demo.office.snilld.in` in `apps/web/wrangler.mock.jsonc`. Cloudflare creates their DNS records and certificates during the deploy. Customers' addresses are added one at a time in Part 5b.
 
-In your branch, edit `apps/api/wrangler.jsonc`:
+### 4a. Check nothing is in the way
 
-1. Add, next to `"main"`:
+In **Domains → snilld.in → DNS → Records**, search for `office`. Before the first deploy there must be **no** record named `office`, `console.office`, `demo.office` or `*.office`. If there is one, stop and ask; do not delete it yourself.
 
-   ```jsonc
-   "routes": [{ "pattern": "app.snilldai.com", "custom_domain": true }],
-   ```
+### 4b. Social and WhatsApp redirect addresses
 
-2. Change:
+Only if any platform apps (Meta, LinkedIn, X) have been set up already: in each platform's developer console, add the new redirect URIs, keeping the old ones until the switch is confirmed. Every office uses the console's address for these; the product sends people back to their own office afterwards.
 
-   ```jsonc
-   "BETTER_AUTH_URL": "https://app.snilldai.com"
-   ```
-
-Sign-in links, invitation links and cookies use `BETTER_AUTH_URL`. People signed in on the old workers.dev address will need to sign in again on the new one. That is expected.
-
-### 4b. Demo on `demo.snilldai.com`
-
-Edit `apps/web/wrangler.mock.jsonc` and add the same kind of line:
-
-```jsonc
-"routes": [{ "pattern": "demo.snilldai.com", "custom_domain": true }],
-```
-
-### 4c. Social and WhatsApp redirect addresses
-
-Only if any platform apps (Meta, LinkedIn, X) have been set up already: in each platform's developer console, add the new redirect URIs, keeping the old ones until the switch is confirmed:
-
-- `https://app.snilldai.com/api/channels/facebook/callback`
-- `https://app.snilldai.com/api/channels/instagram/callback`
-- `https://app.snilldai.com/api/channels/threads/callback`
-- `https://app.snilldai.com/api/channels/linkedin/callback`
-- `https://app.snilldai.com/api/channels/x/callback`
-- Meta webhooks: `https://app.snilldai.com/api/hooks/meta`
+- `https://console.office.snilld.in/api/channels/facebook/callback`
+- `https://console.office.snilld.in/api/channels/instagram/callback`
+- `https://console.office.snilld.in/api/channels/threads/callback`
+- `https://console.office.snilld.in/api/channels/linkedin/callback`
+- `https://console.office.snilld.in/api/channels/x/callback`
+- Meta webhooks: `https://console.office.snilld.in/api/hooks/meta`
 
 If none are set up yet, skip this; the channels work in manual mode.
 
-### 4d. Update the documents
+### 4c. Open the pull request
 
-In the same branch, update `docs/handbook/04-deployment.md` (the Environments table) and `docs/handbook/05-configuration.md` (the Plain settings table and the go-live checklist) with the new values, then run `node tools/docs/build.mjs` to rebuild the handbook.
-
-Open a pull request with the `wrangler.jsonc`, `wrangler.mock.jsonc` and documents changes. Ask the engineer to review it.
+Open a pull request with the `wrangler.jsonc` and `wrangler.mock.jsonc` changes from Part 1. Ask the engineer to review it.
 
 ---
 
 ## Part 5: Release (checklist items 10 and 12)
 
-Do this once the pull request from Parts 2 to 4 is merged. Run every command from the repository root on the `main` branch, after `git pull`.
+Do this once the pull request from Part 4 is merged. Run every command from the repository root on the `main` branch, after `git pull`.
 
 1. **Check:**
 
@@ -183,7 +183,41 @@ Do this once the pull request from Parts 2 to 4 is merged. Run every command fro
    pnpm typecheck && pnpm test
    ```
 
-2. **Back up the control plane:**
+2. **Build, migrate and deploy live.** On the first run this creates the Worker in the Snilld account, applies every database migration to the new database (checklist item 12), and attaches `office.snilld.in` and `console.office.snilld.in`:
+
+   ```sh
+   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy'
+   ```
+
+   Use `pnpm run deploy`, not `pnpm deploy` (that is a different pnpm command and does nothing useful here). The output ends with the Worker's addresses, including `console.office.snilld.in`. If wrangler asks whether to replace an existing DNS record, answer **no** and stop and ask.
+
+3. **Put the secrets on the new Worker.** Only the first time, and after the deploy (the Worker must exist):
+
+   ```sh
+   sh tools/admin/set-secrets.sh
+   ```
+
+   It reuses the values already in Infisical and ends with the list of secret names on the Worker: `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` at least.
+
+4. **Deploy the demo:**
+
+   ```sh
+   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy:mock'
+   ```
+
+   Then build the live app again so `apps/web/dist` holds the live build: `pnpm build`. (Both builds write to the same folder.)
+
+5. **Smoke check.** A new certificate can take up to 15 minutes; until then the first command may fail with a certificate error. Wait and try again.
+
+   ```sh
+   curl -s https://console.office.snilld.in/api/health
+   curl -s -o /dev/null -w "%{http_code}\n" https://console.office.snilld.in/api/o/off_aaaaaaaaaaaaaaaa/desk
+   infisical run --env=dev --silent -- node tools/admin/admin.mjs list
+   ```
+
+   Expect `{"ok":true,"mode":"live","appDomain":"office.snilld.in"}`, then `401`, then an empty list of offices (the new database starts empty). Open `https://office.snilld.in`: the product page shows, and **Sign in** goes to the console. Open `https://demo.office.snilld.in` and check the sample office loads.
+
+6. **Back up the control plane** from now on before every release:
 
    ```sh
    infisical run --env=dev --silent -- node tools/admin/admin.mjs backup
@@ -191,39 +225,49 @@ Do this once the pull request from Parts 2 to 4 is merged. Run every command fro
 
    A new file appears in `backups/`. It holds account data: never commit, copy or share it.
 
-3. **Build, migrate and deploy live.** This also applies any database migrations (including `0003_legal.sql`, checklist item 12):
+7. **If something is wrong:** roll the Worker back to the previous version and tell the engineer:
 
    ```sh
-   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS pnpm run deploy'
+   infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm exec wrangler rollback'
    ```
 
-   Use `pnpm run deploy`, not `pnpm deploy` (that is a different pnpm command and does nothing useful here). The output ends with the Worker's URLs, including `app.snilldai.com`.
+8. **Rehearse a rollback once (checklist item 10):** after the second release, on a quiet day, run the rollback, check the health address, then run the deploy from step 2 again. Note the date in the Log.
 
-4. **Deploy the demo:**
+9. **The old account.** When the exit test in Part 10 has passed, tell Puja. With her agreement, delete the Workers `the-office` and `the-office-mock`, the D1 database `office` and the R2 bucket `office-docs` in the old "the-office-agents" account, and remove `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` from Infisical. They only ever held test data.
+
+---
+
+## Part 5b: Giving a customer their own address
+
+A new office first opens on `console.office.snilld.in`. To give it its own address, for example `kaveri.office.snilld.in`, do this with the label agreed with the customer. It takes two runs of the same command, with a deploy in between, because every address must be listed in `apps/api/wrangler.jsonc`: a deploy removes any address that is not there.
+
+1. Find the office's ID (`off_…`):
 
    ```sh
-   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS pnpm run deploy:mock'
-   ```
-
-   Then build the live app again so `apps/web/dist` holds the live build: `pnpm build`. (Both builds write to the same folder.)
-
-5. **Smoke check:**
-
-   ```sh
-   curl -s https://app.snilldai.com/api/health
-   curl -s -o /dev/null -w "%{http_code}\n" https://app.snilldai.com/api/o/off_aaaaaaaaaaaaaaaa/desk
    infisical run --env=dev --silent -- node tools/admin/admin.mjs list
    ```
 
-   Expect `{"ok":true,"mode":"live"}`, then `401`, then the list of offices. Open `https://demo.snilldai.com` and check the sample office loads.
-
-6. **If something is wrong:** roll the Worker back to the previous version and tell the engineer:
+2. **First run.** It checks the label and adds the address to `apps/api/wrangler.jsonc`:
 
    ```sh
-   infisical run --env=dev --silent -- sh -c 'cd apps/api && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_OFFICE_AGENTS pnpm exec wrangler rollback'
+   infisical run --env=dev --silent -- node tools/admin/admin.mjs subdomain off_xxxxxxxxxxxxxxxx kaveri
    ```
 
-7. **Rehearse a rollback once (checklist item 10):** on a quiet day, run the rollback, check the health URL, then run the deploy from step 3 again. Note the date in the Log.
+   If the label is taken or kept for the product, it says so; agree another with the customer.
+
+3. Commit the changed `apps/api/wrangler.jsonc` (a one-line pull request is fine) and, once merged, deploy as in Part 5, step 2. Wait a few minutes for the certificate.
+
+4. **Second run, the same command.** It checks that `https://kaveri.office.snilld.in` answers, then switches the office over:
+
+   ```sh
+   infisical run --env=dev --silent -- node tools/admin/admin.mjs subdomain off_xxxxxxxxxxxxxxxx kaveri
+   ```
+
+   If it says the address is not answering yet, wait 15 minutes and run it again.
+
+**Check:** open `https://kaveri.office.snilld.in` in a private window and sign in as someone in that office: the office opens there. Sign in on `console.office.snilld.in` instead: you are sent on to `kaveri.office.snilld.in`. In the office's Settings, under Office, the **Web address** shows. Someone who is not in the office sees "This is not one of your offices" and nothing of it.
+
+To take an address away: `admin.mjs subdomain off_xxxxxxxxxxxxxxxx --remove`, then commit and deploy. The office opens on the console again.
 
 ---
 
@@ -263,8 +307,8 @@ The drafts are in `docs/legal/` and are already published at `/legal/...` on the
 
 ## Part 7: Monitoring (checklist item 11)
 
-1. **Uptime alert.** Create a free monitor (for example UptimeRobot or Better Stack) on `https://app.snilldai.com/api/health`, checking every 5 minutes, alerting Puja and the engineer by email. It should also alert when the body does not contain `"ok":true`.
-2. **Error alerts in Cloudflare.** In the dashboard, open **Notifications → Add**. Look for alerts about Workers (error rate or exceptions). If one is offered, create it for the Worker `the-office` and send it to Puja and the engineer. If none is offered on the plan, note that in the Log; the weekly review below covers it.
+1. **Uptime alert.** Create a free monitor (for example UptimeRobot or Better Stack) on `https://console.office.snilld.in/api/health`, checking every 5 minutes, alerting Puja and the engineer by email. It should also alert when the body does not contain `"ok":true`.
+2. **Error alerts in Cloudflare.** In the Snilld account, open **Notifications → Add**. Look for alerts about Workers (error rate or exceptions). If one is offered, create it for the Worker `the-office` and send it to Puja and the engineer. If none is offered on the plan, note that in the Log; the weekly review below covers it.
 3. **Weekly review (every Monday, 15 minutes):**
    - `infisical run --env=dev --silent -- node tools/admin/admin.mjs list`: note the number of offices and anything suspended or unusual.
    - `infisical run --env=dev --silent -- node tools/admin/admin.mjs requests`: any account deletion request must be completed within 30 days with `admin.mjs requests done <id>`. Ask the engineer the first time.
@@ -298,16 +342,17 @@ If an approval says "The books have changed since these files were checked", som
 
 ## Part 10: The exit test
 
-Do this on `app.snilldai.com` with your personal email address, in a private browser window. Every step must pass.
+Do this with your personal email address, in a private browser window. Every step must pass.
 
-1. Open `https://app.snilldai.com`. Choose to create an account. Accept the terms and privacy notice.
-2. The confirmation email arrives (not in spam). Click the link. You are signed in.
+1. Open `https://office.snilld.in`. Choose **Open your office**, then create an account. Accept the terms and privacy notice.
+2. The confirmation email arrives (not in spam). Click the link. You are signed in on `console.office.snilld.in`.
 3. Open a new office named "Exit test".
-4. In Settings, copy the office's email-in address (`…@in.snilldai.com`).
+4. In Settings, copy the office's email-in address (`…@in.office.snilld.in`).
 5. From your mailbox, send a supplier bill PDF to it. A sample bill is in `apps/web/public/docs/` (for example `doc-p0002.pdf`).
 6. Within a few minutes, the Accountant shows the bill, and a card appears on **Your desk**.
 7. Approve the card. The team log on the Floor shows the bill posted.
-8. In Settings, delete the "Exit test" office. Then, under Settings → Account, choose **Ask to delete my account**, and complete that request with `admin.mjs requests` and `admin.mjs requests done <id>` (this also proves the deletion process works).
+8. Give the office the address `exittest` with Part 5b. Open `https://exittest.office.snilld.in`: the office opens there, still signed in.
+9. Take the address away again (`admin.mjs subdomain <office> --remove`, commit, deploy). In Settings, delete the "Exit test" office. Then, under Settings → Account, choose **Ask to delete my account**, and complete that request with `admin.mjs requests` and `admin.mjs requests done <id>` (this also proves the deletion process works).
 
 Then update the go-live checklist in `docs/handbook/05-configuration.md`: mark items 1, 2, 3, 4, 8, 10, 11 and 12 done with the date, rebuild the handbook (`node tools/docs/build.mjs`), and open a pull request. Phase 6 is closed when it is merged.
 
@@ -317,8 +362,10 @@ Then update the go-live checklist in `docs/handbook/05-configuration.md`: mark i
 
 Stop and message the engineer or Puja, without trying workarounds, if:
 
-- any step would change or delete an existing DNS record on `snilldai.com`;
-- any command asks you to paste, print or save a secret value;
+- any step would change or delete an existing DNS record on `snilld.in`, or touch `snilldai.com` at all;
+- any step would create a wildcard record (`*.snilld.in`, `*.office.snilld.in`);
+- any command asks you to paste, print or save a secret value anywhere but Infisical;
+- `wrangler whoami` names an account other than Snilld;
 - a deploy, migration or test fails;
 - the confirmation email lands in spam or shows a FAIL for SPF, DKIM or DMARC;
 - a bill emailed to the office has not appeared after 10 minutes.

@@ -68,8 +68,9 @@ export const office = sqliteTable(
     currency: text("currency").notNull().default("INR"),
     locale: text("locale").notNull().default("en-IN"),
     timeZone: text("time_zone").notNull().default("Asia/Kolkata"),
+    subdomain: text("subdomain"),
   },
-  (t) => [uniqueIndex("office_slug_unique").on(t.slug), index("office_created_by").on(t.createdBy, t.createdAt)],
+  (t) => [uniqueIndex("office_slug_unique").on(t.slug), uniqueIndex("office_subdomain_unique").on(t.subdomain), index("office_created_by").on(t.createdBy, t.createdAt)],
 );
 
 export const membership = sqliteTable(
