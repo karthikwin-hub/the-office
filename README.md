@@ -49,10 +49,10 @@ Both builds write to `apps/web/dist`, so build and deploy one at a time.
 
 ```sh
 # Live: build, migrate, deploy
-infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy'
+infisical run --env=dev --silent -- sh tools/admin/deploy.sh
 
-# Demo
-infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy:mock'
+# Demo (then rebuilds the live app)
+infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo
 ```
 
 Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`; see the comment in `apps/api/wrangler.jsonc`. `sh tools/admin/set-secrets.sh` creates the two required ones in Infisical if missing and puts them on the live Worker, without printing values; run it yourself.

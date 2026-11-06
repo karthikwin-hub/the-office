@@ -172,10 +172,10 @@ Do this once the pull request from Part 4 is merged. Run every command from the 
 2. **Build, migrate and deploy live.** On the first run this creates the Worker in the Snilld account, applies every database migration to the new database (checklist item 12), and attaches `office.snilld.in`, `app.office.snilld.in` and `console.office.snilld.in`:
 
    ```sh
-   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy'
+   infisical run --env=dev --silent -- sh tools/admin/deploy.sh
    ```
 
-   Use `pnpm run deploy`, not `pnpm deploy` (that is a different pnpm command and does nothing useful here). The output ends with the Worker's addresses, including `app.office.snilld.in` and `console.office.snilld.in`. If wrangler asks whether to replace an existing DNS record, answer **no** and stop and ask.
+   Type or paste only that one line, without the ``` marks around it. The script finds `pnpm` itself and runs `pnpm run deploy` with the Snilld token. The output ends with the Worker's addresses, including `app.office.snilld.in` and `console.office.snilld.in`. If wrangler asks whether to replace an existing DNS record, answer **no** and stop and ask.
 
 3. **Put the secrets on the new Worker.** Only the first time, and after the deploy (the Worker must exist):
 
@@ -188,10 +188,10 @@ Do this once the pull request from Part 4 is merged. Run every command from the 
 4. **Deploy the demo:**
 
    ```sh
-   infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy:mock'
+   infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo
    ```
 
-   Then build the live app again so `apps/web/dist` holds the live build: `pnpm build`. (Both builds write to the same folder.)
+   It builds the live app again afterwards, so `apps/web/dist` holds the live build. (Both builds write to the same folder.)
 
 5. **Smoke check.** A new certificate can take up to 15 minutes; until then the first command may fail with a certificate error. Wait and try again.
 
