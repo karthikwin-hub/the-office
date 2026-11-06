@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OfficeLocale } from "./locale";
 import {
   AgentState,
   Bill,
@@ -520,7 +521,7 @@ export type Session = z.infer<typeof Session>;
 /* ---------- Offices: one account, any number of businesses ---------- */
 
 export const OfficeStatus = z.enum(["active", "suspended", "deleting"]);
-export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus });
+export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus, locale: OfficeLocale });
 export type OfficeSummary = z.infer<typeof OfficeSummary>;
 /** Who is signed in and which offices they can open. Nothing about any office's books. */
 export const Me = z.object({
@@ -545,6 +546,7 @@ export const OfficeAdmin = z.object({
   name: z.string(),
   status: OfficeStatus,
   ingestEmail: z.string(),
+  locale: OfficeLocale,
   /** When a deleted office is purged for good, if it is being deleted. */
   purgeAt: IsoDateTime.nullable(),
   members: z.array(z.object({ userId: z.string(), name: z.string(), email: z.string(), role: Role, since: IsoDateTime, you: z.boolean() })),

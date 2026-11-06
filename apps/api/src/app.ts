@@ -285,6 +285,7 @@ app.get("/api/o/:office/office-admin", async (c) => {
     name: office.name,
     status: office.status,
     ingestEmail: emailRoutes.some((r) => r.externalId === primary) ? primary : (emailRoutes[0]?.externalId ?? primary),
+    locale: office.locale,
     purgeAt: office.status === "deleting" && office.deletedAt ? iso(office.deletedAt + PURGE_AFTER_MS) : null,
     members: members.map((m) => ({ userId: m.userId, name: m.name, email: m.email, role: m.role, since: iso(m.since), you: m.userId === caller.userId })),
     invitations: invitations.map((i) => ({ email: i.email, role: i.role, invitedBy: i.invitedBy, expiresAt: iso(i.expiresAt) })),

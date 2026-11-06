@@ -133,7 +133,7 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | 9 | Workers Paid plan when the first non-pilot office signs up | Business | When needed |
 | 10 | Backups before every migration; rollback rehearsed once | Engineering | Process in place |
 | 11 | Monitoring: Workers observability alerts on error rate | Engineering | Open |
-| 12 | Migration `0003_legal.sql` applied to the live database (consent and deletion requests) | Engineering | Open: run `wrangler d1 migrations apply office --remote` through Infisical before deploying this version |
+| 12 | Migrations `0003_legal.sql` (consent and deletion requests) and `0004_office_locale.sql` (office locale) applied to the live database | Engineering | Open: `pnpm run deploy` through Infisical applies them before deploying |
 
 ## 9. Legal checklist
 

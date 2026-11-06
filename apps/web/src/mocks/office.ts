@@ -1,4 +1,4 @@
-import type { Me, OfficeAdmin, Role } from "@office/contracts";
+import { INDIA, type Me, type OfficeAdmin, type Role } from "@office/contracts";
 import type { OfficeService } from "@office/engine";
 import { HttpResponse } from "msw";
 
@@ -31,7 +31,7 @@ export function mockMe(role: Role, users: Record<Role, Person>, office: OfficeSe
   const u = users[role];
   return HttpResponse.json({
     user: { id: role === "owner" ? "u-anil" : "u-rajesh", name: u.name, email: u.email, emailVerified: true },
-    offices: [{ id: OFFICE_ID, name: office.books.business.name, role, status: "active" }],
+    offices: [{ id: OFFICE_ID, name: office.books.business.name, role, status: "active", locale: INDIA }],
     verificationRequired: false,
     consentNeeded: [],
     deletionRequested: false,
@@ -52,6 +52,7 @@ export async function mockOfficeAdmin(request: Request, path: string, role: Role
     name: office.books.business.name,
     status: s.status,
     ingestEmail: office.settings().ingestEmail,
+    locale: INDIA,
     purgeAt: s.purgeAt,
     members: s.members.map((m) => ({ ...m, you: m.userId === me })),
     invitations: role === "owner" ? s.invitations : [],

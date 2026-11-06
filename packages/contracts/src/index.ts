@@ -6,3 +6,4 @@ export * from "./customer";
 export * from "./legal";
 export * from "./living";
 export * from "./brand";
+export * from "./locale";

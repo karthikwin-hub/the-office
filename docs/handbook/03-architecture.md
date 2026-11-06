@@ -159,7 +159,7 @@ A read-only audit of the codebase found these assumptions:
 | Seam | What it would look like |
 | --- | --- |
 | Jurisdiction pack | A module per country implementing tax lines, registers, return files, filed-return import and the filing calendar. India's GST and TDS become the first pack. |
-| Office locale | `country`, `currency`, `locale` and `timeZone` on the office record, chosen when the office is opened. |
+| Office locale | `country`, `currency`, `locale` and `timeZone` on the office record (`OfficeLocale` in `packages/contracts/src/locale.ts`; India only today), with `officeDate(locale)` for the office's own today. Chosen when the office is opened once a second market exists. |
 | Channel adapters | The WhatsApp desk's logic behind a messaging interface, so SMS (for the US) or another channel can carry the same commands. |
 | Accounting connectors | A `BusinessBackend` interface (planned since the first design) with readers for Tally (India), QuickBooks and Xero (US, UK, Australia), Sage and DATEV (EU). |
 | E-invoicing | An outbound and inbound adapter for Peppol (EU, Australia, UK) and India's IRN, behind the same interface. |

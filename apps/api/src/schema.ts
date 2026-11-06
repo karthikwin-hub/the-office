@@ -64,6 +64,10 @@ export const office = sqliteTable(
     createdBy: text("created_by"),
     createdAt: integer("created_at").notNull(),
     deletedAt: integer("deleted_at"),
+    country: text("country").notNull().default("IN"),
+    currency: text("currency").notNull().default("INR"),
+    locale: text("locale").notNull().default("en-IN"),
+    timeZone: text("time_zone").notNull().default("Asia/Kolkata"),
   },
   (t) => [uniqueIndex("office_slug_unique").on(t.slug), index("office_created_by").on(t.createdBy, t.createdAt)],
 );

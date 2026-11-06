@@ -45,6 +45,12 @@ function OfficePanel({ a }: { a: OfficeAdmin }) {
           <dt>Email for bills</dt>
           <dd className="num">{a.ingestEmail}</dd>
         </div>
+        <div>
+          <dt>Country and clock</dt>
+          <dd>
+            {new Intl.DisplayNames([a.locale.locale], { type: "region" }).of(a.locale.country)}, {a.locale.currency}, {a.locale.timeZone.replace("_", " ")}
+          </dd>
+        </div>
       </dl>
 
       <h3 className="settings-sub">People</h3>

@@ -84,7 +84,7 @@
 | Domain | Custom domain on the Worker; auth URL and platform redirects updated |
 | Privacy and terms | **In progress.** Drafts in `docs/legal` (privacy notice, terms, data processing terms, subprocessors, a customer AI notice template) are published at `/legal/...`, with consent recorded at sign-up and self-serve account download and deletion requests. Waiting on review by a lawyer in India and the bracketed details (company name, address, grievance officer) |
 | Monitoring | Error-rate alerts; a weekly `admin.mjs list` review |
-| Readiness habit | Add `country`, `currency`, `locale` and `timeZone` to the office record (India values only), so new code reads them instead of constants |
+| Readiness habit | Done 6 November 2026: `country`, `currency`, `locale` and `timeZone` are on the office record (India values only; migration `0004_office_locale.sql`), returned with each office and shown in Settings, so new code reads them instead of constants |
 
 **Exit criteria:** a new person can sign up, confirm their email, open an office, receive a bill by email and approve it, on the custom domain, with secrets set and the checklist in the configuration document closed.
 

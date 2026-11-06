@@ -149,6 +149,12 @@ describe("accounts and offices", () => {
     expect((await call(w, null, ACCOUNT_ROUTES.me)).status).toBe(401);
   });
 
+  it("opens every office in India, with its currency, number style and clock", async () => {
+    const { w, anil, A } = await twoOffices();
+    const offices = ((await (await call(w, anil, ACCOUNT_ROUTES.me)).json()) as { offices: { id: string; locale: unknown }[] }).offices;
+    expect(offices.find((o) => o.id === A)?.locale).toEqual({ country: "IN", currency: "INR", locale: "en-IN", timeZone: "Asia/Kolkata" });
+  });
+
   it("asks for a confirmed address before opening an office, outside local tests", async () => {
     const w = makeEnv();
     (w.env as { EMAIL_VERIFICATION?: string }).EMAIL_VERIFICATION = undefined;

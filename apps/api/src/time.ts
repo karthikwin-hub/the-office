@@ -1,5 +1,7 @@
-/** Today's date in India, which is the books' date. */
-export const istDate = (now = Date.now()) => new Date(now + 5.5 * 3600_000).toISOString().slice(0, 10);
+import { INDIA, officeDate } from "@office/contracts";
+
+/** Today's date in India, which is the books' date. Moves to `officeDate(office.locale)` once offices outside India exist. */
+export const istDate = (now = Date.now()) => officeDate(INDIA, now);
 
 /** "08:45" in India as a daily cron in UTC. */
 export function digestCron(hhmm: string): string {

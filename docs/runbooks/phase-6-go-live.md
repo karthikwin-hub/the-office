@@ -275,7 +275,7 @@ The drafts are in `docs/legal/` and are already published at `/legal/...` on the
 
 ## Part 8: Office locale fields (engineering)
 
-The roadmap item "add `country`, `currency`, `locale` and `timeZone` to the office record" is a code change for an engineer. Nothing to do in this runbook except to check it is done before Phase 6 is closed.
+The roadmap item "add `country`, `currency`, `locale` and `timeZone` to the office record" was done in code on 6 November 2026. Its database migration (`0004_office_locale.sql`) goes to live with the deploy in Part 5. **Check:** after the deploy, open Settings → Office on live; it shows "Country and clock: India, INR, Asia/Kolkata".
 
 ---
 
