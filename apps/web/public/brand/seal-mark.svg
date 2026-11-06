@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Agentic Office">
+  <g fill="none" stroke="#5B3FA6">
+    <circle cx="100" cy="100" r="88" stroke-width="14"/>
+    <g stroke-width="9" stroke-linecap="square">
+      <rect x="59" y="59" width="82" height="82"/>
+      <path d="M59 100H92.55M107.45 100H141M100 59V88.82M100 111.18V141"/>
+      <path d="M111.93 120.13Q116.4 128.33 121.99 131.31L133.55 111.18" stroke-linecap="round" stroke-linejoin="round" stroke-width="8.5"/>
+    </g>
+  </g>
+</svg>

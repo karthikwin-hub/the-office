@@ -239,7 +239,7 @@ function OfficePicker({ me }: { me: Me }) {
 }
 
 function OpenOffice({ me }: { me: Me }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => (params().get("name") ?? "").slice(0, 80));
   const open = useMutation({ mutationFn: () => account.openOffice(name.trim()), onSuccess: (o) => goToOffice(o.id) });
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();

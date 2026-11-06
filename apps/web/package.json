@@ -11,6 +11,8 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@fontsource-variable/anek-devanagari": "^5.3.0",
+    "@fontsource-variable/anek-latin": "^5.3.0",
     "@observablehq/plot": "^0.6.17",
     "@office/contracts": "workspace:*",
     "@office/engine": "workspace:*",

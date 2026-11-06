@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Agentic Office by Snilld AI">
+  <defs>
+    <path id="top" d="M38 100A62 62 0 0 1 162 100"/>
+    <path id="bottom" d="M25 100A75 75 0 0 0 175 100"/>
+    <filter id="ink" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="412" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -1.4" result="holes"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="443" result="pressure"/>
+      <feColorMatrix in="pressure" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -0.05" result="even"/>
+      <feComposite in="SourceGraphic" in2="holes" operator="in" result="speckled"/>
+      <feComposite in="speckled" in2="even" operator="in" result="pressed"/>
+      <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" seed="419" result="warp"/>
+      <feDisplacementMap in="pressed" in2="warp" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g filter="url(#ink)" transform="rotate(-2.5 100 100)" color="#5B3FA6">
+    <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="6"/>
+    <circle cx="100" cy="100" r="83" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <circle cx="100" cy="100" r="55" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <g fill="currentColor" font-family="'Anek Latin Variable', 'Anek Latin', 'Arial Narrow', sans-serif" font-weight="700" font-size="20.5" font-stretch="78%" letter-spacing="2.5">
+      <text><textPath href="#top" startOffset="50%" text-anchor="middle">AGENTIC OFFICE</textPath></text>
+      <text><textPath href="#bottom" startOffset="50%" text-anchor="middle">SNILLD AI</textPath></text>
+    </g>
+    <path fill="currentColor" d="M31.00,94.00L32.48,97.96L36.71,98.15L33.40,100.78L34.53,104.85L31.00,102.52L27.47,104.85L28.60,100.78L25.29,98.15L29.52,97.96Z"/>
+    <path fill="currentColor" d="M169.00,94.00L170.48,97.96L174.71,98.15L171.40,100.78L172.53,104.85L169.00,102.52L165.47,104.85L166.60,100.78L163.29,98.15L167.52,97.96Z"/>
+    <g fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="square">
+      <rect x="75" y="75" width="50" height="50"/>
+      <path d="M75 100H95.45M104.55 100H125M100 75V93.18M100 106.82V125"/>
+      <path d="M107.27 112.27Q110 117.27 113.41 119.09L120.45 106.82" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2"/>
+    </g>
+  </g>
+</svg>

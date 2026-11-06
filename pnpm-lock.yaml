@@ -63,6 +63,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@fontsource-variable/anek-devanagari':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource-variable/anek-latin':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@observablehq/plot':
         specifier: ^0.6.17
         version: 0.6.18
@@ -991,6 +997,12 @@ packages:
 
   '@fast-csv/parse@4.3.6':
     resolution: {integrity: sha512-uRsLYksqpbDmWaSmzvJcuApSEe38+6NQZBUsuAyMZKqHxH0g1wcJgsKUvN3WC8tewaqFjBMMGrkHmC+T7k8LvA==}
+
+  '@fontsource-variable/anek-devanagari@5.3.0':
+    resolution: {integrity: sha512-mng3nw6XK5/5agZqIgCHcspyYbXe5HcF3F6b8J3v7He3Ilk4Mp7/irelZnCNde1rPg2JSiC7LeuI9Y9DcZk4yw==}
+
+  '@fontsource-variable/anek-latin@5.3.0':
+    resolution: {integrity: sha512-NqJVtTUYWkPMPXsEy4Ve/xRnXrKLw/gfUYzLidSsdJAMEgNsRNYpJZkorD/xDyBS2mxhfu/y6KsWTetowCQjrQ==}
 
   '@fontsource/atkinson-hyperlegible-next@5.3.0':
     resolution: {integrity: sha512-8p1tHVoPDo6oYwSO3sMw5snGwFwSf3TmeSF9Gcj792GXdsg6oqvhoItbj6Hj/XZIk0Xs+Cwu6pkLBAl3Q5HrwA==}
@@ -4699,6 +4711,10 @@ snapshots:
       lodash.isnil: 4.0.0
       lodash.isundefined: 3.0.1
       lodash.uniq: 4.5.0
+
+  '@fontsource-variable/anek-devanagari@5.3.0': {}
+
+  '@fontsource-variable/anek-latin@5.3.0': {}
 
   '@fontsource/atkinson-hyperlegible-next@5.3.0': {}
 

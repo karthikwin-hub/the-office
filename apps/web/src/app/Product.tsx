@@ -1,21 +1,33 @@
-import { BRAND, LEGAL_PAGES } from "@office/contracts";
+import "@fontsource-variable/anek-latin/wdth.css";
+import "@fontsource-variable/anek-devanagari/wdth.css";
+import { BRAND, LEGAL_PAGES, PROMOTION_RULES, TRUST_LEVELS, WA_LANGUAGE_NAMES } from "@office/contracts";
 import "./product.css";
+import { BillWalk } from "./product/BillWalk";
+import { Seal } from "./product/Seal";
+import { YourOffice } from "./product/YourOffice";
+import { ZoomHero } from "./product/ZoomHero";
 import { appUrl, demoUrl, hasAppDomain } from "./site";
 
 const TEAM: { role: string; does: string }[] = [
   { role: "Accountant", does: "Reads the bills and invoices you email, upload or send on WhatsApp, and stages each entry against the document it came from." },
-  { role: "Credit Controller", does: "Ages what customers owe and drafts reminders that move from polite to firm to final." },
-  { role: "Tax Clerk", does: "Works out GST and TDS from the books and prepares GSTR-1, GSTR-3B and the quarterly TDS return (Form 140 under the new Income-tax Act) for your accountant." },
+  { role: "Credit controller", does: "Ages what customers owe and drafts reminders that move from polite to firm to final." },
+  { role: "Tax clerk", does: "Works out GST and TDS from the books and prepares GSTR-1, GSTR-3B and the quarterly TDS return for your accountant." },
   { role: "Auditor", does: "Compares what was filed with the books and explains each difference in plain words." },
-  { role: "Social Media Manager", does: "Plans posts around your stock and the festival calendar, and publishes only what you approve." },
-  { role: "Customer Service", does: "Answers customers on your website and by email from your price list and their own invoices." },
+  { role: "Social media manager", does: "Plans posts around your stock and the festival calendar, and publishes only what you approve." },
+  { role: "Customer service", does: "Answers customers on your website and by email from your price list and their own invoices." },
 ];
 
-const STEPS: { title: string; body: string }[] = [
-  { title: "Open your office", body: "Name the business and hire the Accounts team. Bring in your parties, products and open invoices from a spreadsheet." },
-  { title: "Send it your paperwork", body: "Forward bills to the office's own email address, upload them, or send a photo on WhatsApp." },
-  { title: "Approve on the Desk", body: "Every entry waits on your Desk with its source beside it. Nothing reaches the books until you say so." },
-];
+const EARNED: Record<string, string> = {
+  trainee: "Every new hire starts here.",
+  trusted: `Earned after ${PROMOTION_RULES.trusted.minChecked} checked pieces of work at ${PROMOTION_RULES.trusted.minAccuracy * 100}% accuracy.`,
+  autonomous: `Earned after ${PROMOTION_RULES.autonomous.minChecked} at ${PROMOTION_RULES.autonomous.minAccuracy * 100}%.`,
+};
+
+/** Each language in its own script; the English name is the label for screen readers. */
+const LANGUAGES = Object.values(WA_LANGUAGE_NAMES).map((n) => {
+  const m = /^(.*) \((.*)\)$/.exec(n);
+  return m ? { own: m[1]!, name: m[2]! } : { own: n, name: n };
+});
 
 const LEGAL_TITLES: Record<(typeof LEGAL_PAGES)[number], string> = {
   terms: "Terms of service",
@@ -28,11 +40,17 @@ const LEGAL_TITLES: Record<(typeof LEGAL_PAGES)[number], string> = {
 /** The bare app domain: what the product is, for someone who has not signed in. */
 export function ProductPage() {
   const demo = hasAppDomain() ? demoUrl() : "/";
+  const open = appUrl("/?open=1");
   return (
     <div className="product">
+      <a className="skip" href="#main">
+        Skip to the page
+      </a>
       <header className="product-bar">
-        <p className="signin-plate">
-          {BRAND.name} <span className="signin-plate-by">by {BRAND.maker}</span>
+        <p className="product-brand">
+          <Seal variant="full" press className="product-brand-seal" />
+          <span className="product-brand-name">{BRAND.name}</span>
+          <span className="product-brand-by">by {BRAND.maker}</span>
         </p>
         <nav aria-label="Account">
           <a href={demo}>Try the demo</a>
@@ -43,40 +61,13 @@ export function ProductPage() {
       </header>
 
       <main id="main">
-        <section className="product-hero">
-          <div className="product-pitch">
-            <h1>Your books, kept by a team of AI agents. Nothing changes until you approve.</h1>
-            <p className="product-lede">
-              For owners of small businesses in India who sign off on figures they cannot check. Every number in your office opens down to the invoice it came from.
-            </p>
-            <div className="product-actions">
-              <a className="btn btn-primary" href={appUrl("/?open=1")}>
-                Open your office
-              </a>
-              <a className="btn" href={demo}>
-                Try the demo
-              </a>
-            </div>
-          </div>
-          <Proof />
-        </section>
-
-        <section className="product-section" aria-labelledby="how">
-          <h2 id="how">How it works</h2>
-          <ol className="product-steps">
-            {STEPS.map((s) => (
-              <li key={s.title}>
-                <h3>{s.title}</h3>
-                <p>{s.body}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <ZoomHero openHref={open} demoHref={demo} />
+        <BillWalk />
 
         <section className="product-section" aria-labelledby="team">
           <h2 id="team">The team you hire</h2>
-          <p className="product-note">Each starts as a trainee whose every step waits for you. Promote it when its record earns it.</p>
-          <dl className="product-team">
+          <p className="product-note">Hire the roles you need from the hiring hall. Each one comes with a job description, a work log and an accuracy record.</p>
+          <dl className="product-rooms">
             {TEAM.map((t) => (
               <div key={t.role}>
                 <dt>{t.role}</dt>
@@ -86,16 +77,60 @@ export function ProductPage() {
           </dl>
         </section>
 
-        <section className="product-section product-split" aria-labelledby="accountant">
+        <section className="product-section" aria-labelledby="trust">
+          <h2 id="trust">Trust is earned, one step at a time</h2>
+          <p className="product-note">You decide how much each agent may do without asking. Its record shows when it is ready for more.</p>
+          <ol className="product-trust">
+            {TRUST_LEVELS.map((t) => (
+              <li key={t.id}>
+                <h3>{t.name}</h3>
+                <p>{t.meaning}</p>
+                <p className="product-trust-earned">{EARNED[t.id]}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="product-section product-pair" aria-label="Your accountant and WhatsApp">
           <div>
-            <h2 id="accountant">Your accountant stays</h2>
+            <h2>Your accountant stays</h2>
             <p>Invite them to the office. They read everything, download returns ready to upload and answer the Auditor&apos;s questions. Approvals stay with you.</p>
-          </div>
-          <div>
             <h2>On WhatsApp, in your language</h2>
-            <p>Approve the morning&apos;s work and ask how much is overdue by text or voice note, in eight Indian languages. Every amount stays exactly as it is in the books.</p>
+            <p>Approve the morning&apos;s work and ask what is overdue by text or voice note. Every amount stays exactly as it is in the books.</p>
+            <ul className="product-languages" aria-label="Languages on WhatsApp">
+              {LANGUAGES.map((l) => (
+                <li key={l.name} lang={l.name === "English" ? "en" : undefined} title={l.name}>
+                  {l.own}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="phone" aria-label="A WhatsApp conversation with the office, in Hindi">
+            <p className="phone-head">Kaveri Electricals office</p>
+            <div className="phone-msg" lang="hi">
+              <p>अनिल जी, 3 बिल आपकी मंज़ूरी का इंतज़ार कर रहे हैं। कुल ₹2,84,150।</p>
+              <p className="phone-gloss" lang="en">Anil ji, 3 bills are waiting for your approval. ₹2,84,150 in all.</p>
+            </div>
+            <div className="phone-msg is-mine">
+              <span className="phone-voice" aria-hidden="true">
+                <span className="phone-play" />
+                <svg viewBox="0 0 120 24">
+                  <path d="M2 12h2M7 8v8M12 5v14M17 9v6M22 3v18M27 7v10M32 10v4M37 6v12M42 2v20M47 8v8M52 11v2M57 6v12M62 9v6M67 4v16M72 8v8M77 10v4M82 7v10M87 11v2M92 9v6M97 5v14M102 9v6M107 11v2M112 12h2" />
+                </svg>
+                <span className="phone-voice-time">0:04</span>
+              </span>
+              <p className="phone-gloss" lang="hi">
+                &ldquo;हाँ, तीनों मंज़ूर।&rdquo; <span lang="en">(Yes, approve all three.)</span>
+              </p>
+            </div>
+            <div className="phone-msg" lang="hi">
+              <p>तीनों बिल बुक्स में दर्ज हो गए।</p>
+              <p className="phone-gloss" lang="en">All three bills are in the books.</p>
+            </div>
           </div>
         </section>
+
+        <YourOffice />
       </main>
 
       <footer className="product-foot">
@@ -111,60 +146,5 @@ export function ProductPage() {
         </p>
       </footer>
     </div>
-  );
-}
-
-/** The promise, drawn: a figure on the Boardroom, traced down to the line of the bill it came from. */
-function Proof() {
-  return (
-    <figure className="proof" aria-label="A figure traced to its source document">
-      <div className="proof-figure">
-        <span>Owed to Bharat Cables</span>
-        <strong>₹1,18,000</strong>
-        <span className="proof-meta">due 14 November, 31 days</span>
-      </div>
-      <div className="proof-sheet">
-        <p className="proof-doc">
-          <strong>Bharat Cables Pvt Ltd</strong>
-          <span>Tax invoice BC/2026/0412, 14 October</span>
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Item</th>
-              <th scope="col">HSN</th>
-              <th scope="col" className="num">
-                Amount
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>FR cable 2.5 sq mm, 90 m</td>
-              <td>8544</td>
-              <td className="num">62,400</td>
-            </tr>
-            <tr>
-              <td>FR cable 4 sq mm, 90 m</td>
-              <td>8544</td>
-              <td className="num">37,600</td>
-            </tr>
-            <tr>
-              <td>IGST 18%</td>
-              <td />
-              <td className="num">18,000</td>
-            </tr>
-            <tr className="proof-hit">
-              <th scope="row" colSpan={2}>
-                Total
-              </th>
-              <td className="num">1,18,000</td>
-            </tr>
-          </tbody>
-        </table>
-        <p className="proof-stamp">Approved by Anil</p>
-      </div>
-      <figcaption>Every figure opens the document behind it, with the line marked.</figcaption>
-    </figure>
   );
 }
