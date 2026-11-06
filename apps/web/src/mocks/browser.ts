@@ -5,6 +5,7 @@ import { delay, http, HttpResponse, passthrough } from "msw";
 import { setupWorker } from "msw/browser";
 import { mockMe, mockOfficeAdmin } from "./office";
 import { mockMore, seedMock, settleCs } from "./customers";
+import { mockPlatform } from "./platform";
 import { mockWhatsApp } from "./whatsapp";
 
 const USERS: Record<Role, { name: string; email: string }> = {
@@ -85,6 +86,7 @@ const handler = http.all("/api/*", async ({ request }) => {
     return HttpResponse.json(asset);
   }
   if (url.pathname === "/api/me") return mockMe(role, USERS, getOffice());
+  if (url.pathname.startsWith("/api/platform")) return (await mockPlatform(request, url.pathname)) ?? HttpResponse.json({ error: "Not found" }, { status: 404 });
   const more = await mockMore(request, url.pathname, role, getOffice());
   if (more) return more;
   if (url.pathname.startsWith("/api/office-admin")) return (await mockOfficeAdmin(request, url.pathname, role, getOffice(), USERS))!;

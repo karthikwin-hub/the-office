@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Looking after the offices on the live database. Run it through Infisical so wrangler has the account's token:
+// Looking after the offices on the live database. The everyday view, onboarding and suspending are in the console
+// (console.APP_DOMAIN, for the addresses in PLATFORM_OWNERS); this covers the rest. Run it through Infisical so wrangler has the account's token:
 //
 //   infisical run --env=dev --silent -- node tools/admin/admin.mjs <command> [args]
 //
@@ -12,7 +13,7 @@
 //   forget-user <email>                  removes a person's account, sessions, memberships, WhatsApp link and consent records (DPDP request)
 //   requests [done <id>]                 lists the open "Delete my account" requests, or completes one
 //   subdomain <office> <label>           gives an office its own address, <label>.APP_DOMAIN, in two runs (see below)
-//   subdomain <office> --remove          takes it away again; the office opens on the console
+//   subdomain <office> --remove          takes it away again; the office opens on the app
 //
 // Add --local to work on `wrangler dev`'s database instead.
 import { execFileSync } from "node:child_process";
@@ -76,7 +77,7 @@ function forgetUser(email) {
 /**
  * An office's own address takes two runs. The first adds `<label>.APP_DOMAIN` to the Worker's custom domains in
  * wrangler.jsonc, to be committed and deployed. The second checks that the address answers, then switches the office
- * over: from then on the console sends its people there. With --local only the database changes.
+ * over: from then on the app sends its people there. With --local only the database changes.
  */
 async function subdomain(o, label) {
   const domain = local ? "office.localhost" : configVar("APP_DOMAIN");
@@ -88,7 +89,7 @@ async function subdomain(o, label) {
     sql(`UPDATE office SET subdomain = NULL WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", "removed")}`);
     const line = new RegExp(`^.*"${row.subdomain}\\.${domain.replace(/\./g, "\\.")}".*\\n`, "m");
     if (!local && line.test(text)) writeFileSync(CONFIG, text.replace(line, ""));
-    console.log(`${o.name} opens on the console again.${local ? "" : ` Removed ${row.subdomain}.${domain} from wrangler.jsonc: commit and deploy to take the address down.`}`);
+    console.log(`${o.name} opens on the app again.${local ? "" : ` Removed ${row.subdomain}.${domain} from wrangler.jsonc: commit and deploy to take the address down.`}`);
     return;
   }
   if (!SUBDOMAIN.test(label)) fail("Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit.");
@@ -107,7 +108,7 @@ async function subdomain(o, label) {
     if (health?.appDomain !== domain) fail(`https://${host} is not answering as the office yet. Check the deploy finished; a new certificate can take up to 15 minutes. Then run this again.`);
   }
   sql(`UPDATE office SET subdomain = ${lit(label)} WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", host)}`);
-  console.log(`${o.name} now opens on ${local ? "http" : "https"}://${host}${local ? ":8787" : ""}. Its people are sent there from the console.`);
+  console.log(`${o.name} now opens on ${local ? "http" : "https"}://${host}${local ? ":8787" : ""}. Its people are sent there from the app.`);
 }
 
 switch (command) {

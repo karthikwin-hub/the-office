@@ -11,7 +11,7 @@ import { useApplySkin } from "./prefs";
 import { LegalFooter } from "./Legal";
 import { OfficeGate, OfficeSwitcher } from "./Offices";
 import { useLiveUpdates } from "./live";
-import { consoleUrl } from "./site";
+import { appUrl } from "./site";
 
 /** In the live app nothing of an office loads until someone has signed in and chosen an office they are in. The legal pages are open to anyone. */
 export function Shell() {
@@ -33,7 +33,7 @@ function SessionGate() {
         <p className="form-error" role="alert">
           The office could not be reached. {session.error instanceof ApiError && session.error.status === 404 ? "You are not in this office any more." : session.error.message}
         </p>
-        <a href={consoleUrl("/")}>Go to my offices</a>
+        <a href={appUrl("/")}>Go to my offices</a>
       </main>
     ) : null;
   return <OfficeShell />;

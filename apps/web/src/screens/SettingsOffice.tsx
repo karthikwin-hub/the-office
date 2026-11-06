@@ -5,7 +5,7 @@ import { useState } from "react";
 import { isLive, officeAdmin } from "../api/client";
 import { q } from "../api/queries";
 import { goToOffice } from "../app/Offices";
-import { consoleUrl } from "../app/site";
+import { appUrl } from "../app/site";
 import { isOwner, Section } from "./common";
 
 const ROLE_NOTE: Record<Role, string> = {
@@ -28,7 +28,7 @@ function OfficePanel({ a }: { a: OfficeAdmin }) {
   const setRole = useMutation({ mutationFn: ({ userId, role }: { userId: string; role: Role }) => officeAdmin.setRole(userId, role), onSettled: refresh });
   const remove = useMutation({ mutationFn: officeAdmin.remove, onSettled: refresh });
   const revoke = useMutation({ mutationFn: officeAdmin.revoke, onSettled: refresh });
-  const leave = useMutation({ mutationFn: officeAdmin.leave, onSuccess: () => (isLive ? location.assign(consoleUrl("/")) : refresh()) });
+  const leave = useMutation({ mutationFn: officeAdmin.leave, onSuccess: () => (isLive ? location.assign(appUrl("/")) : refresh()) });
   const me = a.members.find((m) => m.you);
   const err = setRole.error ?? remove.error ?? revoke.error ?? leave.error;
 
@@ -218,7 +218,7 @@ function Handover({ a, onDone }: { a: OfficeAdmin; onDone: () => void }) {
 function OwnerTools({ a }: { a: OfficeAdmin }) {
   const [confirm, setConfirm] = useState("");
   const exportAll = useMutation({ mutationFn: officeAdmin.exportAll });
-  const del = useMutation({ mutationFn: () => officeAdmin.deleteOffice(confirm), onSuccess: () => (isLive ? location.assign(consoleUrl("/")) : undefined) });
+  const del = useMutation({ mutationFn: () => officeAdmin.deleteOffice(confirm), onSuccess: () => (isLive ? location.assign(appUrl("/")) : undefined) });
   const restore = useMutation({ mutationFn: officeAdmin.restore, onSuccess: () => (isLive ? goToOffice(a.id) : undefined) });
   return (
     <>

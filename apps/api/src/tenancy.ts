@@ -97,22 +97,58 @@ export class ControlPlane {
       .first<{ total: number; today: number | null }>();
     if ((counts?.today ?? 0) >= OPEN_LIMIT.perDay) return { error: "You have opened several offices today. Try again tomorrow." };
     if ((counts?.total ?? 0) >= OPEN_LIMIT.total) return { error: "You have opened as many offices as one account may. Write to us if you need more." };
-    const name = input.name.trim().slice(0, 80);
+    const owner = input.owner;
+    return this.insertOffice(input.name, owner.id, locale, input.ingestDomain, (id) => [
+      this.db.prepare("INSERT INTO membership (office_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").bind(id, owner.id, at),
+      this.auditStmt(id, owner.email, "office.opened", input.name.trim().slice(0, 80)),
+    ]);
+  }
+
+  /** A platform owner opens an office for a business: no one is in it until the owner accepts the invitation. */
+  async onboard(input: { name: string; ownerEmail: string; by: string; ingestDomain: string; locale?: OfficeLocale }): Promise<{ office: OfficeRow; token: string; expiresAt: number } | { error: string }> {
+    const made = await this.insertOffice(input.name, null, input.locale ?? INDIA, input.ingestDomain, (id) => [this.auditStmt(id, input.by, "office.onboarded", input.name.trim().slice(0, 80))]);
+    if ("error" in made) return made;
+    return { office: made, ...(await this.invite(made.id, input.ownerEmail, "owner", input.by)) };
+  }
+
+  private async insertOffice(rawName: string, createdBy: string | null, locale: OfficeLocale, ingestDomain: string, more: (id: string) => D1PreparedStatement[]): Promise<OfficeRow | { error: string }> {
+    const at = this.now();
+    const name = rawName.trim().slice(0, 80);
     for (let i = 0; i < 5; i++) {
-      const row: OfficeRow = { id: newOfficeId(), name, slug: slugFor(name), status: "active", createdBy: input.owner.id, createdAt: at, deletedAt: null, locale, subdomain: null };
+      const row: OfficeRow = { id: newOfficeId(), name, slug: slugFor(name), status: "active", createdBy, createdAt: at, deletedAt: null, locale, subdomain: null };
       const taken = await this.db.prepare("SELECT 1 FROM office WHERE id = ? OR slug = ?").bind(row.id, row.slug).first();
       if (taken) continue;
       await this.db.batch([
         this.db
           .prepare("INSERT INTO office (id, name, slug, status, created_by, created_at, country, currency, locale, time_zone) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)")
           .bind(row.id, row.name, row.slug, row.createdBy, at, locale.country, locale.currency, locale.locale, locale.timeZone),
-        this.db.prepare("INSERT INTO membership (office_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").bind(row.id, input.owner.id, at),
-        this.db.prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES ('email', ?, ?, ?)").bind(ingestAddress(row.slug, input.ingestDomain), row.id, at),
-        this.auditStmt(row.id, input.owner.email, "office.opened", name),
+        this.db.prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES ('email', ?, ?, ?)").bind(ingestAddress(row.slug, ingestDomain), row.id, at),
+        ...more(row.id),
       ]);
       return row;
     }
     return { error: "Could not open the office. Try again." };
+  }
+
+  /** Every office on the platform, for its owners' console: who owns it and when it last changed, nothing from its books. */
+  async allOffices(): Promise<
+    (OfficeRow & { owners: { name: string; email: string }[]; people: number; ownerInvite: { email: string; expiresAt: number } | null; lastEvent: number | null; onboardedBy: string | null })[]
+  > {
+    const [offices, owners, invites] = await Promise.all([
+      this.db
+        .prepare(
+          `SELECT o.*, (SELECT COUNT(*) FROM membership m WHERE m.office_id = o.id) AS people, (SELECT MAX(at) FROM audit a WHERE a.office_id = o.id) AS last_event,
+            (SELECT a.actor FROM audit a WHERE a.office_id = o.id AND a.action = 'office.onboarded' ORDER BY a.id LIMIT 1) AS onboarded_by
+          FROM office o ORDER BY o.created_at DESC`,
+        )
+        .all<OfficeDb & { people: number; last_event: number | null; onboarded_by: string | null }>(),
+      this.db.prepare("SELECT m.office_id, u.name, u.email FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.role = 'owner' ORDER BY m.created_at").all<{ office_id: string; name: string; email: string }>(),
+      this.db.prepare("SELECT office_id, email, expires_at FROM invitation WHERE role = 'owner' AND accepted_at IS NULL ORDER BY created_at").all<{ office_id: string; email: string; expires_at: number }>(),
+    ]);
+    const ownersOf = new Map<string, { name: string; email: string }[]>();
+    for (const o of owners.results) ownersOf.set(o.office_id, [...(ownersOf.get(o.office_id) ?? []), { name: o.name, email: o.email }]);
+    const inviteOf = new Map(invites.results.map((i) => [i.office_id, { email: i.email, expiresAt: i.expires_at }]));
+    return offices.results.map((r) => ({ ...toOffice(r), owners: ownersOf.get(r.id) ?? [], people: r.people, ownerInvite: inviteOf.get(r.id) ?? null, lastEvent: r.last_event, onboardedBy: r.onboarded_by }));
   }
 
   async rename(officeId: string, name: string): Promise<void> {

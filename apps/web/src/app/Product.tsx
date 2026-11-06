@@ -1,6 +1,6 @@
 import { BRAND, LEGAL_PAGES } from "@office/contracts";
 import "./product.css";
-import { consoleUrl, demoUrl, hasAppDomain } from "./site";
+import { appUrl, demoUrl, hasAppDomain } from "./site";
 
 const TEAM: { role: string; does: string }[] = [
   { role: "Accountant", does: "Reads the bills and invoices you email, upload or send on WhatsApp, and stages each entry against the document it came from." },
@@ -36,7 +36,7 @@ export function ProductPage() {
         </p>
         <nav aria-label="Account">
           <a href={demo}>Try the demo</a>
-          <a className="btn" href={consoleUrl("/")}>
+          <a className="btn" href={appUrl("/")}>
             Sign in
           </a>
         </nav>
@@ -50,7 +50,7 @@ export function ProductPage() {
               For owners of small businesses in India who sign off on figures they cannot check. Every number in your office opens down to the invoice it came from.
             </p>
             <div className="product-actions">
-              <a className="btn btn-primary" href={consoleUrl("/?open=1")}>
+              <a className="btn btn-primary" href={appUrl("/?open=1")}>
                 Open your office
               </a>
               <a className="btn" href={demo}>
@@ -101,7 +101,7 @@ export function ProductPage() {
       <footer className="product-foot">
         <nav aria-label="Legal">
           {LEGAL_PAGES.map((p) => (
-            <a key={p} href={consoleUrl(`/legal/${p}`)}>
+            <a key={p} href={appUrl(`/legal/${p}`)}>
               {LEGAL_TITLES[p]}
             </a>
           ))}

@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, ROUTES, subdomainProblem } from "@office/contracts";
+import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, PLATFORM_ROUTES, type PlatformInvited, type PlatformView, ROUTES, subdomainProblem } from "@office/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, purgeDeleted, receiveEmail } from "../src/app";
 import { authScope } from "../src/auth";
@@ -525,8 +525,69 @@ describe("suspending, deleting and purging", () => {
   });
 });
 
+describe("the platform owners' console", () => {
+  const view = async (w: World, who: Person) => (await (await call(w, who, PLATFORM_ROUTES.view)).json()) as PlatformView;
+
+  it("is only for the addresses in PLATFORM_OWNERS, and shows every business's account but not its books", async () => {
+    const { w, anil, A, B } = await twoOffices();
+    const puja = await signUp(w, "Puja", "Puja@Snilld.test");
+    expect((await call(w, puja, PLATFORM_ROUTES.view)).status).toBe(403);
+    w.env.PLATFORM_OWNERS = "someone@snilld.test, puja@snilld.test";
+    expect((await call(w, anil, PLATFORM_ROUTES.view)).status).toBe(403);
+    expect((await call(w, anil, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Sneaky", ownerEmail: "anil@kaveri.test" }) })).status).toBe(403);
+    expect((await call(w, null, PLATFORM_ROUTES.view)).status).toBe(401);
+    const v = await view(w, puja);
+    expect(v.businesses.map((b) => b.id).sort()).toEqual([A, B].sort());
+    expect(v.businesses.find((b) => b.id === A)).toMatchObject({ name: "Kaveri Electricals", status: "active", owners: [{ name: "Anil Kulkarni", email: "anil@kaveri.test" }], people: 1, onboardedBy: null, ownerInvite: null });
+    expect(Object.keys(v.businesses[0]!).sort()).toEqual(["address", "id", "ingestEmail", "lastEvent", "name", "onboardedBy", "opened", "ownerInvite", "owners", "people", "status"]);
+    expect(w.seen).toEqual([]);
+  });
+
+  it("onboards a business: an empty office, and an owner invitation by email that only that address can accept", async () => {
+    const w = makeEnv();
+    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const res = await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "Ravi@Mehta.test" }) });
+    expect(res.status).toBe(201);
+    const made = (await res.json()) as PlatformInvited;
+    expect(made).toMatchObject({ name: "Mehta Hardware", email: "ravi@mehta.test", emailed: true });
+    expect(w.sent.map((m) => m.to)).toEqual(["ravi@mehta.test"]);
+    expect(Buffer.from(w.sent[0]!.raw.split("\r\n\r\n")[1]!, "base64").toString()).toContain(made.link);
+    expect((await view(w, puja)).businesses).toEqual([expect.objectContaining({ id: made.id, people: 0, owners: [], onboardedBy: "puja@snilld.test", ownerInvite: expect.objectContaining({ email: "ravi@mehta.test", expired: false }) })]);
+    expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([]);
+
+    const token = new URL(made.link).searchParams.get("invite")!;
+    const bina = await signUp(w, "Bina Shah", "bina@shah.test");
+    expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
+    const ravi = await signUp(w, "Ravi Mehta", "ravi@mehta.test");
+    expect(await (await call(w, ravi, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: made.id, role: "owner" });
+    expect((await call(w, ravi, inOffice(made.id, ROUTES.desk))).status).toBe(200);
+    expect((await view(w, puja)).businesses[0]).toMatchObject({ owners: [{ name: "Ravi Mehta", email: "ravi@mehta.test" }], people: 1, ownerInvite: null });
+    expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(made.id), { method: "POST", body: JSON.stringify({ email: "ravi@mehta.test" }) })).status).toBe(409);
+  });
+
+  it("suspends and opens an office again, but leaves an owner's deletion to the owner", async () => {
+    const { w, anil, bina, A, B } = await twoOffices();
+    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const status = (id: string, s: string) => call(w, puja, PLATFORM_ROUTES.status(id), { method: "PUT", body: JSON.stringify({ status: s }) });
+    expect((await status(A, "suspended")).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(423);
+    expect((await call(w, bina, inOffice(B, ROUTES.desk))).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin))).status).toBe(423);
+    expect((await status(A, "active")).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(200);
+    expect((await status(A, "deleting")).status).toBe(400);
+    expect((await status("off_nosuchofficeatall", "suspended")).status).toBe(404);
+    await call(w, bina, inOffice(B, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Shah Textiles" }) });
+    expect((await status(B, "active")).status).toBe(409);
+    const trail = await new ControlPlane(w.db).auditTrail(A);
+    expect(trail.filter((t) => t.actor === "puja@snilld.test").map((t) => t.action)).toEqual(["office.active", "office.suspended"]);
+  });
+});
+
 describe("an office on its own address", () => {
-  const CONSOLE = "http://console.office.localhost:8787";
+  const CONSOLE = "http://app.office.localhost:8787";
   const at = (host: string, w: World, who: Person | null, path: string, init: RequestInit = {}) =>
     app.request(`${host}${path}`, { ...init, headers: { origin: host, ...(typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}) } }, w.env);
 

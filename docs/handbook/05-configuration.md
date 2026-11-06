@@ -21,8 +21,9 @@
 | `DATA_MODE` | `live` for the real Worker | `live` |
 | `MAIL_FROM` | The address mail is sent from | `support@snilldai.com`, sent through Resend (go-live runbook, Part 2); the name shown is the business's |
 | `INGEST_DOMAIN` | Each office receives mail at `<slug>@INGEST_DOMAIN` | `in.office.snilld.in` (Email Routing on that subdomain, runbook Part 3) |
-| `BETTER_AUTH_URL` | The console: sign-in, invitation and confirmation links, and the social sign-in callbacks | `https://console.office.snilld.in` |
-| `APP_DOMAIN` | Optional. The bare domain shows the product page, `console.<APP_DOMAIN>` is the console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host | `office.snilld.in` |
+| `BETTER_AUTH_URL` | The app, where businesses sign in: sign-in, invitation and confirmation links, and the social sign-in callbacks | `https://app.office.snilld.in` |
+| `APP_DOMAIN` | Optional. The bare domain shows the product page, `app.<APP_DOMAIN>` is the app, `console.<APP_DOMAIN>` the platform console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host (the console at `/?platform`) | `office.snilld.in` |
+| `PLATFORM_OWNERS` | Comma-separated addresses that may use the platform console: every business's account, onboarding, suspending. Each signs in with a confirmed address; no one else gets past a 403 | `puja@snilldai.com` |
 | `TURNSTILE_SITE_KEY` | Optional. The public Turnstile site key the website chat shows; set together with `TURNSTILE_SECRET` | Not set (the chat relies on the rate limit) |
 
 Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
@@ -104,13 +105,15 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 
 ## 6. Domain and schedule
 
-- **Custom domain:** the platforms' redirect URIs use the console, `https://console.office.snilld.in/api/channels/<platform>/callback`, for every office; after connecting, the owner is sent back to their own office's address.
+- **Custom domain:** the platforms' redirect URIs use the app, `https://app.office.snilld.in/api/channels/<platform>/callback`, for every office; after connecting, the owner is sent back to their own office's address.
 - **Cron:** `30 21 * * *` (21:30 UTC, 03:00 in India) purges offices deleted more than 30 days ago.
 - **Per-office alarms:** each office schedules its own daily digest (default 08:45 office time) and social publishing.
 
-## 7. Admin tool
+## 7. Platform console and admin tool
 
-Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/admin.mjs <command>`. Add `--local` to work on the local development database.
+**The platform console**, `console.office.snilld.in`, is for the addresses in `PLATFORM_OWNERS`. It lists every business on the platform: name, owners, people, status, when and how it opened (signed up, or onboarded by whom), its email-in and web address, a pending owner invitation, and the date of its last account change. From it a platform owner onboards a business (an empty office and a 14-day owner invitation emailed from `MAIL_FROM`), sends the invitation again, and suspends or opens an office. It reads only the control plane (D1): no office's books, files or conversations are shown or reachable, and every action is written to that office's audit trail under the platform owner's address. The API is `/api/platform` (`PLATFORM_ROUTES` in `packages/contracts`), refused with 403 to anyone else.
+
+**The admin tool** covers the rest. Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/admin.mjs <command>`. Add `--local` to work on the local development database.
 
 | Command | What it does |
 | --- | --- |
@@ -123,8 +126,8 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | `forget-user <email>` | Removes a person's account, sessions, memberships, WhatsApp link and consent records; refuses if they are the only owner of an office |
 | `requests` | Lists open account deletion requests made from Settings, oldest first |
 | `requests done <id>` | Completes a deletion request: runs `forget-user` for that person and marks the request done |
-| `subdomain <office> <label>` | Gives an office its own address, `<label>.office.snilld.in`, in two runs: the first adds the custom domain to `wrangler.jsonc` (commit and deploy), the second checks the address answers and switches the office over. Labels are 2 to 32 lower-case letters, digits or hyphens; `console`, `demo`, `www`, `api`, `mail`, `in` and a few more are refused |
-| `subdomain <office> --remove` | Takes the address away (commit and deploy afterwards); the office opens on the console again |
+| `subdomain <office> <label>` | Gives an office its own address, `<label>.office.snilld.in`, in two runs: the first adds the custom domain to `wrangler.jsonc` (commit and deploy), the second checks the address answers and switches the office over. Labels are 2 to 32 lower-case letters, digits or hyphens; `app`, `console`, `demo`, `www`, `api`, `mail`, `in` and a few more are refused |
+| `subdomain <office> --remove` | Takes the address away (commit and deploy afterwards); the office opens on the app again |
 
 ## 8. Go-live checklist
 
@@ -133,7 +136,7 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | 1 | The product in the Snilld Cloudflare account, beside the `snilld.in` zone | Business and engineering | Open: config ready (`office.snilld.in`), the move is runbook Part 1 |
 | 2 | Sending: Resend from `support@snilldai.com`; `RESEND_API_KEY` in Infisical and on the Worker | Engineering done; key: operator | **Open, blocks sign-up** |
 | 3 | Receiving: Email Routing catch-all on `in.office.snilld.in` | Engineering | Open: `INGEST_DOMAIN` set |
-| 4 | `office.snilld.in`, `console.office.snilld.in` and `demo.office.snilld.in` on the Workers; redirect URIs on the console | Engineering | Open: in config, attached by the first deploy in the Snilld account |
+| 4 | `office.snilld.in`, `app.office.snilld.in`, `console.office.snilld.in` and `demo.office.snilld.in` on the Workers; redirect URIs on the app | Engineering | Open: product page, console and demo attached 6 November 2026; `app` attached by the next deploy |
 | 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | Done 5 November 2026 with `tools/admin/set-secrets.sh` |
 | 6 | Meta app reviewed and live (Pages, Instagram, Threads, WhatsApp, webhooks) | Business and engineering | Per platform |
 | 7 | WhatsApp Business number verified and display name approved | Business | Per account |

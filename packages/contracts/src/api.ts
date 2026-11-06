@@ -523,7 +523,7 @@ export type Session = z.infer<typeof Session>;
 export const OfficeStatus = z.enum(["active", "suspended", "deleting"]);
 /** An office's own address is `<subdomain>.<APP_DOMAIN>`: lower-case letters, digits and inner hyphens, 2 to 32 long. */
 export const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
-/** Labels that are ours, never an office's: `console` signs people in, `demo` is the sample office. */
+/** Labels that are ours, never an office's: `app` signs businesses in, `console` is the platform owners', `demo` is the sample office. */
 export const RESERVED_SUBDOMAINS = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
 export const subdomainProblem = (label: string): string | null =>
   !SUBDOMAIN.test(label) ? "Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit." : RESERVED_SUBDOMAINS.has(label) ? `"${label}" is kept for the product itself; choose another.` : null;
@@ -576,6 +576,40 @@ export const DeleteOffice = z.object({ confirm: z.string() });
 /* ---------- Routes ---------- */
 
 /** Routes for the account, outside any office. */
+/* ---------- The platform owners' console: every business on the platform, never its books ---------- */
+
+export const PlatformBusiness = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: OfficeStatus,
+  opened: IsoDateTime,
+  /** Who opened it: null when the business signed up itself, else the platform owner who onboarded it. */
+  onboardedBy: z.string().nullable(),
+  address: z.string().nullable(),
+  ingestEmail: z.string(),
+  owners: z.array(z.object({ name: z.string(), email: z.string() })),
+  people: z.number().int(),
+  /** The latest owner invitation not yet accepted. */
+  ownerInvite: z.object({ email: z.string(), expiresAt: IsoDateTime, expired: z.boolean() }).nullable(),
+  /** The last change to the account (people, invitations, settings, status); not the work in the books. */
+  lastEvent: IsoDateTime.nullable(),
+});
+export type PlatformBusiness = z.infer<typeof PlatformBusiness>;
+export const PlatformView = z.object({ you: z.object({ name: z.string(), email: z.string() }), businesses: z.array(PlatformBusiness) });
+export type PlatformView = z.infer<typeof PlatformView>;
+export const PlatformOnboard = z.object({ name: z.string().trim().min(2).max(80), ownerEmail: z.string().trim().email().max(200) });
+export const PlatformStatusChange = z.object({ status: z.enum(["active", "suspended"]) });
+/** The owner's link works once, for 14 days; it is shown in case the email does not arrive. */
+export const PlatformInvited = z.object({ id: z.string(), name: z.string(), email: z.string(), link: z.string(), emailed: z.boolean(), expiresAt: IsoDateTime });
+export type PlatformInvited = z.infer<typeof PlatformInvited>;
+
+export const PLATFORM_ROUTES = {
+  view: "/api/platform",
+  businesses: "/api/platform/businesses",
+  status: (id: string) => `/api/platform/businesses/${encodeURIComponent(id)}/status`,
+  ownerInvite: (id: string) => `/api/platform/businesses/${encodeURIComponent(id)}/owner-invitation`,
+} as const;
+
 export const ACCOUNT_ROUTES = {
   me: "/api/me",
   offices: "/api/offices",

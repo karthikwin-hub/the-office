@@ -27,6 +27,17 @@ async function boot() {
     );
     return;
   }
+  if (place().kind === "platform") {
+    const { PlatformConsole } = await import("./app/Platform");
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <PlatformConsole />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+    return;
+  }
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>

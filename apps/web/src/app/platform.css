@@ -1,0 +1,144 @@
+/* The platform owners' console (console.<APP_DOMAIN>). */
+
+.platform-bar {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+}
+.platform-bar .topbar-side {
+  gap: var(--s-4);
+  min-width: 0;
+}
+.platform-bar .topbar-side .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 720px) {
+  .platform-bar {
+    padding: var(--s-2) var(--s-4);
+  }
+  .platform-bar .topbar-business {
+    font-size: var(--step-0);
+  }
+}
+.platform-page .ledger-wrap {
+  position: relative;
+}
+
+.platform-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s-3);
+  margin: 0 0 var(--s-6);
+}
+.platform-figures > div {
+  background: var(--sheet);
+  border: var(--rule-soft);
+  border-radius: var(--radius-panel);
+  padding: var(--s-3) var(--s-4);
+}
+.platform-figures > div.is-on {
+  border-color: var(--carbon);
+  background: var(--carbon-tint);
+}
+.platform-figures dt {
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+}
+.platform-figures dt .link-button {
+  color: inherit;
+  text-align: left;
+}
+.platform-figures dd {
+  margin: var(--s-1) 0 0;
+  font-size: var(--step-2);
+  font-weight: 700;
+}
+
+.platform-onboard {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) auto;
+  gap: var(--s-3);
+  align-items: end;
+  max-width: 860px;
+}
+@media (max-width: 720px) {
+  .platform-onboard {
+    grid-template-columns: 1fr;
+  }
+}
+.platform-invited {
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-left: var(--wall) solid var(--cleared-green);
+  background: var(--green-tint);
+  max-width: 860px;
+}
+.platform-invited p {
+  margin: 0;
+}
+.platform-link {
+  margin-top: var(--s-2) !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+}
+.platform-link code {
+  word-break: break-all;
+  font-size: var(--step--1);
+}
+
+.platform-search {
+  max-width: 280px;
+}
+.platform-table th[scope="row"] {
+  font-weight: 400;
+  text-align: left;
+}
+.platform-sub,
+.platform-owner {
+  display: block;
+}
+.platform-sub {
+  font-size: var(--step--1);
+}
+.platform-table tr.is-off th,
+.platform-table tr.is-off td:not(.platform-actions) {
+  color: var(--graphite-soft);
+}
+.platform-warn {
+  color: var(--stamp-red);
+}
+.platform-status {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border-radius: var(--radius-control);
+  font-size: var(--step--1);
+  white-space: nowrap;
+  background: var(--green-tint);
+  color: var(--cleared-green);
+}
+.platform-status.is-waiting {
+  background: var(--carbon-tint);
+  color: var(--carbon);
+}
+.platform-status.is-suspended,
+.platform-status.is-deleting {
+  background: var(--red-tint);
+  color: var(--stamp-red);
+}
+.platform-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.platform-actions .btn + .btn {
+  margin-left: var(--s-2);
+}
+.platform-note td {
+  border-top: 0;
+  padding-top: 0;
+}
+.platform-note p {
+  margin: 0 0 var(--s-2);
+}

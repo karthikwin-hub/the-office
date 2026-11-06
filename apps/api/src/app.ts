@@ -13,6 +13,11 @@ import {
   OfficeRename,
   OpenOffice,
   Platform as PlatformEnum,
+  PLATFORM_ROUTES,
+  PlatformOnboard,
+  PlatformStatusChange,
+  type PlatformInvited,
+  type PlatformView,
   RoleChange,
   ROUTES,
   TransferRequest,
@@ -215,6 +220,90 @@ app.post("/api/invitations/accept", async (c) => {
   if (!parsed.success) return c.json({ error: "That link is not complete. Open it again from the email." }, 400);
   const r = await cp(c.env).acceptInvite(parsed.data.token, { ...c.get("user"), emailVerified: c.get("user").emailVerified || !verificationRequired(c.env) });
   return "error" in r ? c.json(r, 403) : c.json(r);
+});
+
+/* ---------- The platform owners' console: every business's account, never its books ---------- */
+
+export const platformOwners = (env: Pick<Env, "PLATFORM_OWNERS">) =>
+  new Set(
+    (env.PLATFORM_OWNERS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
+  const user = c.get("user");
+  if (!platformOwners(c.env).has(user.email.toLowerCase())) return c.json({ error: "This console is for the people who run the platform. Businesses sign in at their own address." }, 403);
+  if (verificationRequired(c.env) && !user.emailVerified) return c.json({ error: "Confirm your email address first, then come back." }, 403);
+  await next();
+};
+app.use(PLATFORM_ROUTES.view, platformOnly);
+app.use("/api/platform/*", platformOnly);
+
+const ownerInviteMail = (env: Env, officeName: string, email: string, token: string) => {
+  const link = `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/?invite=${encodeURIComponent(token)}`;
+  const sent = sendMail(
+    env,
+    email,
+    `Your office for ${officeName} is ready`,
+    [`We have opened ${officeName} on ${BRAND.name}, with you as its owner: you approve the team's work, hire and invite your accountant.`, "", "Open this link to set up your account and step in. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
+  );
+  return { link, sent };
+};
+
+app.get(PLATFORM_ROUTES.view, async (c) => {
+  const user = c.get("user");
+  const now = Date.now();
+  const domain = c.env.APP_DOMAIN;
+  const businesses = (await cp(c.env).allOffices()).map((o) => ({
+    id: o.id,
+    name: o.name,
+    status: o.status,
+    opened: iso(o.createdAt),
+    onboardedBy: o.onboardedBy,
+    address: domain && o.subdomain ? `https://${o.subdomain}.${domain}` : null,
+    ingestEmail: ingestAddress(o.slug, c.env.INGEST_DOMAIN),
+    owners: o.owners,
+    people: o.people,
+    ownerInvite: o.ownerInvite ? { email: o.ownerInvite.email, expiresAt: iso(o.ownerInvite.expiresAt), expired: o.ownerInvite.expiresAt <= now } : null,
+    lastEvent: o.lastEvent ? iso(o.lastEvent) : null,
+  }));
+  return c.json({ you: { name: user.name, email: user.email }, businesses } satisfies PlatformView);
+});
+
+app.post(PLATFORM_ROUTES.businesses, async (c) => {
+  const parsed = PlatformOnboard.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Give the business's name and its owner's email address." }, 400);
+  const email = parsed.data.ownerEmail.toLowerCase();
+  const made = await cp(c.env).onboard({ name: parsed.data.name, ownerEmail: email, by: c.get("user").email, ingestDomain: c.env.INGEST_DOMAIN });
+  if ("error" in made) return c.json(made, 500);
+  const { link, sent } = ownerInviteMail(c.env, made.office.name, email, made.token);
+  return c.json({ id: made.office.id, name: made.office.name, email, link, emailed: await sent, expiresAt: iso(made.expiresAt) } satisfies PlatformInvited, 201);
+});
+
+app.put("/api/platform/businesses/:id/status", async (c) => {
+  const parsed = PlatformStatusChange.safeParse(await c.req.json().catch(() => null));
+  const office = await cp(c.env).office(c.req.param("id"));
+  if (!office) return c.json(NOT_FOUND, 404);
+  if (!parsed.success) return c.json({ error: "Choose active or suspended." }, 400);
+  if (office.status === "deleting") return c.json({ error: "Its owner is deleting this office. Only they can restore it, within 30 days." }, 409);
+  if (office.status !== parsed.data.status) await cp(c.env).setStatus(office.id, parsed.data.status, c.get("user").email);
+  return c.json({ ok: true });
+});
+
+app.post("/api/platform/businesses/:id/owner-invitation", async (c) => {
+  const plane = cp(c.env);
+  const office = await plane.office(c.req.param("id"));
+  if (!office) return c.json(NOT_FOUND, 404);
+  const parsed = InviteRequest.pick({ email: true }).safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Enter the owner's email address." }, 400);
+  if (office.status !== "active") return c.json({ error: "Open the office again before inviting its owner." }, 409);
+  const email = parsed.data.email.toLowerCase();
+  if ((await plane.members(office.id)).some((m) => m.email.toLowerCase() === email)) return c.json({ error: `${email} is already in this office.` }, 409);
+  const { token, expiresAt } = await plane.invite(office.id, email, "owner", c.get("user").email);
+  const { link, sent } = ownerInviteMail(c.env, office.name, email, token);
+  return c.json({ id: office.id, name: office.name, email, link, emailed: await sent, expiresAt: iso(expiresAt) } satisfies PlatformInvited);
 });
 
 /** The platform's sign-in comes back to one address for every office; the signed state says which office started it. */

@@ -5,20 +5,20 @@ import { account, ApiError, isLive, setActiveOffice } from "../api/client";
 import { q } from "../api/queries";
 import { BrandPlate, ConsentGate, LegalFooter } from "./Legal";
 import { SignIn } from "./SignIn";
-import { consoleUrl, hasAppDomain, officeUrl, place } from "./site";
+import { appUrl, hasAppDomain, officeUrl, place } from "./site";
 
 const ACTIVE_KEY = "office.active";
 const INVITE_KEY = "office.invite";
 const params = () => new URLSearchParams(location.search);
 
-/** Opens an office in a fresh page, so nothing cached from another office is shown on the way: on its own address if it has one, else on the console. */
+/** Opens an office in a fresh page, so nothing cached from another office is shown on the way: on its own address if it has one, else on the app. */
 export function goToOffice(id: string, path = "/", subdomain?: string | null) {
   if (subdomain && hasAppDomain()) return location.assign(officeUrl(subdomain, path));
   localStorage.setItem(ACTIVE_KEY, id);
-  location.assign(consoleUrl(`${path}${path.includes("?") ? "&" : "?"}office=${encodeURIComponent(id)}`));
+  location.assign(appUrl(`${path}${path.includes("?") ? "&" : "?"}office=${encodeURIComponent(id)}`));
 }
 
-/** The same page on the office's own address, without the `office` parameter the console needed. */
+/** The same page on the office's own address, without the `office` parameter the app needed. */
 function onOwnAddress(subdomain: string): string {
   const search = params();
   search.delete("office");
@@ -66,11 +66,13 @@ export function OfficeGate({ children }: { children: ReactNode }) {
   if (here.kind === "office") {
     const mine = me.data.offices.find((o) => o.subdomain === here.subdomain && o.status !== "deleting");
     if (!mine) return <NotYourOffice address={location.host} />;
+    if (mine.status === "suspended") return <Suspended name={mine.name} others={me.data.offices.some((o) => o.id !== mine.id && o.status === "active")} />;
     setActiveOffice(mine.id);
     return <>{children}</>;
   }
   const active = chooseOffice(me.data.offices);
   if (!active) return me.data.offices.length ? <OfficePicker me={me.data} /> : <OpenOffice me={me.data} />;
+  if (active.status === "suspended") return <Suspended name={active.name} others={me.data.offices.some((o) => o.id !== active.id && o.status === "active")} />;
   if (active.subdomain && hasAppDomain()) {
     location.replace(onOwnAddress(active.subdomain));
     return null;
@@ -79,10 +81,29 @@ export function OfficeGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function Suspended({ name, others }: { name: string; others: boolean }) {
+  return (
+    <Door title={`${name} is suspended`} lede={<>No one can open this office for now. Its books and files are kept as they were. Write to {BRAND.name} to have it opened again.</>}>
+      {others ? (
+        <a
+          className="btn btn-primary"
+          href={appUrl("/")}
+          onClick={() => {
+            localStorage.removeItem(ACTIVE_KEY);
+          }}
+        >
+          Go to my other offices
+        </a>
+      ) : null}
+      <SignOutLink />
+    </Door>
+  );
+}
+
 function NotYourOffice({ address }: { address: string }) {
   return (
     <Door title="This is not one of your offices" lede={<>You are signed in, but not as someone in the office at <strong>{address}</strong>. Ask its owner for an invitation, or go to your own offices.</>}>
-      <a className="btn btn-primary" href={consoleUrl("/")}>
+      <a className="btn btn-primary" href={appUrl("/")}>
         Go to my offices
       </a>
       <SignOutLink />
@@ -210,7 +231,7 @@ function OfficePicker({ me }: { me: Me }) {
       </ul>
       {restore.error ? <p className="form-error">{restore.error.message}</p> : null}
       <p>
-        <a href={consoleUrl("/?open=1")}>Open another office</a>
+        <a href={appUrl("/?open=1")}>Open another office</a>
       </p>
       <SignOutLink />
     </Door>
@@ -248,7 +269,7 @@ function OpenOffice({ me }: { me: Me }) {
         {first ? (
           <>Invited to someone else's office? Open the link in the invitation email.</>
         ) : (
-          <a href={consoleUrl("/")}>Back to my offices</a>
+          <a href={appUrl("/")}>Back to my offices</a>
         )}
       </p>
       {first ? <SignOutLink /> : null}
@@ -283,7 +304,7 @@ export function OfficeSwitcher({ fallback }: { fallback: string }) {
             </li>
           ))}
         </ul>
-        <a href={consoleUrl("/?open=1")}>Open another office</a>
+        <a href={appUrl("/?open=1")}>Open another office</a>
       </div>
     </details>
   );

@@ -19,10 +19,13 @@ export type Env = {
   EMAIL_VERIFICATION?: string;
   BETTER_AUTH_URL: string;
   /**
-   * When set (for example `office.snilld.in`), BETTER_AUTH_URL is the console on `console.<APP_DOMAIN>`, the bare domain shows
-   * the product page, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`. One sign-in covers them all.
+   * When set (for example `office.snilld.in`), BETTER_AUTH_URL is where businesses sign in, `app.<APP_DOMAIN>`; the bare domain
+   * shows the product page, `console.<APP_DOMAIN>` is the platform owners' console, and an office with a subdomain opens on
+   * `<subdomain>.<APP_DOMAIN>`. One sign-in covers them all.
    */
   APP_DOMAIN?: string;
+  /** Comma-separated email addresses of the platform owners: they alone can use the console's view of every business. */
+  PLATFORM_OWNERS?: string;
   /** Set with `wrangler secret put`, never in a file. */
   BETTER_AUTH_SECRET: string;
   /**

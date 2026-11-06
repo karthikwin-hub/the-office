@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { BRAND } from "@office/contracts";
 import { account } from "../api/client";
 import { BrandPlate, currentDocuments, LegalFooter } from "./Legal";
 
@@ -9,7 +10,7 @@ type Mode = "sign-in" | "sign-up";
  * The front door. Anyone can make an account; an account on its own sees nothing.
  * It opens an office of its own, or joins one from an invitation link.
  */
-export function SignIn({ invited }: { invited: boolean }) {
+export function SignIn({ invited, staff }: { invited: boolean; staff?: { appAddress: string; appHref: string } }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<Mode>(invited ? "sign-up" : "sign-in");
   const [name, setName] = useState("");
@@ -31,8 +32,10 @@ export function SignIn({ invited }: { invited: boolean }) {
     submit.mutate();
   };
 
-  const heading = mode === "sign-in" ? "Sign in" : invited ? "Join the office" : "Make an account";
-  const lede = invited
+  const heading = staff ? "Platform console" : mode === "sign-in" ? "Sign in" : invited ? "Join the office" : "Make an account";
+  const lede = staff
+    ? `For the people who run ${BRAND.name}: every business on the platform, onboarding and suspending. Sign in with your work account; businesses sign in at ${staff.appAddress}.`
+    : invited
     ? "You were invited to an office. Sign in, or make an account with the address the invitation went to."
     : mode === "sign-in"
       ? "Welcome back."
@@ -95,7 +98,11 @@ export function SignIn({ invited }: { invited: boolean }) {
           </button>
         </form>
         <p className="signin-switch">
-          {mode === "sign-in" ? (
+          {staff ? (
+            <>
+              No account yet? Make one at <a href={staff.appHref}>{staff.appAddress}</a> with the address on the platform owners' list, then come back.
+            </>
+          ) : mode === "sign-in" ? (
             <>
               New here?{" "}
               <button type="button" className="link-button" onClick={() => setMode("sign-up")}>

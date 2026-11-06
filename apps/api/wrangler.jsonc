@@ -21,13 +21,17 @@
     "MAIL_FROM": "support@snilldai.com",
     // Each office gets <slug>@INGEST_DOMAIN; an Email Routing catch-all on this domain sends its mail to the Worker.
     "INGEST_DOMAIN": "in.office.snilld.in",
-    // The console, where people sign in. The bare APP_DOMAIN is the product page; an office with a subdomain opens on <subdomain>.APP_DOMAIN.
-    "BETTER_AUTH_URL": "https://console.office.snilld.in",
-    "APP_DOMAIN": "office.snilld.in"
+    // Where businesses sign in and choose an office. The bare APP_DOMAIN is the product page, console.APP_DOMAIN is the
+    // platform owners' console, and an office with a subdomain opens on <subdomain>.APP_DOMAIN.
+    "BETTER_AUTH_URL": "https://app.office.snilld.in",
+    "APP_DOMAIN": "office.snilld.in",
+    // Who may use the console's view of every business: comma-separated, each must sign in with a confirmed address.
+    "PLATFORM_OWNERS": "puja@snilldai.com"
   },
   // A deploy replaces the Worker's custom domains with exactly this list, so every customer's address must be here.
   "routes": [
     { "pattern": "office.snilld.in", "custom_domain": true },
+    { "pattern": "app.office.snilld.in", "custom_domain": true },
     { "pattern": "console.office.snilld.in", "custom_domain": true },
     // customers: one line each, added by `node tools/admin/admin.mjs subdomain <office> <label>`
     // customers end

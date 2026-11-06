@@ -59,6 +59,9 @@ import {
   type OrdersImportResult,
   type TryResult,
   type RightsRequestView,
+  PLATFORM_ROUTES,
+  type PlatformInvited,
+  type PlatformView,
 } from "@office/contracts";
 
 export class ApiError extends Error {
@@ -84,7 +87,7 @@ export function setActiveOffice(id: string | null) {
  * The one place an office's requests get its prefix: `/api/desk` becomes `/api/o/<office>/desk`.
  * Account routes, sign-in and paths that already name an office pass through. Mockups have one office and no prefix.
  */
-const ACCOUNT_PATH = /^\/api\/(o\/|auth\/|account\/|me$|offices$|invitations(\/|$))/;
+const ACCOUNT_PATH = /^\/api\/(o\/|auth\/|account\/|me$|offices$|invitations(\/|$)|platform(\/|$))/;
 
 export function officePath(path: string): string {
   if (!isLive || !activeOffice || !path.startsWith("/api/") || ACCOUNT_PATH.test(path.replace(/\?.*$/, ""))) return path;
@@ -139,6 +142,14 @@ export const account = {
   requests: () => call<{ requests: RightsRequestView[] }>(ACCOUNT_ROUTES.accountRequests),
   requestDeletion: (note?: string) => call<RightsRequestView>(ACCOUNT_ROUTES.accountRequests, { method: "POST", body: { kind: "delete", note } }),
   withdrawRequest: (id: string) => call<{ ok: true }>(`${ACCOUNT_ROUTES.accountRequests}/${encodeURIComponent(id)}`, { method: "DELETE" }),
+};
+
+/** The platform owners' console: every business on the platform, onboarding one, and suspending. */
+export const platform = {
+  view: () => call<PlatformView>(PLATFORM_ROUTES.view),
+  onboard: (name: string, ownerEmail: string) => call<PlatformInvited>(PLATFORM_ROUTES.businesses, { method: "POST", body: { name, ownerEmail } }),
+  setStatus: (id: string, status: "active" | "suspended") => call<{ ok: true }>(PLATFORM_ROUTES.status(id), { method: "PUT", body: { status } }),
+  inviteOwner: (id: string, email: string) => call<PlatformInvited>(PLATFORM_ROUTES.ownerInvite(id), { method: "POST", body: { email } }),
 };
 
 /** The office as an account: its name, people and invitations, export and deletion. */

@@ -13,13 +13,14 @@ The product belongs to Snilld, so it runs in the **Snilld Cloudflare account**, 
 | Address | What it is |
 | --- | --- |
 | `office.snilld.in` | The product page: what the product is, with Sign in and Try the demo |
-| `console.office.snilld.in` | Where people sign up, sign in, open an office and accept invitations |
+| `app.office.snilld.in` | Where businesses sign up, sign in, open an office and accept invitations |
+| `console.office.snilld.in` | The platform console, for us only (the addresses in `PLATFORM_OWNERS`): every business on the platform, onboarding a new one, suspending. Part 5c |
 | `<customer>.office.snilld.in` | One customer's office, for example `kaveri.office.snilld.in`. Added per customer in Part 5b |
 | `demo.office.snilld.in` | The demo with sample books |
 | `in.office.snilld.in` | Inbound email: each office gets `<office-slug>@in.office.snilld.in` |
 | `support@snilldai.com` | Outbound email, through Resend (already set up for Clubs and Sports OS; nothing to create) |
 
-It is the same pattern as Clubs (`console.clubs.snilld.in`, `<club>.clubs.snilld.in`) and Sports OS, with one difference: those run on our VM with a wildcard certificate, while this runs on Cloudflare Workers, where each customer's address is added as its own custom domain with its own free certificate.
+It is the same pattern as Clubs (`console.clubs.snilld.in`, `<club>.clubs.snilld.in`) and Sports OS, where the console is ours and each customer has their own address, with one difference: those run on our VM with a wildcard certificate, while this runs on Cloudflare Workers, where each customer's address is added as its own custom domain with its own free certificate.
 
 ### Ground rules
 
@@ -133,22 +134,22 @@ Do this after the first deploy in Part 5 (the Worker `the-office` must exist in 
 
 ## Part 4: The addresses (checklist item 4)
 
-The product page, the console and the demo are already in the config: `office.snilld.in` and `console.office.snilld.in` under `routes` in `apps/api/wrangler.jsonc`, and `demo.office.snilld.in` in `apps/web/wrangler.mock.jsonc`. Cloudflare creates their DNS records and certificates during the deploy. Customers' addresses are added one at a time in Part 5b.
+The product page, the app, the console and the demo are already in the config: `office.snilld.in`, `app.office.snilld.in` and `console.office.snilld.in` under `routes` in `apps/api/wrangler.jsonc`, and `demo.office.snilld.in` in `apps/web/wrangler.mock.jsonc`. Cloudflare creates their DNS records and certificates during the deploy. Customers' addresses are added one at a time in Part 5b.
 
 ### 4a. Check nothing is in the way
 
-In **Domains → snilld.in → DNS → Records**, search for `office`. Before the first deploy there must be **no** record named `office`, `console.office`, `demo.office` or `*.office`. If there is one, stop and ask; do not delete it yourself.
+In **Domains → snilld.in → DNS → Records**, search for `office`. Before the first deploy there must be **no** record named `office`, `app.office`, `console.office`, `demo.office` or `*.office`. If there is one, stop and ask; do not delete it yourself. (`office`, `console.office` and `demo.office` were attached by the first deploy on 6 November 2026; `app.office` is attached by the next one.)
 
 ### 4b. Social and WhatsApp redirect addresses
 
-Only if any platform apps (Meta, LinkedIn, X) have been set up already: in each platform's developer console, add the new redirect URIs, keeping the old ones until the switch is confirmed. Every office uses the console's address for these; the product sends people back to their own office afterwards.
+Only if any platform apps (Meta, LinkedIn, X) have been set up already: in each platform's developer console, add the new redirect URIs, keeping the old ones until the switch is confirmed. Every office uses the app's address for these; the product sends people back to their own office afterwards.
 
-- `https://console.office.snilld.in/api/channels/facebook/callback`
-- `https://console.office.snilld.in/api/channels/instagram/callback`
-- `https://console.office.snilld.in/api/channels/threads/callback`
-- `https://console.office.snilld.in/api/channels/linkedin/callback`
-- `https://console.office.snilld.in/api/channels/x/callback`
-- Meta webhooks: `https://console.office.snilld.in/api/hooks/meta`
+- `https://app.office.snilld.in/api/channels/facebook/callback`
+- `https://app.office.snilld.in/api/channels/instagram/callback`
+- `https://app.office.snilld.in/api/channels/threads/callback`
+- `https://app.office.snilld.in/api/channels/linkedin/callback`
+- `https://app.office.snilld.in/api/channels/x/callback`
+- Meta webhooks: `https://app.office.snilld.in/api/hooks/meta`
 
 If none are set up yet, skip this; the channels work in manual mode.
 
@@ -168,13 +169,13 @@ Do this once the pull request from Part 4 is merged. Run every command from the 
    pnpm typecheck && pnpm test
    ```
 
-2. **Build, migrate and deploy live.** On the first run this creates the Worker in the Snilld account, applies every database migration to the new database (checklist item 12), and attaches `office.snilld.in` and `console.office.snilld.in`:
+2. **Build, migrate and deploy live.** On the first run this creates the Worker in the Snilld account, applies every database migration to the new database (checklist item 12), and attaches `office.snilld.in`, `app.office.snilld.in` and `console.office.snilld.in`:
 
    ```sh
    infisical run --env=dev --silent -- sh -c 'CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE pnpm run deploy'
    ```
 
-   Use `pnpm run deploy`, not `pnpm deploy` (that is a different pnpm command and does nothing useful here). The output ends with the Worker's addresses, including `console.office.snilld.in`. If wrangler asks whether to replace an existing DNS record, answer **no** and stop and ask.
+   Use `pnpm run deploy`, not `pnpm deploy` (that is a different pnpm command and does nothing useful here). The output ends with the Worker's addresses, including `app.office.snilld.in` and `console.office.snilld.in`. If wrangler asks whether to replace an existing DNS record, answer **no** and stop and ask.
 
 3. **Put the secrets on the new Worker.** Only the first time, and after the deploy (the Worker must exist):
 
@@ -195,12 +196,12 @@ Do this once the pull request from Part 4 is merged. Run every command from the 
 5. **Smoke check.** A new certificate can take up to 15 minutes; until then the first command may fail with a certificate error. Wait and try again.
 
    ```sh
-   curl -s https://console.office.snilld.in/api/health
-   curl -s -o /dev/null -w "%{http_code}\n" https://console.office.snilld.in/api/o/off_aaaaaaaaaaaaaaaa/desk
+   curl -s https://app.office.snilld.in/api/health
+   curl -s -o /dev/null -w "%{http_code}\n" https://app.office.snilld.in/api/o/off_aaaaaaaaaaaaaaaa/desk
    infisical run --env=dev --silent -- node tools/admin/admin.mjs list
    ```
 
-   Expect `{"ok":true,"mode":"live","appDomain":"office.snilld.in"}`, then `401`, then an empty list of offices (the new database starts empty). Open `https://office.snilld.in`: the product page shows, and **Sign in** goes to the console. Open `https://demo.office.snilld.in` and check the sample office loads.
+   Expect `{"ok":true,"mode":"live","appDomain":"office.snilld.in"}`, then `401`, then an empty list of offices (the new database starts empty). Open `https://office.snilld.in`: the product page shows, and **Sign in** goes to `app.office.snilld.in`. Open `https://console.office.snilld.in`: it asks you to sign in to the platform console (Part 5c). Open `https://demo.office.snilld.in` and check the sample office loads.
 
 6. **Back up the control plane** from now on before every release:
 
@@ -224,7 +225,7 @@ Do this once the pull request from Part 4 is merged. Run every command from the 
 
 ## Part 5b: Giving a customer their own address
 
-A new office first opens on `console.office.snilld.in`. To give it its own address, for example `kaveri.office.snilld.in`, do this with the label agreed with the customer. It takes two runs of the same command, with a deploy in between, because every address must be listed in `apps/api/wrangler.jsonc`: a deploy removes any address that is not there.
+A new office first opens on `app.office.snilld.in`. To give it its own address, for example `kaveri.office.snilld.in`, do this with the label agreed with the customer. It takes two runs of the same command, with a deploy in between, because every address must be listed in `apps/api/wrangler.jsonc`: a deploy removes any address that is not there.
 
 1. Find the office's ID (`off_…`):
 
@@ -250,9 +251,26 @@ A new office first opens on `console.office.snilld.in`. To give it its own addre
 
    If it says the address is not answering yet, wait 15 minutes and run it again.
 
-**Check:** open `https://kaveri.office.snilld.in` in a private window and sign in as someone in that office: the office opens there. Sign in on `console.office.snilld.in` instead: you are sent on to `kaveri.office.snilld.in`. In the office's Settings, under Office, the **Web address** shows. Someone who is not in the office sees "This is not one of your offices" and nothing of it.
+**Check:** open `https://kaveri.office.snilld.in` in a private window and sign in as someone in that office: the office opens there. Sign in on `app.office.snilld.in` instead: you are sent on to `kaveri.office.snilld.in`. In the office's Settings, under Office, the **Web address** shows. Someone who is not in the office sees "This is not one of your offices" and nothing of it.
 
-To take an address away: `admin.mjs subdomain off_xxxxxxxxxxxxxxxx --remove`, then commit and deploy. The office opens on the console again.
+To take an address away: `admin.mjs subdomain off_xxxxxxxxxxxxxxxx --remove`, then commit and deploy. The office opens on `app.office.snilld.in` again.
+
+---
+
+## Part 5c: The platform console and onboarding a business
+
+`console.office.snilld.in` is ours: it lists every business on the platform (owner, people, status, when it opened, its last account change) and is where we onboard a business and suspend one. It never shows or opens any office's books. Only the addresses in `PLATFORM_OWNERS` (in `apps/api/wrangler.jsonc`, comma-separated; today `puja@snilldai.com`) can use it.
+
+1. **Your account.** Make an account at `https://app.office.snilld.in` with an address on that list and confirm it from the email. (An account on its own sees no office.)
+2. **Sign in at `https://console.office.snilld.in`.** The figures at the top count the businesses by state; click one to filter the list. Search finds a business by name, owner or address.
+3. **Onboard a business.** Enter the business name and the owner's email, then **Open the office and invite**. This opens an empty office and emails the owner a link from `support@snilldai.com`, good for 14 days. If the email did not go out, the console shows the link: send it to the owner yourself (it is personal to them; do not post it anywhere public). The owner makes an account with that same address, joins, and runs the setup in their office. The row shows **Waiting for owner** until they do; **Send the invitation again** sends a fresh link.
+4. **Businesses can also sign up themselves** at `app.office.snilld.in`; they appear in the console as "signed up".
+5. **Suspend** (with a second click to confirm) shuts everyone in that office out and refuses its inbound email; its books and files stay. **Open again** reverses it. An office its owner is deleting shows **Being deleted**; only its owner can restore it.
+6. **To add a colleague** to the console, add their address to `PLATFORM_OWNERS`, open a pull request, and deploy once merged.
+
+**Check:** onboard a test business with your personal address as the owner. The email arrives; the link opens the app and, after you make the account, the office. The console row then shows you as the owner. Suspend it: the office shows "is suspended". Open it again. Delete the test office afterwards from its Settings.
+
+What stays in the terminal (`admin.mjs`): giving an office its own address (Part 5b), routing a WhatsApp number or page, backups, deletion requests and `forget-user`.
 
 ---
 
@@ -292,7 +310,7 @@ The drafts are in `docs/legal/` and are already published at `/legal/...` on the
 
 ## Part 7: Monitoring (checklist item 11)
 
-1. **Uptime alert.** Create a free monitor (for example UptimeRobot or Better Stack) on `https://console.office.snilld.in/api/health`, checking every 5 minutes, alerting Puja and the engineer by email. It should also alert when the body does not contain `"ok":true`.
+1. **Uptime alert.** Create a free monitor (for example UptimeRobot or Better Stack) on `https://app.office.snilld.in/api/health`, checking every 5 minutes, alerting Puja and the engineer by email. It should also alert when the body does not contain `"ok":true`.
 2. **Error alerts in Cloudflare.** In the Snilld account, open **Notifications → Add**. Look for alerts about Workers (error rate or exceptions). If one is offered, create it for the Worker `the-office` and send it to Puja and the engineer. If none is offered on the plan, note that in the Log; the weekly review below covers it.
 3. **Weekly review (every Monday, 15 minutes):**
    - `infisical run --env=dev --silent -- node tools/admin/admin.mjs list`: note the number of offices and anything suspended or unusual.
@@ -330,8 +348,8 @@ If an approval says "The books have changed since these files were checked", som
 Do this with your personal email address, in a private browser window. Every step must pass.
 
 1. Open `https://office.snilld.in`. Choose **Open your office**, then create an account. Accept the terms and privacy notice.
-2. The confirmation email arrives (not in spam). Click the link. You are signed in on `console.office.snilld.in`.
-3. Open a new office named "Exit test".
+2. The confirmation email arrives (not in spam). Click the link. You are signed in on `app.office.snilld.in`.
+3. Open a new office named "Exit test". Ask Puja to look in the platform console (Part 5c): "Exit test" is listed, "signed up", with you as its owner.
 4. In Settings, copy the office's email-in address (`…@in.office.snilld.in`).
 5. From your mailbox, send a supplier bill PDF to it. A sample bill is in `apps/web/public/docs/` (for example `doc-p0002.pdf`).
 6. Within a few minutes, the Accountant shows the bill, and a card appears on **Your desk**.

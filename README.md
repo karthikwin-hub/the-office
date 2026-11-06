@@ -36,9 +36,11 @@ pnpm docs                # rebuilds docs/handbook/the-office-handbook.html from 
 # Live Worker locally, with a fresh office (add --var OFFICE_SEED:sample for the Kaveri sample books)
 cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler dev --port 8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787'
 
-# The same with one address per office: open http://office.localhost:8787 (product page) and
-# http://console.office.localhost:8787; give an office an address with `node tools/admin/admin.mjs subdomain <office> <label> --local`
-#   --var BETTER_AUTH_URL:http://console.office.localhost:8787 --var APP_DOMAIN:office.localhost
+# The same with one address per office: open http://office.localhost:8787 (product page), http://app.office.localhost:8787
+# (businesses) and http://console.office.localhost:8787 (platform owners, the addresses in PLATFORM_OWNERS);
+# give an office an address with `node tools/admin/admin.mjs subdomain <office> <label> --local`
+#   --var BETTER_AUTH_URL:http://app.office.localhost:8787 --var APP_DOMAIN:office.localhost --var PLATFORM_OWNERS:you@example.com
+# The mock demo shows the console at http://localhost:5173/?platform.
 ```
 
 ## Deploy
