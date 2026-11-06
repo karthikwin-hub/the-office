@@ -177,6 +177,7 @@ describe("one office cannot reach another", () => {
     const { w, bina, A } = await twoOffices();
     const paths = allRoutePaths();
     expect(paths.length).toBeGreaterThan(40);
+    expect(paths).toEqual(expect.arrayContaining([ROUTES.onboardingCheck, ROUTES.onboardingStage]));
     for (const p of paths)
       for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
         const res = await call(w, bina, inOffice(A, p), { method, ...(method === "GET" || method === "DELETE" ? {} : { body: "{}" }) });

@@ -215,6 +215,21 @@
   color: var(--stamp-red);
   margin-top: var(--s-3);
 }
+.onboarding-ready {
+  margin-top: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--sheet);
+  border-left: 3px solid var(--plan-line);
+}
+.onboarding .field-wide .input[type="date"] {
+  max-width: 12rem;
+}
+.onboarding-issues {
+  margin-top: var(--s-2);
+}
+.onboarding-issues td {
+  vertical-align: top;
+}
 .preview-note {
   padding: var(--s-3) var(--s-4);
   border: 1px dashed var(--graphite-soft);

@@ -164,7 +164,13 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
                 <div>
                   <p className="source-doc-party">{doc.party?.name ?? doc.document.from ?? "Unknown sender"}</p>
                   <p className="muted">
-                    {doc.document.channel === "email" ? `Arrived by email from ${doc.document.from}` : doc.document.channel === "generated" ? "Issued from your billing" : `Received by ${doc.document.channel}`}
+                    {doc.document.channel === "email"
+                      ? `Arrived by email from ${doc.document.from}`
+                      : doc.document.channel === "generated"
+                        ? "Issued from your billing"
+                        : doc.document.channel === "import"
+                          ? `Brought in from ${doc.document.from}`
+                          : `Received by ${doc.document.channel}`}
                     {", "}
                     {new Date(doc.document.receivedAt).toLocaleString("en-IN", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false })}
                   </p>
@@ -181,12 +187,28 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
                   Boxed on the page: <strong>{highlight.label}</strong>
                 </p>
               ) : null}
-              <PdfPage url={doc.document.file} page={highlight?.page ?? 1} regions={doc.document.regions} highlight={highlight} onRegion={onRegion} />
-              <p className="source-doc-foot">
-                <a href={doc.document.file} target="_blank" rel="noreferrer">
-                  Open the PDF
-                </a>
-              </p>
+              {doc.document.channel === "import" ? (
+                <>
+                  <p className="source-doc-import">{(inv ?? bill)?.lines[0]?.description}</p>
+                  <p className="muted">Brought forward from before the books started, so it counts towards what is owed but not towards GST returns or sales.</p>
+                  {doc.document.file ? (
+                    <p className="source-doc-foot">
+                      <a href={doc.document.file} target="_blank" rel="noreferrer">
+                        Open the file it came from
+                      </a>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <PdfPage url={doc.document.file} page={highlight?.page ?? 1} regions={doc.document.regions} highlight={highlight} onRegion={onRegion} />
+                  <p className="source-doc-foot">
+                    <a href={doc.document.file} target="_blank" rel="noreferrer">
+                      Open the PDF
+                    </a>
+                  </p>
+                </>
+              )}
               {docActions}
             </>
           ) : trace ? (

@@ -61,6 +61,12 @@ const handler = http.all("/api/*", async ({ request }) => {
     }
     return HttpResponse.json(result);
   }
+  if (request.method === "POST" && url.pathname === ROUTES.onboardingStage) {
+    const body = (await request.json().catch(() => null)) as { files?: { csv?: unknown }[] } | null;
+    for (const f of body?.files ?? []) if (typeof f.csv === "string") Object.assign(f, { file: URL.createObjectURL(new Blob([f.csv], { type: "text/csv" })) });
+    const res = dispatch(getOffice(), { method: "POST", path: url.pathname, query: url.searchParams, body, role, user: USERS[role], mode: "mock" });
+    return HttpResponse.json(res.body as object, { status: res.status });
+  }
   const connect = /^\/api\/channels\/([a-z]+)\/connect$/.exec(url.pathname);
   if (connect) {
     if (role !== "owner") return HttpResponse.json({ error: "Only the owner can connect channels." }, { status: 403 });

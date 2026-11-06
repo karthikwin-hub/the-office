@@ -6,6 +6,7 @@ import { useState } from "react";
 import { q, useDecide } from "../api/queries";
 import { useApprovalBody } from "../reports/social";
 import { count, isOwner, Page, PageHead, theAgent, useApprovalContext } from "./common";
+import { ImportBody } from "./SettingsOnboarding";
 
 const ACCOUNTANT_MAY = new Set(["audit_flag", "share_file"]);
 
@@ -68,7 +69,7 @@ export function DeskScreen() {
               item={i}
               showAgent={false}
               context={contextFor(i)}
-              body={bodyFor(i)}
+              body={i.kind === "onboarding" ? <ImportBody item={i} /> : bodyFor(i)}
               busy={decide.isPending && decide.variables?.id === i.id}
               readOnly={!owner && !ACCOUNTANT_MAY.has(i.kind) ? "Waiting for the owner to approve." : false}
               onDecide={(decision) => decide.mutate({ id: i.id, decision })}

@@ -6,6 +6,7 @@ import {
   CsSettingsInput,
   FactsInput,
   HiringChange,
+  ImportCheck,
   MarkPosted,
   MediaAsset,
   MetricsImport,
@@ -65,8 +66,20 @@ export function dispatch(office: OfficeService, req: ApiRequest): ApiResult {
         if (req.role === "accountant" && !ACCOUNTANT_CAN_DECIDE.has(item.kind)) return forbidden("Only the owner can approve this.");
         const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, unknown> };
         if (body.action !== "approve" && body.action !== "reject") return { status: 400, body: { error: "action must be approve or reject" } };
-        return ok(office.decide(a, { action: body.action, note: body.note, edits: body.edits }, req.user.name));
+        try {
+          return ok(office.decide(a, { action: body.action, note: body.note, edits: body.edits }, req.user.name));
+        } catch (e) {
+          if (e instanceof ImportError) return { status: 409, body: { error: e.message } };
+          throw e;
+        }
       }
+    }
+    if (req.method === "POST" && head === "onboarding" && (a === "check" || a === "stage")) {
+      const parsed = ImportCheck.safeParse(req.body);
+      if (!parsed.success) return { status: 400, body: { error: parsed.error.issues[0]?.message ?? "Attach the files to bring in." } };
+      if (a === "check") return ok(office.checkOnboarding(parsed.data));
+      const r = office.stageOnboarding(parsed.data, req.user.name);
+      return r.item ? ok(r) : { status: 422, body: { error: "Some rows need fixing first.", preview: r.preview } };
     }
     if (get && head === "reports") {
       switch (a) {

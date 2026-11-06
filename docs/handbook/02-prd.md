@@ -89,6 +89,7 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 | F16 | As an owner, my customers get answers when I am busy | Customers write on WhatsApp to the business's own number, to `<slug>.help@INGEST_DOMAIN`, or in a chat on the business's website; the first reply says it is an assistant; order status and balance are answered from the books after the customer is identified; everything else is handed over with a short summary, and a customer is never left without a reply | Core |
 | F17 | As an owner, I see what the office did while I slept | A Routines page lists every scheduled job (trusted work, reminders, social, reorder check, filings due, customers waiting, the digest, scheduled posts) with its last run, outcome and 90 days of history; each can be paused and run now | Core |
 | F18 | As a person, I control my own account data | Sign-up records acceptance of the current terms and privacy notice; a changed version asks once more; Settings downloads a copy of my account and files an audited deletion request, which an operator completes | Core, with law per pack |
+| F19 | As a business that already keeps books, I start with what I have | Three CSV templates (customers and suppliers, products and stock, unpaid invoices and bills); every row checked with its row number and what to fix; one Desk card the owner approves, all or nothing; a fixed start date for the books; unpaid items from before it count towards ageing, reminders and statements but never towards returns or sales, and each links back to its row in the stored file | Core method; India pack fields (GSTIN, PAN, HSN, TDS section) |
 
 ## 7. Non-functional requirements
 
@@ -108,6 +109,7 @@ Each requirement is written as a user story with acceptance criteria. **Tag** sa
 ## 8. Settings
 
 - **Business:** name and legal name, tax identifiers (PAN, GSTIN, TAN and state in the India pack), address, contact details, bank, start of the financial year.
+- **Bring in your books:** the start date of the books (fixed by the first approved import) and the three templates, checked here and approved on the Desk.
 - **Routine:** the time of the daily digest, and the reminder policy (days overdue before the first, firm and final reminder, and the sending address).
 - **Office:** people and roles, invitations, the office's inbound email address, handover, history, export, delete.
 - **Channels:** connect social accounts or post by hand; brand voice; posting hours.

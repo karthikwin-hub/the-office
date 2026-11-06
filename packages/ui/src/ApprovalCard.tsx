@@ -19,6 +19,7 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   payroll_run: { verb: "Release payslips", done: "Payslips released" },
   customer_reply: { verb: "Send reply", done: "Reply sent" },
   handoff: { verb: "Send your answer", done: "Answered" },
+  onboarding: { verb: "Bring into the books", done: "Brought into the books" },
 };
 
 /** Payload fields the owner may rewrite before approving. */

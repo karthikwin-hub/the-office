@@ -1,0 +1,5 @@
+type,name,gstin,pan,state,city,contact_name,phone,email,payment_terms_days,credit_limit,tan,tds_section,entity
+customer,Sharada Builders Pvt Ltd,29AABCS1234K1Z5,,,Bengaluru,Meena Rao,+91 98450 11223,accounts@sharadabuilders.in,30,"5,00,000",BLRS12345E,,
+customer,Ravi Kumar,,,Karnataka,Mysuru,Ravi Kumar,+91 99001 22334,,15,,,,individual
+supplier,Havells Distributors Hubli,29AAFFH5678L1Z2,,,Hubballi,Suresh Patil,+91 98860 44556,orders@havellshubli.in,45,,,194Q,
+supplier,Nagesh Electrical Contractors,,ABJPN4321K,29,Bengaluru,Nagesh,+91 97411 66778,,7,,,194C,individual

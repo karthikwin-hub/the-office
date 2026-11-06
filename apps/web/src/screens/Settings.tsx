@@ -7,6 +7,7 @@ import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
 import { AccountSettings } from "./SettingsAccount";
 import { OfficeSettings } from "./SettingsOffice";
+import { OnboardingSettings } from "./SettingsOnboarding";
 import { SkinPicker } from "./SettingsSkin";
 import { SocialSettings } from "./SettingsSocial";
 import { WhatsAppSettings } from "./SettingsWhatsApp";
@@ -150,6 +151,7 @@ function SettingsForm({ s }: { s: Settings }) {
           Forward bills and invoices to <strong className="num">{s.ingestEmail}</strong>, or upload them on the Accountant's room. The Accountant reads each one within a few minutes.
         </p>
       </Section>
+      <OnboardingSettings b={b} />
       <form onSubmit={submit} className="settings-form">
         <fieldset disabled={!owner}>
           <legend className="h2">Reminders and digest</legend>

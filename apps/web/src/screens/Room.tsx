@@ -369,7 +369,7 @@ function AccountantPanel() {
           columns={[
             { id: "t", header: "Received", cell: (d) => `${shortDate(d.receivedAt)}, ${time(d.receivedAt)}` },
             { id: "k", header: "What", cell: (d) => <button type="button" className="figure-link" onClick={() => openDocument(d.id, "number")}>{d.kind === "sales_invoice" ? "Sales invoice" : "Purchase bill"}</button> },
-            { id: "f", header: "From", cell: (d) => d.from ?? { generated: "Your billing", upload: "Uploaded", email: "Email", whatsapp: "WhatsApp" }[d.channel], secondary: true },
+            { id: "f", header: "From", cell: (d) => d.from ?? { generated: "Your billing", upload: "Uploaded", email: "Email", whatsapp: "WhatsApp", import: "Brought in" }[d.channel], secondary: true },
             { id: "s", header: "Status", cell: (d) => DOC_STATUS[d.status] },
           ]}
         />

@@ -25,6 +25,11 @@ export const Business = z.object({
   prevYearTurnoverPaise: Paise,
   owner: z.string(),
   accountantFirm: z.string(),
+  /**
+   * The first day these books are kept for, set by the first approved import of existing books and then fixed.
+   * Invoices and bills brought forward from before it count towards balances, but never towards returns or sales.
+   */
+  booksFrom: IsoDate.optional(),
 });
 export type Business = z.infer<typeof Business>;
 
@@ -78,7 +83,7 @@ export const Document = z.object({
   file: z.string(),
   pages: z.number().int(),
   receivedAt: IsoDateTime,
-  channel: z.enum(["generated", "email", "upload", "whatsapp"]),
+  channel: z.enum(["generated", "email", "upload", "whatsapp", "import"]),
   from: z.string().nullable(),
   status: DocumentStatus,
   regions: z.array(Region),
@@ -124,6 +129,8 @@ export const Invoice = z.object({
   lines: z.array(Line),
   totals: Totals,
   status: z.enum(["staged", "posted", "cancelled"]),
+  /** Brought forward from before `booksFrom`: what is still owed on it, outside returns and sales. */
+  opening: z.boolean().optional(),
 });
 export type Invoice = z.infer<typeof Invoice>;
 
@@ -143,6 +150,8 @@ export const Bill = z.object({
   itcEligible: z.boolean(),
   tds: BillTds.nullable(),
   status: z.enum(["staged", "posted", "rejected"]),
+  /** Brought forward from before `booksFrom`: what is still owed on it, outside returns and input tax credit. */
+  opening: z.boolean().optional(),
 });
 export type Bill = z.infer<typeof Bill>;
 
@@ -724,6 +733,7 @@ export const StagedKind = z.enum([
   "payroll_run",
   "customer_reply",
   "handoff",
+  "onboarding",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

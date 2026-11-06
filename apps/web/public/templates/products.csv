@@ -1,0 +1,5 @@
+sku,name,hsn,unit,gst_rate,price,cost,category,on_hand,reorder_point,lead_time_days,location
+CBL-2.5-RED,"Copper wire 2.5 sq mm, red, 90 m",8544,ROL,18,"2,450",1980,Wires and cables,40,10,5,Main
+MCB-32A-SP,MCB 32 A single pole,8536,NOS,18,265,190,Switchgear,120,30,7,Main
+LED-9W-CW,LED bulb 9 W cool white,8539,NOS,12,95,62,Lighting,300,80,10,Back store
+SRV-INSTALL,Installation visit,9987,NOS,18,500,,Services,,,,

@@ -610,6 +610,8 @@ export const ROUTES = {
   readDocument: (id: string) => `/api/documents/${id}/read`,
   file: (id: string) => `/api/files/${id}`,
   importReturn: "/api/returns/import",
+  onboardingCheck: "/api/onboarding/check",
+  onboardingStage: "/api/onboarding/stage",
   party: (id: string) => `/api/parties/${id}`,
   ask: "/api/ask",
   hiring: "/api/hiring",

@@ -279,7 +279,24 @@ The roadmap item "add `country`, `currency`, `locale` and `timeZone` to the offi
 
 ---
 
-## Part 9: The exit test
+## Part 9: Bringing in the first customer's books
+
+A business that already keeps books (in Tally, Excel or a notebook) brings in what it has before it starts using the office, so reminders and statements are right from day one. This was built on 6 November 2026 and goes to live with the deploy in Part 5. Do it with the customer, on a call, after they have opened their office and filled in Settings → Business.
+
+1. **Agree the start date.** Usually the first day of the current month. Everything dated before it comes in as "brought forward"; everything on or after it is sent as documents in the usual way (email or upload). **The start date cannot be changed after the first import is approved,** so confirm it with the owner before going further.
+2. **Send the templates.** On the customer's Settings page, under **Bring in your books**, each of the three boxes has a **Download the template** link: customers and suppliers, products and stock, and unpaid invoices and bills. Each template has four example rows. Ask the customer (or their accountant) to replace the examples with their own rows and save each file as CSV. Not every template is needed: a services business can skip products.
+3. **What goes in the unpaid file.** One row per invoice a customer still owes on, and one per bill the business still owes a supplier, dated before the start date. `total` is the full amount on the invoice; `outstanding` is what is still owed. Anything already paid in full is left out. A party named in this file must be in the customers and suppliers file, or already in the office.
+4. **Check the files.** The owner or the accountant chooses the files and presses **Check the files**. If anything is wrong, a table shows the file, the row number as the spreadsheet shows it, the column and what to fix. Fix it in the spreadsheet, save it as CSV again, choose it again and check again.
+5. **Limits.** Up to 2,000 rows and 1 MB in one file. A larger business brings its files in a few batches, one after another, approving each batch before sending the next.
+6. **Send to the Desk.** When every row reads correctly, press **Send to the Desk for approval**. Nothing is in the books yet.
+7. **The owner approves.** On **Your desk**, the card "Bring in your books from before …" shows the counts and the first rows. Only the owner can approve it; the accountant sees it as waiting. Approving brings everything in at once.
+8. **Check.** In the Boardroom, the ageing report shows the unpaid invoices. Opening one says "Brought in from open-items.csv, row …" and links to the stored file. The GST and TDS reports start from the start date and do not include anything brought forward.
+
+If an approval says "The books have changed since these files were checked", someone added a matching customer, product or invoice in the meantime. Reject the card, check the files again and send them again.
+
+---
+
+## Part 10: The exit test
 
 Do this on `app.snilldai.com` with your personal email address, in a private browser window. Every step must pass.
 

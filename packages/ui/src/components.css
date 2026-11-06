@@ -922,6 +922,17 @@
   margin-top: var(--s-3);
   font-size: var(--step--1);
 }
+.source-doc-import {
+  margin-bottom: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  background: var(--sheet);
+  border-left: 3px solid var(--plan-line);
+}
+.import-sample {
+  margin: 0;
+  padding-left: var(--s-4);
+  font-size: var(--step--1);
+}
 .source-doc-empty {
   padding: var(--s-6) 0;
 }

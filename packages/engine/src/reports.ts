@@ -9,7 +9,7 @@ import { expectedCustomerTds, expectedTdsByBill, SECTION_NOTE, TDS_RULES, tdsDep
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0);
 
 export function salesReport(l: Ledger, from?: string, to?: string): SalesReport {
-  const start = from ?? l.books.business.fyStart;
+  const start = from ?? l.periodStart;
   const end = to ?? l.asOf;
   const invoices = l.invoicesIn(start, end);
   const bySku = new Map<string, { qty: number; taxable: number; cost: number; invoices: Set<string> }>();
@@ -88,7 +88,7 @@ export function salesReport(l: Ledger, from?: string, to?: string): SalesReport 
 
 export function gstPeriods(l: Ledger): string[] {
   const out: string[] = [];
-  for (let p = monthKey(l.books.business.fyStart); p <= monthKey(l.asOf); p = nextMonth(p)) out.push(p);
+  for (let p = monthKey(l.periodStart); p <= monthKey(l.asOf); p = nextMonth(p)) out.push(p);
   return out.reverse();
 }
 
@@ -156,7 +156,7 @@ export function gstReport(l: Ledger, period?: string): GstReport {
 
 export function tdsQuarters(l: Ledger): string[] {
   const qs = new Set<string>();
-  for (let p = monthKey(l.books.business.fyStart); p <= monthKey(l.asOf); p = nextMonth(p)) qs.add(quarterOf(`${p}-01`));
+  for (let p = monthKey(l.periodStart); p <= monthKey(l.asOf); p = nextMonth(p)) qs.add(quarterOf(`${p}-01`));
   return [...qs].reverse();
 }
 
@@ -169,7 +169,7 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
   const filedByBill = filed && filed.form === "26Q" ? new Map(filed.data.deductions.map((d) => [d.billId, d.tdsPaise])) : null;
   const deductions: TdsReport["deductions"] = [];
   for (const b of l.books.bills) {
-    if (!months.has(b.date.slice(0, 7)) || b.status === "rejected") continue;
+    if (!months.has(b.date.slice(0, 7)) || b.status === "rejected" || b.opening) continue;
     const e = expected.get(b.id);
     if (!e && !b.tds) continue;
     const vendor = l.party(b.partyId);
@@ -256,12 +256,14 @@ export function cashReport(l: Ledger): CashReport {
     const tds = b.tds?.amountPaise ?? 0;
     place(addDays(b.date, 30), { label: `${l.party(b.partyId).name}, ${b.number}`, amountPaise: b.totals.totalPaise - tds, direction: "out", date: addDays(b.date, 30) });
   }
-  const lastMonth = gstPeriods(l).find((x) => x < monthKey(l.asOf))!;
-  const out = outwardFor(l, lastMonth);
-  const gst = setOff(out, itcFor(l, lastMonth).eligible).payable.totalPaise;
-  place(gstDueDates(lastMonth).gstr3b, { label: `GST for ${monthLabel(lastMonth)} (GSTR-3B)`, amountPaise: gst, direction: "out", date: gstDueDates(lastMonth).gstr3b });
-  const tdsDue = [...expectedTdsByBill(l).entries()].filter(([id, e]) => e && l.bill(id)!.date.startsWith(lastMonth)).reduce((a, [, e]) => a + (e?.amountPaise ?? 0), 0);
-  place(tdsDepositDue(`${lastMonth}-15`), { label: `TDS deducted in ${monthLabel(lastMonth)}`, amountPaise: tdsDue, direction: "out", date: tdsDepositDue(`${lastMonth}-15`) });
+  const lastMonth = gstPeriods(l).find((x) => x < monthKey(l.asOf));
+  if (lastMonth) {
+    const out = outwardFor(l, lastMonth);
+    const gst = setOff(out, itcFor(l, lastMonth).eligible).payable.totalPaise;
+    place(gstDueDates(lastMonth).gstr3b, { label: `GST for ${monthLabel(lastMonth)} (GSTR-3B)`, amountPaise: gst, direction: "out", date: gstDueDates(lastMonth).gstr3b });
+    const tdsDue = [...expectedTdsByBill(l).entries()].filter(([id, e]) => e && l.bill(id)!.date.startsWith(lastMonth)).reduce((a, [, e]) => a + (e?.amountPaise ?? 0), 0);
+    place(tdsDepositDue(`${lastMonth}-15`), { label: `TDS deducted in ${monthLabel(lastMonth)}`, amountPaise: tdsDue, direction: "out", date: tdsDepositDue(`${lastMonth}-15`) });
+  }
   const salaries = l.books.employees.reduce((a, e) => a + e.monthlyGrossPaise, 0);
   place(`${nextMonth(monthKey(l.asOf))}-01`, { label: "Salaries for the month", amountPaise: salaries, direction: "out", date: `${nextMonth(monthKey(l.asOf))}-01` });
   const result = weeks.map((w) => ({

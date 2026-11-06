@@ -7,6 +7,8 @@ import type {
   DeskView,
   Document,
   DocumentView,
+  ImportCheck,
+  ImportPreview,
   IngestResult,
   Invoice,
   Kpi,
@@ -33,7 +35,8 @@ import { isThankYou, leadFrom, newMessage } from "./social/inbox";
 import { draftCalendar, planMonth } from "./social/planner";
 import { ageingReport, DEFAULT_POLICY, draftReminders, openInvoices } from "./ageing";
 import { auditAll, auditFlags, auditReport } from "./audit";
-import { importReturn } from "./imports";
+import { ImportError, importReturn } from "./imports";
+import { applyImport, checkImport, importConflict, importSummary, type OnboardingPayload } from "./onboarding";
 import { addDays, dateLabel, monthKey, monthLabel } from "./dates";
 import { Ledger } from "./ledger";
 import { inr, inrShort } from "./money";
@@ -47,8 +50,8 @@ import type { OrderSource } from "./customer/orders";
 import { type CsStore, MemoryCsStore } from "./customer/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 
-/** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, and a customer the agent handed over. */
-const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff"]);
+/** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
+const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -600,6 +603,33 @@ export class OfficeService {
     return { form, period: r.period, summary: r.summary, findings };
   }
 
+  /** What bringing in these files would add, and what in them needs fixing first. */
+  checkOnboarding(req: ImportCheck): ImportPreview {
+    return checkImport(this.books, this.asOf, req).preview;
+  }
+
+  /** Puts a checked import on the Desk as one item for the owner; nothing goes into the books until it is approved. */
+  stageOnboarding(req: ImportCheck, by: string): { preview: ImportPreview; item: StagedChange | null } {
+    const { preview, payload } = checkImport(this.books, this.asOf, req);
+    if (!payload) return { preview, item: null };
+    const what = importSummary(payload.counts);
+    const n = this.books.staged.filter((s) => s.kind === "onboarding").length;
+    const item: StagedChange = {
+      id: `chg-onboarding-${n + 1}`,
+      agentId: "accountant",
+      kind: "onboarding",
+      createdAt: istNow(this.asOf),
+      title: `Bring in your books from before ${dateLabel(payload.booksFrom)}`,
+      summary: `${by} brought ${payload.files.length === 1 ? "a file" : `${payload.files.length} files`} with ${what}. Unpaid invoices and bills count towards what is owed, not towards GST returns or sales.${preview.booksFromFixed ? "" : ` Once approved, the books start on ${dateLabel(payload.booksFrom)} and that date stays fixed.`}`,
+      evidence: payload.files.map((f) => ({ label: `${f.name}, ${f.rows} row${f.rows === 1 ? "" : "s"}`, ref: { kind: "document" as const, id: null } })),
+      payload,
+      status: "pending",
+    };
+    this.books.staged.push(item);
+    this.log("accountant", `Checked ${what} that ${by} brought in. It is waiting on the Desk.`);
+    return { preview, item };
+  }
+
   /** The document could not be read at all. */
   failDocument(docId: string, reason: string) {
     const doc = this.books.documents.find((d) => d.id === docId);
@@ -612,13 +642,17 @@ export class OfficeService {
     const item = this.allStaged().find((s) => s.id === id);
     if (!item) throw new Error(`No staged change ${id}`);
     if (item.status !== "pending") return item;
+    if (item.kind === "onboarding" && decision.action === "approve") {
+      const conflict = importConflict(this.books, item.payload);
+      if (conflict) throw new ImportError(conflict);
+    }
     const decided: StagedChange = {
       ...item,
       status: decision.action === "approve" ? "approved" : "rejected",
       decidedAt: new Date().toISOString(),
       decidedBy: by,
       note: decision.note,
-      payload: { ...item.payload, ...(decision.edits ?? {}) },
+      payload: item.kind === "onboarding" ? item.payload : { ...item.payload, ...(decision.edits ?? {}) },
     };
     const idx = this.books.staged.findIndex((s) => s.id === id);
     if (idx >= 0) this.books.staged[idx] = decided;
@@ -754,6 +788,12 @@ export class OfficeService {
           this.ledger.reindex();
           this.log("accountant", `Posted bill ${bill.number} to the books.`, { kind: "document", id: bill.docId });
         }
+        break;
+      }
+      case "onboarding": {
+        const done: OnboardingPayload = applyImport(this.books, item.payload, istNow(this.asOf));
+        this.ledger.reindex();
+        this.log("accountant", `Brought in ${importSummary(done.counts)} from before ${dateLabel(done.booksFrom)}.`, { kind: "report", id: "ageing" });
         break;
       }
       case "reminder":
@@ -1175,7 +1215,7 @@ export class OfficeService {
       const current = this.books.business;
       const gstin = current.gstin || rest.business.gstin;
       const derived = gstin ? { stateCode: gstin.slice(0, 2), pan: gstin.slice(2, 12) } : {};
-      Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart }, derived);
+      Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom }, derived);
     }
     this.settingsState = { ...this.settingsState, ...rest, business: this.books.business };
     return this.settingsState;
@@ -1194,8 +1234,8 @@ export class OfficeService {
     const party = this.ledger.party(id);
     const ageing = ageingReport(this.ledger).rows.find((r) => r.partyId === id) ?? null;
     const recent: PartyView["recent"] = [];
-    for (const inv of this.ledger.salesInvoices.filter((i) => i.partyId === id).slice(-8)) recent.push({ date: inv.date, label: `Invoice ${inv.number}`, amountPaise: inv.totals.totalPaise, docId: inv.docId });
-    for (const b of this.books.bills.filter((x) => x.partyId === id).slice(-8)) recent.push({ date: b.date, label: `Bill ${b.number}`, amountPaise: b.totals.totalPaise, docId: b.docId });
+    for (const inv of this.ledger.receivableInvoices.filter((i) => i.partyId === id).slice(-8)) recent.push({ date: inv.date, label: `${inv.opening ? "Brought forward, invoice" : "Invoice"} ${inv.number}`, amountPaise: inv.totals.totalPaise, docId: inv.docId });
+    for (const b of this.books.bills.filter((x) => x.partyId === id).slice(-8)) recent.push({ date: b.date, label: `${b.opening ? "Brought forward, bill" : "Bill"} ${b.number}`, amountPaise: b.totals.totalPaise, docId: b.docId });
     for (const p of this.books.payments.filter((x) => x.partyId === id && x.date <= this.asOf).slice(-8))
       recent.push({ date: p.date, label: `${p.direction === "in" ? "Received" : "Paid"} by ${p.mode}, ${p.reference}`, amountPaise: p.direction === "in" ? -p.amountPaise : p.amountPaise, docId: null });
     recent.sort((a, b) => (a.date < b.date ? 1 : -1));

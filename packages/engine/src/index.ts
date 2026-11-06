@@ -13,6 +13,7 @@ export * from "./dispatch";
 export * from "./extract";
 export * from "./textlayer";
 export * from "./imports";
+export * from "./onboarding";
 export * from "./extract-model";
 export * from "./social";
 export * from "./whatsapp-desk";

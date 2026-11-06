@@ -1,4 +1,4 @@
-import { ambientFrom, BRAND, checkPersonaNames, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -30,9 +30,17 @@ import { morningDigest, officeWhatsApp, type WaDeps } from "./whatsapp/office";
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const MAX_MEDIA = 8 * 1024 * 1024;
+const MAX_IMPORT = 3 * IMPORT_MAX_BYTES + 10_000;
 /** Steps that bring an office's storage up to date, run once each, in order, when it wakes. */
 const SCHEMA_VERSION = 2;
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => Response.json(body, { status, headers });
+const parseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
 const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = { facebook: "meta_page", instagram: "ig_account", threads: "threads", linkedin: "linkedin", x: "x", whatsapp: "wa_phone" };
 
 /**
@@ -384,6 +392,7 @@ export class Office extends Agent<Env> {
       return json({ thread: this.office.customers.threadView(r.thread.id), notes: r.notes });
     }
     if (post && path === "/api/documents") return this.upload(request, caller);
+    if (post && (path === ROUTES.onboardingCheck || path === ROUTES.onboardingStage)) return this.onboarding(request, caller, path === ROUTES.onboardingStage);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
     const channel = /^\/api\/channels\/([a-z]+)\/(connect|callback)$/.exec(path);
     if (request.method === "GET" && channel) return channel[2] === "connect" ? this.startConnect(channel[1]!, caller) : this.finishConnect(channel[1]!, url, caller);
@@ -738,6 +747,26 @@ export class Office extends Agent<Env> {
       return json({ error: "This PDF has no text, and the page could not be pictured. Try a photo of it." }, 422);
     }
     return json(await this.readImage(id, scan));
+  }
+
+  /** Existing books, as the templates' CSVs. Staging keeps each file, so every brought-forward item links back to its row. */
+  private async onboarding(request: Request, caller: Caller, stage: boolean): Promise<Response> {
+    const text = await request.text();
+    if (text.length > MAX_IMPORT) return json({ error: "Up to 3 files of 1 MB each, please. Split a bigger file in two." }, 413);
+    const parsed = ImportCheck.safeParse(parseJson(text));
+    if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Attach the files to bring in." }, 400);
+    const preview = this.office.checkOnboarding(parsed.data);
+    if (!stage) return json(preview);
+    if (!preview.ready) return json({ error: "Some rows need fixing first.", preview }, 422);
+    const files = await Promise.all(
+      parsed.data.files.map(async (f) => {
+        const id = newDocId();
+        await this.env.DOCS.put(docKey(this.officeId!, id), f.csv, { httpMetadata: { contentType: "text/csv; charset=utf-8" }, customMetadata: { filename: f.name, by: caller.email } });
+        return { ...f, file: fileUrl(this.officeId!, id) };
+      }),
+    );
+    const r = this.office.stageOnboarding({ ...parsed.data, files }, caller.name);
+    return r.item ? json(r) : json({ error: "Some rows need fixing first.", preview: r.preview }, 422);
   }
 
   private async readItems(id: string, items: TextItem[], auto = true) {

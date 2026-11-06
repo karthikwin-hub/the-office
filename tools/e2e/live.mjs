@@ -5,8 +5,8 @@
 //
 // Signs in, lets the background reader take emailed PDFs, checks the desk,
 // approves one bill, confirms a second browser sees changes pushed over the
-// WebSocket, and that the accountant cannot approve. Screenshots go to
-// screenshots/live/.
+// WebSocket, and that the accountant cannot approve. Last, it brings in existing
+// books, which fixes the office's start date. Screenshots go to screenshots/live/.
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright";
@@ -234,6 +234,53 @@ await owner.locator(".room-slot").filter({ hasText: /office manager/i }).first()
 await owner.waitForURL(/\/rooms\/office-manager/);
 check(true, "a room still opens through the people drawn over it");
 await ownerFetch(o("/api/personas"), json("PUT", { names: {} }));
+
+// Bringing in existing books: the accountant checks and sends the files, the owner approves one Desk card,
+// and the unpaid invoice counts towards ageing with its CSV kept in R2. Last, because it fixes the books' start date.
+const asOf = (await ownerFetch(o("/api/settings"))).body?.business?.asOf;
+const booksFrom = `${asOf.slice(0, 8)}01`;
+const before = new Date(Date.parse(`${booksFrom}T00:00:00Z`) - 10 * 86_400_000).toISOString().slice(0, 10).split("-").reverse().join("/");
+const tag = Date.now().toString(36).toUpperCase();
+const csv = {
+  parties: `type,name,state,city,payment_terms_days\ncustomer,E2E Traders ${tag},Karnataka,Mysuru,30\n`,
+  "open-items": `type,number,date,party,total,outstanding\ninvoice,E2E/${tag}/1,${before},E2E Traders ${tag},"25,000","12,500"\n`,
+};
+await acct.goto(`${base}/settings`);
+const onboarding = acct.locator("section", { has: acct.getByRole("heading", { name: "Bring in your books" }) });
+await onboarding.waitFor();
+await onboarding.getByLabel("Books start on").fill(booksFrom);
+await onboarding.getByLabel("Customers and suppliers").setInputFiles({ name: "parties.csv", mimeType: "text/csv", buffer: Buffer.from(csv.parties) });
+await onboarding.getByLabel("Unpaid invoices and bills").setInputFiles({ name: "open-items.csv", mimeType: "text/csv", buffer: Buffer.from(csv["open-items"]) });
+await onboarding.getByRole("button", { name: "Check the files" }).click();
+await onboarding.locator(".onboarding-ready, [role=alert]").first().waitFor();
+check(await onboarding.locator(".onboarding-ready").isVisible(), "the accountant's files read without an issue");
+await onboarding.getByRole("button", { name: "Send to the Desk for approval" }).click();
+await onboarding.getByRole("status").filter({ hasText: "Waiting on the" }).waitFor();
+await acct.screenshot({ path: join(out, "settings-onboarding.png"), fullPage: true });
+const huge = await acct.evaluate(async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: "x".repeat(3_100_000) })).status, o("/api/onboarding/check"));
+check(huge === 413, `an import over the size limit is refused (${huge})`);
+const importCard = (await ownerFetch(o("/api/desk"))).body?.items?.find((i) => i.kind === "onboarding");
+check(Boolean(importCard), "the import waits on the owner's Desk");
+const acctImport = await acct.evaluate(async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: '{"action":"approve"}' })).status, o(`/api/desk/${importCard?.id}`));
+check(acctImport === 403, `the accountant cannot approve the import (${acctImport})`);
+await owner.goto(`${base}/desk`);
+const card = owner.locator(".approval:not(.approval-decided)").filter({ hasText: "Bring in your books" });
+await card.waitFor();
+await owner.screenshot({ path: join(out, "desk-onboarding.png") });
+await card.getByRole("button", { name: "Bring into the books" }).click();
+for (let i = 0; i < 10 && (await card.count()) > 0; i++) await owner.waitForTimeout(300);
+const ageing = (await ownerFetch(o("/api/reports/ageing"))).body;
+check(ageing?.open?.some((x) => x.number === `E2E/${tag}/1` && x.outstandingPaise === 12_500_00), "the brought-forward invoice counts towards ageing");
+const settled = (await ownerFetch(o("/api/settings"))).body?.business?.booksFrom;
+check(settled === booksFrom, `the books now start on ${settled}`);
+const kept = await owner.evaluate(async ([path, office]) => {
+  const docs = await (await fetch(path)).json();
+  const d = docs.find((x) => x.channel === "import" && x.file.startsWith(`/api/o/${office}/files/`));
+  if (!d) return null;
+  const r = await fetch(d.file);
+  return `${r.headers.get("content-type")} ${(await r.text()).split("\n")[0]}`;
+}, [o("/api/documents"), officeId]);
+check(kept === "text/csv; charset=utf-8 type,number,date,party,total,outstanding", `the CSV is kept and served back (${kept})`);
 
 await browser.close();
 if (failures.length) {

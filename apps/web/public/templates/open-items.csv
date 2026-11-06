@@ -1,0 +1,5 @@
+type,number,date,due_date,party,total,outstanding
+invoice,KE/25-26/0412,15/09/2026,15/10/2026,Sharada Builders Pvt Ltd,"1,18,000","68,000"
+invoice,KE/25-26/0437,02/10/2026,,Ravi Kumar,"4,720","4,720"
+bill,HDH-8831,20/09/2026,04/11/2026,Havells Distributors Hubli,"2,36,000","2,36,000"
+bill,NEC-17,10/10/2026,,Nagesh Electrical Contractors,"18,000","9,000"

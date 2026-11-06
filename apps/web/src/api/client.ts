@@ -10,6 +10,8 @@ import {
   type DocumentView,
   type GstReport,
   type HiringView,
+  type ImportCheck,
+  type ImportPreview,
   type IngestResult,
   type MarketingReport,
   type OfficeView,
@@ -179,6 +181,8 @@ export const api = {
   documents: () => call<Document[]>(ROUTES.documents),
   unread: () => call<Document[]>(ROUTES.unread),
   importReturn: (body: { content: string; filedOn?: string }) => call<{ form: string; period: string; summary: string; findings: number }>(ROUTES.importReturn, { method: "POST", body }),
+  checkImport: (body: ImportCheck) => call<ImportPreview>(ROUTES.onboardingCheck, { method: "POST", body }),
+  stageImport: (body: ImportCheck) => call<{ preview: ImportPreview; item: StagedChange }>(ROUTES.onboardingStage, { method: "POST", body }),
   readDocument: (id: string, items: TextItem[]) => call<IngestResult>(ROUTES.readDocument(id), { method: "POST", body: { items } }),
   /** A page with no text, pictured in the browser, for the vision model. Live office only. */
   scanDocument: async (id: string, image: Blob): Promise<IngestResult> => {

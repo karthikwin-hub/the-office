@@ -69,13 +69,29 @@ export class Ledger {
     return this.books.parties.filter((p) => p.kind === "customer");
   }
 
-  /** Posted sales invoices dated on or before the as-of date */
+  /** Posted sales invoices dated on or before the as-of date, without those brought forward: what returns and sales count. */
   get salesInvoices(): Invoice[] {
-    return this.books.invoices.filter((i) => i.status === "posted" && i.date <= this.asOf);
+    return this.receivableInvoices.filter((i) => !i.opening);
   }
 
   get postedBills(): Bill[] {
+    return this.payableBills.filter((b) => !b.opening);
+  }
+
+  /** Every posted invoice a customer can still owe on, including those brought forward: what ageing and statements count. */
+  get receivableInvoices(): Invoice[] {
+    return this.books.invoices.filter((i) => i.status === "posted" && i.date <= this.asOf);
+  }
+
+  get payableBills(): Bill[] {
     return this.books.bills.filter((b) => b.status === "posted" && b.date <= this.asOf);
+  }
+
+  /** Where returns and the year's reports start: the financial year, or later if the books were brought in partway through. */
+  get periodStart(): string {
+    const from = this.books.business.booksFrom;
+    const start = from && from > this.books.business.fyStart ? from : this.books.business.fyStart;
+    return start > this.asOf ? this.asOf : start;
   }
 
   invoicesIn(from: string, to: string): Invoice[] {

@@ -81,6 +81,10 @@ The chat snippet a business pastes into its website loads `/w/<key>.js` and talk
 
 `GET /api/o/<office>/weather` is answered by the Worker, never the office. It reads the caller's approximate location from Cloudflare (`cf.latitude`, `cf.longitude`, `cf.city`), rounds it to 0.1 degrees, and asks MET Norway's `locationforecast/2.0/compact` API, caching each rounded area for an hour with the Cache API. The request carries the User-Agent `the-office/1.0 (<BETTER_AUTH_URL>; <MAIL_FROM>)`, as MET Norway's terms require an identifying name and contact, so both must be real before go-live. No key or secret is needed. Any failure answers `{ "weather": null }` and the team simply does not mention the weather. MET Norway's data is CC BY 4.0; the credit is shown in Settings beside the skin. Persona names are kept in the office's own storage (`office_kv`, key `personas`).
 
+## 4c. Bringing in existing books
+
+Nothing to configure. The templates are static files at `/templates/parties.csv`, `/templates/products.csv` and `/templates/open-items.csv` (from `apps/web/public/templates/`). `POST /api/o/<office>/onboarding/check` reads the files and changes nothing; `POST /api/o/<office>/onboarding/stage` stores each CSV in R2 under the office's `docs/` prefix and puts one `onboarding` item on the Desk. Both are open to the owner and the accountant; only the owner approves, at any trust level. Limits: 2,000 rows and 1 MB a file, 3 files a request; the staged item must fit in about 1.5 MB, as it is kept in one row of the office's SQLite. The first approved import sets `business.booksFrom`, which then cannot change.
+
 ## 5. Social channels and WhatsApp
 
 | Platform | Where it is set up | Settings needed |

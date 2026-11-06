@@ -13,7 +13,7 @@ export function bucketOf(daysOverdue: number): number {
 
 export function openInvoices(l: Ledger): OpenInvoice[] {
   const out: OpenInvoice[] = [];
-  for (const inv of l.salesInvoices) {
+  for (const inv of l.receivableInvoices) {
     const outstanding = l.outstanding(inv.id);
     if (outstanding <= 0) continue;
     const daysOverdue = daysBetween(inv.dueDate, l.asOf);
@@ -39,7 +39,7 @@ export function paymentBehaviour(l: Ledger, partyId: string): { avgDaysLate: num
   let weighted = 0;
   let total = 0;
   let last: string | null = null;
-  for (const inv of l.salesInvoices) {
+  for (const inv of l.receivableInvoices) {
     if (inv.partyId !== partyId) continue;
     const s = l.settled(inv.id);
     if (s.lastOn && (!last || s.lastOn > last)) last = s.lastOn;
