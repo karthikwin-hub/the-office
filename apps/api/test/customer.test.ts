@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { freshText, splitCustomerDms, toSupportInbound, widgetScript } from "../src/customer/channels";
 import { CustomerDesk } from "../src/customer/desk";
 import { SqlCsStore } from "../src/customer/store";
+import { mailSender } from "../src/mail";
 
 function sqlStorage(): SqlStorage {
   const db = new DatabaseSync(":memory:");
@@ -33,7 +34,7 @@ function world(opts: { own?: boolean } = {}) {
     ai: null,
     ownKeys: async () => (opts.own ? { token: "own", phoneId: "own-number", template: null } : null),
     sharedKeys: () => ({ token: "shared", phoneId: "shared-number", template: null }),
-    mailer: { send: async (m: { to: string; raw: string }) => void mail.push(m) } as unknown as SendEmail,
+    send: mailSender({ MAIL_FROM: "office@the-office.test", MAILER: { send: async (m: { to: string; raw: string }) => void mail.push(m) } as unknown as SendEmail }),
     mailFrom: "office@the-office.test",
     businessName: "Kaveri Electricals",
     supportAddress: "kaveri.help@in.the-office.test",
@@ -49,6 +50,32 @@ beforeEach(() => {
   vi.stubGlobal("fetch", graph);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe("sending mail", () => {
+  it("goes through Resend when its key is set, threaded and from MAIL_FROM", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const fetcher = (async (url: string, init: RequestInit) => (calls.push({ url, init }), new Response("{}", { status: 200 }))) as unknown as typeof fetch;
+    const send = mailSender({ MAIL_FROM: "support@snilldai.com", RESEND_API_KEY: "re_test", MAILER: undefined }, fetcher)!;
+    const id = await send({ fromName: "Kaveri Electricals", to: "a@b.test", subject: "Re: order", body: "On its way.", replyTo: "kaveri.help@in.office.snilld.in", inReplyTo: "<x@y>" });
+    expect(calls[0]!.url).toBe("https://api.resend.com/emails");
+    expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer re_test");
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      from: "Kaveri Electricals <support@snilldai.com>",
+      to: ["a@b.test"],
+      subject: "Re: order",
+      text: "On its way.",
+      reply_to: "kaveri.help@in.office.snilld.in",
+      headers: { "Message-ID": id, "In-Reply-To": "<x@y>", References: "<x@y>" },
+    });
+    expect(id).toMatch(/@snilldai\.com>$/);
+  });
+
+  it("says why when Resend refuses, and is not set up without a key or a binding", async () => {
+    const refused = (async () => new Response("no", { status: 403 })) as unknown as typeof fetch;
+    await expect(mailSender({ MAIL_FROM: "support@snilldai.com", RESEND_API_KEY: "re_test", MAILER: undefined }, refused)!({ fromName: "x", to: "a@b.test", subject: "s", body: "b" })).rejects.toThrow(/refused the message \(403\)/);
+    expect(mailSender({ MAIL_FROM: "support@snilldai.com", MAILER: undefined })).toBeNull();
+  });
+});
 
 describe("customer email", () => {
   it("replies in the customer's thread, and their answer to that reply joins the same conversation", async () => {

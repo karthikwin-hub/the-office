@@ -7,6 +7,8 @@ export type Env = {
   AI: Ai;
   Office: DurableObjectNamespace<Office>;
   MAILER?: SendEmail;
+  /** Secret. When set, mail goes through Resend instead of MAILER, from MAIL_FROM on a domain verified there. */
+  RESEND_API_KEY?: string;
   DATA_MODE: string;
   /** "sample" opens a new office with the Kaveri Electricals sample books (local testing); otherwise it starts empty. */
   OFFICE_SEED?: string;

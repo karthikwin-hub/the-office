@@ -1,7 +1,6 @@
 import type { Role } from "@office/contracts";
 import { type CsEffect, converse, type Inbound, type OfficeService, type ReceiveResult } from "@office/engine";
-import { EmailMessage } from "cloudflare:email";
-import { plainMessage } from "../mail";
+import type { Sender } from "../mail";
 import { TEXT_MODEL, modelJson } from "../reading";
 import { sendText, type WaKeys } from "../whatsapp/cloud";
 import { type Kv, type Link, sessionFor } from "../whatsapp/links";
@@ -31,7 +30,7 @@ export type DeskDeps = {
   /** The office's own WhatsApp number. Customers are never answered from the shared number. */
   ownKeys: () => Promise<WaKeys | null>;
   sharedKeys: () => WaKeys | null;
-  mailer: SendEmail | undefined;
+  send: Sender | null;
   mailFrom: string;
   businessName: string;
   /** The address customers write to; replies say to answer there. */
@@ -84,11 +83,9 @@ export class CustomerDesk {
           if (!keys) throw new Error("Connect your own WhatsApp number in Settings to answer customers there.");
           cs.markSent(e.messageId, await sendText(keys, e.to, e.text));
         } else if (e.channel === "email") {
-          if (!this.d.mailer) throw new Error("Email is not set up for this office.");
+          if (!this.d.send) throw new Error("Email is not set up for this office.");
           const domain = this.d.mailFrom.split("@")[1] ?? "localhost";
-          const id = `<${e.messageId}@${domain}>`;
-          const raw = plainMessage({ fromName: this.d.businessName, from: this.d.mailFrom, to: e.to, replyTo: this.d.supportAddress ?? undefined, subject: e.subject ?? this.d.businessName, body: e.text, messageId: id, inReplyTo: e.inReplyTo });
-          await this.d.mailer.send(new EmailMessage(this.d.mailFrom, e.to, raw));
+          const id = await this.d.send({ fromName: this.d.businessName, to: e.to, replyTo: this.d.supportAddress ?? undefined, subject: e.subject ?? this.d.businessName, body: e.text, messageId: `<${e.messageId}@${domain}>`, inReplyTo: e.inReplyTo });
           cs.markSent(e.messageId, id);
         } else cs.markSent(e.messageId, null);
       } catch (err) {

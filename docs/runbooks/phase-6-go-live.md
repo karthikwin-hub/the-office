@@ -17,7 +17,7 @@ The product belongs to Snilld, so it runs in the **Snilld Cloudflare account**, 
 | `<customer>.office.snilld.in` | One customer's office, for example `kaveri.office.snilld.in`. Added per customer in Part 5b |
 | `demo.office.snilld.in` | The demo with sample books |
 | `in.office.snilld.in` | Inbound email: each office gets `<office-slug>@in.office.snilld.in` |
-| `mail.office.snilld.in` | Outbound email: the product sends from `office@mail.office.snilld.in` |
+| `support@snilldai.com` | Outbound email, through Resend (already set up for Clubs and Sports OS; nothing to create) |
 
 It is the same pattern as Clubs (`console.clubs.snilld.in`, `<club>.clubs.snilld.in`) and Sports OS, with one difference: those run on our VM with a wildcard certificate, while this runs on Cloudflare Workers, where each customer's address is added as its own custom domain with its own free certificate.
 
@@ -106,27 +106,12 @@ When wrangler asks **"Would you like Wrangler to add it on your behalf?"**, answ
 
 ## Part 2: Sending email (checklist item 2, blocks sign-up)
 
-Today the product can only send mail to addresses verified on the Cloudflare account. That is why new sign-ups cannot confirm their email. We need sending that reaches any address.
+All mail (sign-up confirmations, invitations, reminders, morning digests, replies to customers) goes out through **Resend** from `support@snilldai.com`, the same sender Clubs and Sports OS use. `snilldai.com` is already verified in Resend, with its SPF, DKIM and DMARC records in place, so there are **no DNS changes in this part**. `MAIL_FROM` in `apps/api/wrangler.jsonc` is already `support@snilldai.com`. The name shown is the business's name (or "Agentic Office"), and replies to a customer go back to the office's own address.
 
-The code sends through Cloudflare's `send_email` binding (`MAILER` in `apps/api/wrangler.jsonc`), from `MAIL_FROM`, which is already set to `office@mail.office.snilld.in`. The first choice is **Cloudflare Email Sending**, because it needs no code change.
-
-### 2a. Enable Cloudflare Email Sending on `mail.office.snilld.in`
-
-1. In the Snilld account, open **Email** (it may be under **Compute & AI → Email Service**; menu names change, so search for "Email Sending").
-2. Choose **Onboard a domain** (or **Add sending domain**) and enter `mail.office.snilld.in`.
-3. Cloudflare shows the DNS records it needs: SPF (TXT), DKIM (TXT or CNAME) and usually an MX record for bounces, all on `mail.office.snilld.in`. Let Cloudflare add them. If it wants to add or change any record on `snilld.in` itself, stop and ask.
-4. Wait until the domain shows as **Verified** (minutes to an hour).
-5. **If Email Sending is not offered on the account, or it says it can only send to verified addresses:** stop. Tell Puja and the engineer. The fallback is Resend, which Clubs and Sports OS already use (`support@snilldai.com`). That needs a small code change in `apps/api/src/auth.ts` and `apps/api/src/office-agent.ts`, a new secret, and a new line in the subprocessors list. It is an engineering task, not part of this runbook.
-
-### 2b. Add DMARC
-
-In **Domains → snilld.in → DNS → Records**, add:
-
-| Type | Name | Content |
-| --- | --- | --- |
-| TXT | `_dmarc.mail.office` | `v=DMARC1; p=none; rua=mailto:puja@snilldai.com` |
-
-`p=none` only reports. After four clean weeks of reports, change it to `p=quarantine`.
+1. Ask Puja for the Resend API key used for `snilldai.com` (or create one in Resend: **API Keys → Create**, permission **Sending access**, domain **snilldai.com**, name `agentic-office`).
+2. Add it to Infisical, in this project's **dev** environment, under the name `RESEND_API_KEY`. Never paste it in chat, a ticket or a file.
+3. Run `sh tools/admin/set-secrets.sh` again. It now puts `RESEND_API_KEY` on the Worker as well. No redeploy is needed for a secret.
+4. **Do not touch the MX records or any DNS record of `snilldai.com`.** Its mailbox is in use.
 
 **Check (after the deploy in Part 5):** sign up with your personal Gmail address. The confirmation email arrives within a minute and is not in spam. In Gmail, open the message, choose **Show original**, and confirm `SPF: PASS`, `DKIM: PASS` and `DMARC: PASS`. Screenshot that panel (it has no secrets) for the Log.
 

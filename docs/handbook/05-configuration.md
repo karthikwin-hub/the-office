@@ -11,7 +11,7 @@
 | `DOCS` | R2 | `office-docs` | Documents and media under `o/<officeId>/` |
 | `AI` | Workers AI | | Reading documents, transcribing voice notes, translation |
 | `Office` | Durable Object namespace | class `Office` (SQLite) | One per business |
-| `MAILER` | Send Email | | Reminders, invitations, confirmations, digests, customer service replies |
+| `MAILER` | Send Email | | Fallback sender when `RESEND_API_KEY` is not set (delivers only to addresses verified on the account); used locally |
 | `CHAT_LIMIT` | Rate limit | namespace `1001`, 20 a minute | Website chat messages, counted per widget and visitor IP; over the limit answers 429 |
 
 ## 2. Plain settings (`vars` in `wrangler.jsonc`)
@@ -19,7 +19,7 @@
 | Name | Meaning | Live value today |
 | --- | --- | --- |
 | `DATA_MODE` | `live` for the real Worker | `live` |
-| `MAIL_FROM` | The address mail is sent from | `office@mail.office.snilld.in` (sending set up in the go-live runbook, Part 2) |
+| `MAIL_FROM` | The address mail is sent from | `support@snilldai.com`, sent through Resend (go-live runbook, Part 2); the name shown is the business's |
 | `INGEST_DOMAIN` | Each office receives mail at `<slug>@INGEST_DOMAIN` | `in.office.snilld.in` (Email Routing on that subdomain, runbook Part 3) |
 | `BETTER_AUTH_URL` | The console: sign-in, invitation and confirmation links, and the social sign-in callbacks | `https://console.office.snilld.in` |
 | `APP_DOMAIN` | Optional. The bare domain shows the product page, `console.<APP_DOMAIN>` is the console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host | `office.snilld.in` |
@@ -42,11 +42,12 @@ Put with `wrangler secret put <NAME>` through Infisical, for example:
 infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 ```
 
-`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing, and puts `TURNSTILE_SECRET` on the Worker if it is in Infisical. Run it yourself, not through an agent.
+`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing, and puts `RESEND_API_KEY` and `TURNSTILE_SECRET` on the Worker if they are in Infisical. Run it yourself, not through an agent.
 
 | Name | Required | Purpose |
 | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | Yes | Signs sessions |
+| `RESEND_API_KEY` | Yes on live | Sends all mail through Resend from `MAIL_FROM` (the `snilldai.com` domain, shared with Clubs and Sports OS); without it mail falls back to `MAILER` |
 | `SOCIAL_TOKEN_KEY` | For channels and WhatsApp | Root key: per-office keys are derived from it to seal platform tokens; it also signs media links and OAuth state |
 | `META_APP_ID`, `META_APP_SECRET` | For Facebook and webhooks | The Meta app; the secret verifies webhook signatures |
 | `META_VERIFY_TOKEN` | For webhooks | Checked on Meta's webhook handshake |
@@ -67,10 +68,10 @@ In Infisical (environment `dev`), the Cloudflare deploy token for the Snilld acc
 
 | Item | What to configure | Status |
 | --- | --- | --- |
-| Sending | A domain we own, added to Cloudflare, with Email Routing enabled; `MAIL_FROM` on that domain; SPF and DKIM records. Note: the `send_email` binding delivers only to addresses verified on the Cloudflare account, so mail to arbitrary customers and new sign-ups needs a sending service (for example Amazon SES, Postmark or Resend) or Cloudflare's own email sending when available on the account. | **Open: blocks self-serve sign-up on live** |
+| Sending | Resend, from `support@snilldai.com` (domain already verified there, with SPF, DKIM and DMARC); secret `RESEND_API_KEY`. Message-ID, In-Reply-To and References are set so customer replies thread. Without the key, mail goes through the `send_email` binding, which reaches only addresses verified on the Cloudflare account | Code done; **open until `RESEND_API_KEY` is on the Worker** |
 | Receiving | A subdomain for inbound mail (for example `in.<our domain>`), an Email Routing catch-all rule sending to the Worker, and `INGEST_DOMAIN` set to it | **Open** |
 | Legacy address | `bills@the-office.example` is routed to the original office; replace when the domain is set | Open |
-| Customer service address | Hiring the Customer Service agent claims `<slug>.help@INGEST_DOMAIN` (route kind `support_email`); replies go out through `MAILER` threaded on the customer's message, with Reply-To set to that address | Works once receiving and sending are set up |
+| Customer service address | Hiring the Customer Service agent claims `<slug>.help@INGEST_DOMAIN` (route kind `support_email`); replies go out through Resend threaded on the customer's message, with Reply-To set to that address | Works once receiving and sending are set up |
 
 ## 4a. Website chat and route kinds
 
@@ -130,7 +131,7 @@ Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/adm
 | # | Item | Owner | Status |
 | --- | --- | --- | --- |
 | 1 | The product in the Snilld Cloudflare account, beside the `snilld.in` zone | Business and engineering | Open: config ready (`office.snilld.in`), the move is runbook Part 1 |
-| 2 | Sending: a provider able to reach any address; `MAIL_FROM` on `mail.office.snilld.in`; SPF, DKIM, DMARC | Engineering | **Open, blocks sign-up** |
+| 2 | Sending: Resend from `support@snilldai.com`; `RESEND_API_KEY` in Infisical and on the Worker | Engineering done; key: operator | **Open, blocks sign-up** |
 | 3 | Receiving: Email Routing catch-all on `in.office.snilld.in` | Engineering | Open: `INGEST_DOMAIN` set |
 | 4 | `office.snilld.in`, `console.office.snilld.in` and `demo.office.snilld.in` on the Workers; redirect URIs on the console | Engineering | Open: in config, attached by the first deploy in the Snilld account |
 | 5 | `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` set as Worker secrets | Engineering | Done 5 November 2026 with `tools/admin/set-secrets.sh` |

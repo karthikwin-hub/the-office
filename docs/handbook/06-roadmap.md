@@ -79,7 +79,7 @@
 | Work | Detail |
 | --- | --- |
 | Secrets on live | Done 5 November 2026: `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY` are in Infisical and on the live Worker |
-| Sending email | A provider that can reach any address; `MAIL_FROM` on our domain; SPF, DKIM, DMARC |
+| Sending email | Resend from `support@snilldai.com` (code done); `RESEND_API_KEY` on the Worker |
 | Receiving email | Email Routing catch-all on an inbound subdomain; `INGEST_DOMAIN` set |
 | Domain | **Built, to be deployed** (6 November 2026): `office.snilld.in` is the product page, `console.office.snilld.in` the sign-in, and each customer's office opens on its own address such as `kaveri.office.snilld.in`, with one sign-in across them (the Clubs and Sports OS pattern). Moving the Worker into the Snilld account, which holds `snilld.in`, is the first step of the go-live runbook |
 | Privacy and terms | **In progress.** Drafts in `docs/legal` (privacy notice, terms, data processing terms, subprocessors, a customer AI notice template) are published at `/legal/...`, with consent recorded at sign-up and self-serve account download and deletion requests. Waiting on review by a lawyer in India and the bracketed details (company name, address, grievance officer) |

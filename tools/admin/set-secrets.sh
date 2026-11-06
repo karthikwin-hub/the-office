@@ -27,9 +27,9 @@ for name in $NAMES; do
   echo "$name: put on the live Worker"
 done
 
-# Optional, and not generated: TURNSTILE_SECRET comes from the Turnstile widget in the Cloudflare dashboard.
-# Add it to Infisical yourself, and TURNSTILE_SITE_KEY to wrangler.jsonc vars; the website chat then asks for the check.
-for name in TURNSTILE_SECRET; do
+# Not generated, put when present in Infisical. RESEND_API_KEY sends all mail through Resend (from MAIL_FROM).
+# TURNSTILE_SECRET comes from the Turnstile widget in the Cloudflare dashboard; add TURNSTILE_SITE_KEY to wrangler.jsonc vars with it.
+for name in RESEND_API_KEY TURNSTILE_SECRET; do
   present=$(infisical run --env="$ENV" --silent -- sh -c "[ -n \"\${$name:-}\" ] && echo yes || echo no")
   if [ "$present" = "yes" ]; then
     infisical run --env="$ENV" --silent -- sh -c "printf %s \"\$$name\" | CLOUDFLARE_API_TOKEN=\"\$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE\" ./node_modules/.bin/wrangler secret put $name" >/dev/null

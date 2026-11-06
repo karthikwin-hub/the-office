@@ -2,11 +2,10 @@ import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, t
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
-import { EmailMessage } from "cloudflare:email";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
 import type { Env } from "./env";
 import { docKey, fileUrl, mediaKey, mediaUrl } from "./keys";
-import { plainMessage } from "./mail";
+import { mailSender } from "./mail";
 import { readPrefs, savePrefs } from "./prefs";
 import { meteredAi, QuotaError, take } from "./quota";
 import { readScan, readText } from "./reading";
@@ -259,7 +258,7 @@ export class Office extends Agent<Env> {
         return k && k.phoneId !== this.env.WHATSAPP_PHONE_NUMBER_ID ? k : null;
       },
       sharedKeys: () => this.sharedWaKeys(),
-      mailer: this.env.MAILER,
+      send: mailSender(this.env),
       mailFrom: this.env.MAIL_FROM,
       businessName: this.office.books.business.name || this.businessName,
       supportAddress: this.office.books.customerService.supportEmail,
@@ -838,7 +837,8 @@ export class Office extends Agent<Env> {
       const ref = { kind: "party" as const, id: p.partyId ?? null };
       p.attempts = (p.attempts ?? 0) + 1;
       p.triedAt = new Date().toISOString();
-      if (!this.env.MAILER || !p.to || !p.subject || !p.body) {
+      const send = mailSender(this.env);
+      if (!send || !p.to || !p.subject || !p.body) {
         p.sendError = "Email is not set up for this office.";
         this.office.log("credit-controller", `Could not send the reminder to ${p.to ?? "the customer"}: email is not set up for this office.`, ref);
         failed++;
@@ -846,8 +846,7 @@ export class Office extends Agent<Env> {
       }
       try {
         const replyTo = this.office.settings().reminderPolicy.sendFrom || this.office.books.business.email || undefined;
-        const raw = plainMessage({ fromName: this.office.books.business.name || this.businessName, from: this.env.MAIL_FROM, to: p.to, replyTo, subject: p.subject, body: p.body });
-        await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, p.to, raw));
+        await send({ fromName: this.office.books.business.name || this.businessName, to: p.to, replyTo, subject: p.subject, body: p.body });
         p.sentAt = new Date().toISOString();
         delete p.sendError;
         sent++;
@@ -881,7 +880,8 @@ export class Office extends Agent<Env> {
     const owners = users.filter((u) => u.role === "owner" && !onWhatsApp.has(u.userId));
     let emailed = 0;
     let failed = 0;
-    if (this.env.MAILER && owners.length && (pending.length || notes.length)) {
+    const send = mailSender(this.env);
+    if (send && owners.length && (pending.length || notes.length)) {
       const link = this.env.BETTER_AUTH_URL ? `${this.env.BETTER_AUTH_URL.replace(/\/$/, "")}/desk?office=${officeId}` : "";
       const body = [
         `Good morning. ${pending.length ? `${pending.length} ${pending.length === 1 ? "thing is" : "things are"} waiting on your desk at ${name}.` : `Nothing is waiting on your desk at ${name}.`}`,
@@ -894,7 +894,7 @@ export class Office extends Agent<Env> {
       for (const o of owners) {
         try {
           const subject = pending.length ? `${name}: ${pending.length} waiting on your desk` : `${name} this morning`;
-          await this.env.MAILER.send(new EmailMessage(this.env.MAIL_FROM, o.email, plainMessage({ fromName: `${name} · ${BRAND.name}`, from: this.env.MAIL_FROM, to: o.email, subject, body })));
+          await send({ fromName: `${name} · ${BRAND.name}`, to: o.email, subject, body });
           emailed++;
         } catch (e) {
           failed++;

@@ -1,10 +1,9 @@
 import { BRAND } from "@office/contracts";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { EmailMessage } from "cloudflare:email";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "./env";
-import { plainMessage } from "./mail";
+import { mailSender } from "./mail";
 import * as schema from "./schema";
 
 /**
@@ -42,10 +41,11 @@ export async function verifyPassword({ hash, password }: { hash: string; passwor
 export const verificationRequired = (env: Pick<Env, "EMAIL_VERIFICATION">) => env.EMAIL_VERIFICATION !== "off";
 
 /** One plain message from the platform's address; false when mail is not set up here. */
-export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM">, to: string, subject: string, body: string, fromName: string = BRAND.name): Promise<boolean> {
-  if (!env.MAILER) return false;
+export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM" | "RESEND_API_KEY">, to: string, subject: string, body: string, fromName: string = BRAND.name): Promise<boolean> {
+  const send = mailSender(env);
+  if (!send) return false;
   try {
-    await env.MAILER.send(new EmailMessage(env.MAIL_FROM, to, plainMessage({ fromName, from: env.MAIL_FROM, to, subject, body })));
+    await send({ fromName, to, subject, body });
     return true;
   } catch (e) {
     console.error("mail not sent", e instanceof Error ? e.message : "unknown error");
