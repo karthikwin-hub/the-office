@@ -98,7 +98,7 @@ infisical run --env=dev --silent -- sh tools/admin/cf.sh d1 create office --loca
 infisical run --env=dev --silent -- sh tools/admin/cf.sh r2 bucket create office-docs
 ```
 
-The first command prints a `database_id`. In your branch, replace `SNILLD_D1_DATABASE_ID` in `apps/api/wrangler.jsonc` with it. Keep the name `office` and the bucket name `office-docs`; the code expects them.
+When wrangler asks **"Would you like Wrangler to add it on your behalf?"**, answer **no** both times: it would rewrite `wrangler.jsonc`, dropping its comments and adding a second, wrongly named binding. The first command prints a `database_id`. In your branch, replace `SNILLD_D1_DATABASE_ID` in `apps/api/wrangler.jsonc` with it. Keep the name `office` and the bucket name `office-docs`; the code expects them.
 
 **Check:** `rg -n "SNILLD_" apps` finds nothing.
 

@@ -2,7 +2,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "the-office-mock",
-  "account_id": "SNILLD_ACCOUNT_ID",
+  "account_id": "2119b403c5ba8599154d482322cf6877",
   "compatibility_date": "2025-04-01",
   "routes": [{ "pattern": "demo.office.snilld.in", "custom_domain": true }],
   "assets": {
