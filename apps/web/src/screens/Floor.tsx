@@ -1,5 +1,5 @@
 import type { StagedChange } from "@office/contracts";
-import { ACTIONS, FloorPlan, LivingFloor, personaLabel, TeamLog } from "@office/ui";
+import { actionFor, FloorPlan, LivingFloor, personaLabel, TeamLog } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -156,7 +156,7 @@ function DeskColumn() {
             <div className="floor-desk-actions">
               {owner && !REVIEW_ON_DESK.has(i.kind) ? (
                 <button type="button" className="btn btn-primary btn-small" disabled={decide.isPending} onClick={() => decide.mutate({ id: i.id, decision: { action: "approve" } })}>
-                  {ACTIONS[i.kind].verb}
+                  {actionFor(i).verb}
                 </button>
               ) : null}
               <Link to="/desk" className="btn btn-small">

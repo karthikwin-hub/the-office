@@ -1,6 +1,6 @@
 import type { StagedChange } from "@office/contracts";
 import { AGENTS } from "@office/contracts";
-import { ACTIONS, ApprovalCard } from "@office/ui";
+import { actionFor, ApprovalCard } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { q, useDecide } from "../api/queries";
@@ -57,9 +57,9 @@ export function DeskScreen() {
             <h2 id={`desk-${a.id}`} className="desk-group-title">
               From {theAgent(a.id)}
             </h2>
-            {owner && list.length > 3 && list.every((i) => i.kind === list[0]!.kind) ? (
+            {owner && list.length > 3 && list.every((i) => actionFor(i).verb === actionFor(list[0]!).verb) ? (
               <button type="button" className="btn" disabled={decide.isPending} onClick={() => void approveAll(list)}>
-                {ACTIONS[list[0]!.kind].verb} for all {list.length}
+                {actionFor(list[0]!).verb} for all {list.length}
               </button>
             ) : null}
           </div>

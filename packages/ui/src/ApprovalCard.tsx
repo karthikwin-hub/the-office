@@ -24,6 +24,12 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   file_document: { verb: "File it", done: "Filed" },
 };
 
+/** The words for one piece of work: a ledger entry for a sales invoice records it rather than posting a bill. */
+export function actionFor(item: Pick<StagedChange, "kind" | "payload">): { verb: string; done: string } {
+  if (item.kind === "ledger_entry" && typeof item.payload.invoiceId === "string") return { verb: "Record invoice", done: "Invoice recorded" };
+  return ACTIONS[item.kind];
+}
+
 /** Payload fields the owner may rewrite before approving. */
 const EDITABLE: Record<string, string> = { subject: "Subject", body: "Message", reply: "Reply", caption: "Caption", message: "Message" };
 
@@ -49,7 +55,7 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
   const [saveTitle, setSaveTitle] = useState("");
   const { openDocument, open } = useFigures();
   const id = useId();
-  const action = ACTIONS[item.kind];
+  const action = actionFor(item);
   const agent = AGENT_BY_ID[item.agentId];
   const editable = Object.entries(item.payload).filter(([k, v]) => k in EDITABLE && typeof v === "string") as [string, string][];
   const decided = item.status !== "pending";

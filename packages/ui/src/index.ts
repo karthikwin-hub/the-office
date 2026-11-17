@@ -3,7 +3,7 @@ export { FloorPlan, type FloorPlanProps, type Plan } from "./FloorPlan";
 export { TeamLog } from "./TeamLog";
 export { LedgerTable, type LedgerColumn } from "./LedgerTable";
 export { AgeingBuckets } from "./AgeingBuckets";
-export { ApprovalCard, ACTIONS } from "./ApprovalCard";
+export { ApprovalCard, ACTIONS, actionFor } from "./ApprovalCard";
 export { TrustLevel } from "./TrustLevel";
 export { HireCard } from "./HireCard";
 export { loadPdfJs, PdfPage, SourceViewer } from "./SourceViewer";
