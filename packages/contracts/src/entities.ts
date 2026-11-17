@@ -14,6 +14,11 @@ export const Business = z.object({
   pan: z.string(),
   /** Blank until the owner enters it in Settings; a new office starts without one. */
   gstin: Gstin.or(z.literal("")),
+  /**
+   * The business's other GST registrations under the same PAN, such as a branch or a contract manufacturer's premises in another state.
+   * Each is a separate taxpayer for returns; documents printed with one of them are recognised as the business's own.
+   */
+  otherGstins: z.array(Gstin).optional(),
   tan: z.string(),
   stateCode: StateCode.or(z.literal("")),
   address: z.string(),
@@ -206,10 +211,16 @@ export const Box = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 export const Region = z.object({ key: z.string(), label: z.string(), page: z.number().int(), box: Box });
 export type Region = z.infer<typeof Region>;
 
-export const DocumentStatus = z.enum(["reading", "staged", "posted", "rejected"]);
+/** "filed" is a document kept for the record that never reaches the books, such as a proforma or a delivery note. */
+export const DocumentStatus = z.enum(["reading", "staged", "posted", "filed", "rejected"]);
+/** What the document says it is, from its printed title. Only an invoice (or bill) posts; the others are filed. */
+export const DocType = z.enum(["invoice", "proforma", "delivery_note", "credit_note", "debit_note"]);
+export type DocType = z.infer<typeof DocType>;
 export const Document = z.object({
   id: z.string(),
   kind: z.enum(["sales_invoice", "purchase_bill"]),
+  /** Absent on documents read before titles were recognised: those are invoices or bills. */
+  docType: DocType.optional(),
   refId: z.string().nullable(),
   file: z.string(),
   pages: z.number().int(),
@@ -254,6 +265,8 @@ export const Invoice = z.object({
   partyId: z.string(),
   docId: z.string(),
   placeOfSupply: StateCode,
+  /** The registration that issued it, when it is one of `business.otherGstins`: it belongs in that GSTIN's returns. */
+  gstin: Gstin.optional(),
   reverseCharge: z.boolean(),
   termsDays: z.number().int(),
   dueDate: IsoDate,
@@ -276,6 +289,8 @@ export const Bill = z.object({
   docId: z.string(),
   kind: z.enum(["goods", "service", "professional", "rent", "commission"]),
   placeOfSupply: StateCode,
+  /** The registration it was billed to, when it is one of `business.otherGstins`: its input tax credit belongs to that GSTIN. */
+  gstin: Gstin.optional(),
   lines: z.array(Line),
   totals: Totals,
   itcEligible: z.boolean(),
@@ -328,6 +343,19 @@ export const Gstr1 = z.object({
       ),
     }),
   ),
+  /** Sales to unregistered customers: intra-state ones and inter-state ones up to ₹1 lakh, summed by place of supply and rate. */
+  b2cs: z
+    .array(z.object({ sply_ty: z.enum(["INTRA", "INTER"]), pos: z.string(), typ: z.string(), rt: z.number(), txval: z.number(), iamt: z.number(), camt: z.number(), samt: z.number(), csamt: z.number() }))
+    .default([]),
+  /** Inter-state invoices to unregistered customers above ₹1 lakh, one by one. */
+  b2cl: z
+    .array(
+      z.object({
+        pos: z.string(),
+        inv: z.array(z.object({ inum: z.string(), idt: z.string(), val: z.number(), itms: z.array(z.object({ num: z.number(), itm_det: z.object({ rt: z.number(), txval: z.number(), iamt: z.number(), csamt: z.number() }) })) })),
+      }),
+    )
+    .default([]),
   hsn: z.object({
     data: z.array(
       z.object({
@@ -902,6 +930,7 @@ export const StagedKind = z.enum([
   "handoff",
   "onboarding",
   "compliance_action",
+  "file_document",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

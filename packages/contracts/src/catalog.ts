@@ -56,7 +56,7 @@ export const AGENTS: AgentDef[] = [
     team: "accounts",
     job: "Reads every sales invoice and purchase bill that arrives by email or upload, and prepares ledger entries that keep a link to the page they came from.",
     duties: ["Read invoices and bills", "Prepare ledger entries for approval", "Match bank receipts to invoices"],
-    proposes: ["ledger_entry"],
+    proposes: ["ledger_entry", "file_document"],
     countLabel: "documents read",
     livePhase: 1,
   },

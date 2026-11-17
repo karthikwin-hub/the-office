@@ -8,8 +8,11 @@ type Rule = {
   /** rate in basis points for the payee's entity type */
   rateBp: (payee: Party) => number;
   rateLabel: string;
-  /** threshold in paise; "annual" thresholds apply to the financial-year total for the payee */
-  threshold: { kind: "annual" | "monthly" | "annual-excess"; paise: number };
+  /**
+   * threshold in paise; "annual" thresholds apply to the financial-year total for the payee.
+   * `single` is a limit for one bill on its own: above it, tax is deducted whatever the year's total.
+   */
+  threshold: { kind: "annual" | "monthly" | "annual-excess"; paise: number; single?: number };
 };
 
 /**
@@ -22,7 +25,8 @@ export const TDS_RULES: Record<TdsSection, Rule> = {
     nature: "Payments to contractors",
     rateBp: (p) => (p.entity === "individual" ? 100 : 200),
     rateLabel: "1% individuals, 2% others",
-    threshold: { kind: "annual", paise: 1_00_000_00 },
+    // A single sum above ₹30,000, or ₹1 lakh in the year (s.194C(5); s.393(1) Sl. 6(i) of the 2025 Act).
+    threshold: { kind: "annual", paise: 1_00_000_00, single: 30_000_00 },
   },
   "194J": {
     nature: "Fees for professional services",
@@ -152,7 +156,8 @@ export function expectedTdsByBill(l: Ledger): Map<string, ExpectedTds | null> {
     } else {
       // A recurring contract expected to cross the annual limit is deducted from the first bill.
       const fyTotal = fyTotals.get(key) ?? 0;
-      out.set(b.id, fyTotal > rule.threshold.paise ? { section, rateBp, basePaise: base, amountPaise: bpOf(base, rateBp) } : null);
+      const single = rule.threshold.single !== undefined && base > rule.threshold.single;
+      out.set(b.id, fyTotal > rule.threshold.paise || single ? { section, rateBp, basePaise: base, amountPaise: bpOf(base, rateBp) } : null);
     }
   }
   return out;

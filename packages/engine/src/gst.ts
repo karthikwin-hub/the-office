@@ -62,6 +62,17 @@ function inPeriod(iso: string, period: string): boolean {
   return monthKey(iso) === period;
 }
 
+/** Inter-state sales to unregistered customers above this go in GSTR-1 one by one (B2CL), from 1 August 2024. */
+export const B2CL_LIMIT_PAISE = 1_00_000_00;
+
+/**
+ * The registration a document belongs to: its own `gstin` when it was issued under (or billed to) one of
+ * the business's other registrations, else the main one. Each registration files its own returns.
+ */
+export function registrationOf(l: Ledger, doc: { gstin?: string }): string {
+  return doc.gstin ?? l.books.business.gstin;
+}
+
 function ddmmyyyy(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}-${m}-${y}`;
@@ -72,11 +83,17 @@ function fp(period: string): string {
   return `${m}${y}`;
 }
 
-/** GSTR-1 in the GST portal's offline-tool JSON shape (B2B and HSN tables). */
-export function computeGstr1(l: Ledger, period: string): Gstr1 {
+/**
+ * GSTR-1 in the GST portal's offline-tool JSON shape: B2B, B2C (large and small) and HSN tables,
+ * for one registration (the main GSTIN unless another is named).
+ */
+export function computeGstr1(l: Ledger, period: string, gstin: string = l.books.business.gstin): Gstr1 {
   const rows = new Map<string, Gstr1["b2b"][number]["inv"]>();
+  const b2cl = new Map<string, Gstr1["b2cl"][number]["inv"]>();
+  const b2cs = new Map<string, Gstr1["b2cs"][number]>();
+  const home = gstin.slice(0, 2);
   const hsn = new Map<string, { hsn: string; uqc: string; rt: number; desc: string; qty: number } & TaxSplit>();
-  for (const inv of l.salesInvoices.filter((i) => inPeriod(i.date, period))) {
+  for (const inv of l.salesInvoices.filter((i) => inPeriod(i.date, period) && registrationOf(l, i) === gstin)) {
     const party = l.party(inv.partyId);
     const byRate = new Map<number, TaxSplit>();
     for (const line of inv.lines) {
@@ -87,7 +104,33 @@ export function computeGstr1(l: Ledger, period: string): Gstr1 {
       add(h, line);
       hsn.set(key, h);
     }
-    const list = rows.get(party.gstin!) ?? [];
+    const rates = [...byRate.entries()].sort((a, b) => a[0] - b[0]);
+    if (!party.gstin) {
+      // An unregistered customer: inter-state invoices above ₹1 lakh one by one, the rest summed by place of supply and rate.
+      const inter = inv.placeOfSupply !== home;
+      if (inter && inv.totals.totalPaise > B2CL_LIMIT_PAISE) {
+        const list = b2cl.get(inv.placeOfSupply) ?? [];
+        list.push({
+          inum: inv.number,
+          idt: ddmmyyyy(inv.date),
+          val: r2(inv.totals.totalPaise),
+          itms: rates.map(([rt, v]) => ({ num: rt * 100 + 1, itm_det: { rt, txval: r2(v.taxablePaise), iamt: r2(v.igstPaise), csamt: 0 } })),
+        });
+        b2cl.set(inv.placeOfSupply, list);
+      } else {
+        for (const [rt, v] of rates) {
+          const key = `${inter ? "INTER" : "INTRA"}|${inv.placeOfSupply}|${String(rt).padStart(3, "0")}`;
+          const row = b2cs.get(key) ?? { sply_ty: inter ? ("INTER" as const) : ("INTRA" as const), pos: inv.placeOfSupply, typ: "OE", rt, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+          row.txval = r2(Math.round(row.txval * 100) + v.taxablePaise);
+          row.iamt = r2(Math.round(row.iamt * 100) + v.igstPaise);
+          row.camt = r2(Math.round(row.camt * 100) + v.cgstPaise);
+          row.samt = r2(Math.round(row.samt * 100) + v.sgstPaise);
+          b2cs.set(key, row);
+        }
+      }
+      continue;
+    }
+    const list = rows.get(party.gstin) ?? [];
     list.push({
       inum: inv.number,
       idt: ddmmyyyy(inv.date),
@@ -95,19 +138,19 @@ export function computeGstr1(l: Ledger, period: string): Gstr1 {
       pos: inv.placeOfSupply,
       rchrg: inv.reverseCharge ? "Y" : "N",
       inv_typ: "R",
-      itms: [...byRate.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .map(([rt, v]) => ({
+      itms: rates.map(([rt, v]) => ({
           num: rt * 100 + 1,
           itm_det: { rt, txval: r2(v.taxablePaise), iamt: r2(v.igstPaise), camt: r2(v.cgstPaise), samt: r2(v.sgstPaise), csamt: 0 },
         })),
     });
-    rows.set(party.gstin!, list);
+    rows.set(party.gstin, list);
   }
   return {
-    gstin: l.books.business.gstin,
+    gstin,
     fp: fp(period),
     b2b: [...rows.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([ctin, inv]) => ({ ctin, inv })),
+    b2cl: [...b2cl.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([pos, inv]) => ({ pos, inv })),
+    b2cs: [...b2cs.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, row]) => row),
     hsn: {
       data: [...hsn.entries()]
         .sort((a, b) => (a[0] < b[0] ? -1 : 1))
@@ -128,8 +171,8 @@ export function computeGstr1(l: Ledger, period: string): Gstr1 {
   };
 }
 
-export function outwardFor(l: Ledger, period: string): TaxSplit & { invoices: Invoice[] } {
-  const invoices = l.salesInvoices.filter((i) => inPeriod(i.date, period));
+export function outwardFor(l: Ledger, period: string, gstin: string = l.books.business.gstin): TaxSplit & { invoices: Invoice[] } {
+  const invoices = l.salesInvoices.filter((i) => inPeriod(i.date, period) && registrationOf(l, i) === gstin);
   const t = invoices.reduce((acc, i) => add(acc, i.totals), zero());
   return { ...t, invoices };
 }
@@ -148,8 +191,8 @@ export type ItcResult = {
  * reported the invoice in GSTR-2B (CGST Act s.16(2)(aa)); without a 2B statement
  * the books figure is shown as provisional.
  */
-export function itcFor(l: Ledger, period: string): ItcResult {
-  const bills = l.postedBills.filter((b) => inPeriod(b.date, period) && b.itcEligible);
+export function itcFor(l: Ledger, period: string, gstin: string = l.books.business.gstin): ItcResult {
+  const bills = l.postedBills.filter((b) => inPeriod(b.date, period) && b.itcEligible && registrationOf(l, b) === gstin);
   const statement = l.books.gstr2b.find((g) => g.period === period);
   const reported = new Set(statement?.data.docdata.b2b.map((e) => `${e.ctin}|${e.inum}`) ?? []);
   const eligibleBills: Bill[] = [];
@@ -169,11 +212,11 @@ export function itcFor(l: Ledger, period: string): ItcResult {
   };
 }
 
-export function computeGstr3b(l: Ledger, period: string): Gstr3b {
-  const out = outwardFor(l, period);
-  const itc = itcFor(l, period).eligible;
+export function computeGstr3b(l: Ledger, period: string, gstin: string = l.books.business.gstin): Gstr3b {
+  const out = outwardFor(l, period, gstin);
+  const itc = itcFor(l, period, gstin).eligible;
   return {
-    gstin: l.books.business.gstin,
+    gstin,
     ret_period: fp(period),
     sup_details: { osup_det: { txval: r2(out.taxablePaise), iamt: r2(out.igstPaise), camt: r2(out.cgstPaise), samt: r2(out.sgstPaise), csamt: 0 } },
     itc_elg: { itc_avl: [{ ty: "OTH", iamt: r2(itc.igstPaise), camt: r2(itc.cgstPaise), samt: r2(itc.sgstPaise), csamt: 0 }] },

@@ -21,6 +21,7 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   handoff: { verb: "Send your answer", done: "Answered" },
   onboarding: { verb: "Bring into the books", done: "Brought into the books" },
   compliance_action: { verb: "Agree", done: "Agreed" },
+  file_document: { verb: "File it", done: "Filed" },
 };
 
 /** Payload fields the owner may rewrite before approving. */

@@ -150,6 +150,9 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
   const dateRaw = str(m.date);
   const out: Extraction = {
     kind,
+    // The model reads only invoices and bills; titled documents never reach it (see needsModel).
+    docType: "invoice",
+    registration: null,
     number: str(m.number),
     date: dateRaw ? parseDate(dateRaw) : null,
     partyName: party?.name ?? str(m.partyName),
@@ -174,6 +177,8 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
 
 /** The rules' reading is good enough unless it missed the number, the lines or a total that adds up. */
 export function needsModel(e: Extraction): boolean {
+  // A proforma, challan or note is filed, not posted, and its printed title is reliable: the model would only lose that.
+  if (e.docType !== "invoice") return false;
   const failed = new Set(e.checks.filter((c) => !c.ok).map((c) => c.key));
   return !e.number || !e.lines.length || failed.has("total") || failed.has("taxable") || failed.has("lines");
 }

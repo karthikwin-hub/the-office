@@ -243,7 +243,24 @@ function OfficeManagerPanel() {
   );
 }
 
-const DOC_STATUS: Record<Document["status"], string> = { reading: "Reading now", staged: "Waiting for approval", posted: "Posted", rejected: "Rejected" };
+const DOC_STATUS: Record<Document["status"], string> = { reading: "Reading now", staged: "Waiting for approval", posted: "Posted", filed: "Filed", rejected: "Rejected" };
+
+/** What a document is, from its printed title and which side of the sale the business is on. */
+function docLabel(d: Document): string {
+  const sale = d.kind === "sales_invoice";
+  switch (d.docType) {
+    case "proforma":
+      return "Proforma invoice";
+    case "delivery_note":
+      return "Delivery note";
+    case "credit_note":
+      return sale ? "Credit note issued" : "Credit note received";
+    case "debit_note":
+      return sale ? "Debit note issued" : "Debit note received";
+    default:
+      return sale ? "Sales invoice" : "Purchase bill";
+  }
+}
 
 type Intake = { key: string; name: string; state: "reading" | "done" | "failed"; message: string; staged?: StagedChange | null; docId?: string };
 
@@ -369,7 +386,7 @@ function AccountantPanel() {
           rowKey={(d) => d.id}
           columns={[
             { id: "t", header: "Received", cell: (d) => `${shortDate(d.receivedAt)}, ${time(d.receivedAt)}` },
-            { id: "k", header: "What", cell: (d) => <button type="button" className="figure-link" onClick={() => openDocument(d.id, "number")}>{d.kind === "sales_invoice" ? "Sales invoice" : "Purchase bill"}</button> },
+            { id: "k", header: "What", cell: (d) => <button type="button" className="figure-link" onClick={() => openDocument(d.id, "number")}>{docLabel(d)}</button> },
             { id: "f", header: "From", cell: (d) => d.from ?? { generated: "Your billing", upload: "Uploaded", email: "Email", whatsapp: "WhatsApp", import: "Brought in" }[d.channel], secondary: true },
             { id: "s", header: "Status", cell: (d) => DOC_STATUS[d.status] },
           ]}

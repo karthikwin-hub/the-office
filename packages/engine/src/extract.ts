@@ -1,4 +1,4 @@
-import type { Books, Line, Party, Region, Totals } from "@office/contracts";
+import type { Books, DocType, Line, Party, Region, Totals } from "@office/contracts";
 import { pctOf } from "./money";
 
 /**
@@ -15,6 +15,12 @@ export type ExtractedLine = Line & { printedTaxPaise: number };
 
 export type Extraction = {
   kind: "purchase_bill" | "sales_invoice";
+  /** What the printed title says it is. Only an invoice (or bill) is posted; the rest are filed for the record. */
+  docType: DocType;
+  /** The business's own GSTIN printed on the page: the issuing registration on a sale, the receiving one on a purchase. */
+  registration: string | null;
+  /** The tax in words, where the page prints it apart from the total ("NIL", "INR Five Hundred ... Only"). */
+  taxInWords?: string;
   number: string | null;
   date: string | null;
   partyName: string | null;
@@ -48,7 +54,8 @@ export function gstinValid(g: string): boolean {
 
 /** "1,93,070.14", "₹ 25,31,364", "Rs. 12.5", "(0.03)" to paise; null if not an amount. */
 export function parseAmount(s: string): number | null {
-  const t = s.replace(/₹|Rs\.?|INR/gi, "").replace(/\s/g, "");
+  // A rupee sign some PDFs map to another glyph (Tally's "ī169.92") is dropped like ₹.
+  const t = s.replace(/₹|Rs\.?|INR/gi, "").replace(/^[^\x00-\x7F]{1,2}(?=\s*[\d(-])/, "").replace(/\s/g, "");
   const m = /^(\()?(-)?(\d{1,3}(?:,\d{2,3})*|\d+)(?:\.(\d{1,2}))?(\))?$/.exec(t);
   if (!m) return null;
   const whole = Number(m[3]!.replace(/,/g, ""));
@@ -64,10 +71,12 @@ export function parseDate(s: string): string | null {
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
   m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t);
   if (m) return `${m[3]}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
-  m = /^(\d{1,2})[\s-]([A-Za-z]{3,9})[\s-](\d{4})$/.exec(t);
+  m = /^(\d{1,2})[\s-]([A-Za-z]{3,9})[\s-](\d{4}|\d{2})$/.exec(t);
   if (m) {
     const mi = MONTHS.indexOf(m[2]!.slice(0, 3).toLowerCase());
-    if (mi >= 0) return `${m[3]}-${String(mi + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
+    // Tally prints "9-Oct-26": a two-digit year is this century's.
+    const year = m[3]!.length === 2 ? `20${m[3]}` : m[3];
+    if (mi >= 0) return `${year}-${String(mi + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
   }
   return null;
 }
@@ -140,6 +149,31 @@ function valueFor(all: TextItem[], label: TextItem): TextItem | null {
 
 const inlineValue = (i: TextItem) => (/[:#]\s*(.+)$/.exec(i.str)?.[1] ?? i.str).trim();
 
+/** Printed titles, most specific first. "Delivery Note" is also a field label on invoices, so only the topmost title counts. */
+const TITLES: [RegExp, DocType][] = [
+  [/^pro\s*-?\s*forma\b/i, "proforma"],
+  [/^(delivery\s+(note|challan)|challan)\b/i, "delivery_note"],
+  [/^credit\s+note\b/i, "credit_note"],
+  [/^debit\s+note\b/i, "debit_note"],
+  [/^(tax\s+invoice|invoice|bill\s+of\s+supply)\b/i, "invoice"],
+];
+const isTitle = (s: string) => s.length <= 40 && TITLES.some(([re]) => re.test(s.trim()));
+
+/** The document's own title, read from the top of the first page; an untitled page is an invoice or bill. */
+export function docTypeOf(items: TextItem[]): DocType {
+  const top = items.filter((i) => i.page === 1 && i.y < 0.12 && isTitle(i.str)).sort((a, b) => a.y - b.y)[0];
+  return top ? TITLES.find(([re]) => re.test(top.str.trim()))![1] : "invoice";
+}
+
+/** Tax charged in its own row below the lines, as Tally prints it: "IGST 18%", "CGST OUTPUT MH  9 %", "Round Off". */
+const TAX_LABEL = /^(?:sales\s+|output\s+|input\s+)?(cgst|sgst|utgst|igst)\b/i;
+const TAX_ROW = /^((?:sales\s+|output\s+|input\s+)?(cgst|sgst|utgst|igst|cess)\b|round(ing)?\s*off)/i;
+
+/** An amount that may carry its unit, as in "124.58 nos" when the rate and its "per" column run together. */
+const amountOf = (s: string) => parseAmount(s) ?? parseAmount(s.replace(/\s*(?:\/\s*)?[A-Za-z]{2,4}\.?$/, ""));
+const centre = (i: TextItem) => i.x + i.w / 2;
+const overlaps = (i: TextItem, c: TextItem) => i.x < right(c) && right(i) > c.x;
+
 export type ExtractContext = Pick<Books, "business" | "parties" | "skus" | "bills" | "invoices">;
 
 export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extraction {
@@ -150,26 +184,42 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
     if (its.length) regions.push({ key, label, page: its[0]!.page, box: box(its) });
   };
   const ours = ctx.business.gstin;
+  const own = new Set([ours, ...(ctx.business.otherGstins ?? [])].filter(Boolean));
+  const docType = docTypeOf(all);
 
   const gstins = all.flatMap((i) => {
     const m = GSTIN_RE.exec(i.str);
     return m ? [{ item: i, gstin: m[1]! }] : [];
   });
   const firstGstin = gstins.sort((a, b) => a.item.page - b.item.page || a.item.y - b.item.y)[0];
-  const billedTo = all.find((i) => /^(billed to|bill to|buyer|recipient)\b/i.test(i.str.trim()));
+  // "Buyer's Order No." is a field, not the buyer.
+  const billedTo = all.find((i) => /^(billed to|bill to|buyer(?!['’]s)|recipient)\b/i.test(i.str.trim()));
   const billedToValue = billedTo ? valueFor(all, billedTo) : null;
-  const isUs = (t: string) => [ctx.business.legalName, ctx.business.name].some((n) => t.trim().toLowerCase().startsWith(n.toLowerCase()));
-  const kind: Extraction["kind"] = billedToValue ? (isUs(billedToValue.str) ? "purchase_bill" : "sales_invoice") : firstGstin?.gstin === ours ? "sales_invoice" : "purchase_bill";
-  const other = gstins.find((g) => g.gstin !== ours) ?? null;
+  // A blank name would match every buyer, so only names actually entered count.
+  const isUs = (t: string) => [ctx.business.legalName, ctx.business.name].filter((n) => n.trim()).some((n) => t.trim().toLowerCase().startsWith(n.trim().toLowerCase()));
+  const kind: Extraction["kind"] = billedToValue ? (isUs(billedToValue.str) ? "purchase_bill" : "sales_invoice") : firstGstin && own.has(firstGstin.gstin) ? "sales_invoice" : "purchase_bill";
+  const other = gstins.find((g) => !own.has(g.gstin)) ?? null;
   const partyGstin = other?.gstin ?? null;
+  const registration = gstins.find((g) => own.has(g.gstin))?.gstin ?? null;
+  const ourState = registration?.slice(0, 2) ?? ctx.business.stateCode;
 
+  const numberLabel = all.find((i) => /^(tax\s+)?(bill|invoice|inv|delivery\s+(note|challan)|challan|credit\s+note|debit\s+note)\.?\s*(no|number|#)\.?\s*[:#]?/i.test(i.str.trim()));
   const partyKind = kind === "purchase_bill" ? "vendor" : "customer";
-  const masthead = kind === "purchase_bill" ? lines[0]?.items[0] : undefined;
+  // The supplier's name heads the page, unless a title such as "Tax Invoice" sits above it.
+  const first = lines[0]?.items[0];
+  const masthead =
+    kind !== "purchase_bill"
+      ? undefined
+      : first && !isTitle(first.str)
+        ? first
+        : all.find((i) => i.page === 1 && !isTitle(i.str) && (!numberLabel || i.x < numberLabel.x - 0.01) && !/^(gstin|state|consignee|buyer|e-?mail|contact)\b/i.test(i.str));
   const pans = all.flatMap((i) => [...i.str.matchAll(/\b([A-Z]{5}\d{4}[A-Z])\b/g)].map((m) => m[1]!)).filter((p) => p !== ctx.business.pan);
   const party: Party | null =
     (partyGstin && ctx.parties.find((p) => p.gstin === partyGstin)) ||
     ctx.parties.find((p) => p.kind === partyKind && !p.gstin && pans.includes(p.pan)) ||
     (masthead && ctx.parties.find((p) => p.kind === partyKind && p.name.toLowerCase() === masthead.str.toLowerCase())) ||
+    // An unregistered customer has only a name to go by.
+    (kind === "sales_invoice" && !partyGstin && billedToValue && ctx.parties.find((p) => p.kind === "customer" && !p.gstin && p.name.toLowerCase() === billedToValue.str.trim().toLowerCase())) ||
     null;
   let partyName = party?.name ?? null;
   if (kind === "purchase_bill") {
@@ -186,7 +236,6 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
   }
   if (other) region("gstin", kind === "purchase_bill" ? "Supplier GSTIN" : "Customer GSTIN", [other.item]);
 
-  const numberLabel = all.find((i) => /^(tax\s+)?(bill|invoice|inv)\.?\s*(no|number|#)\.?\s*[:#]?/i.test(i.str.trim()));
   const numberItem = numberLabel ? valueFor(all, numberLabel) : null;
   const number = numberItem ? inlineValue(numberItem) : null;
   if (numberItem) region("number", kind === "purchase_bill" ? "Bill number" : "Invoice number", [numberItem]);
@@ -205,49 +254,75 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
 
   // Goods bought are supplied where we receive them; IGST turns on the supplier's state.
   const posItem = all.some((l) => /place of supply/i.test(l.str)) ? all.find((i) => /\((\d{2})\)\s*$/.test(i.str)) : undefined;
-  const printedPos = posItem ? /\((\d{2})\)\s*$/.exec(posItem.str)![1]! : null;
+  let printedPos = posItem ? /\((\d{2})\)\s*$/.exec(posItem.str)![1]! : null;
   if (posItem) region("pos", "Place of supply", [posItem]);
+  // Without a place of supply, goods sold go where they are shipped: Tally prints "State Name : Goa, Code : 30" under the consignee.
+  if (!printedPos && kind === "sales_invoice") {
+    const block = all.find((i) => /^(consignee|ship(ped)?\s+to|deliver(ed|y)\s+to)\b/i.test(i.str)) ?? billedTo;
+    const code = block ? all.find((i) => i.page === block.page && i.y > block.y && i.y - block.y < 0.2 && Math.abs(i.x - block.x) < 0.2 && /\bcode\s*:?\s*\d{2}\b/i.test(i.str)) : undefined;
+    if (code) {
+      printedPos = /\bcode\s*:?\s*(\d{2})\b/i.exec(code.str)![1]!;
+      region("pos", "Place of supply", [code]);
+    }
+  }
   const partyState = partyGstin?.slice(0, 2) ?? party?.stateCode ?? null;
-  const placeOfSupply = printedPos ?? (kind === "purchase_bill" ? ctx.business.stateCode : (partyState ?? ctx.business.stateCode));
-  const intra = kind === "purchase_bill" ? (partyState ?? ctx.business.stateCode) === ctx.business.stateCode : placeOfSupply === ctx.business.stateCode;
+  const placeOfSupply = printedPos ?? (kind === "purchase_bill" ? ourState : (partyState ?? ourState));
+  const intra = kind === "purchase_bill" ? (partyState ?? ourState) === ourState : placeOfSupply === ourState;
 
   // Line table: the header row names an HSN column; rows run until the totals.
   const headIdx = lines.findIndex((r) => r.items.some((i) => /^hsn/i.test(i.str.trim())));
   const extracted: ExtractedLine[] = [];
   let tableEnd = headIdx;
+  let cGst: TextItem | undefined;
+  let cTaxable: TextItem | undefined;
+  let subtotalItem: TextItem | undefined;
   if (headIdx >= 0) {
     const head = lines[headIdx]!.items;
     const col = (re: RegExp) => head.find((i) => re.test(i.str.trim()));
     const cHsn = col(/^hsn/i)!;
     const cQty = col(/^(qty|quantity)$/i);
-    const cRate = col(/^rate$/i);
+    // Tally can print two rate columns, the first headed "(Incl. of Tax)" on the row below: the rate before tax is the other one.
+    const rateCols = head.filter((i) => /^rate$/i.test(i.str.trim()));
+    const incl = (lines[headIdx + 1]?.items ?? []).find((i) => /incl/i.test(i.str));
+    const cRate = incl && rateCols.length > 1 ? [...rateCols].sort((a, b) => Math.abs(centre(b) - centre(incl)) - Math.abs(centre(a) - centre(incl)))[0] : rateCols[0];
     const cDisc = col(/^disc/i);
-    const cTaxable = col(/^(taxable|amount|value)/i);
-    const cGst = col(/^(gst|gst %|rate %|tax rate)$/i);
+    cTaxable = col(/^(taxable|amount|value)/i);
+    cGst = col(/^(gst|gst %|rate %|tax rate)$/i);
     const cTax = head.filter((i) => /^(tax|tax amt|tax amount)$/i.test(i.str.trim())).pop();
     const cDesc = col(/^(description|item|particulars)/i);
+    const serialCol = head.some((i) => /^(sl|s\.?\s*no|sr)\b/i.test(i.str.trim()));
     const near = (it: TextItem, c?: TextItem) => (c ? Math.abs(right(it) - right(c)) : Infinity);
+    // Where descriptions start when the header is centred over them, as in Tally, rather than flush with them.
+    let descLeft: number | null = null;
     for (let k = headIdx + 1; k < lines.length; k++) {
       const r = lines[k]!;
       const text = r.items.map((i) => i.str.trim());
-      if (text.some((t) => /^(taxable value|sub ?total|total)$/i.test(t))) {
+      if (text.some((t) => /^(taxable value|sub ?total|total)$/i.test(t)) || TAX_ROW.test(text[0] ?? "")) {
         tableEnd = k;
         break;
       }
       const hsnItem = r.items.find((i) => /^\d{4,8}$/.test(i.str.trim()) && Math.abs(i.x - cHsn.x) < 0.04);
       if (!hsnItem) {
         const prev = extracted[extracted.length - 1];
-        const words = r.items.filter((i) => !parseAmount(i.str) && cDesc && i.x >= cDesc.x - 0.01 && i.x < cHsn.x);
+        const words = r.items.filter((i) => !parseAmount(i.str) && i.x < cHsn.x && ((cDesc && i.x >= cDesc.x - 0.01) || (descLeft !== null && i.x >= descLeft - 0.01)));
         if (prev && words.length) prev.description += " " + words.map((w) => w.str.trim()).join(" ");
+        // Tally prints the lines' sum, unlabelled, under the amount column before the tax rows.
+        if (prev && r.items.length === 1 && cTaxable && parseAmount(r.items[0]!.str) !== null && (overlaps(r.items[0]!, cTaxable) || near(r.items[0]!, cTaxable) < 0.03)) subtotalItem = r.items[0];
         tableEnd = k;
         continue;
       }
       const n = extracted.length;
-      const desc = r.items.filter((i) => i.x < cHsn.x - 0.005 && (!cDesc || i.x >= cDesc.x - 0.01));
+      let desc = r.items.filter((i) => i !== hsnItem && i.x < cHsn.x - 0.005 && (!cDesc || i.x >= cDesc.x - 0.01));
+      if (!desc.length) {
+        desc = r.items.filter((i) => i !== hsnItem && i.x < cHsn.x - 0.005 && !/^\d{1,3}\.?$/.test(i.str.trim()));
+        if (desc.length) descLeft = Math.min(...desc.map((i) => i.x));
+      }
       const qtyItem = r.items.find((i) => /^\d+(\.\d+)?(\s+[A-Za-z]{2,4})?$/.test(i.str.trim()) && i !== hsnItem && near(i, cQty) < 0.03);
       const [qtyStr, unitStr] = (qtyItem?.str.trim() ?? "1").split(/\s+/);
-      const nums = r.items.filter((i) => i.x > cHsn.x + 0.01 && i !== qtyItem && parseAmount(i.str) !== null);
-      const pick = (c?: TextItem) => (c ? nums.filter((i) => near(i, c) < 0.03).sort((a, b) => near(a, c) - near(b, c))[0] : undefined);
+      const nums = r.items.filter((i) => i.x > cHsn.x + 0.01 && i !== qtyItem && amountOf(i.str) !== null);
+      // Right-aligned figures under a centred header sit off its right edge; then the column it overlaps decides.
+      const pick = (c?: TextItem) =>
+        c ? (nums.filter((i) => near(i, c) < 0.03).sort((a, b) => near(a, c) - near(b, c))[0] ?? nums.filter((i) => overlaps(i, c)).sort((a, b) => Math.abs(centre(a) - centre(c)) - Math.abs(centre(b) - centre(c)))[0]) : undefined;
       const rateItem = pick(cRate);
       const taxableItem = pick(cTaxable);
       const taxItem = pick(cTax);
@@ -255,9 +330,11 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
       const gstItem = pctItems.sort((a, b) => near(a, cGst) - near(b, cGst))[0];
       const discItem = cDisc ? pctItems.filter((i) => i !== gstItem).sort((a, b) => near(a, cDisc) - near(b, cDisc))[0] : undefined;
       const gstRate = gstItem ? Number(gstItem.str.replace("%", "")) : 0;
-      const taxable = taxableItem ? parseAmount(taxableItem.str)! : 0;
-      const tax = taxItem ? parseAmount(taxItem.str)! : 0;
-      const descText = desc.map((i) => i.str.trim()).join(" ");
+      const taxable = taxableItem ? amountOf(taxableItem.str)! : 0;
+      const tax = taxItem ? amountOf(taxItem.str)! : 0;
+      let descText = desc.map((i) => i.str.trim()).join(" ");
+      // The serial number runs into the description when the two columns touch.
+      if (serialCol) descText = descText.replace(/^\d{1,3}\.?\s+(?=\D)/, "");
       const sku = ctx.skus.find((s) => s.name.toLowerCase() === descText.toLowerCase()) ?? null;
       const unit = (unitStr ?? "OTH").toUpperCase();
       const half = pctOf(taxable, gstRate * 50);
@@ -267,7 +344,7 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
         hsn: hsnItem.str.trim(),
         qty: Math.round(Number(qtyStr)),
         unit,
-        ratePaise: rateItem ? parseAmount(rateItem.str)! : taxable,
+        ratePaise: rateItem ? amountOf(rateItem.str)! : taxable,
         discountPct: discItem ? Number(discItem.str.replace("%", "")) : 0,
         taxablePaise: taxable,
         gstRate,
@@ -285,13 +362,15 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
       tableEnd = k;
     }
   }
+  // A description that ran on to the next row can now name a product.
+  for (const l of extracted) l.skuId ??= ctx.skus.find((s) => s.name.toLowerCase() === l.description.toLowerCase())?.id ?? null;
 
   const totals: Totals = { taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, roundOffPaise: 0, totalPaise: 0 };
   const TOTAL_ROWS: [RegExp, keyof Totals, string, string][] = [
     [/^(taxable value|sub ?total|taxable amount)/i, "taxablePaise", "totals.taxable", "Taxable value"],
-    [/^cgst/i, "cgstPaise", "totals.cgst", "CGST"],
-    [/^sgst|^utgst/i, "sgstPaise", "totals.sgst", "SGST"],
-    [/^igst/i, "igstPaise", "totals.igst", "IGST"],
+    [/^(?:sales\s+|output\s+|input\s+)?cgst/i, "cgstPaise", "totals.cgst", "CGST"],
+    [/^(?:sales\s+|output\s+|input\s+)?(sgst|utgst)/i, "sgstPaise", "totals.sgst", "SGST"],
+    [/^(?:sales\s+|output\s+|input\s+)?igst/i, "igstPaise", "totals.igst", "IGST"],
     [/^round(ing)?\s*off/i, "roundOffPaise", "totals.roundOff", "Round off"],
     [/^(grand total|invoice total|total amount|amount payable|total)$/i, "totalPaise", "totals.total", "Invoice total"],
   ];
@@ -309,10 +388,47 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
       break;
     }
   }
+
+  // Tally prints no "Taxable value" row: take the unlabelled subtotal, else the Total row of the HSN summary, else the lines.
+  if (!seen.has("taxablePaise") && extracted.length) {
+    let from = subtotalItem;
+    if (!from) {
+      const sIdx = lines.findIndex((r, k) => k > headIdx && r.items.some((i) => /^hsn/i.test(i.str.trim())) && r.items.some((i) => /^taxable/i.test(i.str.trim())));
+      const head = sIdx >= 0 ? lines[sIdx]!.items.find((i) => /^taxable/i.test(i.str.trim()))! : undefined;
+      const totalRow = head ? lines.slice(sIdx + 1).find((r) => r.items.some((i) => /^total$/i.test(i.str.trim()))) : undefined;
+      from = head && totalRow ? totalRow.items.filter((i) => parseAmount(i.str) !== null && overlaps(i, head)).sort((a, b) => Math.abs(centre(a) - centre(head)) - Math.abs(centre(b) - centre(head)))[0] : undefined;
+    }
+    if (from) {
+      totals.taxablePaise = parseAmount(from.str)!;
+      region("totals.taxable", "Taxable value", [from]);
+    } else totals.taxablePaise = extracted.reduce((a, l) => a + l.taxablePaise, 0);
+  }
+
+  // No GST column on the lines: the rate printed on the tax rows applies to every line, when there is just one.
+  if (!cGst && extracted.length && extracted.every((l) => l.gstRate === 0)) {
+    const rates = new Set<number>();
+    for (const r of lines.slice(Math.max(tableEnd, 0))) {
+      const m = /^(?:sales\s+|output\s+|input\s+)?(cgst|sgst|utgst|igst)\b.*?(\d{1,2}(?:\.\d+)?)\s*%/i.exec(r.items.map((i) => i.str.trim()).join(" "));
+      if (m && TAX_LABEL.test(r.items[0]?.str.trim() ?? "")) rates.add(Number(m[2]) * (m[1]!.toLowerCase() === "igst" ? 1 : 2));
+    }
+    const rate = rates.size === 1 ? [...rates][0]! : null;
+    if (rate !== null && Number.isInteger(rate))
+      for (const l of extracted) {
+        const half = pctOf(l.taxablePaise, rate * 50);
+        Object.assign(l, { gstRate: rate, cgstPaise: intra ? half : 0, sgstPaise: intra ? half : 0, igstPaise: intra ? 0 : pctOf(l.taxablePaise, rate * 100) });
+        l.printedTaxPaise = l.cgstPaise + l.sgstPaise + l.igstPaise;
+      }
+  }
+
   const words = all.find((i) => /^(rupees|indian rupees|inr)\b.*\bonly\.?$/i.test(i.str.trim()));
   if (words) region("totals.words", "Amount in words", [words]);
+  const taxWordsLabel = all.find((i) => /^tax amount \(in words\)/i.test(i.str.trim()));
+  const taxWordsItem = taxWordsLabel
+    ? (/[:]\s*(\S.*)$/.test(taxWordsLabel.str) ? taxWordsLabel : all.filter((i) => i.page === taxWordsLabel.page && Math.abs(i.y - taxWordsLabel.y) < 0.005 && i.x > taxWordsLabel.x).sort((a, b) => a.x - b.x)[0])
+    : undefined;
+  const taxInWords = taxWordsItem ? inlineValue(taxWordsItem) : undefined;
 
-  const out: Extraction = { kind, number, date, partyName, partyGstin, partyId: party?.id ?? null, placeOfSupply, intra, lines: extracted, totals, regions, checks: [], method: "rules" };
+  const out: Extraction = { kind, docType, registration, ...(taxInWords ? { taxInWords } : {}), number, date, partyName, partyGstin, partyId: party?.id ?? null, placeOfSupply, intra, lines: extracted, totals, regions, checks: [], method: "rules" };
   out.checks = checkExtraction(out, ctx);
   return out;
 }
@@ -327,11 +443,19 @@ const inr = (p: number) => `₹${(p / 100).toFixed(2)}`;
 export function checkExtraction(e: Extraction, ctx: ExtractContext): Check[] {
   const checks: Check[] = [];
   const add = (key: string, label: string, ok: boolean, detail: string) => checks.push({ key, label, ok, detail });
-  add("number", "Document number found", Boolean(e.number), e.number ?? "No bill or invoice number was found.");
+  const posts = e.docType === "invoice";
+  add("number", "Document number found", Boolean(e.number), e.number ?? "No document number was found.");
   add("date", "Date found", Boolean(e.date), e.date ?? "No date was found.");
   if (e.partyGstin) add("gstin", "GSTIN is valid", gstinValid(e.partyGstin), gstinValid(e.partyGstin) ? e.partyGstin : `${e.partyGstin} fails the GSTIN check digit.`);
-  add("party", e.kind === "purchase_bill" ? "Supplier is known" : "Customer is known", Boolean(e.partyId), e.partyId ? (e.partyName ?? "") : `${e.partyName ?? "This party"} is not in your books yet; approving adds them.`);
+  const unknown = posts ? `${e.partyName ?? "This party"} is not in your books yet; approving adds them.` : `${e.partyName ?? "This party"} is not in your books.`;
+  add("party", e.kind === "purchase_bill" ? "Supplier is known" : "Customer is known", Boolean(e.partyId), e.partyId ? (e.partyName ?? "") : unknown);
   add("lines", "Line items read", e.lines.length > 0, `${e.lines.length} line${e.lines.length === 1 ? "" : "s"}`);
+  if (e.docType === "delivery_note") {
+    // A challan carries goods, not a sale; rule 55 still wants their value and tax on it.
+    const valued = e.totals.totalPaise > 0 || e.lines.some((l) => l.taxablePaise > 0);
+    add("value", "Value of the goods printed", valued, valued ? inr(e.totals.totalPaise || e.lines.reduce((a, l) => a + l.taxablePaise, 0)) : "No value or tax is printed. A delivery challan should show the taxable value and tax of the goods it carries (CGST Rules, rule 55).");
+    return checks;
+  }
 
   const badLines = e.lines.filter((l) => l.unit !== "OTH" && Math.abs(Math.round((l.qty * l.ratePaise * (100 - l.discountPct)) / 100) - l.taxablePaise) > 100);
   add("line-math", "Each line is quantity times rate", badLines.length === 0, badLines.length ? `Line ${e.lines.indexOf(badLines[0]!) + 1} does not multiply out.` : "All lines multiply out.");
@@ -348,6 +472,11 @@ export function checkExtraction(e: Extraction, ctx: ExtractContext): Check[] {
   add("split", intra ? "Charged as CGST and SGST (same state)" : "Charged as IGST (other state)", splitOk || tax === 0, splitOk ? "Matches the place of supply." : "The tax type does not match the place of supply.");
   const sum = e.totals.taxablePaise + tax + e.totals.roundOffPaise;
   add("total", "Total is taxable value plus tax and round off", sum === e.totals.totalPaise && e.totals.totalPaise > 0, `${inr(sum)} against ${inr(e.totals.totalPaise)} printed`);
+  if (e.taxInWords !== undefined) {
+    const nil = /^nil\b/i.test(e.taxInWords);
+    add("tax-words", "Tax in words agrees with the tax charged", nil === (tax === 0), nil && tax > 0 ? `The tax in words says NIL, but ${inr(tax)} is charged.` : e.taxInWords);
+  }
+  if (!posts) return checks;
 
   const dup =
     e.number && e.partyId

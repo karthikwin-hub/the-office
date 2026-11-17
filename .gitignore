@@ -20,3 +20,6 @@ tools/exports/out/
 
 # Rendered promo videos from tools/promo/render.mjs
 tools/promo/out/
+
+# Prospect sample documents: real client data, never committed
+docs/data_samples/

@@ -6,6 +6,7 @@ import type {
   BooksRecordView,
   Decision,
   DeskView,
+  DocType,
   Document,
   DocumentView,
   ImportCheck,
@@ -43,9 +44,10 @@ import { applyImport, checkImport, importConflict, importSummary, type Onboardin
 import { addDays, dateLabel, monthKey, monthLabel } from "./dates";
 import { Ledger } from "./ledger";
 import { inr, inrShort } from "./money";
-import { extractInvoice, type Extraction, type TextItem } from "./extract";
+import { extractInvoice, type Extraction, gstinValid, type TextItem } from "./extract";
 import { gstReport, salesReport, tdsReport } from "./reports";
 import { expectedTdsByBill } from "./tds";
+import { B2CL_LIMIT_PAISE } from "./gst";
 import { marketingReport, operationsReport, peopleReport, salesTeamReport, socialReport } from "./teams";
 import { MemoryRoutineLog, type RoutineLog } from "./routines";
 import { CustomerService } from "./customer/desk";
@@ -57,6 +59,8 @@ import { fyOf } from "./compliance/profile";
 import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YEARS, type Snapshot, snapshot, verifyChain } from "./bookslog";
 
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
+/** What the owner is asked to file, by its printed title. */
+const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = { proforma: "proforma invoice", delivery_note: "delivery note", credit_note: "credit note", debit_note: "debit note" };
 const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
@@ -525,12 +529,18 @@ export class OfficeService {
   stageExtraction(docId: string, e: Extraction): StagedChange {
     const doc = this.books.documents.find((d) => d.id === docId);
     if (!doc) throw new Error(`No document ${docId}`);
-    const prior = this.books.staged.find((s) => s.kind === "ledger_entry" && (s.payload as { docId?: string }).docId === docId);
+    const prior = this.books.staged.find((s) => (s.kind === "ledger_entry" || s.kind === "file_document") && (s.payload as { docId?: string }).docId === docId);
     if (prior) return prior;
     const failed = e.checks.filter((c) => !c.ok);
     const dup = failed.find((c) => c.key === "duplicate");
     doc.kind = e.kind;
+    doc.docType = e.docType;
     doc.regions = e.regions;
+    if (e.docType !== "invoice") return this.stageFiling(doc, e);
+    const biz = this.books.business;
+    // Another of the business's registrations: a separate taxpayer, so its documents feed that GSTIN's returns.
+    const elsewhere = e.registration && e.registration !== biz.gstin ? e.registration : null;
+    const regNote = elsewhere ? ` ${e.kind === "purchase_bill" ? "Billed to" : "Issued under"} your ${this.books.states[elsewhere.slice(0, 2)] ?? `state ${elsewhere.slice(0, 2)}`} registration ${elsewhere}: it counts in that GSTIN's returns, not ${biz.gstin}'s.` : "";
 
     const partyKind = e.kind === "purchase_bill" ? "vendor" : "customer";
     let partyId = e.partyId;
@@ -544,7 +554,8 @@ export class OfficeService {
         entity: /\b(pvt|ltd|limited)\b/i.test(name) ? "company" : /\b(llp|& co|traders|associates|enterprises)\b/i.test(name) ? "firm" : "individual",
         gstin: e.partyGstin,
         pan: e.partyGstin?.slice(2, 12) ?? "",
-        stateCode: e.partyGstin?.slice(0, 2) ?? this.books.business.stateCode,
+        // An unregistered customer is placed where the goods went.
+        stateCode: e.partyGstin?.slice(0, 2) ?? (partyKind === "customer" ? e.placeOfSupply : null) ?? this.books.business.stateCode,
         city: "",
         contact: { name: "", phone: "", email: doc.from ?? "" },
         ...(partyKind === "customer" ? { paymentTermsDays: 30 } : {}),
@@ -563,24 +574,29 @@ export class OfficeService {
 
     if (e.kind === "purchase_bill") {
       const id = `bill-${docId.replace(/^doc-/, "")}`;
-      const bill: Bill = { id, number, date, partyId, docId, kind: party.supplyKind ?? "goods", placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, lines, totals: e.totals, itcEligible: Boolean(e.partyGstin) && tax > 0, tds: null, status: dup ? "rejected" : "staged" };
+      const bill: Bill = { id, number, date, partyId, docId, kind: party.supplyKind ?? "goods", placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, ...(elsewhere ? { gstin: elsewhere } : {}), lines, totals: e.totals, itcEligible: Boolean(e.partyGstin) && tax > 0, tds: null, status: dup ? "rejected" : "staged" };
       this.books.bills.push(bill);
       this.ledger.reindex();
       bill.tds = dup ? null : (expectedTdsByBill(this.ledger).get(id) ?? null);
       doc.refId = id;
       payload.billId = id;
       title = `Post bill ${number} from ${party.name}, ₹${inr(e.totals.totalPaise, { rupees: e.totals.totalPaise % 100 === 0 })}`;
-      summary = `${items}; input tax ₹${inr(tax)}${bill.itcEligible ? "" : " (no credit: the supplier is not registered)"}. ${bill.tds ? `TDS under ${bill.tds.section} of ₹${inr(bill.tds.amountPaise)} to be deducted on payment.` : "No TDS applies."}`;
+      summary = `${items}; input tax ₹${inr(tax)}${bill.itcEligible ? "" : " (no credit: the supplier is not registered)"}. ${bill.tds ? `TDS under ${bill.tds.section} of ₹${inr(bill.tds.amountPaise)} to be deducted on payment.` : "No TDS applies."}${regNote}`;
     } else {
       const id = `inv-${docId.replace(/^doc-/, "")}`;
       const terms = party.paymentTermsDays ?? 30;
-      const invoice: Invoice = { id, number, date, partyId, docId, placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, reverseCharge: false, termsDays: terms, dueDate: addDays(date, terms), lines, totals: e.totals, status: dup ? "cancelled" : "staged" };
+      const invoice: Invoice = { id, number, date, partyId, docId, placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, ...(elsewhere ? { gstin: elsewhere } : {}), reverseCharge: false, termsDays: terms, dueDate: addDays(date, terms), lines, totals: e.totals, status: dup ? "cancelled" : "staged" };
       this.books.invoices.push(invoice);
       this.ledger.reindex();
       doc.refId = id;
       payload.invoiceId = id;
       title = `Record sales invoice ${number} to ${party.name}, ₹${inr(e.totals.totalPaise, { rupees: e.totals.totalPaise % 100 === 0 })}`;
-      summary = `${items}; output tax ₹${inr(tax)}. Due ${dateLabel(invoice.dueDate)} on ${terms}-day terms.`;
+      summary = `${items}; output tax ₹${inr(tax)}. Due ${dateLabel(invoice.dueDate)} on ${terms}-day terms.${regNote}`;
+      if (!party.gstin) {
+        const inter = invoice.placeOfSupply !== (elsewhere ?? biz.gstin).slice(0, 2);
+        const large = inter && e.totals.totalPaise > B2CL_LIMIT_PAISE;
+        summary += ` The customer has no GSTIN, so GSTR-1 reports it under ${large ? "B2C large, invoice by invoice" : `B2C small, summed by place of supply (${this.books.states[invoice.placeOfSupply] ?? invoice.placeOfSupply}) and rate`}.`;
+      }
     }
     const toCheck = failed.filter((c) => c.key !== "duplicate");
     if (toCheck.length) summary += ` Check before approving: ${toCheck.map((c) => `${c.label.toLowerCase()} (${c.detail})`).join("; ")}.`;
@@ -608,6 +624,56 @@ export class OfficeService {
       dup ? `Set aside ${number} from ${party.name}: ${dup.detail}` : `Read ${number} from ${party.name}${toCheck.length ? `; ${toCheck.length === 1 ? "one check needs" : `${toCheck.length} checks need`} a look` : ""}.`,
       { kind: "document", id: docId },
     );
+    return item;
+  }
+
+  /**
+   * A proforma, delivery note, or credit or debit note is read and kept for the record. Nothing reaches the books,
+   * the stock or the returns; the card asks the owner to file it and says what is worth a look.
+   */
+  private stageFiling(doc: Document, e: Extraction): StagedChange {
+    const party = e.partyId ? this.ledger.findParty(e.partyId) : undefined;
+    const who = party?.name ?? e.partyName ?? (e.kind === "purchase_bill" ? "a supplier" : "a customer");
+    const number = e.number ?? `Unnumbered ${doc.id}`;
+    const what = FILED_NAMES[e.docType as Exclude<DocType, "invoice">];
+    const What = `${what[0]!.toUpperCase()}${what.slice(1)}`;
+    const toFrom = e.kind === "purchase_bill" ? "from" : "to";
+    const total = e.totals.totalPaise;
+    const qty = e.lines.reduce((a, l) => a + l.qty, 0);
+    const units = [...new Set(e.lines.map((l) => l.unit.toLowerCase()))];
+    const qtyText = `${qty} ${units.length === 1 && units[0] !== "oth" ? units[0] : "units"}`;
+    let title: string;
+    let summary: string;
+    if (e.docType === "delivery_note") {
+      title = `File delivery note ${number}: ${qtyText} ${toFrom} ${who}`;
+      summary = "Goods moved under a challan, not sold: nothing goes into the books or GSTR-1, and stock levels are not changed.";
+    } else if (e.docType === "proforma") {
+      title = `File proforma invoice ${number} ${toFrom} ${who}, ₹${inr(total)}`;
+      summary = "A proforma is an offer, not a sale: it does not go into the books or GSTR-1. A tax invoice is raised when the goods go out.";
+      if (e.lines.length && e.lines.every((l) => l.ratePaise > 0 && l.ratePaise <= 100)) summary += ` Every line is priced at ₹${inr(e.lines[0]!.ratePaise)} a unit; check whether these are samples or a placeholder before the tax invoice is raised.`;
+    } else {
+      title = `File ${what} ${number} ${toFrom} ${who}, ₹${inr(total)}`;
+      summary = `${What}s are not posted yet: it is kept for your accountant and does not change what is owed or the GST returns.`;
+    }
+    const worth = e.checks.filter((c) => !c.ok && c.key !== "party");
+    if (worth.length) summary += ` Worth a look: ${worth.map((c) => c.detail).join(" ")}`;
+    const item: StagedChange = {
+      id: `chg-${doc.id}`,
+      agentId: "accountant",
+      kind: "file_document",
+      createdAt: istNow(this.asOf),
+      title,
+      summary,
+      evidence: [
+        { label: `${What} number`, ref: { kind: "document", id: doc.id, region: "number" } },
+        ...(total ? [{ label: "Total", ref: { kind: "document" as const, id: doc.id, region: "totals.total" } }] : []),
+      ],
+      payload: { docId: doc.id, docType: e.docType, number, date: e.date, partyId: party?.id ?? null, partyName: who, partyGstin: e.partyGstin, totalPaise: total, qty, checks: e.checks, method: e.method },
+      status: "pending",
+    };
+    this.books.staged.push(item);
+    doc.status = "staged";
+    this.log("accountant", `Read ${what} ${number} ${toFrom} ${who}; it is filed, not posted.`, { kind: "document", id: doc.id });
     return item;
   }
 
@@ -639,6 +705,7 @@ export class OfficeService {
       return { document, staged: null, message: "This does not look like a GST invoice or bill." };
     }
     const staged = this.stageExtraction(docId, e);
+    if (staged.kind === "file_document") return { document, staged, message: `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.` };
     const failed = e.checks.filter((c) => !c.ok);
     const why = auto ? this.routine(staged) : null;
     const [posted] = why ? this.runTrusted([staged]) : [];
@@ -823,6 +890,11 @@ export class OfficeService {
       this.books.posts = this.books.posts.filter((p) => !(ids.has(p.id) && p.status === "draft"));
       return;
     }
+    if (item.kind === "file_document") {
+      const doc = this.books.documents.find((d) => d.id === (item.payload as { docId?: string }).docId);
+      if (doc) doc.status = "rejected";
+      return;
+    }
     if (item.kind !== "ledger_entry") return;
     const p = item.payload as { billId?: string; invoiceId?: string };
     const bill = p.billId ? this.books.bills.find((b) => b.id === p.billId) : undefined;
@@ -855,6 +927,12 @@ export class OfficeService {
           this.ledger.reindex();
           this.log("accountant", `Posted bill ${bill.number} to the books.`, { kind: "document", id: bill.docId });
         }
+        break;
+      }
+      case "file_document": {
+        const doc = this.books.documents.find((d) => d.id === p.docId);
+        if (doc) doc.status = "filed";
+        this.log("accountant", `Filed ${FILED_NAMES[p.docType as Exclude<DocType, "invoice">] ?? "the document"} ${p.number ?? ""} for the record.`, { kind: "document", id: p.docId ?? null });
         break;
       }
       case "onboarding": {
@@ -1289,7 +1367,11 @@ export class OfficeService {
       const current = this.books.business;
       const gstin = current.gstin || rest.business.gstin;
       const derived = gstin ? { stateCode: gstin.slice(0, 2), pan: gstin.slice(2, 12) } : {};
+      // Other registrations share the PAN, so each must be a valid GSTIN with the main one's PAN in it.
+      const others = [...new Set((rest.business.otherGstins ?? current.otherGstins ?? []).map((g) => g.trim().toUpperCase()))].filter((g) => g !== gstin && gstinValid(g) && (!gstin || g.slice(2, 12) === gstin.slice(2, 12)));
       Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom, compliance: current.compliance }, derived);
+      if (others.length) current.otherGstins = others;
+      else delete current.otherGstins;
       if (!current.compliance) delete current.compliance;
     }
     this.settingsState = { ...this.settingsState, ...rest, business: this.books.business };

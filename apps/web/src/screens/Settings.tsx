@@ -29,14 +29,20 @@ function BusinessForm({ b }: { b: Business }) {
   const [saved, setSaved] = useState(false);
   const gstin = form.gstin.trim().toUpperCase();
   const gstinBad = !b.gstin && gstin !== "" && !Gstin.safeParse(gstin).success;
+  // Other registrations are the same legal entity in other states, so they carry the same PAN.
+  const [others, setOthers] = useState((b.otherGstins ?? []).join(", "));
+  const otherList = others.split(/[\s,]+/).map((g) => g.trim().toUpperCase()).filter(Boolean);
+  const pan = (b.gstin || gstin).slice(2, 12);
+  const othersBad = otherList.some((g) => !Gstin.safeParse(g).success || (pan.length === 10 && g.slice(2, 12) !== pan));
   const turnover = Number(form.turnover.replace(/[,\s]/g, ""));
   const save = useMutation({
     mutationFn: () => {
       const { turnover: _t, ...business } = form;
-      return api.saveSettings({ business: { ...business, gstin: b.gstin || gstin, tan: form.tan.trim().toUpperCase(), prevYearTurnoverPaise: Math.round((Number.isFinite(turnover) ? turnover : 0) * 100) } });
+      return api.saveSettings({ business: { ...business, gstin: b.gstin || gstin, otherGstins: otherList, tan: form.tan.trim().toUpperCase(), prevYearTurnoverPaise: Math.round((Number.isFinite(turnover) ? turnover : 0) * 100) } });
     },
     onSuccess: (s) => {
       setForm({ ...s.business, turnover: String(Math.round(s.business.prevYearTurnoverPaise / 100)) });
+      setOthers((s.business.otherGstins ?? []).join(", "));
       setSaved(true);
       void qc.invalidateQueries();
     },
@@ -71,6 +77,24 @@ function BusinessForm({ b }: { b: Business }) {
             <input id="b-gstin" className="input code" value={b.gstin || form.gstin} readOnly={Boolean(b.gstin)} maxLength={15} placeholder="27ABCDE1234F1Z5" aria-invalid={gstinBad} aria-describedby="b-gstin-help" onChange={set("gstin")} />
             <span id="b-gstin-help" className="field-help">{b.gstin ? `State ${b.stateCode}, PAN ${b.pan}. Fixed once entered.` : gstinBad ? "That is not a valid GSTIN: 15 characters, starting with the state code." : "Sets your state and PAN. It cannot be changed later."}</span>
           </div>
+          <div className="field">
+            <label htmlFor="b-others">Other GST registrations</label>
+            <input
+              id="b-others"
+              className="input code"
+              value={others}
+              placeholder="24ABCDE1234F1Z2"
+              aria-invalid={othersBad}
+              aria-describedby="b-others-help"
+              onChange={(e) => {
+                setSaved(false);
+                setOthers(e.target.value);
+              }}
+            />
+            <span id="b-others-help" className="field-help">
+              {othersBad ? "Each must be a valid GSTIN with the same PAN as yours." : "Branches or premises in other states, separated by commas. Documents printed with them are read as yours, and kept apart in each GSTIN's returns."}
+            </span>
+          </div>
           {text("tan", "TAN", { className: "code", placeholder: "MUMA12345B" })}
           {text("owner", "Your name", { placeholder: "How your agents address you" })}
           {text("email", "Business email", { type: "email" })}
@@ -94,7 +118,7 @@ function BusinessForm({ b }: { b: Business }) {
           </div>
         </div>
         <div className="approval-actions">
-          <button type="submit" className="btn btn-primary" disabled={save.isPending || gstinBad || !form.name.trim()}>
+          <button type="submit" className="btn btn-primary" disabled={save.isPending || gstinBad || othersBad || !form.name.trim()}>
             Save business
           </button>
           {saved ? <span role="status">Business saved</span> : null}
