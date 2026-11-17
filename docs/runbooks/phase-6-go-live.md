@@ -259,7 +259,7 @@ To take an address away: `admin.mjs subdomain off_xxxxxxxxxxxxxxxx --remove`, th
 
 ## Part 5c: The platform console and onboarding a business
 
-`console.office.snilld.in` is ours: it lists every business on the platform (owner, people, status, when it opened, its last account change) and is where we onboard a business and suspend one. It never shows or opens any office's books. Only the addresses in `PLATFORM_OWNERS` (in `apps/api/wrangler.jsonc`, comma-separated; today `puja@snilldai.com`) can use it.
+`console.office.snilld.in` is ours: it lists every business on the platform (owner, people, status, when it opened, its last account change) and is where we onboard a business and suspend one. It never shows or opens any office's books. Only the addresses in `PLATFORM_OWNERS` (in `apps/api/wrangler.jsonc`, comma-separated; today `puja@snilldai.com` and `appforge.3b@gmail.com`) can use it.
 
 1. **Your account.** Make an account at `https://app.office.snilld.in` with an address on that list and confirm it from the email. (An account on its own sees no office.)
 2. **Sign in at `https://console.office.snilld.in`.** The figures at the top count the businesses by state; click one to filter the list. Search finds a business by name, owner or address.

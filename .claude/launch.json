@@ -6,6 +6,12 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["VITE_DATA=mock", "apps/web/node_modules/.bin/vite", "apps/web", "--config", "apps/web/vite.config.ts", "--port", "5173", "--strictPort"],
       "port": 5173
+    },
+    {
+      "name": "web-live",
+      "runtimeExecutable": "apps/web/node_modules/.bin/vite",
+      "runtimeArgs": ["apps/web", "--config", "apps/web/vite.config.ts", "--port", "5174", "--strictPort"],
+      "port": 5174
     }
   ]
 }

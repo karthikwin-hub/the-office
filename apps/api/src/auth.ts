@@ -83,7 +83,23 @@ export function makeAuth(env: Env, host?: string) {
     // Cookies on a parent domain are refused on any other host, so other hosts (workers.dev, localhost) keep their own.
     advanced: cookieDomain ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } } : undefined,
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
-    emailAndPassword: { enabled: true, minPasswordLength: 10, password: { hash: hashPassword, verify: verifyPassword } },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 10,
+      password: { hash: hashPassword, verify: verifyPassword },
+      // A forgotten password: a link by email, good for an hour. Asking for one says nothing about whether the account exists.
+      resetPasswordTokenExpiresIn: 60 * 60,
+      // Whoever knew the old password is signed out everywhere once it changes.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        await sendMail(
+          env,
+          user.email,
+          `Reset your password for ${BRAND.name}`,
+          [`Hello ${user.name},`, "", "Open this link within an hour to choose a new password:", url, "", "If you did not ask for this, ignore this message; your password stays as it is."].join("\n"),
+        );
+      },
+    },
     emailVerification: {
       sendOnSignUp: verificationRequired(env),
       autoSignInAfterVerification: true,
@@ -94,7 +110,7 @@ export function makeAuth(env: Env, host?: string) {
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
     // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
     session: { cookieCache: { enabled: false } },
-    rateLimit: { enabled: env.DATA_MODE === "live", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 } } },
+    rateLimit: { enabled: env.DATA_MODE === "live", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
   });
 }
 

@@ -146,6 +146,9 @@ export const account = {
   signUp: (name: string, email: string, password: string) => auth("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
   signOut: () => auth("sign-out"),
   resendVerification: (email: string) => auth("send-verification-email", { email, callbackURL: location.pathname + location.search }),
+  /** The link in the email comes back here with `?reset-password=1&token=…`, or `&error=INVALID_TOKEN` once it has expired. */
+  requestPasswordReset: (email: string) => auth("request-password-reset", { email, redirectTo: `${location.origin}/?reset-password=1` }),
+  resetPassword: (newPassword: string, token: string) => auth("reset-password", { newPassword, token }),
   openOffice: (name: string) => call<OfficeSummary>(ACCOUNT_ROUTES.offices, { method: "POST", body: { name } }),
   peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.invitation(token)),
   restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),

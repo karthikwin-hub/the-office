@@ -1118,6 +1118,16 @@
 .signin-form .btn {
   justify-self: start;
 }
+.signin-forgot {
+  justify-self: start;
+  font-size: var(--step--1);
+}
+.signin-notice {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--carbon);
+  background: var(--carbon-tint);
+}
 .signin-switch {
   border-top: var(--rule-soft);
   padding-top: var(--s-3);

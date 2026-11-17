@@ -173,6 +173,51 @@ describe("accounts and offices", () => {
   });
 });
 
+describe("a forgotten password", () => {
+  /** The plain-text body of a message the Worker sent, decoded from base64. */
+  const bodyOf = (raw: string) => Buffer.from(raw.split("\r\n\r\n").slice(1).join("").replace(/\s+/g, ""), "base64").toString("utf8");
+  const signIn = (w: World, email: string, password: string) => call(w, null, "/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email, password }) });
+
+  it("sends a link that sets a new password once, and signs the old sessions out", async () => {
+    const w = makeEnv();
+    const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
+    const asked = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: anil.email, redirectTo: `${BASE}/?reset-password=1` }) });
+    expect(asked.status).toBe(200);
+    const mail = w.sent.filter((m) => m.to === anil.email).pop()!;
+    const link = /https?:\/\/\S+\/api\/auth\/reset-password\/\S+/.exec(bodyOf(mail.raw))![0];
+
+    const back = await call(w, null, link.slice(BASE.length), { redirect: "manual" });
+    const landing = new URL(back.headers.get("location")!);
+    expect(landing.searchParams.get("reset-password")).toBe("1");
+    const token = landing.searchParams.get("token")!;
+    expect(token).toBeTruthy();
+
+    const changed = await call(w, null, "/api/auth/reset-password", { method: "POST", body: JSON.stringify({ newPassword: "a-new-long-password-2", token }) });
+    expect(changed.status).toBe(200);
+    expect((await call(w, anil, ACCOUNT_ROUTES.me)).status).toBe(401);
+    expect((await signIn(w, anil.email, "a-long-password-1")).status).toBe(401);
+    expect((await signIn(w, anil.email, "a-new-long-password-2")).status).toBe(200);
+
+    const again = await call(w, null, "/api/auth/reset-password", { method: "POST", body: JSON.stringify({ newPassword: "a-third-long-password-3", token }) });
+    expect(again.status).toBe(400);
+  });
+
+  it("answers the same for an address with no account, and sends nothing", async () => {
+    const w = makeEnv();
+    const res = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: "nobody@nowhere.test", redirectTo: `${BASE}/?reset-password=1` }) });
+    expect(res.status).toBe(200);
+    expect(w.sent).toEqual([]);
+  });
+
+  it("will not send the link on to another site", async () => {
+    const w = makeEnv();
+    const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
+    const res = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: anil.email, redirectTo: "https://evil.test/?reset-password=1" }) });
+    expect(res.status).toBe(403);
+    expect(w.sent.filter((m) => m.to === anil.email)).toEqual([]);
+  });
+});
+
 describe("one office cannot reach another", () => {
   it("answers 404, with nothing in it, for every office route asked of someone else's office", async () => {
     const { w, bina, A } = await twoOffices();
