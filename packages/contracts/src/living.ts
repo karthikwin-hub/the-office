@@ -25,8 +25,11 @@ export const PersonaNamesChange = z.object({ names: PersonaNames }).strict();
 export const Sky = z.enum(["clear", "cloudy", "rain", "storm", "fog", "snow"]);
 export type Sky = z.infer<typeof Sky>;
 
-/** Roughly what it is like outside where the person is looking from. */
-export const Weather = z.object({ city: z.string().nullable(), tempC: z.number(), sky: Sky, at: IsoDateTime });
+/**
+ * Roughly what it is like outside where the person is looking from. `lat` and `lon` are the
+ * same ten-kilometre square sent to the forecast, so the Lived-in office can put the sun where it is.
+ */
+export const Weather = z.object({ city: z.string().nullable(), tempC: z.number(), sky: Sky, at: IsoDateTime, lat: z.number().optional(), lon: z.number().optional() });
 export type Weather = z.infer<typeof Weather>;
 export const WeatherView = z.object({ weather: Weather.nullable() });
 export type WeatherView = z.infer<typeof WeatherView>;

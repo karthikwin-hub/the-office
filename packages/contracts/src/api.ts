@@ -55,11 +55,14 @@ export const RoomStatus = z.object({
 export type RoomStatus = z.infer<typeof RoomStatus>;
 
 export const OfficeView = z.object({
-  business: Business.pick({ name: true, legalName: true, gstin: true, asOf: true, owner: true, accountantFirm: true }),
+  business: Business.pick({ name: true, legalName: true, gstin: true, asOf: true, owner: true, accountantFirm: true, stateCode: true }),
   rooms: z.array(RoomStatus),
   log: z.array(LogEntry),
   deskCount: z.number().int(),
-  arriving: z.array(z.object({ docId: z.string(), agentId: z.string(), label: z.string() })),
+  /** How each arrived: the Lived-in office sends an email in as a paper plane and a WhatsApp as a ringing phone. */
+  arriving: z.array(z.object({ docId: z.string(), agentId: z.string(), label: z.string(), channel: z.enum(["email", "upload", "whatsapp", "import", "generated", "social"]).optional() })),
+  /** The desk's decisions in the last day, newest first, so the Lived-in office can stamp or crumple the right sheet. */
+  decided: z.array(z.object({ id: z.string(), agentId: z.string(), status: z.enum(["approved", "rejected"]), at: IsoDateTime })).optional(),
 });
 export type OfficeView = z.infer<typeof OfficeView>;
 

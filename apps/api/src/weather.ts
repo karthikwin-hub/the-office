@@ -48,7 +48,7 @@ export async function weatherFor(where: Where | undefined, opts: { fetcher: type
     const temp = slot?.data?.instant?.details?.air_temperature;
     const symbol = slot?.data?.next_1_hours?.summary?.symbol_code ?? slot?.data?.next_6_hours?.summary?.symbol_code;
     if (typeof temp !== "number" || !symbol) return null;
-    return { city, tempC: Math.round(temp), sky: skyFrom(symbol), at: new Date(now).toISOString() };
+    return { city, tempC: Math.round(temp), sky: skyFrom(symbol), at: new Date(now).toISOString(), lat: round(lat), lon: round(lon) };
   } catch {
     return null;
   }

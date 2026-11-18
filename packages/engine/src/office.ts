@@ -264,7 +264,7 @@ export class OfficeService {
   officeView(): OfficeView {
     const b = this.books.business;
     return {
-      business: { name: b.name, legalName: b.legalName, gstin: b.gstin, asOf: this.asOf, owner: b.owner, accountantFirm: b.accountantFirm },
+      business: { name: b.name, legalName: b.legalName, gstin: b.gstin, asOf: this.asOf, owner: b.owner, accountantFirm: b.accountantFirm, stateCode: b.stateCode },
       rooms: AGENTS.map((a) => {
         const r = this.room(a.id);
         const headline = r.hired ? this.headline(a.id) : undefined;
@@ -273,13 +273,18 @@ export class OfficeService {
       log: this.today().filter((e) => this.hired(e.agentId) || e.agentId === "you"),
       deskCount: this.pending().length,
       arriving: [
-        ...this.books.documents.filter((d) => d.status === "reading").map((d) => ({ docId: d.id, agentId: "accountant", label: d.from ? `Email from ${d.from}` : "Upload" })),
+        ...this.books.documents.filter((d) => d.status === "reading").map((d) => ({ docId: d.id, agentId: "accountant", label: d.from ? `Email from ${d.from}` : "Upload", channel: d.channel })),
         ...(this.hired("social-media-manager")
           ? this.books.socialInbox
               .filter((m) => m.status === "open" && Date.now() - Date.parse(m.at) < 3_600_000)
-              .map((m) => ({ docId: m.id, agentId: "social-media-manager", label: `${m.kind === "review" ? "Review" : m.kind === "dm" ? "Message" : "Comment"} from ${m.author}` }))
+              .map((m) => ({ docId: m.id, agentId: "social-media-manager", label: `${m.kind === "review" ? "Review" : m.kind === "dm" ? "Message" : "Comment"} from ${m.author}`, channel: "social" as const }))
           : []),
       ],
+      decided: this.allStaged()
+        .filter((s): s is StagedChange & { status: "approved" | "rejected"; decidedAt: string } => s.status !== "pending" && Boolean(s.decidedAt) && Date.now() - Date.parse(s.decidedAt!) < 86_400_000)
+        .sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1))
+        .slice(0, 10)
+        .map((s) => ({ id: s.id, agentId: s.agentId, status: s.status, at: s.decidedAt })),
     };
   }
 

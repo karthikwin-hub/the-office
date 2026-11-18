@@ -22,7 +22,8 @@ describe("the weather for small talk", () => {
   it("asks MET Norway for a rounded location only, names itself, and reads the current hour", async () => {
     const fetcher = vi.fn(async () => Response.json(met("lightrainshowers_day", 24.6)));
     const w = await weatherFor(PUNE, { fetcher: fetcher as unknown as typeof fetch, cache: null, userAgent: "the-office/1.0 (test)", now: NOW });
-    expect(w).toEqual({ city: "Pune", tempC: 25, sky: "rain", at: new Date(NOW).toISOString() });
+    // The location comes back rounded exactly as it was sent, so the office can place the sun.
+    expect(w).toEqual({ city: "Pune", tempC: 25, sky: "rain", at: new Date(NOW).toISOString(), lat: 18.5, lon: 73.9 });
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`${MET_URL}?lat=18.5&lon=73.9`);
     expect((init.headers as Record<string, string>)["user-agent"]).toContain("the-office");

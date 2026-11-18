@@ -1,5 +1,5 @@
 export { Amount, CoveringNote, Figure, FigureContext, Stamp, useFigures, type StampKind } from "./Figure";
-export { FloorPlan, type FloorPlanProps, type Plan } from "./FloorPlan";
+export { FloorPlan, planFor, type FloorPlanProps, type Plan } from "./FloorPlan";
 export { TeamLog } from "./TeamLog";
 export { LedgerTable, type LedgerColumn } from "./LedgerTable";
 export { AgeingBuckets } from "./AgeingBuckets";
@@ -14,3 +14,4 @@ export { applySkin, contrast, contrastPairs, DEFAULT_SKIN, SKIN_BY_ID, SKIN_CACH
 export { SkinPreview } from "./SkinPreview";
 export { LivingFloor, type LivingFloorProps } from "./living/LivingFloor";
 export { PERSONAS, personaFor, personaLabel, type Persona } from "./living/personas";
+export { ClosedLedger, dioramaSupport, khataYear } from "./living/support";

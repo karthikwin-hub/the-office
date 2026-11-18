@@ -1,10 +1,11 @@
 import type { StagedChange } from "@office/contracts";
-import { actionFor, FloorPlan, LivingFloor, personaLabel, TeamLog } from "@office/ui";
+import { actionFor, ClosedLedger, dioramaSupport, FloorPlan, khataYear, LivingFloor, personaLabel, TeamLog } from "@office/ui";
+import type { DioramaProps } from "@office/ui/diorama";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { type ComponentType, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { q, useDecide } from "../api/queries";
-import { usePrefs, useSkin } from "../app/prefs";
+import { useChosenSkin, usePrefs, useSimplePicture, useSkin } from "../app/prefs";
 import { SkinMenu } from "./SkinMenu";
 import { count, isOwner, Page, theAgent } from "./common";
 
@@ -21,6 +22,25 @@ function useMedia(query: string) {
     return () => m.removeEventListener("change", on);
   }, [query]);
   return match;
+}
+
+/** The 3D Lived-in office comes in its own download; if it cannot be fetched, the drawn floor takes its place. */
+function CouldNotLoad({ onFallback }: DioramaProps) {
+  useEffect(() => onFallback("the 3D office could not be downloaded"), [onFallback]);
+  return null;
+}
+const Diorama = lazy<ComponentType<DioramaProps>>(() =>
+  import("@office/ui/diorama")
+    .then((m) => ({ default: m.Diorama }))
+    .catch(() => ({ default: CouldNotLoad })),
+);
+
+/** `?at=18:40&temp=36` sets the Lived-in office's clock and weather, for the picture only: demos and screenshots. */
+function pictureOverrides(): { at: number | null; temp: number | null } {
+  const p = new URLSearchParams(location.search);
+  const m = /^(\d{1,2}):(\d{2})$/.exec(p.get("at") ?? "");
+  const t = Number(p.get("temp"));
+  return { at: m ? Math.min(1439, Number(m[1]) * 60 + Number(m[2])) : null, temp: p.has("temp") && Number.isFinite(t) ? t : null };
 }
 
 /** Until the six compliance questions are answered, the filing calendar is only partly known. */
@@ -43,7 +63,14 @@ export function FloorScreen() {
   const [prefs, setPrefs] = usePrefs();
   const skin = useSkin();
   const lived = skin.id === "lived-in";
-  const ambient = useQuery({ ...q.ambient(), enabled: lived });
+  // On a phone the Lived-in office is the plain floor, still with the team's names on the doors.
+  const people = useChosenSkin() === "lived-in";
+  const [simple] = useSimplePicture();
+  const [fallback, setFallback] = useState<string | null>(null);
+  const use3d = lived && !simple && !fallback && dioramaSupport().ok;
+  const picture = useMemo(pictureOverrides, []);
+  const navigate = useNavigate();
+  const ambient = useQuery({ ...q.ambient(), enabled: people });
   const weather = useQuery({ ...q.weather(), enabled: lived });
   const names = ambient.data?.names ?? {};
   const wideDesk = useMedia(WIDE_DESK);
@@ -86,36 +113,80 @@ export function FloorScreen() {
               ) : null}
               {v.rooms.some((r) => r.agentId === "compliance-officer" && r.hired) ? <CalendarNudge /> : null}
             </div>
-            <FloorPlan
-              rooms={v.rooms}
-              arriving={v.arriving}
-              wholeFloor={prefs.wholeFloor}
-              texture={skin.texture}
-              overlay={lived ? (plan) => <LivingFloor plan={plan} inputs={{ rooms: v.rooms, log: v.log, arriving: v.arriving, names, ambient: ambient.data ?? null, weather: weather.data?.weather ?? null }} /> : undefined}
-              renderLink={(agentId, className, children, label) => (
-                <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
-                  {children}
-                </Link>
-              )}
-              renderHiringLink={(className, children, label) => (
-                <Link to="/hiring" className={className} aria-label={label}>
-                  {children}
-                </Link>
-              )}
-            />
+            {use3d ? (
+              <Suspense
+                fallback={
+                  <div className="diorama">
+                    <ClosedLedger name={v.business.name || "Your office"} year={khataYear(Date.now())} />
+                  </div>
+                }
+              >
+                <Diorama
+                  view={v}
+                  names={names}
+                  ambient={ambient.data ?? null}
+                  weather={weather.data?.weather ?? null}
+                  at={picture.at}
+                  tempC={picture.temp}
+                  onFallback={setFallback}
+                  onOpen={(t) => (t.kind === "room" ? navigate({ to: "/rooms/$agentId", params: { agentId: t.id } }) : navigate({ to: t.kind === "desk" ? "/desk" : "/hiring" }))}
+                  renderLink={(agentId, className, children, label) => (
+                    <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
+                      {children}
+                    </Link>
+                  )}
+                  renderDeskLink={(className, children, label) => (
+                    <Link to="/desk" className={className} aria-label={label}>
+                      {children}
+                    </Link>
+                  )}
+                />
+              </Suspense>
+            ) : (
+              <FloorPlan
+                rooms={v.rooms}
+                arriving={v.arriving}
+                wholeFloor={prefs.wholeFloor}
+                texture={skin.texture}
+                nameFor={people && !lived ? (id) => personaLabel(id, names) : undefined}
+                overlay={lived ? (plan) => <LivingFloor plan={plan} inputs={{ rooms: v.rooms, log: v.log, arriving: v.arriving, names, ambient: ambient.data ?? null, weather: weather.data?.weather ?? null }} /> : undefined}
+                renderLink={(agentId, className, children, label) => (
+                  <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
+                    {children}
+                  </Link>
+                )}
+                renderHiringLink={(className, children, label) => (
+                  <Link to="/hiring" className={className} aria-label={label}>
+                    {children}
+                  </Link>
+                )}
+              />
+            )}
             <div className="floor-legend muted">
-              <p>
-                A shaded room is working now. The number at a door is what that agent has left on your desk.
-                {vacant ? (
-                  <>
-                    {" "}
-                    {prefs.wholeFloor ? "Dashed rooms are empty; " : `${count(vacant, "room")} ${vacant === 1 ? "is" : "are"} vacant; `}
-                    <Link to="/hiring">hire in the hiring hall</Link>.
-                  </>
-                ) : null}
-              </p>
+              {use3d ? (
+                <p>
+                  Click a room or its name to open it. Your desk is at the end of the corridor, with a sheet on the pile for everything waiting.
+                  {vacant ? (
+                    <>
+                      {" "}
+                      Rooms lying flat on the page are empty; <Link to="/hiring">hire in the hiring hall</Link>.
+                    </>
+                  ) : null}
+                </p>
+              ) : (
+                <p>
+                  A shaded room is working now. The number at a door is what that agent has left on your desk.
+                  {vacant ? (
+                    <>
+                      {" "}
+                      {prefs.wholeFloor ? "Dashed rooms are empty; " : `${count(vacant, "room")} ${vacant === 1 ? "is" : "are"} vacant; `}
+                      <Link to="/hiring">hire in the hiring hall</Link>.
+                    </>
+                  ) : null}
+                </p>
+              )}
               <div className="floor-tools">
-                {vacant ? (
+                {vacant && !use3d ? (
                   <button type="button" className="link-button" aria-pressed={prefs.wholeFloor} onClick={() => setPrefs({ wholeFloor: !prefs.wholeFloor })}>
                     {prefs.wholeFloor ? "Show only staffed rooms" : "Show the whole floor"}
                   </button>
@@ -127,7 +198,7 @@ export function FloorScreen() {
           {wideDesk && v.deskCount ? <DeskColumn /> : null}
           <details className="floor-log" open>
             <summary className="floor-log-summary">Today on the floor</summary>
-            <TeamLog entries={v.log} title="Today on the floor" heading={false} label={lived ? (id) => personaLabel(id, names) : undefined} />
+            <TeamLog entries={v.log} title="Today on the floor" heading={false} label={people ? (id) => personaLabel(id, names) : undefined} />
           </details>
         </div>
       ) : null}

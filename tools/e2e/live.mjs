@@ -215,10 +215,13 @@ const closed = await fetch(`${base}/w/${key}.js`);
 check(closed.status === 404, `the chat script is gone once the chat is off (${closed.status})`);
 if (!wasHired) await ownerFetch(o("/api/hiring/customer-service"), json("POST", { hired: false }));
 
-// The Lived-in skin draws the team as people over the same floor; rooms still open and only the owner renames anyone.
-await owner.goto(`${base}/?skin=lived-in`);
-await owner.locator(".floor-plan-overlay .person").first().waitFor();
-check((await owner.locator(".floor-plan-overlay .person").count()) > 0, "the Lived-in floor draws the team");
+// The Lived-in skin opens the office as a 3D pop-up book (or, on a machine without WebGL, draws the team over the plan);
+// rooms still open from their name plates and only the owner renames anyone.
+const livedIn = ".diorama.is-open .diorama-plate, .floor-plan-overlay .person";
+await owner.goto(`${base}/?skin=lived-in&at=10:30`);
+await owner.locator(livedIn).first().waitFor({ timeout: 30_000 });
+const in3d = (await owner.locator(".diorama canvas").count()) > 0;
+check((await owner.locator(livedIn).count()) > 0, `the Lived-in floor draws the team (${in3d ? "3D" : "drawn"})`);
 const weather = await ownerFetch(o("/api/weather"));
 check(weather.status === 200 && "weather" in (weather.body ?? {}), `the weather answers, or says it does not know (${JSON.stringify(weather.body)})`);
 const renamed = await ownerFetch(o("/api/personas"), json("PUT", { names: { accountant: "Revathi" } }));
@@ -226,13 +229,19 @@ check(renamed.status === 200, `the owner renames the accountant (${renamed.statu
 const acctRename = await acct.evaluate(async (p) => (await fetch(p, { method: "PUT", headers: { "content-type": "application/json" }, body: '{"names":{}}' })).status, o("/api/personas"));
 check(acctRename === 403, `the accountant cannot rename the team (${acctRename})`);
 await owner.reload();
-await owner.locator(".floor-plan-overlay .person").first().waitFor();
+await owner.locator(livedIn).first().waitFor({ timeout: 30_000 });
 await owner.waitForTimeout(1500);
 check(await owner.locator(".team-log-who").getByText("Revathi, Accountant").first().isVisible(), "the team log uses the new name");
 await owner.screenshot({ path: join(out, "floor-lived-in.png") });
-await owner.locator(".room-slot").filter({ hasText: /office manager/i }).first().click();
+for (const [at, name] of [["18:10", "dusk"], ["21:30", "night"]]) {
+  await owner.goto(`${base}/?skin=lived-in&at=${at}`);
+  await owner.locator(livedIn).first().waitFor({ timeout: 30_000 });
+  await owner.waitForTimeout(1500);
+  await owner.screenshot({ path: join(out, `floor-lived-in-${name}.png`) });
+}
+await owner.locator(in3d ? ".diorama-plate" : ".room-slot").filter({ hasText: /office manager/i }).first().click();
 await owner.waitForURL(/\/rooms\/office-manager/);
-check(true, "a room still opens through the people drawn over it");
+check(true, "a room still opens from the Lived-in floor");
 await ownerFetch(o("/api/personas"), json("PUT", { names: {} }));
 
 // Bringing in existing books: the accountant checks and sends the files, the owner approves one Desk card,

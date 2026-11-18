@@ -197,7 +197,7 @@ export const SKINS: Skin[] = [
   {
     id: "lived-in",
     name: "Lived-in",
-    description: "The team at work: at their desks, carrying papers, and now and then a word over tea.",
+    description: "Your office pops up out of a ledger, lit by the sun where you are. The team works, carries each bill to your desk, and stops for tea.",
     tokens: {
       paper: "#f6f2ea",
       carbon: "#7a3e2b",
