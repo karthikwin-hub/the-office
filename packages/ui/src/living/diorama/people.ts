@@ -21,6 +21,7 @@ export const LOOKS: Record<string, Look> = {
   "sales-rep": { skin: "#8a5536", outfit: "#2f5f8f", trim: "#f1ead8", hair: "#140f0b", style: "short", kind: "shirt" },
   "quote-desk": { skin: "#b88462", outfit: "#5d8a6a", trim: "#f4ecd9", hair: "#2a1c12", style: "braid", kind: "kurta" },
   "account-manager": { skin: "#6e4429", outfit: "#7a4e8c", trim: "#efe6cf", hair: "#120d09", style: "curly", kind: "shirt" },
+  "marketplace-manager": { skin: "#8a5536", outfit: "#d07a2a", trim: "#f1ead8", hair: "#17110c", style: "short", kind: "shirt" },
   marketer: { skin: "#a06a48", outfit: "#d0643a", trim: "#f6e7c6", hair: "#2b1d14", style: "bun", kind: "kurta" },
   "market-watcher": { skin: "#8d5a3b", outfit: "#4f6e7d", trim: "#ece3cf", hair: "#1c140f", style: "short", kind: "kurta", glasses: true },
   "social-media-manager": { skin: "#b07a55", outfit: "#c2477a", trim: "#f6e1b0", hair: "#21160f", style: "curly", kind: "kurta" },

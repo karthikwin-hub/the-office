@@ -23,6 +23,7 @@ export const ACTIONS: Record<StagedKind, { verb: string; done: string }> = {
   compliance_action: { verb: "Agree", done: "Agreed" },
   file_document: { verb: "File it", done: "Filed" },
   email_reply: { verb: "Send reply", done: "Reply sent" },
+  sales_mapping: { verb: "Read it this way", done: "Read" },
 };
 
 /** The words for one piece of work: a ledger entry for a sales invoice records it rather than posting a bill. */

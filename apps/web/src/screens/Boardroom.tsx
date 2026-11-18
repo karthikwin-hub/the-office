@@ -6,6 +6,7 @@ import { q } from "../api/queries";
 import { AgeingView, CashView, GstView, SalesView, TdsView } from "../reports/accounts";
 import { CalendarView, PostsView, SocialInboxView, SocialResultsView } from "../reports/social";
 import { ComplianceView } from "../reports/compliance";
+import { OnlineSalesView } from "../reports/online";
 import { CampaignsView, FestivalsView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
 import { Page, PageHead, theAgent } from "./common";
 
@@ -20,6 +21,7 @@ function useTabs(team: string): Tab[] {
   const tds = useQuery({ ...q.tds(tdsQuarter), enabled: team === "accounts" });
   const cash = useQuery({ ...q.cash(), enabled: team === "accounts" });
   const st = useQuery({ ...q.salesTeam(), enabled: team === "sales" });
+  const os = useQuery({ ...q.onlineSales(), enabled: team === "sales" });
   const mk = useQuery({ ...q.marketing(), enabled: team === "marketing" });
   const so = useQuery({ ...q.social(), enabled: team === "social" });
   const op = useQuery({ ...q.operations(), enabled: team === "operations" });
@@ -38,6 +40,7 @@ function useTabs(team: string): Tab[] {
       ];
     case "sales":
       return [
+        { id: "online", label: "Online sales", agent: "marketplace-manager", render: r(os, (d) => <OnlineSalesView report={d} />) },
         { id: "pipeline", label: "Pipeline", agent: "sales-rep", render: r(st, (d) => <PipelineView report={d} />) },
         { id: "quotes", label: "Quotations", agent: "quote-desk", render: r(st, (d) => <QuotesView report={d} />) },
         { id: "reorders", label: "Reorders", agent: "account-manager", render: r(st, (d) => <ReordersView report={d} />) },

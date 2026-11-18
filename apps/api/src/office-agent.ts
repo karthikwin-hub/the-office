@@ -1,5 +1,5 @@
 import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
-import { assistantAddress, CalendarLinkInput } from "@office/contracts";
+import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
 import { gmailConfirmation, readForward } from "@office/engine";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RETENTION_YEARS, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { backupKey, backupTarget, gzip, putObject, retainedKey } from "./backup";
@@ -24,6 +24,7 @@ import { BooksStore } from "./store";
 import { SqlRoutineLog } from "./routines";
 import { SqlCsStore } from "./customer/store";
 import { type AssistantInbound, draftReply, fetchCalendar, plainAddress, SqlAssistantStore } from "./assistant";
+import { fromPlatform, readSalesFile, salesReply, SqlSalesStore } from "./sales";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
 import { ControlPlane, ingestAddress, OFFICE_ID, type RouteKind } from "./tenancy";
@@ -60,6 +61,7 @@ export class Office extends Agent<Env> {
   private runs!: SqlRoutineLog;
   private conversations!: SqlCsStore;
   private assistantStore!: SqlAssistantStore;
+  private salesStore!: SqlSalesStore;
   private office!: OfficeService;
   private vault!: TokenVault;
   private day = "";
@@ -115,6 +117,7 @@ export class Office extends Agent<Env> {
     this.runs = new SqlRoutineLog(sql);
     this.conversations = new SqlCsStore(sql);
     this.assistantStore = new SqlAssistantStore(sql);
+    this.salesStore = new SqlSalesStore(sql);
     this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
@@ -214,7 +217,7 @@ export class Office extends Agent<Env> {
 
   private open(books: OfficeService["books"]) {
     this.day = istDate();
-    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, assistant: this.assistantStore, edits: this.edits, backup: () => this.backupStatus() });
+    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, assistant: this.assistantStore, sales: this.salesStore, edits: this.edits, backup: () => this.backupStatus() });
     const saved = this.kv("settings");
     if (saved) this.office.updateSettings(JSON.parse(saved));
     this.social().reconcile();
@@ -387,6 +390,8 @@ export class Office extends Agent<Env> {
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
     if (post && path === "/internal/export") return json(this.exportBooks());
     if (post && path === "/internal/support-email") return json(await this.receiveSupport((await request.json()) as SupportMail));
+    if (post && path === "/internal/sales-email") return json(await this.receiveSalesMail((await request.json()) as InboundDocs & { envelope?: string }));
+    if (post && path === ROUTES.salesUpload) return this.uploadSales(request, caller);
     if (post && path === "/internal/assistant-email") return json(await this.receiveForAssistant((await request.json()) as AssistantInbound));
     if (path === ROUTES.assistantCalendar && (request.method === "PUT" || request.method === "DELETE")) return this.assistantCalendar(request, caller);
     if (request.method === "GET" && path === ROUTES.assistant && caller.role === "owner") await this.refreshCalendar(caller.email, 60 * 60_000);
@@ -459,6 +464,7 @@ export class Office extends Agent<Env> {
     if (path.startsWith("/api/channels") && request.method !== "GET") await this.syncRoutes();
     if (request.method !== "GET" && (path === `/api/hiring/${CS_AGENT}` || path === "/api/customers/widget")) await this.syncCustomerRoutes();
     if (request.method !== "GET" && path === "/api/hiring/executive-assistant") await this.syncAssistantRoute();
+    if (request.method !== "GET" && path === "/api/hiring/marketplace-manager") await this.syncSalesRoute();
     if (path === "/api/settings") {
       if (request.method !== "GET") {
         await this.scheduleDigest();
@@ -585,7 +591,7 @@ export class Office extends Agent<Env> {
       const t = await this.vault.get(c.id);
       if (t) for (const r of this.routeIds(c.platform, [t.account, ...Object.values(t.extra)])) want.add(`${r.kind}|${r.id}`);
     }
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && r.kind !== "assistant_email" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && r.kind !== "assistant_email" && r.kind !== "sales_email" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     for (const w of want) {
       const [kind, id] = w.split("|") as [RouteKind, string];
       await plane.claimRoute(this.officeId!, kind, id);
@@ -680,6 +686,54 @@ export class Office extends Agent<Env> {
     const hired = this.office.hired("executive-assistant");
     for (const r of await plane.routesOf(this.officeId!)) if (r.kind === "assistant_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     if (hired && address) await plane.claimRoute(this.officeId!, "assistant_email", address);
+  }
+
+  /** The Marketplace Manager's address follows its hiring: `<slug>.sales@…` while it is on the team. */
+  private async syncSalesRoute() {
+    const plane = this.plane();
+    const address = salesAddress(ingestAddress(this.slug, this.env.INGEST_DOMAIN));
+    const hired = this.office.hired("marketplace-manager");
+    for (const r of await plane.routesOf(this.officeId!)) if (r.kind === "sales_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    if (hired && address) await plane.claimRoute(this.officeId!, "sales_email", address);
+  }
+
+  /**
+   * Reports mailed to the sales address. Taken from the platforms' own domains and from people in
+   * this office (who forward what the platforms sent them); anything else is dropped unread.
+   */
+  private async receiveSalesMail(mail: InboundDocs & { envelope?: string }) {
+    if (!this.office.hired("marketplace-manager")) return { outcome: "ignored" };
+    const members = new Set((await this.plane().members(this.officeId!)).map((u) => u.email.toLowerCase()));
+    const sender = plainAddress(mail.from) ?? plainAddress(mail.envelope ?? null);
+    if (!sender || !(members.has(sender) || fromPlatform(sender))) {
+      for (const d of mail.docs) await this.env.DOCS.delete(docKey(this.officeId!, d.id));
+      this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms.");
+      return { outcome: "refused" };
+    }
+    let read = 0;
+    for (const d of mail.docs) {
+      const obj = await this.env.DOCS.get(docKey(this.officeId!, d.id));
+      if (!obj) continue;
+      const r = await readSalesFile(this.office, { name: d.filename, bytes: await obj.arrayBuffer(), via: "email", sender });
+      read += r.filter((i) => i.status === "read" || i.status === "payout").length;
+    }
+    if (!mail.docs.length) this.office.log("marketplace-manager", `An email to the sales address had no report attached${mail.skipped.length ? ` (${mail.skipped.length} file${mail.skipped.length === 1 ? "" : "s"} it could not read)` : ""}. If the platform sends a link, download the report and forward it.`);
+    return { outcome: "read", read };
+  }
+
+  /** A report uploaded in the Marketplace Manager's room. */
+  private async uploadSales(request: Request, caller: Caller): Promise<Response> {
+    if (caller.role !== "owner") return json({ error: "Only the owner can add sales reports." }, 403);
+    if (!this.office.hired("marketplace-manager")) return json({ error: "Hire the Marketplace Manager first." }, 409);
+    const parsed = SalesUploadInput.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return json({ error: "Attach a CSV, XLSX or zip file." }, 400);
+    const bytes = parsed.data.encoding === "base64" ? Uint8Array.from(atob(parsed.data.content), (c) => c.charCodeAt(0)) : new TextEncoder().encode(parsed.data.content);
+    if (bytes.byteLength > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
+    take(this.kv.bind(this), istDate(), "upload", bytes.byteLength);
+    const id = newDocId();
+    await this.env.DOCS.put(docKey(this.officeId!, id), bytes, { customMetadata: { filename: parsed.data.file, by: caller.email } });
+    const imports = await readSalesFile(this.office, { name: parsed.data.file, bytes: bytes.buffer as ArrayBuffer, via: "upload", sender: caller.email });
+    return json({ imports, message: salesReply(imports), report: this.office.sales.report() });
   }
 
   private calendarKey = (owner: string) => `ea-cal:${owner.trim().toLowerCase()}`;
@@ -827,6 +881,7 @@ export class Office extends Agent<Env> {
         await this.env.DOCS.put(key, bytes, { httpMetadata: { contentType }, customMetadata: meta });
       },
       readImage: (id, image, auto) => this.readImage(id, image, auto),
+      ...(this.office.hired("marketplace-manager") ? { readSales: async (_id: string, name: string, bytes: ArrayBuffer) => salesReply(await readSalesFile(this.office, { name, bytes, via: "whatsapp", sender: null })) } : {}),
       readItems: (id, items, auto) => this.readItems(id, items, auto),
     };
   }

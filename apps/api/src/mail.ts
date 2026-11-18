@@ -1,6 +1,7 @@
 import { EmailMessage } from "cloudflare:email";
 import PostalMime from "postal-mime";
 import type { Env } from "./env";
+import { isSheetFile } from "./sales";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -8,16 +9,27 @@ const MAX_BYTES = 10 * 1024 * 1024;
 export type Attachment = { filename: string; mimeType: string; content: ArrayBuffer };
 export type Inbound = { from: string | null; name: string | null; subject: string; text: string; messageId: string | null; inReplyTo: string | null; attachments: Attachment[]; skipped: string[] };
 
-/** Keeps the PDFs and pictures of an email; anything else is listed as skipped so the log can say so. */
-export async function parseInbound(raw: ReadableStream | ArrayBuffer): Promise<Inbound> {
+/**
+ * Keeps the PDFs and pictures of an email; anything else is listed as skipped so the log can say so.
+ * With `sheets`, for the sales address, it keeps spreadsheets, CSV, text exports and zips instead.
+ */
+export async function parseInbound(raw: ReadableStream | ArrayBuffer, opts: { sheets?: boolean } = {}): Promise<Inbound> {
   const mail = await PostalMime.parse(raw instanceof ArrayBuffer ? raw : await new Response(raw).arrayBuffer());
   const attachments: Attachment[] = [];
   const skipped: string[] = [];
   for (const a of mail.attachments) {
     const name = a.filename ?? "attachment";
     const content = typeof a.content === "string" ? (new TextEncoder().encode(a.content).buffer as ArrayBuffer) : (a.content as ArrayBuffer);
-    const kind = a.mimeType === "application/pdf" || /\.pdf$/i.test(name) ? "application/pdf" : /^image\/(png|jpe?g|webp)$/.test(a.mimeType) ? a.mimeType : null;
-    if (!kind || content.byteLength > MAX_BYTES || attachments.length >= MAX_ATTACHMENTS) skipped.push(name);
+    const kind = opts.sheets
+      ? isSheetFile(name, a.mimeType)
+        ? a.mimeType || "application/octet-stream"
+        : null
+      : a.mimeType === "application/pdf" || /\.pdf$/i.test(name)
+        ? "application/pdf"
+        : /^image\/(png|jpe?g|webp)$/.test(a.mimeType)
+          ? a.mimeType
+          : null;
+    if (!kind || content.byteLength > MAX_BYTES || attachments.length >= (opts.sheets ? 10 : MAX_ATTACHMENTS)) skipped.push(name);
     else attachments.push({ filename: name, mimeType: kind, content });
   }
   return { from: mail.from?.address ?? null, name: mail.from?.name || null, subject: mail.subject ?? "", text: mail.text ?? "", messageId: mail.messageId ?? null, inReplyTo: mail.inReplyTo ?? null, attachments, skipped };

@@ -523,6 +523,20 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
   }
+  const sales = await cp(env).routeFor("sales_email", to);
+  if (sales) {
+    const mail = await parseInbound(message.raw, { sheets: true });
+    const docs: InboundDocs["docs"] = [];
+    for (const a of mail.attachments) {
+      const id = newDocId();
+      await env.DOCS.put(docKey(sales, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
+      docs.push({ id, mimeType: a.mimeType, filename: a.filename });
+    }
+    const body: InboundDocs & { envelope: string } = { from: mail.from ?? message.from, envelope: message.from, subject: mail.subject, docs, skipped: mail.skipped };
+    const res = await toOffice(env, internal("/internal/sales-email", body), system(sales));
+    if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
+    return;
+  }
   const assistant = await cp(env).routeFor("assistant_email", to);
   if (assistant) {
     const mail = await parseInbound(message.raw);

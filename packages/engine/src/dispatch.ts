@@ -3,6 +3,9 @@ import {
   AskRequest,
   BrandVoice,
   CalendarLinkInput,
+  type ColumnMapping,
+  FIELD_LABEL,
+  SalesMappingInput,
   ChannelSetup,
   ComplianceAssign,
   ComplianceFiling,
@@ -37,6 +40,8 @@ import {
   WidgetChange,
 } from "@office/contracts";
 import { routinesView } from "./routines";
+import { missingFields } from "./sales/formats";
+import { SalesError } from "./sales/service";
 import { importMetrics, publishingPack } from "./social/manual";
 import { ageingReport } from "./ageing";
 import { auditReport } from "./audit";
@@ -107,6 +112,10 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
           return ok(office.assistant.decide(req.user.email, a, { action: body.action, note: body.note, edits: body.edits }, req.user.name));
         }
         if (req.role === "accountant" && !ACCOUNTANT_CAN_DECIDE.has(item.kind)) return forbidden("Only the owner can approve this.");
+        if (item.kind === "sales_mapping" && (req.body as { action?: string } | undefined)?.action === "approve") {
+          const missing = missingFields((item.payload as { mapping: ColumnMapping }).mapping);
+          if (missing.length) return { status: 409, body: { error: `Choose the column for ${missing.map((m) => FIELD_LABEL[m].toLowerCase()).join(", ")} in the Marketplace Manager's room first.` } };
+        }
         const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, unknown> };
         if (body.action !== "approve" && body.action !== "reject") return { status: 400, body: { error: "action must be approve or reject" } };
         try {
@@ -212,6 +221,7 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
     if (head === "routines") return routines(office, req, parts.slice(1));
     if (head === "customers") return customers(office, req, parts.slice(1));
     if (head === "assistant") return assistant(office, req, parts.slice(1));
+    if (head === "sales") return onlineSales(office, req, parts.slice(1));
     if (head === "orders") return orders(office, req, parts.slice(1));
     if (head === "compliance") return compliance(office, req, parts.slice(1));
     if (head === "books-record") return booksRecord(office, req, parts.slice(1));
@@ -251,6 +261,36 @@ const withDrafts = {
     return { ...v, status, pending: mine };
   },
 };
+
+/** Online sales: anyone in the office may look; mapping and removing reports is the owner's. Uploads need the host, which reads the file. */
+function onlineSales(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  const s = office.sales;
+  const [what, id, sub] = parts;
+  if (!what && req.method === "GET") return ok(s.report({ from: req.query.get("from") ?? undefined, to: req.query.get("to") ?? undefined }));
+  if (what !== "imports" || !id) return notFound("Route");
+  const imp = s.store.importById(id);
+  if (!imp) return notFound("Report");
+  if (req.method === "GET" && !sub) {
+    const p = s.store.pending(id);
+    return ok({ import: imp, headers: p?.headers ?? [], sample: p ? p.rows.slice(p.headerAt + 1, p.headerAt + 6) : [], mapping: (office.books.staged.find((x) => x.kind === "sales_mapping" && (x.payload as { importId?: string }).importId === id)?.payload as { mapping?: ColumnMapping } | undefined)?.mapping ?? {} });
+  }
+  if (req.role !== "owner") return forbidden("Only the owner can change how reports are read.");
+  if (req.method === "DELETE" && !sub) {
+    s.removeImport(id);
+    return ok(s.report());
+  }
+  if (req.method === "PUT" && sub === "mapping") {
+    const parsed = SalesMappingInput.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("Choose the platform and which column is which.");
+    try {
+      return ok(s.mapFromRoom(id, parsed.data.channel, parsed.data.mapping, req.user.name));
+    } catch (e) {
+      if (e instanceof SalesError) return bad(e.message);
+      throw e;
+    }
+  }
+  return notFound("Route");
+}
 
 /** The Executive Assistant's own page: one owner's calendar, tasks and emails, never anyone else's. */
 function assistant(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {

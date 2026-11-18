@@ -78,6 +78,10 @@ The Customer Service agent answers the business's customers on the business's Wh
 
 The Executive Assistant works for each owner on their own, not for the office. The owner gives it their calendar's private address (Google Calendar's "Secret address in iCal format") and forwards emails to `<slug>.assistant@in.office.snilld.in`. Each morning it plans the owner's next three days: their meetings, their tasks, and what the office needs from them that day (the desk, filings due, customers waiting), with a brief from the books before every meeting with a customer or supplier and a suggested slot for desk work. Replies to forwarded emails are drafted for the owner's own desk, checked against the books (a figure the books do not hold is flagged), and sent only when the owner approves, from the office's address in the owner's name with replies coming back to the owner. Tasks come from the room, from WhatsApp ("remind me to call Sharma on Friday") and from promises in replies the owner sent. None of it is seen by the accountant or other owners.
 
+## 8b. Sales on Amazon, Flipkart, Blinkit and the other apps
+
+A business that sells on marketplaces and quick-commerce apps already receives their reports by email or WhatsApp. The Marketplace Manager reads them: Amazon's tax reports (B2C and B2B) and settlement reports, Flipkart's sales report and Meesho's GST reports are recognised by their columns; any other sheet (for example Blinkit's or Zepto's) is confirmed once by the owner, column by column, and read on its own after that. The office then shows sales by channel, week, product, state and city, with returns, cancellations, average order value and payouts, and puts the last day's online sales in the morning digest. The same file twice is set aside, and lines that come in again in an overlapping report are not counted twice. This first version does not post anything to the books; posting to the books with GST, TCS and settlements is the next step.
+
 ## 9. Social media that never misstates a price
 
 The Social Media Manager plans a monthly calendar, drafts posts for Instagram, Facebook, Threads, LinkedIn, X and WhatsApp broadcast, checks every price and claim against the books, and publishes only after approval. It listens for comments and messages and turns enquiries into leads. Without a platform connection it prepares a publishing pack and the owner posts by hand.
@@ -114,6 +118,7 @@ The demo at https://demo.office.snilld.in runs the real app with a sample busine
 | --- | --- | --- | --- |
 | Office Manager | Front office | Answers questions in plain language with linked figures; the front door of the office | Built |
 | Customer Service | Front office | Answers the business's own customers on WhatsApp, email and website chat | First version built |
+| Marketplace Manager | Sales | Reads marketplace and quick-commerce sales reports into sales by channel, product, state and city, with returns and payouts | First version built (reports only; not yet posted to the books) |
 | Executive Assistant | Front office | Each owner's own: calendar, three-day agenda with meeting briefs, tasks, replies to forwarded emails | First version built (calendar by private link, email by forwarding) |
 | Accountant | Accounts | Reads bills and invoices; stages entries linked to their documents; sets aside duplicates | Built |
 | Credit Controller | Accounts | Ages debtors; drafts escalating reminders | Built |
@@ -160,7 +165,7 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 | Store | Holds | Never holds |
 | --- | --- | --- |
 | D1 `office` (control plane) | Accounts, sessions, offices, memberships, invitations (only a hash of each link), routes for inbound mail and webhooks, WhatsApp links, consent records, audit | Any business's books |
-| One Durable Object per office (SQLite) | That office's books, staged changes, team log, routines history, customer conversations, the field-level edit log, persona names; and, apart from the books, each owner's assistant record (calendar events for two weeks, tasks, the last 50 forwarded emails, drafted replies) and their calendar address, encrypted | Another office's data. The assistant records are not in the books, the backups or the eight-year retention, and are deleted when the owner leaves |
+| One Durable Object per office (SQLite) | That office's books, staged changes, team log, routines history, customer conversations, the field-level edit log, persona names; and, apart from the books, each owner's assistant record (calendar events for two weeks, tasks, the last 50 forwarded emails, drafted replies) and their calendar address, encrypted; and online sales lines read from marketplace reports (order, product, quantity, amounts, the customer's state and city; no names or addresses), with the original files in R2 | Another office's data. The assistant records are not in the books, the backups or the eight-year retention, and are deleted when the owner leaves |
 | R2 `office-docs` | Original documents and images under `o/<officeId>/`; books kept eight years after deletion under `retained/<officeId>/` | Files outside the office's folder |
 
 ## 6. Inbound traffic
@@ -171,6 +176,7 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 | --- | --- |
 | Bills by email | Each office has `<slug>@in.office.snilld.in`. The `route` table maps the address to the office; unknown addresses are refused. At most 5 attachments per email, PDFs and images. |
 | Customer service email | `<slug>.help@in.office.snilld.in`, claimed when the Customer Service agent is hired. |
+| Sales reports email | `<slug>.sales@in.office.snilld.in`, claimed when the Marketplace Manager is hired. Takes CSV, XLSX, tab-separated text and zip files, up to 10 per email and 10 MB each, from the platforms' own domains and from people in the office; anything else is set aside unread. Spreadsheets sent on WhatsApp go to the same agent. |
 | Assistant email | `<slug>.assistant@in.office.snilld.in`, claimed when the Executive Assistant is hired. Only mail from an owner's own address is read (forwarded by hand, or by a Gmail filter, which sends as the owner); Gmail's forwarding confirmation code is shown in the Assistant's room. Attachments go to the Accountant. |
 | WhatsApp (shared number) | One number serves every office. A person's phone is linked with a six-digit code from Settings; someone in several offices is asked which office a message is for. |
 | WhatsApp (a business's own number), Facebook, Instagram, Threads | Webhook signatures are checked, then each message is routed by its page, account or number id. |
@@ -341,6 +347,16 @@ Hire **The Executive Assistant** in the Hiring hall, then open its room (Recepti
 - **Tasks.** Add them in the room, or on WhatsApp: "remind me to call Sharma on Friday", "done call Sharma". Send "agenda" on WhatsApp to see today again.
 - **Privacy.** Only you see your calendar, emails, tasks and drafts. Other owners and the accountant do not.
 
+## 8b. Online sales
+
+Hire **The Marketplace Manager** in the Hiring hall. Its room shows the address for sales reports.
+
+- **Sending reports.** Email them to the address in the room, set a Gmail filter that forwards the platforms' report emails there, send them to the office on WhatsApp, or press **Upload a report**. CSV, XLSX and zip files are read. If a platform sends only a link to its portal, download the file and forward it.
+- **Which reports.** Amazon: the tax report (MTR, B2C and B2B) from the Tax Document Library, and settlement reports. Flipkart: the Sales Report. Meesho: the GST sales and returns reports. Blinkit, Zepto, Instamart and others: any sales sheet they send.
+- **A new layout.** The first time a sheet in a new layout arrives, the room (and your desk) asks which column is the date, the order, the quantity and the amount. Choose them once and press **Read it this way**; files in the same layout are read on their own after that.
+- **Reports.** **Boardroom → Sales → Online sales** shows the last 30 days the reports cover: by channel, week by week, by product with returns, by state and city, and payouts. Products whose returns pass 10% are marked.
+- **Removing a report.** **Remove** next to a report in the room takes it out with everything read from it.
+
 ## 9. People, WhatsApp and the accountant
 
 - **Invite people** in **Settings → Office**: enter their email address and choose **Owner** (everything, including approvals and hiring) or **Accountant** (reads everything and downloads returns, but cannot approve or hire). The invitation works once, for 14 days, and only for that address. You can withdraw a pending invitation, and hand ownership to someone else; an office always keeps at least one owner.
@@ -411,6 +427,8 @@ For each business: name, owners, how many people, status (active, suspended, del
 | "Empty rooms show on the floor" | **Show the whole floor** is on | Choose **Show only staffed rooms** under the floor |
 | "My calendar does not show in the assistant" | The link is not the secret address, or a Google Workspace admin has turned secret addresses off | Copy the **Secret address in iCal format** again (not the public address). For Workspace, the admin turns on external sharing of calendars, or the owner waits for the Google connection |
 | "Forwarded emails do not arrive at the assistant" | Forwarded from an address that is not an owner's; the assistant is not hired; Gmail forwarding not confirmed | Forward from the address the owner signs in with. Hire the assistant. Enter Gmail's code, shown in the assistant's room |
+| "A sales report did not appear" | Sent from an address outside the office and the platforms; a portal link rather than a file; an old .xls file; the same file sent before | Forward it from your own address. Download linked reports and attach them. Save .xls as .xlsx or CSV. The room's **Reports received** list says what happened to each file |
+| "Online sales look doubled" | Two reports covering the same days | Lines already received are not counted twice; if a different layout of the same sales was confirmed as another channel, remove one report in the room |
 | "The weather is missing" | The weather lookup failed or the location is unknown | Nothing to fix; the sun uses the GST state's capital instead |
 
 ## 3. The admin tool
@@ -562,6 +580,7 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
 | Filing on government portals | Out of scope by design: the office prepares, the owner or CA files |
 | The Lived-in office | Not shown on phones by design; needs WebGL 2 |
+| Online sales | Reports only: nothing is posted to the books yet. Next: one sales entry per channel, month, state and rate with GST (e-commerce operator supplies in GSTR-1), credit notes for returns, settlements matched to payouts with fees, TCS and 194-O TDS, and stock reduced by sales. Blinkit, Zepto and Instamart layouts are confirmed by the owner until real samples are added; no platform APIs |
 | The Executive Assistant | Calendar by private link and email by forwarding only; the Google connection (reading Gmail threads, saving drafts in Gmail, creating calendar events) is the next phase and needs Google's app review, and a security assessment for Gmail. Monday's week plan and "Ask the office manager" about the agenda are not built yet |
 
 # Glossary

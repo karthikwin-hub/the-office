@@ -161,6 +161,12 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
         ].filter(Boolean);
         return parts.length ? { summary: `${parts.join("; ")}.`, counts: { waiting: r.waiting.length, closing: r.closing.length, pruned: r.pruned } } : { outcome: "nothing", summary: "No customer is waiting on you.", counts: { waiting: 0, closing: 0, pruned: 0 } };
       });
+    case "online-sales":
+      return runRoutine(office, id, trigger, () => {
+        const lines = office.sales.morning();
+        notes.push(...lines);
+        return lines.length ? { summary: lines.join(" "), counts: { lines: lines.length } } : { outcome: "nothing", summary: "No sales report covering the last three days has come in.", counts: { lines: 0 } };
+      });
     case "assistant-agenda":
       return runRoutine(office, id, trigger, async () => {
         const cal = host.refreshCalendars ? await host.refreshCalendars() : { read: 0, failed: 0 };

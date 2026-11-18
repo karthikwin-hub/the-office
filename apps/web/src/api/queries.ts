@@ -31,6 +31,7 @@ export const q = {
   ambient: () => queryOptions({ queryKey: ["ambient"], queryFn: api.ambient, staleTime: 30 * 60_000 }),
   weather: () => queryOptions({ queryKey: ["weather"], queryFn: api.weather, staleTime: 30 * 60_000, refetchInterval: 60 * 60_000, retry: false }),
   routineRuns: (id: string) => queryOptions({ queryKey: ["routines", id, "runs"], queryFn: () => api.routineRuns(id) }),
+  onlineSales: (from?: string, to?: string) => queryOptions({ queryKey: ["online-sales", from ?? "", to ?? ""], queryFn: () => api.onlineSales(from, to) }),
   assistant: () => queryOptions({ queryKey: ["assistant"], queryFn: api.assistant }),
   customers: () => queryOptions({ queryKey: ["customers"], queryFn: api.customers, refetchInterval: isLive ? false : 15_000 }),
   thread: (id: string) => queryOptions({ queryKey: ["customers", "thread", id], queryFn: () => api.thread(id) }),

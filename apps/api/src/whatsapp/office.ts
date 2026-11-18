@@ -4,6 +4,7 @@ import { docKey, fileUrl } from "../keys";
 import type { Fetch } from "../social/adapter";
 import type { WaIncoming } from "../social/webhooks";
 import { downloadMedia, type WaKeys } from "./cloud";
+import { isSheetFile } from "../sales";
 import { type Kv, saveSession, sessionFor, type WaPerson } from "./links";
 import { MAX_AUDIO, sortVoice, toEnglish, transcribe, translateParts } from "./voice";
 
@@ -22,6 +23,8 @@ export type WaDeps = {
   store: (key: string, bytes: ArrayBuffer | string, contentType: string, meta: Record<string, string>) => Promise<void>;
   readImage: (docId: string, image: ArrayBuffer, auto: boolean) => Promise<IngestResult>;
   readItems: (docId: string, items: TextItem[], auto: boolean) => Promise<IngestResult>;
+  /** A spreadsheet for the Marketplace Manager; answers what it read. Absent when the agent is not on the team. */
+  readSales?: (docId: string, filename: string, bytes: ArrayBuffer) => Promise<string>;
 };
 export type WaOutcome = { to: string; text: string; decided: StagedChange[] } | null;
 
@@ -71,7 +74,18 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
     mark();
     const isPdf = m.media.mimeType === "application/pdf" || /\.pdf$/i.test(m.media.filename ?? "");
     const isImage = /^image\/(png|jpe?g|webp)$/.test(m.media.mimeType);
-    if (!deps.keys || (!isPdf && !isImage)) parts = [{ text: phrase("unreadable", session.language) }];
+    const isSheet = m.kind === "document" && isSheetFile(m.media.filename, m.media.mimeType);
+    if (deps.keys && isSheet && deps.readSales) {
+      try {
+        const file = await downloadMedia(deps.keys, m.media.id, MAX_DOC, deps.fetch);
+        const id = deps.newDocId();
+        const name = m.media.filename ?? `whatsapp-${id}.csv`;
+        await deps.store(docKey(deps.officeId, id), file.bytes, file.mimeType || "application/octet-stream", { filename: name, by: link.email });
+        parts = [{ text: await deps.readSales(id, name, file.bytes), translate: true }];
+      } catch {
+        parts = [{ text: phrase("unreadable", session.language) }];
+      }
+    } else if (!deps.keys || (!isPdf && !isImage)) parts = [{ text: phrase("unreadable", session.language) }];
     else {
       try {
         const file = await downloadMedia(deps.keys, m.media.id, MAX_DOC, deps.fetch);

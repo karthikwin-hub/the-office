@@ -1,4 +1,6 @@
 import type {
+  ColumnMapping,
+  SalesChannel,
   AgentRoomView,
   AskResponse,
   Bill,
@@ -55,6 +57,8 @@ import type { OrderSource } from "./customer/orders";
 import { type CsStore, MemoryCsStore } from "./customer/store";
 import { AssistantService } from "./assistant/service";
 import { type AssistantStore, MemoryAssistantStore } from "./assistant/store";
+import { SalesService } from "./sales/service";
+import { MemorySalesStore, type SalesStore } from "./sales/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 import { buildObligations, complianceProposals, complianceView } from "./compliance";
 import { fyOf } from "./compliance/profile";
@@ -63,7 +67,7 @@ import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YE
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
 /** What the owner is asked to file, by its printed title. */
 const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = { proforma: "proforma invoice", delivery_note: "delivery note", credit_note: "credit note", debit_note: "debit note" };
-const ALWAYS_ASK = new Set(["email_reply", "audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
+const ALWAYS_ASK = new Set(["email_reply", "sales_mapping", "audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -73,6 +77,7 @@ const HEADLINE_KPI: Record<string, number> = {
   auditor: 1,
   "sales-rep": 1,
   "quote-desk": 0,
+  "marketplace-manager": 0,
   "account-manager": 0,
   marketer: 1,
   "market-watcher": 1,
@@ -108,6 +113,8 @@ export type OfficeOptions = {
   conversations?: CsStore;
   /** Where the Executive Assistant keeps each owner's own calendar, emails and tasks; memory unless the host has storage. */
   assistant?: AssistantStore;
+  /** Where online sales read from the marketplaces' reports are kept; memory unless the host has storage. */
+  sales?: SalesStore;
   orderSources?: OrderSource[];
   /** Where the books' edit log is kept; memory unless the host has storage. */
   edits?: EditLog;
@@ -122,6 +129,7 @@ export class OfficeService {
   readonly routines: RoutineLog;
   readonly customers: CustomerService;
   readonly assistant: AssistantService;
+  readonly sales: SalesService;
   readonly edits: EditLog;
   private snap: Snapshot;
   private backupStatus: () => BooksRecordView["backup"];
@@ -135,6 +143,7 @@ export class OfficeService {
     this.routines = opts.routines ?? new MemoryRoutineLog();
     this.customers = new CustomerService(this, opts.conversations ?? new MemoryCsStore(), opts.orderSources);
     this.assistant = new AssistantService(this, opts.assistant ?? new MemoryAssistantStore());
+    this.sales = new SalesService(this, opts.sales ?? new MemorySalesStore());
     this.settingsState = {
       business: books.business,
       users: [
@@ -419,6 +428,14 @@ export class OfficeService {
         return [
           { label: `Net pay for ${monthLabel(p.period, "long").split(" ")[0]}`, value: inrShort(p.totals.netPaise), figureId: `payroll:net:${p.period}` },
           { label: "People", value: String(p.lines.length) },
+        ];
+      }
+      case "marketplace-manager": {
+        const r = this.sales.report();
+        return [
+          { label: "Online sales, last 30 days", value: inrShort(r.totals.grossPaise) },
+          { label: "Orders", value: r.totals.orders.toLocaleString("en-IN") },
+          { label: "Returns", value: `${r.totals.returnsPct}%`, ...(r.totals.returnsPct >= 10 ? { tone: "red" as const } : {}) },
         ];
       }
       case "executive-assistant":
@@ -896,6 +913,7 @@ export class OfficeService {
   /** A rejected ledger entry leaves its bill or invoice out of the books; a rejected calendar drops its drafts. */
   private withdraw(item: StagedChange) {
     if (item.kind === "customer_reply" || item.kind === "handoff") return this.customers.decided(item, false);
+    if (item.kind === "sales_mapping") return this.sales.dropPending(String((item.payload as { importId?: string }).importId));
     if (item.kind === "calendar") {
       const cal = this.books.calendars.find((c) => c.id === (item.payload as { calendarId?: string }).calendarId);
       if (!cal) return;
@@ -1023,6 +1041,11 @@ export class OfficeService {
       case "handoff":
         this.customers.decided(item, true);
         break;
+      case "sales_mapping": {
+        const m = item.payload as { importId: string; channel: SalesChannel; mapping: ColumnMapping };
+        this.sales.applyMapping(m.importId, m.channel, m.mapping);
+        break;
+      }
     }
   }
 

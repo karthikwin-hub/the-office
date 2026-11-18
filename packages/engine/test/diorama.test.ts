@@ -70,8 +70,8 @@ describe("walking about the floor", () => {
 
   it("lays out reception and every room of the whole floor", () => {
     expect(L.rooms["office-manager"]?.row).toBe("front");
-    expect(L.order.length).toBe(17);
-    expect(Object.values(L.rooms).filter((r) => r.row === "top").length).toBe(9);
+    expect(L.order.length).toBe(18);
+    expect(Object.values(L.rooms).filter((r) => r.row === "top").length).toBe(10);
   });
 
   it("never walks anyone through a wall: every route stays in rooms, doorways and the corridor", () => {

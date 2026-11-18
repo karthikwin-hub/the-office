@@ -902,6 +902,8 @@ export const RefKind = z.enum([
   "order",
   /** An email the owner forwarded to the Executive Assistant; only that owner can open it. */
   "email",
+  /** A sales report from a marketplace, read by the Marketplace Manager. */
+  "sales_import",
 ]);
 export const Ref = z.object({ kind: RefKind, id: z.string().nullable(), region: z.string().optional() });
 export type Ref = z.infer<typeof Ref>;
@@ -935,6 +937,8 @@ export const StagedKind = z.enum([
   "file_document",
   /** A reply the Executive Assistant drafted to an email the owner forwarded; private to that owner. */
   "email_reply",
+  /** A sales report in a layout the Marketplace Manager has not seen: which column is which, for the owner to confirm once. */
+  "sales_mapping",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

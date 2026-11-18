@@ -24,6 +24,7 @@ export const PERSONAS: Record<string, Persona> = Object.fromEntries(
       ["sales-rep", "Vikram", "coffee", "02-11", "brisk"],
       ["quote-desk", "Neha", "green tea", "08-18", "brisk"],
       ["account-manager", "Rahul", "tea", "12-05", "warm"],
+      ["marketplace-manager", "Rohan", "coffee", "10-21", "brisk"],
       ["marketer", "Ishita", "coffee", "04-16", "warm"],
       ["market-watcher", "Sameer", "tea", "10-08", "dry"],
       ["social-media-manager", "Tara", "lemon tea", "06-24", "warm"],

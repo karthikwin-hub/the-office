@@ -46,6 +46,20 @@ const handler = http.all("/api/*", async ({ request }) => {
     if (!file) return HttpResponse.json({ error: "Export not found" }, { status: 404 });
     return new HttpResponse(file.bytes, { headers: { "content-type": file.contentType, "content-disposition": `attachment; filename="${file.filename}"` } });
   }
+  if (request.method === "POST" && url.pathname === ROUTES.salesUpload) {
+    // The same readers the live office uses; nothing leaves the page.
+    if (role !== "owner") return HttpResponse.json({ error: "Only the owner can add sales reports." }, { status: 403 });
+    const body = (await request.json()) as { file: string; content: string; encoding: "text" | "base64" };
+    const bytes = body.encoding === "base64" ? Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0)) : new TextEncoder().encode(body.content);
+    const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const { readSheets, SheetError } = await import("@office/engine/sheets");
+    try {
+      const imports = getOffice().sales.receive({ file: body.file, sheets: await readSheets(body.file, bytes), hash, via: "upload", sender: USERS.owner.email });
+      return HttpResponse.json({ imports, message: imports.map((i) => `${i.status === "needs_mapping" ? `${i.file} is in a layout I have not seen; confirm its columns below.` : `${i.formatName}: ${i.note}`}`).join("\n") });
+    } catch (e) {
+      return HttpResponse.json({ error: e instanceof SheetError ? e.message : "The file could not be opened. Send it as CSV or XLSX." }, { status: 422 });
+    }
+  }
   if (request.method === "POST" && url.pathname === "/api/documents") {
     const form = await request.formData();
     const file = form.get("file");

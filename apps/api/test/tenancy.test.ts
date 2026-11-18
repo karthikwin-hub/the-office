@@ -333,6 +333,19 @@ describe("one office cannot reach another", () => {
   });
 });
 
+describe("the sales address", () => {
+  it("takes spreadsheets to that office's Marketplace Manager, while the bills address still skips them", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "sales_email", "kaveri.sales@in.the-office.test");
+    const raw = (to: string) =>
+      ["From: Amazon Seller Central <no-reply@amazon.in>", `To: ${to}`, "Subject: Your report is ready", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", "Content-Type: text/plain", "", "Attached.", "--b", 'Content-Type: text/csv; name="MTR.csv"', 'Content-Disposition: attachment; filename="MTR.csv"', "", "Order Id,Quantity", "--b--", ""].join("\r\n");
+    await receiveEmail({ from: "no-reply@amazon.in", to: "kaveri.sales@in.the-office.test", raw: new Response(raw("kaveri.sales@in.the-office.test")).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/sales-email"]]);
+    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
+    expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
+  });
+});
+
 describe("the assistant's address", () => {
   it("takes an owner's forwarded mail to that office's assistant, with Gmail's forwarding header", async () => {
     const { w, cp, A } = await twoOffices();

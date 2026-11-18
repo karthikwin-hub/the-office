@@ -127,6 +127,17 @@ export const AGENTS: AgentDef[] = [
     livePhase: 2,
   },
   {
+    id: "marketplace-manager",
+    title: "The Marketplace Manager",
+    short: "Marketplaces",
+    team: "sales",
+    job: "Reads the sales reports Amazon, Flipkart, Meesho, Blinkit and the other apps send you, by email or WhatsApp, and shows what sold where: by channel, product, city and week, with returns and payouts. It does not change your books yet.",
+    duties: ["Read the platforms' sales and settlement reports", "Show sales by channel, product, state and city", "Watch returns and cancellations by product", "Put yesterday's online sales in the morning digest"],
+    proposes: ["sales_mapping"],
+    countLabel: "orders read",
+    livePhase: 2,
+  },
+  {
     id: "account-manager",
     title: "The Account Manager",
     short: "Account manager",

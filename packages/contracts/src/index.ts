@@ -9,3 +9,4 @@ export * from "./brand";
 export * from "./locale";
 export * from "./onboarding";
 export * from "./assistant";
+export * from "./sales";

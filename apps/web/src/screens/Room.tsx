@@ -14,6 +14,7 @@ import { count, isOwner, Page, PageHead, Register, Section, shortDate, theAgent,
 import { WhatsAppPhone } from "./WhatsAppPhone";
 import { CustomerServicePanel } from "./CustomerService";
 import { AssistantPanel } from "./Assistant";
+import { MarketplacePanel } from "../reports/online";
 import { RoutineList } from "./Routines";
 
 const ACCOUNTANT_MAY = new Set(["audit_flag", "share_file"]);
@@ -197,6 +198,8 @@ function WorkPanel({ agentId, preview }: { agentId: string; preview?: boolean })
       return p(<Q k="people">{(d) => <PayrollView report={d} />}</Q>);
     case "customer-service":
       return p(<CustomerServicePanel preview={preview} />);
+    case "marketplace-manager":
+      return p(<MarketplacePanel preview={preview} />);
     case "executive-assistant":
       return preview ? <AssistantPanel preview /> : <AssistantPanel />;
   }

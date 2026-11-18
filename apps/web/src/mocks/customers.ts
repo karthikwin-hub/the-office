@@ -1,5 +1,5 @@
 import type { Role } from "@office/contracts";
-import { converse, type OfficeService, RoutineError, type RoutineHost, runMockEffects, runNow, seedSampleAssistant } from "@office/engine";
+import { converse, type OfficeService, RoutineError, type RoutineHost, runMockEffects, runNow, seedSampleAssistant, seedSampleSales } from "@office/engine";
 import { sampleConversations, sampleCustomerService, sampleRoutineRuns } from "@office/fixtures";
 import { HttpResponse } from "msw";
 
@@ -15,6 +15,7 @@ export function seedMock(office: OfficeService) {
   for (const r of sampleRoutineRuns(office.asOf, office.settings().digestTime)) office.routines.record(r);
   office.routines.setPaused("morning-digest", false);
   seedSampleAssistant(office, { name: "Anil Kulkarni", email: "anil@kaverielectricals.in" });
+  seedSampleSales(office);
 }
 
 /** Nothing leaves the mockup: every reply is marked sent, and hand-offs reach no one's phone. */
