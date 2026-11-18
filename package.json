@@ -17,6 +17,7 @@
     "deploy": "pnpm build && pnpm --filter @office/api run db:migrate && pnpm --filter @office/api run deploy",
     "e2e:live": "node tools/e2e/live.mjs",
     "docs": "node tools/docs/build.mjs",
+    "docs:reference": "node tools/docs/reference.mjs",
     "verify:exports": "rm -rf tools/exports/out && mkdir -p tools/exports/out/tmp && EXPORT_DIR=$PWD/tools/exports/out pnpm --filter @office/engine exec vitest run test/excel.test.ts && TMPDIR=$PWD/tools/exports/out/tmp .venv/bin/python tools/exports/verify.py tools/exports/out"
   },
   "devDependencies": {
