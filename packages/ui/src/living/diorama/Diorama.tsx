@@ -26,6 +26,8 @@ export type DioramaProps = {
   onOpen: (target: DioramaTarget) => void;
   /** The 3D office cannot run here, or not fast enough: show the drawn floor instead. */
   onFallback: (reason: string) => void;
+  /** Every room, hired or not; otherwise only the staffed rooms, with the vacancies in one flat corner. */
+  wholeFloor?: boolean;
   /** Picture only, for demos and screenshots: minutes after midnight in India, and a temperature. */
   at?: number | null;
   tempC?: number | null;
@@ -35,9 +37,9 @@ export type DioramaProps = {
  * What the floor last showed, kept for the whole visit: leave for the Desk, approve three bills,
  * come back, and the seal comes down three times. Reset when the office changes.
  */
-const memory: { office: string; trail: TrailState; desk: number | null } = { office: "", trail: startTrail(), desk: null };
+const memory: { office: string; trail: TrailState; desk: number | null; opened: boolean } = { office: "", trail: startTrail(), desk: null, opened: false };
 function remembered(office: string) {
-  if (memory.office !== office) Object.assign(memory, { office, trail: startTrail(), desk: null });
+  if (memory.office !== office) Object.assign(memory, { office, trail: startTrail(), desk: null, opened: false });
   return memory;
 }
 
@@ -54,7 +56,7 @@ type Bubble = { id: number; agentId: string; text: string; until: number };
  * second when only small things move, every frame while something moves fast, and not
  * at all when the tab is hidden or the floor is scrolled away.
  */
-export function Diorama({ view, names = {}, ambient = null, weather = null, renderLink, renderDeskLink, onOpen, onFallback, at = null, tempC = null }: DioramaProps) {
+export function Diorama({ view, names = {}, ambient = null, weather = null, renderLink, renderDeskLink, onOpen, onFallback, wholeFloor = false, at = null, tempC = null }: DioramaProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const office = useRef<PopupOffice | null>(null);
@@ -64,7 +66,9 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
   const [opened, setOpened] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [still] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const layout = useMemo(() => layoutFrom(planFor(view.rooms, { wholeFloor: true, layout: "wide" })), [view.rooms.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The building changes shape only when the staffed rooms do (or the whole floor is asked for); then the scene is rebuilt.
+  const staffed = view.rooms.filter((r) => r.hired).map((r) => r.agentId).sort().join(",");
+  const layout = useMemo(() => layoutFrom(planFor(view.rooms, { wholeFloor, layout: "wide" })), [wholeFloor, wholeFloor ? "" : staffed]); // eslint-disable-line react-hooks/exhaustive-deps
   const where = whereIs(weather, view.business.stateCode || undefined);
   const live = useRef({ view, names, ambient, weather, at, tempC, onOpen, onFallback });
   live.current = { view, names, ambient, weather, at, tempC, onOpen, onFallback };
@@ -192,7 +196,9 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
     void o.compile().then(() => {
       if (cancelled) return;
       setReady(true);
-      o.open();
+      // Opened once this visit: a rebuild (a new hire, the whole floor shown) appears already open.
+      o.open(before.opened);
+      before.opened = true;
       started = true;
       probing = 1;
       lastDraw = performance.now();

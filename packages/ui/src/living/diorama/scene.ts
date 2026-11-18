@@ -1,4 +1,4 @@
-import { AGENT_BY_ID, type PersonaNames } from "@office/contracts";
+import { AGENT_BY_ID, AGENTS, type PersonaNames } from "@office/contracts";
 import * as THREE from "three";
 import type { Spot } from "../director";
 import { personaFor } from "../personas";
@@ -39,7 +39,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => 1 + 2.6 * Math.pow(t - 1, 3) + 1.6 * Math.pow(t - 1, 2);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const BD_H = 80;
+/** The upright sky page is as tall as a full floor's page is deep, and shorter on a small office's page. */
+const BD_MAX = 80;
 const T = 0.35;
 const DESK_TOP = 1.8;
 const MAX_SHEETS = 30;
@@ -98,6 +99,7 @@ export class PopupOffice {
   private pageTex!: DrawnTexture;
   private texts: DrawnTexture[] = [];
   private readonly backdrop = new THREE.Group();
+  private readonly bdH: number;
   private skyMat!: THREE.ShaderMaterial;
   private sunDisc!: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private moonDisc!: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
@@ -141,6 +143,7 @@ export class PopupOffice {
     this.hired = new Set(opts.hired.filter((id) => this.L.rooms[id]));
     this.names = opts.names;
     this.deskWanted = this.pileShown = opts.deskCount;
+    this.bdH = Math.min(BD_MAX, (this.L.page.x1 - this.L.page.x0) * 0.56);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: opts.lite, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, opts.lite ? 1 : 1.25));
     this.renderer.shadowMap.enabled = !opts.lite;
@@ -201,7 +204,7 @@ export class PopupOffice {
     // The upright page: the day's sky, painted, with the business's name at its head.
     this.backdrop.position.set(0, 0.2, L.page.z0);
     this.scene.add(this.backdrop);
-    const overlay = drawn(2048, Math.round(2048 * (BD_H / PW)), (g, w, h) => this.drawSkyPage(g, w, h, PW));
+    const overlay = drawn(2048, Math.round(2048 * (this.bdH / PW)), (g, w, h) => this.drawSkyPage(g, w, h, PW));
     this.texts.push(overlay);
     this.skyMat = new THREE.ShaderMaterial({
       uniforms: {
@@ -223,13 +226,13 @@ export class PopupOffice {
           gl_FragColor = vec4(col, 1.0);
         }`,
     });
-    const sky = new THREE.Mesh(new THREE.PlaneGeometry(PW, BD_H), this.skyMat);
-    sky.position.set(0, BD_H / 2, 0.02);
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(PW, this.bdH), this.skyMat);
+    sky.position.set(0, this.bdH / 2, 0.02);
     this.backdrop.add(sky);
-    const back = kit.box(PW + 4, 1.2, BD_H + 2, clothMat, { edges: false, cast: false });
+    const back = kit.box(PW + 4, 1.2, this.bdH + 2, clothMat, { edges: false, cast: false });
     back.geometry.translate(0, -0.6, 0);
     back.rotation.x = Math.PI / 2;
-    back.position.set(0, BD_H / 2, -0.62);
+    back.position.set(0, this.bdH / 2, -0.62);
     this.backdrop.add(back);
     const coverTex = drawn(1600, 900, (g, w, h) => {
       g.clearRect(0, 0, w, h);
@@ -241,8 +244,8 @@ export class PopupOffice {
       g.fillText(`Khata ${financialYear(Date.now())}`, w / 2, h / 2 + 70);
     });
     this.texts.push(coverTex);
-    const coverText = new THREE.Mesh(new THREE.PlaneGeometry(PW - 10, BD_H - 10), new THREE.MeshLambertMaterial({ map: coverTex, transparent: true }));
-    coverText.position.set(0, BD_H / 2, -1.25);
+    const coverText = new THREE.Mesh(new THREE.PlaneGeometry(PW - 10, this.bdH - 10), new THREE.MeshLambertMaterial({ map: coverTex, transparent: true }));
+    coverText.position.set(0, this.bdH / 2, -1.25);
     coverText.rotation.set(0, Math.PI, Math.PI);
     this.backdrop.add(coverText);
     const sunTex = drawn(256, 256, (g, w) => {
@@ -315,6 +318,17 @@ export class PopupOffice {
         g.fillStyle = "rgba(122,62,43,.7)"; g.fillText(AGENT_BY_ID[id]?.short ?? id, px(rm.cx), pz(rm.cz + 2.4));
         g.textAlign = "left";
       }
+    }
+    if (L.alcove) {
+      const a = L.alcove, vacant = AGENTS.filter((x) => x.id !== "office-manager" && !this.hired.has(x.id)).length;
+      g.fillStyle = "#f4eedf"; g.fillRect(px(a.x0), pz(a.z0), px(a.x1) - px(a.x0), pz(a.z1) - pz(a.z0));
+      g.strokeStyle = "rgba(79,70,60,.55)"; g.lineWidth = 2; g.setLineDash([10, 8]);
+      g.strokeRect(px(a.x0 + 0.3), pz(a.z0 + 0.3), px(a.x1 - 0.3) - px(a.x0 + 0.3), pz(a.z1 - 0.3) - pz(a.z0 + 0.3)); g.setLineDash([]);
+      g.textAlign = "center"; g.fillStyle = "rgba(79,70,60,.66)";
+      g.font = `700 ${S * 1.7}px ${HAND}`; g.fillText("Vacant rooms", px(a.cx), pz(a.cz - 1.2));
+      g.font = `400 ${S * 1.15}px ${HAND}`; g.fillText(`${vacant} ${vacant === 1 ? "room is" : "rooms are"} empty`, px(a.cx), pz(a.cz + 0.6));
+      g.fillStyle = "rgba(122,62,43,.7)"; g.fillText("hire in the hiring hall", px(a.cx), pz(a.cz + 2.4));
+      g.textAlign = "left";
     }
     g.fillStyle = "rgba(60,52,44,.7)"; g.font = `700 ${S * 1.3}px ${HAND}`;
     for (const w of L.wings) g.fillText(w.text, px(w.x + 0.6), pz(w.z));
@@ -468,10 +482,13 @@ export class PopupOffice {
         if (prev) this.addSeg(r.x0, r.z0, r.x0, r.z1, 4.2, [prev.id, r.id]);
       });
     }
-    const lastTop = top[top.length - 1], lastBottom = bottom[bottom.length - 1];
-    this.addSeg(B.x1, B.z0, B.x1, C.z0, 4.2, lastTop ? [lastTop.id] : ["always"]);
+    const end = (list: RoomGeo[]) => list.filter((r) => Math.abs(r.x1 - B.x1) < 0.05).map((r) => r.id);
+    const lastTop = end(top), lastBottom = end(bottom);
+    // Beside the vacant corner nothing stands; the wall lies flat with it.
+    const owners = (ids: string[]) => (ids.length ? ids : L.alcove ? ["(vacant)"] : ["always"]);
+    this.addSeg(B.x1, B.z0, B.x1, C.z0, 4.2, owners(lastTop));
     this.addSeg(B.x1, C.z0, B.x1, C.z1, 4.2, ["always"]);
-    this.addSeg(B.x1, C.z1, B.x1, B.z1, 4.2, lastBottom ? [lastBottom.id] : ["always"]);
+    this.addSeg(B.x1, C.z1, B.x1, B.z1, 4.2, owners(lastBottom));
     for (const s of this.segments) {
       s.sign = this.fallSign(s);
       s.f = 0;
@@ -814,7 +831,7 @@ export class PopupOffice {
     this.camera.updateProjectionMatrix();
     const hf = 2 * Math.atan(Math.tan((this.camera.fov * RAD) / 2) * this.camera.aspect);
     const half = (this.L.yard.x1 - this.L.yard.x0) / 2 - 2;
-    this.home.dist = Math.max(104, half / Math.tan(hf / 2));
+    this.home.dist = Math.max(60, half / Math.tan(hf / 2));
     if (!this.glide) this.view.dist = this.opening ? this.home.dist * 1.18 : this.home.dist;
     this.rtA?.dispose();
     this.rtB?.dispose();
@@ -874,8 +891,9 @@ export class PopupOffice {
     for (const id of this.hired) this.growRoom(id, 0);
     for (const d of this.dolls.values()) { d.pop = 0.001; d.place(); }
   }
-  open() {
-    this.opening = { t: 0, dur: this.opts.reduced ? 0.001 : 3.2 };
+  /** Opens the book; `instant` when it was already open on this visit and is only being rebuilt. */
+  open(instant = false) {
+    this.opening = { t: 0, dur: this.opts.reduced || instant ? 0.001 : 3.2 };
     this.closeBook();
     this.view.dist = this.home.dist * 1.18;
   }
@@ -1200,6 +1218,8 @@ export class PopupOffice {
     for (const r of Object.values(this.L.rooms)) {
       if (p.x > r.x0 && p.x < r.x1 && p.z > r.z0 && p.z < r.z1) return this.hired.has(r.id) ? { kind: "room", id: r.id } : { kind: "vacant", id: r.id };
     }
+    const a = this.L.alcove;
+    if (a && p.x > a.x0 && p.x < a.x1 && p.z > a.z0 && p.z < a.z1) return { kind: "vacant", id: "alcove" };
     return null;
   }
 
@@ -1242,7 +1262,7 @@ export class PopupOffice {
     u.uTime!.value = this.time;
     u.uLight!.value = 0.28 + 0.72 * day;
     const PW = this.L.page.x1 - this.L.page.x0;
-    const hang = (az: number, el: number, mesh: THREE.Object3D) => mesh.position.set(clamp((az - 180) / 100, -1.05, 1.05) * (PW / 2 - 8), BD_H * 0.16 + (clamp(el, -10, 80) / 80) * (BD_H * 0.7), 0.5);
+    const hang = (az: number, el: number, mesh: THREE.Object3D) => mesh.position.set(clamp((az - 180) / 100, -1.05, 1.05) * (PW / 2 - 8), this.bdH * 0.16 + (clamp(el, -10, 80) / 80) * (this.bdH * 0.7), 0.5);
     hang(s.az, s.el, this.sunDisc);
     this.sunDisc.material.opacity = smoothstep(-3, 3, s.el) * (1 - c.cover * 0.85);
     this.sunDisc.visible = this.sunDisc.material.opacity > 0.01;

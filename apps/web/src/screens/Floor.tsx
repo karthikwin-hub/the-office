@@ -126,6 +126,7 @@ export function FloorScreen() {
                   names={names}
                   ambient={ambient.data ?? null}
                   weather={weather.data?.weather ?? null}
+                  wholeFloor={prefs.wholeFloor}
                   at={picture.at}
                   tempC={picture.temp}
                   onFallback={setFallback}
@@ -169,7 +170,7 @@ export function FloorScreen() {
                   {vacant ? (
                     <>
                       {" "}
-                      Rooms lying flat on the page are empty; <Link to="/hiring">hire in the hiring hall</Link>.
+                      {prefs.wholeFloor ? "Rooms lying flat on the page are empty" : `${count(vacant, "room")} ${vacant === 1 ? "is" : "are"} vacant`}; <Link to="/hiring">hire in the hiring hall</Link>.
                     </>
                   ) : null}
                 </p>
@@ -186,7 +187,7 @@ export function FloorScreen() {
                 </p>
               )}
               <div className="floor-tools">
-                {vacant && !use3d ? (
+                {vacant ? (
                   <button type="button" className="link-button" aria-pressed={prefs.wholeFloor} onClick={() => setPrefs({ wholeFloor: !prefs.wholeFloor })}>
                     {prefs.wholeFloor ? "Show only staffed rooms" : "Show the whole floor"}
                   </button>

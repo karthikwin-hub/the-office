@@ -111,7 +111,8 @@ const handler = http.all("/api/*", async ({ request }) => {
     return HttpResponse.json({ weather: { city: "Pune", tempC: 27, sky: "cloudy", at: new Date().toISOString(), lat: 18.5, lon: 73.9 } });
   }
   if (url.pathname === "/api/prefs") {
-    const saved = Prefs.parse({ ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") });
+    // The demo opens on the Lived-in office: the pop-up book is the first thing a visitor sees.
+    const saved = Prefs.parse({ ...DEFAULT_PREFS, skin: "lived-in", ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") });
     if (request.method === "GET") return HttpResponse.json(saved);
     const change = PrefsChange.safeParse(await request.json().catch(() => null));
     if (!change.success) return HttpResponse.json({ error: "Invalid preferences" }, { status: 400 });

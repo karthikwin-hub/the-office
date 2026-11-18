@@ -94,6 +94,16 @@ describe("walking about the floor", () => {
     expect(checked).toBeGreaterThan(10_000);
   });
 
+  it("draws only the staffed rooms when asked, with the vacancies in one corner, and still walks nobody through a wall", () => {
+    const two = rooms.map((r) => ({ ...r, hired: r.agentId === "office-manager" || r.agentId === "accountant" }));
+    const S = layoutFrom(planFor(two, { wholeFloor: false, layout: "wide" }));
+    expect(S.order).toEqual(["office-manager", "accountant"]);
+    expect(S.alcove).not.toBeNull();
+    expect(S.building.x1 - S.building.x0).toBeLessThan(L.building.x1 - L.building.x0);
+    const places = [...S.order.map((id) => exitPath(S, id)), corridorSpot(S, S.deskStand), ...S.teaSpots.map((p) => corridorSpot(S, p))];
+    for (const a of places) for (const b of places) for (const p of route(a, b)) expect(walkable(S, p)).toBe(true);
+  });
+
   it("keeps the owner's desk and the tea point inside the corridor", () => {
     expect(walkable(L, L.deskStand)).toBe(true);
     for (const p of L.teaSpots) expect(walkable(L, p)).toBe(true);

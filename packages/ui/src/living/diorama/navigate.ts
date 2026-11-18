@@ -27,6 +27,8 @@ export type Layout = {
   rooms: Record<string, RoomGeo>;
   /** Room ids in plan order, reception first. */
   order: string[];
+  /** When only staffed rooms are drawn, the vacancies share one corner, printed flat on the page. */
+  alcove: (Box & { cx: number; cz: number }) | null;
   entrance: { x: number; z: number; half: number };
   page: Box;
   yard: Box;
@@ -75,6 +77,8 @@ export function layoutFrom(plan: Plan): Layout {
     }
     order.push(r.agentId);
   }
+  const a = plan.alcove;
+  const alcove = a ? { x0: X(a.x), x1: X(a.x + a.w), z0: Z(a.y), z1: Z(a.y + a.h), cx: X(a.x + a.w / 2), cz: Z(a.y + a.h / 2) } : null;
   const e = plan.entrance;
   const entrance = { x: X(e.x), z: Z(e.y) + (e.size * SCALE) / 2, half: (e.size * SCALE) / 2 };
   const page = { x0: building.x0 - 12.6, x1: building.x1 + 12.6, z0: building.z0 - 10.6, z1: building.z1 + 26.6 };
@@ -87,7 +91,7 @@ export function layoutFrom(plan: Plan): Layout {
     return { text: w.text, x: X(w.x), z: top ? building.z0 - 1.6 : building.z1 + 2.6 };
   });
   return {
-    building, corridor, lane, rooms, order, entrance, page, yard, gate,
+    building, corridor, lane, rooms, order, alcove, entrance, page, yard, gate,
     road: { z0: building.z1 + 17.2, z1: building.z1 + 25.2 },
     sundial: [(building.x0 + building.x1) / 2 + 6, building.z1 + 8.6],
     tree: [building.x1 - 2.4, building.z1 + 7.6],
