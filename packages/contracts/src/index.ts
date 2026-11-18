@@ -8,3 +8,4 @@ export * from "./living";
 export * from "./brand";
 export * from "./locale";
 export * from "./onboarding";
+export * from "./assistant";

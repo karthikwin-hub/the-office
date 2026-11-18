@@ -2,6 +2,7 @@ import {
   AnswerInput,
   AskRequest,
   BrandVoice,
+  CalendarLinkInput,
   ChannelSetup,
   ComplianceAssign,
   ComplianceFiling,
@@ -29,6 +30,9 @@ import {
   ROUTINE_BY_ID,
   RoutineChange,
   Settings,
+  type StagedChange,
+  TaskChange,
+  TaskInput,
   VariantEdit,
   WidgetChange,
 } from "@office/contracts";
@@ -89,13 +93,19 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
 
   try {
     if (get && head === "session") return ok({ user: req.user, role: req.role, mode: req.mode });
-    if (get && head === "office") return ok(office.officeView());
-    if (get && head === "agents" && a) return ok(office.agentRoom(a));
+    if (get && head === "office") return ok(withDrafts.office(office, req));
+    if (get && head === "agents" && a) return ok(a === "executive-assistant" ? withDrafts.room(office, req) : office.agentRoom(a));
     if (head === "desk") {
-      if (get && !a) return ok(office.desk());
+      if (get && !a) return ok(withDrafts.desk(office, req));
       if (req.method === "POST" && a) {
         const item = office.allStaged().find((s) => s.id === a);
-        if (!item) return notFound("Item");
+        if (!item) {
+          // A reply drafted for one owner is theirs alone to decide.
+          if (req.role !== "owner" || !office.assistant.drafts(req.user.email).some((d) => d.id === a)) return notFound("Item");
+          const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, unknown> };
+          if (body.action !== "approve" && body.action !== "reject") return { status: 400, body: { error: "action must be approve or reject" } };
+          return ok(office.assistant.decide(req.user.email, a, { action: body.action, note: body.note, edits: body.edits }, req.user.name));
+        }
         if (req.role === "accountant" && !ACCOUNTANT_CAN_DECIDE.has(item.kind)) return forbidden("Only the owner can approve this.");
         const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, unknown> };
         if (body.action !== "approve" && body.action !== "reject") return { status: 400, body: { error: "action must be approve or reject" } };
@@ -201,6 +211,7 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
     if (head === "social") return social(office, req, parts.slice(1));
     if (head === "routines") return routines(office, req, parts.slice(1));
     if (head === "customers") return customers(office, req, parts.slice(1));
+    if (head === "assistant") return assistant(office, req, parts.slice(1));
     if (head === "orders") return orders(office, req, parts.slice(1));
     if (head === "compliance") return compliance(office, req, parts.slice(1));
     if (head === "books-record") return booksRecord(office, req, parts.slice(1));
@@ -213,6 +224,76 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
 }
 
 const bad = (error: string): ApiResult => ({ status: 400, body: { error } });
+
+/** Replies the Executive Assistant drafted are added to the desk, the floor and its room for their own owner only. */
+const withDrafts = {
+  mine(office: OfficeService, req: ApiRequest): StagedChange[] {
+    return req.role === "owner" ? office.assistant.drafts(req.user.email) : [];
+  },
+  desk(office: OfficeService, req: ApiRequest) {
+    const d = office.desk();
+    if (req.role !== "owner") return d;
+    const mine = withDrafts.mine(office, req);
+    const decided = office.assistant.decidedDrafts(req.user.email);
+    const newest = (x: StagedChange, y: StagedChange) => (x.createdAt < y.createdAt ? 1 : -1);
+    return { items: [...d.items, ...mine].sort(newest), decided: [...d.decided, ...decided].sort((x, y) => ((x.decidedAt ?? "") < (y.decidedAt ?? "") ? 1 : -1)) };
+  },
+  office(office: OfficeService, req: ApiRequest) {
+    const v = office.officeView();
+    const n = withDrafts.mine(office, req).length;
+    if (!n) return v;
+    return { ...v, deskCount: v.deskCount + n, rooms: v.rooms.map((r) => (r.agentId === "executive-assistant" ? { ...r, waitingCount: r.waitingCount + n, status: r.status === "idle" ? ("waiting" as const) : r.status } : r)) };
+  },
+  room(office: OfficeService, req: ApiRequest) {
+    const v = office.agentRoom("executive-assistant");
+    const mine = withDrafts.mine(office, req);
+    const status = mine.length ? { ...v.status, waitingCount: mine.length, status: v.status.status === "idle" ? ("waiting" as const) : v.status.status } : v.status;
+    return { ...v, status, pending: mine };
+  },
+};
+
+/** The Executive Assistant's own page: one owner's calendar, tasks and emails, never anyone else's. */
+function assistant(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
+  if (req.role !== "owner") return forbidden("The assistant works for each owner on their own; there is nothing here for the accountant.");
+  const ea = office.assistant;
+  const me = req.user.email;
+  const [what, id] = parts;
+  const sample = req.mode === "mock";
+  if (!what && req.method === "GET") return ok(ea.view(me, sample));
+  if (what === "calendar") {
+    if (req.method === "DELETE") {
+      ea.clearCalendar(me);
+      return ok(ea.view(me, sample));
+    }
+    if (req.method === "PUT") {
+      // Live, the Worker reads the link itself before this; the demo has a sample week instead.
+      const parsed = CalendarLinkInput.safeParse(req.body ?? {});
+      if (!parsed.success) return bad(parsed.error.issues[0]?.message ?? "Paste your calendar's private address.");
+      if (req.mode !== "mock") return { status: 501, body: { error: "The calendar is read by the server." } };
+      ea.setCalendar(me, { events: ea.sampleCalendar(me), label: "Sample calendar" });
+      return ok(ea.view(me, sample));
+    }
+  }
+  if (what === "tasks") {
+    if (req.method === "POST" && !id) {
+      const parsed = TaskInput.safeParse(req.body ?? {});
+      if (!parsed.success) return bad(parsed.error.issues[0]?.message ?? "Say what to do.");
+      ea.addTask(me, parsed.data);
+      return ok(ea.view(me, sample));
+    }
+    if (req.method === "PATCH" && id) {
+      const parsed = TaskChange.safeParse(req.body ?? {});
+      if (!parsed.success) return bad("Send a status, a due date or a snooze date.");
+      if (!ea.changeTask(me, id, parsed.data)) return notFound("Task");
+      return ok(ea.view(me, sample));
+    }
+  }
+  if (what === "mail" && id && req.method === "GET") {
+    const m = ea.view(me, sample).mail.find((x) => x.id === id);
+    return m ? ok(m) : notFound("Email");
+  }
+  return notFound("Route");
+}
 
 /** Routines: anyone may look; pausing is the owner's. "Run now" needs the host, so it is handled there. */
 function routines(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {

@@ -74,6 +74,10 @@ An owner who links their phone in Settings gets a daily digest and can approve f
 
 The Customer Service agent answers the business's customers on the business's WhatsApp number, by email and in a chat on the business's website. It answers order status and account balance from the books (after the customer is identified) and business facts from answers the owner has saved. It hands refunds, complaints and anything it cannot ground to the owner, with a short summary, and never leaves a customer without a reply. The AI only classifies messages; the words come from the books, the facts or a saved answer.
 
+## 8a. The owner's own assistant
+
+The Executive Assistant works for each owner on their own, not for the office. The owner gives it their calendar's private address (Google Calendar's "Secret address in iCal format") and forwards emails to `<slug>.assistant@in.office.snilld.in`. Each morning it plans the owner's next three days: their meetings, their tasks, and what the office needs from them that day (the desk, filings due, customers waiting), with a brief from the books before every meeting with a customer or supplier and a suggested slot for desk work. Replies to forwarded emails are drafted for the owner's own desk, checked against the books (a figure the books do not hold is flagged), and sent only when the owner approves, from the office's address in the owner's name with replies coming back to the owner. Tasks come from the room, from WhatsApp ("remind me to call Sharma on Friday") and from promises in replies the owner sent. None of it is seen by the accountant or other owners.
+
 ## 9. Social media that never misstates a price
 
 The Social Media Manager plans a monthly calendar, drafts posts for Instagram, Facebook, Threads, LinkedIn, X and WhatsApp broadcast, checks every price and claim against the books, and publishes only after approval. It listens for comments and messages and turns enquiries into leads. Without a platform connection it prepares a publishing pack and the owner posts by hand.
@@ -110,6 +114,7 @@ The demo at https://demo.office.snilld.in runs the real app with a sample busine
 | --- | --- | --- | --- |
 | Office Manager | Front office | Answers questions in plain language with linked figures; the front door of the office | Built |
 | Customer Service | Front office | Answers the business's own customers on WhatsApp, email and website chat | First version built |
+| Executive Assistant | Front office | Each owner's own: calendar, three-day agenda with meeting briefs, tasks, replies to forwarded emails | First version built (calendar by private link, email by forwarding) |
 | Accountant | Accounts | Reads bills and invoices; stages entries linked to their documents; sets aside duplicates | Built |
 | Credit Controller | Accounts | Ages debtors; drafts escalating reminders | Built |
 | Tax Clerk | Accounts | GST and TDS by deterministic code; return files | Built (India) |
@@ -123,7 +128,7 @@ The demo at https://demo.office.snilld.in runs the real app with a sample busine
 
 "Preview on the books" means the room, its reports and its approval cards work from the office's books, but the agent has no live outside data source yet.
 
-**Trust levels.** Every agent starts as a **Trainee** (everything waits for approval), can be promoted to **Trusted** (routine work runs on its own and is logged) and then **Autonomous**. Audit flags, file sharing, payroll runs, campaigns, calendars, broadcasts and posts are always reviewed on the Desk whatever the level.
+**Trust levels.** Every agent starts as a **Trainee** (everything waits for approval), can be promoted to **Trusted** (routine work runs on its own and is logged) and then **Autonomous**. Audit flags, file sharing, payroll runs, campaigns, calendars, broadcasts and posts are always reviewed on the Desk whatever the level, and the Executive Assistant's replies always wait for their owner.
 
 ## 3. Components
 
@@ -155,7 +160,7 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 | Store | Holds | Never holds |
 | --- | --- | --- |
 | D1 `office` (control plane) | Accounts, sessions, offices, memberships, invitations (only a hash of each link), routes for inbound mail and webhooks, WhatsApp links, consent records, audit | Any business's books |
-| One Durable Object per office (SQLite) | That office's books, staged changes, team log, routines history, customer conversations, the field-level edit log, persona names | Another office's data |
+| One Durable Object per office (SQLite) | That office's books, staged changes, team log, routines history, customer conversations, the field-level edit log, persona names; and, apart from the books, each owner's assistant record (calendar events for two weeks, tasks, the last 50 forwarded emails, drafted replies) and their calendar address, encrypted | Another office's data. The assistant records are not in the books, the backups or the eight-year retention, and are deleted when the owner leaves |
 | R2 `office-docs` | Original documents and images under `o/<officeId>/`; books kept eight years after deletion under `retained/<officeId>/` | Files outside the office's folder |
 
 ## 6. Inbound traffic
@@ -166,6 +171,7 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 | --- | --- |
 | Bills by email | Each office has `<slug>@in.office.snilld.in`. The `route` table maps the address to the office; unknown addresses are refused. At most 5 attachments per email, PDFs and images. |
 | Customer service email | `<slug>.help@in.office.snilld.in`, claimed when the Customer Service agent is hired. |
+| Assistant email | `<slug>.assistant@in.office.snilld.in`, claimed when the Executive Assistant is hired. Only mail from an owner's own address is read (forwarded by hand, or by a Gmail filter, which sends as the owner); Gmail's forwarding confirmation code is shown in the Assistant's room. Attachments go to the Accountant. |
 | WhatsApp (shared number) | One number serves every office. A person's phone is linked with a six-digit code from Settings; someone in several offices is asked which office a message is for. |
 | WhatsApp (a business's own number), Facebook, Instagram, Threads | Webhook signatures are checked, then each message is routed by its page, account or number id. |
 | Website chat | `/api/chat/<key>`, rate-limited per visitor, no cookies; answers 404 when the chat is off. |
@@ -200,7 +206,8 @@ The Lived-in look turns the Floor into a papercraft pop-up book. It is a picture
 | Operators | The platform console and admin tool see the control plane only; there is no command to read a business's books |
 | Edit log | Every change to the books recorded (old and new value, who, when), hash-chained, refused by the database if anyone tries to alter it, kept eight years |
 | Secrets | Infisical and Cloudflare's secret store; never in files, chat or logs |
-| Fair use | Per office per day: 400 AI calls (150 of them for customer service) and 250 MB of uploads; a plain 429 when spent |
+| Owner-private data | The Executive Assistant's routes answer owners only, each for their own email address; its drafts are added to that owner's desk and floor and to nobody else's; its log lines never name an event or email |
+| Fair use | Per office per day: 400 AI calls, 150 for customer service, 100 for the assistant's drafts (then plain holding replies), and 250 MB of uploads; a plain 429 when spent |
 
 ## 10. The demo build
 
@@ -212,7 +219,7 @@ The engine has 384 automated tests (tax, ageing, audit, compliance, imports, soc
 
 # Domains and environments
 
-> **In one paragraph.** Everything the public sees is under `office.snilld.in`, in the Snilld Cloudflare account. Three addresses are websites people use (the product page, the app and the console), one is the demo, and one is not a website at all but the email domain bills are sent to. An older copy in a separate Cloudflare account is no longer used and is due to be deleted.
+> **In one paragraph.** Everything the public sees is under `office.snilld.in`, in the Snilld Cloudflare account. Three addresses are websites people use (the product page, the app and the console), one is the demo, and one is not a website at all but the email domain bills are sent to. The older copy in a separate Cloudflare account was deleted on 18 November 2026.
 
 ## 1. Addresses
 
@@ -225,7 +232,6 @@ The engine has 384 automated tests (tax, ageing, audit, compliance, imports, soc
 | **in.office.snilld.in** | Not a website: the email domain for incoming mail. Each office receives bills at `<slug>@in.office.snilld.in` and customer email at `<slug>.help@in.office.snilld.in` | Businesses forward bills there |
 | **`<name>`.office.snilld.in** | Optional: an office's own web address, for example `neltrade.office.snilld.in`. None are set up yet; each is added on request with `admin.mjs subdomain` | One business each |
 | **support@snilldai.com** | Not a website: the sender of invitations, confirmations, password resets, reminders and digests, sent through Resend | Outgoing email |
-| **the-office.the-office-agents.workers.dev** | The old Cloudflare account's copy, from before the move. Holds only test data; not used | Nobody. Delete with the runbook, Part 5 step 9 |
 
 One sign-in covers every address under `office.snilld.in`: the session cookie is set for the whole domain.
 
@@ -236,7 +242,7 @@ One sign-in covers every address under `office.snilld.in`: the session cookie is
 | Live | The Worker `the-office` in the Snilld Cloudflare account, on the addresses above | Real offices: D1 `office`, R2 `office-docs`, one Durable Object per office | `infisical run --env=dev --silent -- sh tools/admin/deploy.sh` |
 | Demo | The Worker `the-office-mock` on demo.office.snilld.in | Sample books in the visitor's browser | `infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo` |
 | Local | `wrangler dev` and Vite on a developer's machine (`pnpm dev` for the mock app) | Local state only | Not deployed |
-| Old account | "the-office-agents" Cloudflare account | Test data only | Not deployed; to be deleted |
+| Old account | "the-office-agents" Cloudflare account | Emptied on 18 Nov 2026 (backup in `backups/`) | Its API token is still to be revoked |
 
 ## 3. Outside services
 
@@ -325,6 +331,16 @@ In **Settings → Bring in your books**, download the three templates (customers
 
 In the **Hiring hall**, hire an agent to give it a room and set it to work. Each agent starts as a **Trainee**: everything it proposes waits for you. Its accuracy record shows how often its proposals were right. When you are comfortable, promote it to **Trusted** (routine work goes ahead and is logged) and later **Autonomous**. You can demote or let an agent go at any time.
 
+## 8a. Your assistant
+
+Hire **The Executive Assistant** in the Hiring hall, then open its room (Reception, beside the Office Manager).
+
+- **Your calendar.** In Google Calendar on a computer, open **Settings → Settings for my calendars → your calendar → Integrate calendar**, copy the **Secret address in iCal format** and paste it in the room. The office reads it at once, again when you open the room if it is over an hour old, and every morning. **Stop reading my calendar** forgets it. Outlook and Apple calendars give a similar private link.
+- **Your next three days.** Today in full: meetings with a brief from the books for customers and suppliers, your tasks, what is waiting on your desk, filings due and customers waiting, and a free slot for desk work. Tomorrow and the day after are shown the same way, with headlines only in the morning email.
+- **Emails.** Forward an email to the address shown in the room. A reply is drafted for your desk; edit it if you like, then **Send reply**. It goes from the office's address in your name and replies come to you. A bill or invoice is passed to the Accountant. To forward automatically, add the address in Gmail under **Settings → Forwarding and POP/IMAP**; the confirmation code Gmail sends appears in the room; then make a filter that forwards the mail you want help with.
+- **Tasks.** Add them in the room, or on WhatsApp: "remind me to call Sharma on Friday", "done call Sharma". Send "agenda" on WhatsApp to see today again.
+- **Privacy.** Only you see your calendar, emails, tasks and drafts. Other owners and the accountant do not.
+
 ## 9. People, WhatsApp and the accountant
 
 - **Invite people** in **Settings → Office**: enter their email address and choose **Owner** (everything, including approvals and hiring) or **Accountant** (reads everything and downloads returns, but cannot approve or hire). The invitation works once, for 14 days, and only for that address. You can withdraw a pending invitation, and hand ownership to someone else; an office always keeps at least one owner.
@@ -393,6 +409,8 @@ For each business: name, owners, how many people, status (active, suspended, del
 | "My import is refused" | A row needs fixing | The check names the row and column, for example a GSTIN whose check digit is wrong; fix and check again |
 | "The 3D office is slow or blank" | Older computer or graphics, data saver, or WebGL off | Tick **Use the simpler picture** in Settings; phones always get the plain floor |
 | "Empty rooms show on the floor" | **Show the whole floor** is on | Choose **Show only staffed rooms** under the floor |
+| "My calendar does not show in the assistant" | The link is not the secret address, or a Google Workspace admin has turned secret addresses off | Copy the **Secret address in iCal format** again (not the public address). For Workspace, the admin turns on external sharing of calendars, or the owner waits for the Google connection |
+| "Forwarded emails do not arrive at the assistant" | Forwarded from an address that is not an owner's; the assistant is not hired; Gmail forwarding not confirmed | Forward from the address the owner signs in with. Hire the assistant. Enter Gmail's code, shown in the assistant's room |
 | "The weather is missing" | The weather lookup failed or the location is unknown | Nothing to fix; the sun uses the GST state's capital instead |
 
 ## 3. The admin tool
@@ -538,12 +556,13 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Daily copy of companies' books in an Indian region (rule 3(5)) | Code done; the bucket and its settings are not set up, so Settings tells each company its books have no India copy |
 | Long-term logs | Not set up; needed before wider pilots |
 | Legal review of the privacy notice, terms and data processing terms | Drafts published; a lawyer in India has not reviewed them yet |
-| The old Cloudflare account ("the-office-agents") | Still exists with test data; delete with the runbook, Part 5 step 9, once the exit test has passed |
+| The old Cloudflare account ("the-office-agents") | Its Workers, database and bucket were deleted on 18 Nov 2026; revoke its API token and remove `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` from Infisical |
 | Emailed documents | Read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments; no spreadsheets or zip files by email |
 | Several GST registrations, credit notes, stock movements, e-commerce settlements | Partly built (other registrations recognised on invoices); fuller support planned |
 | Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
 | Filing on government portals | Out of scope by design: the office prepares, the owner or CA files |
 | The Lived-in office | Not shown on phones by design; needs WebGL 2 |
+| The Executive Assistant | Calendar by private link and email by forwarding only; the Google connection (reading Gmail threads, saving drafts in Gmail, creating calendar events) is the next phase and needs Google's app review, and a security assessment for Gmail. Monday's week plan and "Ask the office manager" about the agenda are not built yet |
 
 # Glossary
 

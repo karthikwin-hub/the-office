@@ -14,15 +14,18 @@ export type WingLabel = { text: string; x: number; y: number };
 export type Plan = { width: number; height: number; rooms: PlacedRoom[]; alcove: Rect | null; corridor: Rect; wings: WingLabel[]; entrance: Door; building: Rect; narrow: boolean };
 type Group = { team: TeamId; ids: string[] };
 
-const ORDER: TeamId[] = ["accounts", "sales", "marketing", "social", "operations", "people"];
+/** Front office first: the Office Manager has the reception; the other front-office agents sit in the rooms beside it. */
+const ORDER: TeamId[] = ["front", "accounts", "sales", "marketing", "social", "operations", "people"];
 const DOOR = 34;
 const NARROW_DOOR = 24;
 
 const wingName = (t: TeamId) => TEAMS.find((x) => x.id === t)!.wing;
+/** The rooms beside reception are labelled by team, so the reception's own label is not repeated. */
+const groupName = (t: TeamId) => (t === "front" ? TEAMS.find((x) => x.id === t)!.name : wingName(t));
 
 /** The wings that have someone in them, in floor order. `null` keeps every room. */
 export function groupsFor(keep: Set<string> | null): Group[] {
-  return ORDER.map((team) => ({ team, ids: AGENTS.filter((a) => a.team === team && (!keep || keep.has(a.id))).map((a) => a.id) })).filter((g) => g.ids.length);
+  return ORDER.map((team) => ({ team, ids: AGENTS.filter((a) => a.team === team && a.id !== "office-manager" && (!keep || keep.has(a.id))).map((a) => a.id) })).filter((g) => g.ids.length);
 }
 
 /** Splits the wings into two rows as evenly as possible without breaking a wing; the alcove, if any, goes at the end of the second row. */
@@ -61,7 +64,7 @@ export function widePlan(groups: Group[], vacant: number): Plan {
     const w = corridor.w / n;
     let i = 0;
     for (const g of gs) {
-      wings.push({ text: wingName(g.team), x: corridor.x + i * w + 10, y: side === "top" ? top - 14 : y + roomH + 26 });
+      wings.push({ text: groupName(g.team), x: corridor.x + i * w + 10, y: side === "top" ? top - 14 : y + roomH + 26 });
       for (const id of g.ids) {
         const x = corridor.x + i * w;
         rooms.push({ agentId: id, rect: { x, y, w, h: roomH }, door: { x: x + w - DOOR - 16, y: side === "top" ? y + roomH : y, orient: "h", into: side === "top" ? 1 : -1, size: DOOR } });
@@ -96,7 +99,7 @@ export function narrowPlan(groups: Group[], vacant: number): Plan {
     let y = corridor.y;
     for (const g of gs) {
       y += gap;
-      wings.push({ text: wingName(g.team), x: x + 8, y: y - 9 });
+      wings.push({ text: groupName(g.team), x: x + 8, y: y - 9 });
       for (const id of g.ids) {
         rooms.push({ agentId: id, rect: { x, y, w: colW, h: roomH }, door: { x: side === "left" ? x + colW : x, y: side === "left" ? y + roomH - NARROW_DOOR - 10 : y + 10, orient: "v", into: side === "left" ? 1 : -1, size: NARROW_DOOR } });
         y += roomH;

@@ -268,6 +268,19 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
       break;
     }
     case "ask": {
+      // "remind me ..." and "done ..." are the owner's own tasks, kept by the Executive Assistant.
+      const task = person.role === "owner" ? (office.assistant.fromMessage(person.email, msg.text) ?? (msg.english ? office.assistant.fromMessage(person.email, msg.english) : null)) : null;
+      if (task) {
+        parts.push({ text: task, translate: true });
+        break;
+      }
+      if (person.role === "owner" && /^(agenda|my day|today'?s agenda)$/i.test(msg.text.trim())) {
+        const brief = office.assistant.briefing(person.email, true);
+        if (brief) {
+          parts.push({ text: brief, translate: true });
+          break;
+        }
+      }
       const a = office.ask(msg.english ?? cmd.text);
       parts.push({ text: answerText(a.answer, opts.base, opts.office), translate: true });
       break;

@@ -50,6 +50,17 @@ export const AGENTS: AgentDef[] = [
     livePhase: 3,
   },
   {
+    id: "executive-assistant",
+    title: "The Executive Assistant",
+    short: "Assistant",
+    team: "front",
+    job: "Works for you, the owner, not the whole office. Reads your calendar and the emails you forward, plans your next three days around what the office needs from you, briefs you before meetings with customers and suppliers, keeps your to-do list and drafts replies for you to send. Only you see your calendar, emails and tasks.",
+    duties: ["Plan your next three days in the morning brief", "Brief you before meetings from the books", "Draft replies to the emails you forward", "Keep your reminders and follow-ups"],
+    proposes: ["email_reply"],
+    countLabel: "replies drafted",
+    livePhase: 1,
+  },
+  {
     id: "accountant",
     title: "The Accountant",
     short: "Accountant",

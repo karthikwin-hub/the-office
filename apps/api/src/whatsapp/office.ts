@@ -149,6 +149,8 @@ export async function morningDigest(
   const session = sessionFor(deps.kv, phone);
   const d = deskParts(deps.office, person, { ...session, language: fixed ?? session.language }, { base: deps.base, morning: true, office: deps.officeId });
   saveSession(deps.kv, phone, d.session);
-  const text = render(await translateParts(deps.ai, d.parts, d.session.language));
+  // An owner's own agenda, short; only they get it.
+  const agenda = person.role === "owner" ? deps.office.assistant.briefing(person.email, true) : null;
+  const text = render(await translateParts(deps.ai, agenda ? [...d.parts, { text: `\n${agenda}\nReply "agenda" to see it again.`, translate: true }] : d.parts, d.session.language));
   return heading ? `*${heading}*\n${text}` : text;
 }

@@ -900,6 +900,8 @@ export const RefKind = z.enum([
   "figure",
   "conversation",
   "order",
+  /** An email the owner forwarded to the Executive Assistant; only that owner can open it. */
+  "email",
 ]);
 export const Ref = z.object({ kind: RefKind, id: z.string().nullable(), region: z.string().optional() });
 export type Ref = z.infer<typeof Ref>;
@@ -931,6 +933,8 @@ export const StagedKind = z.enum([
   "onboarding",
   "compliance_action",
   "file_document",
+  /** A reply the Executive Assistant drafted to an email the owner forwarded; private to that owner. */
+  "email_reply",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

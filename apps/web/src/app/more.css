@@ -305,3 +305,122 @@
   align-items: flex-start;
   margin: var(--s-3) 0;
 }
+
+/* The Executive Assistant */
+
+.ea-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--s-4);
+}
+.ea-day {
+  border: var(--rule);
+  border-radius: var(--radius-panel);
+  padding: var(--s-3) var(--s-4);
+  background: var(--sheet);
+}
+.ea-day h3 {
+  margin: 0 0 var(--s-2);
+  font-size: var(--step-0);
+}
+.ea-today {
+  grid-column: 1 / -1;
+}
+.ea-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ea-item {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-top: var(--rule);
+}
+.ea-item:first-child {
+  border-top: 0;
+}
+.ea-when {
+  font-variant-numeric: tabular-nums;
+  color: var(--graphite-soft);
+  font-size: var(--step--1);
+  padding-top: 0.15em;
+}
+.ea-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+}
+.ea-detail {
+  color: var(--graphite-soft);
+  font-size: var(--step--1);
+}
+.ea-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: var(--step--1);
+  border-left: 3px solid var(--carbon);
+  padding-left: var(--s-2);
+}
+.ea-brief span:first-child {
+  font-weight: 700;
+}
+.ea-office .ea-what > a,
+.ea-office .ea-what {
+  font-weight: 600;
+}
+.ea-focus .ea-what {
+  font-style: italic;
+}
+.ea-tasks {
+  list-style: none;
+  margin: 0 0 var(--s-3);
+  padding: 0;
+}
+.ea-tasks li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-top: var(--rule);
+  flex-wrap: wrap;
+}
+.ea-tasks label {
+  display: flex;
+  gap: var(--s-2);
+  align-items: baseline;
+}
+.ea-add .row .input:first-child {
+  flex: 1 1 14rem;
+}
+.ea-mail {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-3) 0;
+}
+.ea-steps {
+  padding-left: 1.2rem;
+}
+.ea-steps li {
+  margin-bottom: var(--s-1);
+}
+.ea-address {
+  overflow-wrap: anywhere;
+}
+.ea-code strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.ea-done ul {
+  list-style: none;
+  padding: 0;
+}
+@media (max-width: 40rem) {
+  .ea-item {
+    grid-template-columns: 4.5rem 1fr;
+  }
+}

@@ -88,6 +88,8 @@ export type RoutineHost = {
   publish(): Promise<StepResult>;
   /** Sends the morning digest with the lines the other routines found. */
   digest(notes: string[]): Promise<StepResult>;
+  /** Reads each owner's calendar again before their agenda is put together; the mockups have nothing to read. */
+  refreshCalendars?(): Promise<{ read: number; failed: number }>;
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -158,6 +160,18 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
           r.pruned ? `${plural(r.pruned, "old conversation")} deleted` : "",
         ].filter(Boolean);
         return parts.length ? { summary: `${parts.join("; ")}.`, counts: { waiting: r.waiting.length, closing: r.closing.length, pruned: r.pruned } } : { outcome: "nothing", summary: "No customer is waiting on you.", counts: { waiting: 0, closing: 0, pruned: 0 } };
+      });
+    case "assistant-agenda":
+      return runRoutine(office, id, trigger, async () => {
+        const cal = host.refreshCalendars ? await host.refreshCalendars() : { read: 0, failed: 0 };
+        const r = office.assistant.morning(office.assistant.store.owners());
+        // The agendas themselves go to each owner in their own brief; the run says only how many.
+        if (!r.owners) return { outcome: "nothing", summary: "No owner has given the assistant a calendar or a task yet.", counts: { owners: 0, calendars: cal.read, failed: cal.failed } };
+        return {
+          outcome: cal.failed ? "partial" : "ok",
+          summary: `Planned the next three days for ${plural(r.owners, "owner")}${cal.failed ? `; ${plural(cal.failed, "calendar")} could not be read, so the last copy was used` : ""}.`,
+          counts: { owners: r.owners, calendars: cal.read, failed: cal.failed },
+        };
       });
     case "morning-digest":
       return runRoutine(office, id, trigger, () => host.digest(notes));

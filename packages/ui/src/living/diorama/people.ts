@@ -13,6 +13,7 @@ type Look = { skin: string; outfit: string; trim: string; hair: string; style: "
 export const LOOKS: Record<string, Look> = {
   "office-manager": { skin: "#8d5a3b", outfit: "#2f7f86", trim: "#d9a441", hair: "#1d1612", style: "bun", kind: "saree" },
   "customer-service": { skin: "#a06a48", outfit: "#b8452e", trim: "#efe6cf", hair: "#21170f", style: "braid", kind: "kurta" },
+  "executive-assistant": { skin: "#9a6646", outfit: "#1f3b57", trim: "#d9a441", hair: "#18110c", style: "bun", kind: "shirt" },
   accountant: { skin: "#a86f4c", outfit: "#c9962c", trim: "#f3ead7", hair: "#221a14", style: "braid", kind: "kurta", glasses: true },
   "credit-controller": { skin: "#7a4b30", outfit: "#3d5a8c", trim: "#e9e2d0", hair: "#15100c", style: "short", kind: "shirt" },
   "tax-clerk": { skin: "#9a6646", outfit: "#6a7f3e", trim: "#efe6cf", hair: "#2a1d14", style: "short", kind: "shirt", glasses: true },

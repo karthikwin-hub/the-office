@@ -333,6 +333,17 @@ describe("one office cannot reach another", () => {
   });
 });
 
+describe("the assistant's address", () => {
+  it("takes an owner's forwarded mail to that office's assistant, with Gmail's forwarding header", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "assistant_email", "kaveri.assistant@in.the-office.test");
+    const raw = ["From: Anil <anil@kaverielectricals.in>", "To: kaveri.assistant@in.the-office.test", "Subject: Fwd: Statement please", "Content-Type: text/plain", "", "---------- Forwarded message ---------", "From: Rakesh <rakesh@sharma.test>", "Subject: Statement please", "", "Please send it.", ""].join("\r\n");
+    await receiveEmail({ from: "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in", to: "kaveri.assistant@in.the-office.test", headers: new Headers({ "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test" }), raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/assistant-email"]]);
+    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ envelope: "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in", from: "anil@kaverielectricals.in", subject: "Fwd: Statement please", forwardedFor: "anil@kaverielectricals.in kaveri.assistant@in.the-office.test" });
+  });
+});
+
 describe("the weather for the Lived-in office", () => {
   it("is for members only, and without a location asks nobody", async () => {
     const { w, anil, bina, A } = await twoOffices();

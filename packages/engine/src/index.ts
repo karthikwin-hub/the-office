@@ -21,3 +21,4 @@ export * from "./routines";
 export * from "./customer";
 export * from "./compliance";
 export * from "./bookslog";
+export * from "./assistant";

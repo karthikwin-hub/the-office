@@ -53,6 +53,8 @@ import { MemoryRoutineLog, type RoutineLog } from "./routines";
 import { CustomerService } from "./customer/desk";
 import type { OrderSource } from "./customer/orders";
 import { type CsStore, MemoryCsStore } from "./customer/store";
+import { AssistantService } from "./assistant/service";
+import { type AssistantStore, MemoryAssistantStore } from "./assistant/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 import { buildObligations, complianceProposals, complianceView } from "./compliance";
 import { fyOf } from "./compliance/profile";
@@ -61,7 +63,7 @@ import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YE
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
 /** What the owner is asked to file, by its printed title. */
 const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = { proforma: "proforma invoice", delivery_note: "delivery note", credit_note: "credit note", debit_note: "debit note" };
-const ALWAYS_ASK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
+const ALWAYS_ASK = new Set(["email_reply", "audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -104,6 +106,8 @@ export type OfficeOptions = {
   routines?: RoutineLog;
   /** Where customer conversations are kept; memory unless the host has storage. */
   conversations?: CsStore;
+  /** Where the Executive Assistant keeps each owner's own calendar, emails and tasks; memory unless the host has storage. */
+  assistant?: AssistantStore;
   orderSources?: OrderSource[];
   /** Where the books' edit log is kept; memory unless the host has storage. */
   edits?: EditLog;
@@ -117,6 +121,7 @@ export class OfficeService {
   private settingsState: Settings;
   readonly routines: RoutineLog;
   readonly customers: CustomerService;
+  readonly assistant: AssistantService;
   readonly edits: EditLog;
   private snap: Snapshot;
   private backupStatus: () => BooksRecordView["backup"];
@@ -129,6 +134,7 @@ export class OfficeService {
     this.ledger = new Ledger(books, opts.asOf);
     this.routines = opts.routines ?? new MemoryRoutineLog();
     this.customers = new CustomerService(this, opts.conversations ?? new MemoryCsStore(), opts.orderSources);
+    this.assistant = new AssistantService(this, opts.assistant ?? new MemoryAssistantStore());
     this.settingsState = {
       business: books.business,
       users: [
@@ -201,7 +207,7 @@ export class OfficeService {
     return istNow(this.asOf);
   }
 
-  private state(agentId: string) {
+  state(agentId: string) {
     return this.books.agents.find((a) => a.agentId === agentId)!;
   }
 
@@ -415,6 +421,9 @@ export class OfficeService {
           { label: "People", value: String(p.lines.length) },
         ];
       }
+      case "executive-assistant":
+        // Only counts here: what is on each owner's calendar and desk is theirs, and the accountant can open this room.
+        return [{ label: "Owners it plans for", value: String(this.assistant.store.owners().length) }];
       case "customer-service":
         return this.customers.kpis();
     }

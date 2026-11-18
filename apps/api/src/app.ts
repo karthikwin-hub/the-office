@@ -27,6 +27,7 @@ import { makeAuth, sendMail, verificationRequired } from "./auth";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "./caller";
 import type { Env } from "./env";
 import { AccountRecords } from "./account";
+import type { AssistantInbound } from "./assistant";
 import { type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { parseInbound } from "./mail";
@@ -519,6 +520,20 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     const mail = await parseInbound(message.raw);
     const body: SupportMail = { from: mail.from ?? message.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, inReplyTo: mail.inReplyTo };
     const res = await toOffice(env, internal("/internal/support-email", body), system(support));
+    if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
+    return;
+  }
+  const assistant = await cp(env).routeFor("assistant_email", to);
+  if (assistant) {
+    const mail = await parseInbound(message.raw);
+    const docs: AssistantInbound["docs"] = [];
+    for (const a of mail.attachments) {
+      const id = newDocId();
+      await env.DOCS.put(docKey(assistant, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
+      docs.push({ id, mimeType: a.mimeType, filename: a.filename });
+    }
+    const body: AssistantInbound = { envelope: message.from, from: mail.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, forwardedFor: message.headers?.get("x-forwarded-for") ?? null, docs, skipped: mail.skipped };
+    const res = await toOffice(env, internal("/internal/assistant-email", body), system(assistant));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
   }

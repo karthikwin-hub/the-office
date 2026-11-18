@@ -1,4 +1,6 @@
 import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import { assistantAddress, CalendarLinkInput } from "@office/contracts";
+import { gmailConfirmation, readForward } from "@office/engine";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RETENTION_YEARS, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { backupKey, backupTarget, gzip, putObject, retainedKey } from "./backup";
 import { SqlEditLog } from "./edits";
@@ -21,6 +23,7 @@ import { parseMetaDelivery, parseWhatsAppMessages } from "./social/webhooks";
 import { BooksStore } from "./store";
 import { SqlRoutineLog } from "./routines";
 import { SqlCsStore } from "./customer/store";
+import { type AssistantInbound, draftReply, fetchCalendar, plainAddress, SqlAssistantStore } from "./assistant";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
 import { ControlPlane, ingestAddress, OFFICE_ID, type RouteKind } from "./tenancy";
@@ -56,6 +59,7 @@ export class Office extends Agent<Env> {
   private edits!: SqlEditLog;
   private runs!: SqlRoutineLog;
   private conversations!: SqlCsStore;
+  private assistantStore!: SqlAssistantStore;
   private office!: OfficeService;
   private vault!: TokenVault;
   private day = "";
@@ -66,6 +70,7 @@ export class Office extends Agent<Env> {
   private slug = "";
   private ai!: Ai;
   private csAi!: Ai;
+  private eaAi!: Ai;
 
   private ownName(): string | null {
     try {
@@ -103,11 +108,13 @@ export class Office extends Agent<Env> {
     this.slug = row.slug;
     this.ai = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "ai"));
     this.csAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "cs_ai"));
+    this.eaAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "ea_ai"));
 
     this.store = new BooksStore(sql);
     this.edits = new SqlEditLog(sql);
     this.runs = new SqlRoutineLog(sql);
     this.conversations = new SqlCsStore(sql);
+    this.assistantStore = new SqlAssistantStore(sql);
     this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
@@ -207,7 +214,7 @@ export class Office extends Agent<Env> {
 
   private open(books: OfficeService["books"]) {
     this.day = istDate();
-    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, edits: this.edits, backup: () => this.backupStatus() });
+    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, assistant: this.assistantStore, edits: this.edits, backup: () => this.backupStatus() });
     const saved = this.kv("settings");
     if (saved) this.office.updateSettings(JSON.parse(saved));
     this.social().reconcile();
@@ -333,6 +340,7 @@ export class Office extends Agent<Env> {
       socialMorning: () => this.socialMorning(),
       publish: () => this.publishNow(),
       digest: (notes) => this.digest(notes),
+      refreshCalendars: () => this.refreshCalendars(),
     };
   }
 
@@ -379,6 +387,9 @@ export class Office extends Agent<Env> {
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
     if (post && path === "/internal/export") return json(this.exportBooks());
     if (post && path === "/internal/support-email") return json(await this.receiveSupport((await request.json()) as SupportMail));
+    if (post && path === "/internal/assistant-email") return json(await this.receiveForAssistant((await request.json()) as AssistantInbound));
+    if (path === ROUTES.assistantCalendar && (request.method === "PUT" || request.method === "DELETE")) return this.assistantCalendar(request, caller);
+    if (request.method === "GET" && path === ROUTES.assistant && caller.role === "owner") await this.refreshCalendar(caller.email, 60 * 60_000);
     if (post && path === "/internal/chat") {
       const body = (await request.json()) as ChatPostBody;
       if (!this.office.hired(CS_AGENT) || !this.office.books.customerService.widget.enabled) return json({ error: "This chat is closed." }, 404);
@@ -440,9 +451,14 @@ export class Office extends Agent<Env> {
     const res = dispatch(this.office, { method: request.method, path, query: url.searchParams, body, role: caller.role, user: { name: caller.name, email: caller.email }, mode: "live" });
     if (res.status !== 200) return json(res.body, res.status);
 
-    if (/^\/api\/desk\/[^/]+$/.test(path) && post) await this.send([res.body as StagedChange]);
+    if (/^\/api\/desk\/[^/]+$/.test(path) && post) {
+      const item = res.body as StagedChange;
+      if (item.kind === "email_reply") await this.sendReply(caller, item);
+      else await this.send([item]);
+    }
     if (path.startsWith("/api/channels") && request.method !== "GET") await this.syncRoutes();
     if (request.method !== "GET" && (path === `/api/hiring/${CS_AGENT}` || path === "/api/customers/widget")) await this.syncCustomerRoutes();
+    if (request.method !== "GET" && path === "/api/hiring/executive-assistant") await this.syncAssistantRoute();
     if (path === "/api/settings") {
       if (request.method !== "GET") {
         await this.scheduleDigest();
@@ -569,7 +585,7 @@ export class Office extends Agent<Env> {
       const t = await this.vault.get(c.id);
       if (t) for (const r of this.routeIds(c.platform, [t.account, ...Object.values(t.extra)])) want.add(`${r.kind}|${r.id}`);
     }
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && r.kind !== "assistant_email" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     for (const w of want) {
       const [kind, id] = w.split("|") as [RouteKind, string];
       await plane.claimRoute(this.officeId!, kind, id);
@@ -655,6 +671,119 @@ export class Office extends Agent<Env> {
     if (!this.office.hired(CS_AGENT)) return { outcome: "ignored" };
     const r = await this.desk().receive(toSupportInbound(mail));
     return { outcome: r.outcome, thread: r.thread.id };
+  }
+
+  /** The assistant's address follows its hiring: `<slug>.assistant@…` while it is on the team. */
+  private async syncAssistantRoute() {
+    const plane = this.plane();
+    const address = assistantAddress(ingestAddress(this.slug, this.env.INGEST_DOMAIN));
+    const hired = this.office.hired("executive-assistant");
+    for (const r of await plane.routesOf(this.officeId!)) if (r.kind === "assistant_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    if (hired && address) await plane.claimRoute(this.officeId!, "assistant_email", address);
+  }
+
+  private calendarKey = (owner: string) => `ea-cal:${owner.trim().toLowerCase()}`;
+
+  /** The owner pastes their calendar's private address: it is read at once, and kept sealed like a platform token. */
+  private async assistantCalendar(request: Request, caller: Caller): Promise<Response> {
+    if (caller.role !== "owner") return json({ error: "The assistant works for each owner on their own." }, 403);
+    const sample = this.env.OFFICE_SEED === "sample";
+    if (request.method === "DELETE") {
+      this.vault.drop(this.calendarKey(caller.email));
+      this.office.assistant.clearCalendar(caller.email);
+      return json(this.office.assistant.view(caller.email, sample));
+    }
+    const parsed = CalendarLinkInput.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Paste your calendar's private address." }, 400);
+    if (!this.vault.ready) return json({ error: "The office cannot keep secrets yet: SOCIAL_TOKEN_KEY is not set." }, 503);
+    const r = await fetchCalendar(parsed.data.url, this.day);
+    if ("error" in r) return json({ error: r.error }, 422);
+    await this.vault.put(this.calendarKey(caller.email), { access: parsed.data.url, refresh: null, expiresAt: null, account: caller.email.toLowerCase(), extra: {} });
+    this.office.assistant.setCalendar(caller.email, r);
+    return json(this.office.assistant.view(caller.email, sample));
+  }
+
+  /** Reads one owner's calendar again if the last copy is older than `staleMs`. */
+  private async refreshCalendar(owner: string, staleMs: number): Promise<"read" | "failed" | "skipped"> {
+    const doc = this.assistantStore.load(owner);
+    if (!doc.calendar || (doc.calendar.fetchedAt && Date.now() - Date.parse(doc.calendar.fetchedAt) < staleMs)) return "skipped";
+    const t = await this.vault.get(this.calendarKey(owner));
+    if (!t) return "skipped";
+    const r = await fetchCalendar(t.access, this.day);
+    this.office.assistant.setCalendar(owner, r);
+    return "error" in r ? "failed" : "read";
+  }
+
+  /** The morning: every owner's calendar read again. Owners who have left the office lose their record. */
+  private async refreshCalendars(): Promise<{ read: number; failed: number }> {
+    const owners = new Set((await this.plane().members(this.officeId!)).filter((u) => u.role === "owner").map((u) => u.email.toLowerCase()));
+    let read = 0;
+    let failed = 0;
+    for (const o of this.assistantStore.owners()) {
+      if (!owners.has(o)) {
+        this.assistantStore.remove(o);
+        this.vault.drop(this.calendarKey(o));
+        continue;
+      }
+      const r = await this.refreshCalendar(o, 30 * 60_000);
+      if (r === "read") read++;
+      else if (r === "failed") failed++;
+    }
+    return { read, failed };
+  }
+
+  /**
+   * Mail to the assistant's address. Only an owner's own mail is taken: forwarded by hand, or by a
+   * Gmail filter (which sends as the owner). A bill goes to the Accountant; anything else gets a draft.
+   */
+  private async receiveForAssistant(mail: AssistantInbound) {
+    if (!this.office.hired("executive-assistant")) return { outcome: "ignored" };
+    const conf = gmailConfirmation(mail.from ?? mail.envelope, mail.subject, mail.text);
+    if (conf) {
+      this.office.assistant.noteForwarding(conf);
+      return { outcome: "forwarding" };
+    }
+    const owners = (await this.plane().members(this.officeId!)).filter((u) => u.role === "owner");
+    const senders = [plainAddress(mail.envelope), plainAddress(mail.from), plainAddress(mail.forwardedFor)].filter(Boolean);
+    const owner = owners.find((o) => senders.includes(o.email.toLowerCase()));
+    if (!owner) return { outcome: "ignored" };
+    const byHand = plainAddress(mail.from) === owner.email.toLowerCase();
+    const fwd = byHand ? readForward(mail.text) : null;
+    const original = fwd
+      ? { from: fwd.from, fromName: fwd.name, subject: fwd.subject || mail.subject.replace(/^(fwd?|fw):\s*/i, ""), text: fwd.body, messageId: null }
+      : byHand
+        ? null
+        : { from: plainAddress(mail.from) ?? "", fromName: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId };
+    if (mail.docs.length && this.office.hired("accountant")) {
+      await this.receiveEmail({ from: original?.from ?? owner.email, subject: original?.subject ?? mail.subject, docs: mail.docs, skipped: mail.skipped });
+      this.office.assistant.receiveMail(owner.email, { from: original?.from ?? owner.email, fromName: original?.fromName ?? null, replyTo: null, subject: original?.subject ?? mail.subject, text: (original?.text ?? mail.text).slice(0, 6000), messageId: original?.messageId ?? null }, null, "to_accountant");
+      return { outcome: "to_accountant" };
+    }
+    if (!original || !original.from) {
+      this.office.assistant.receiveMail(owner.email, { from: owner.email, fromName: owner.name, replyTo: null, subject: mail.subject, text: mail.text.slice(0, 6000), messageId: null }, null, "noted");
+      return { outcome: "noted" };
+    }
+    const draft = await draftReply(this.env.AI ? this.eaAi : null, this.office, original, owner.name);
+    const r = this.office.assistant.receiveMail(owner.email, { from: original.from, fromName: original.fromName, replyTo: original.from, subject: original.subject, text: original.text.slice(0, 6000), messageId: original.messageId }, draft);
+    return { outcome: "drafted", draft: r.draft?.id ?? null };
+  }
+
+  /** An approved reply leaves from the office's address in the owner's name; the answer comes back to the owner. */
+  private async sendReply(caller: Caller, item: StagedChange) {
+    if (item.status !== "approved") return;
+    const p = item.payload as { to?: string; subject?: string; body?: string; inReplyTo?: string | null; sentAt?: string };
+    if (p.sentAt) return;
+    const send = mailSender(this.env);
+    if (!send || !p.to || !p.subject || !p.body) {
+      this.office.assistant.markSent(caller.email, item.id, { sendError: "Email is not set up for this office. Copy the reply and send it yourself." });
+      return;
+    }
+    try {
+      await send({ fromName: `${caller.name}, ${this.office.books.business.name || this.businessName}`, to: p.to, replyTo: caller.email, subject: p.subject, body: p.body, inReplyTo: p.inReplyTo ?? null });
+      this.office.assistant.markSent(caller.email, item.id, { sentAt: new Date().toISOString() });
+    } catch (e) {
+      this.office.assistant.markSent(caller.email, item.id, { sendError: (e instanceof Error ? e.message : String(e)).slice(0, 300) });
+    }
   }
 
   /** Someone in this office, on the shared number. The Worker found them and chose this office; replies go back on the shared number. */
@@ -936,10 +1065,11 @@ export class Office extends Agent<Env> {
     const users = await this.plane().members(officeId);
     const onWhatsApp = await this.whatsappDigests(pending.length, notes);
     const owners = users.filter((u) => u.role === "owner" && !onWhatsApp.has(u.userId));
+    const agendas = new Map(owners.map((o) => [o.userId, this.office.assistant.briefing(o.email)] as const));
     let emailed = 0;
     let failed = 0;
     const send = mailSender(this.env);
-    if (send && owners.length && (pending.length || notes.length)) {
+    if (send && owners.length && (pending.length || notes.length || [...agendas.values()].some(Boolean))) {
       const link = this.env.BETTER_AUTH_URL ? `${this.env.BETTER_AUTH_URL.replace(/\/$/, "")}/desk?office=${officeId}` : "";
       const body = [
         `Good morning. ${pending.length ? `${pending.length} ${pending.length === 1 ? "thing is" : "things are"} waiting on your desk at ${name}.` : `Nothing is waiting on your desk at ${name}.`}`,
@@ -950,9 +1080,12 @@ export class Office extends Agent<Env> {
         ...(link ? ["", link] : []),
       ].join("\n");
       for (const o of owners) {
+        const agenda = agendas.get(o.userId);
+        if (!agenda && !pending.length && !notes.length) continue;
         try {
           const subject = pending.length ? `${name}: ${pending.length} waiting on your desk` : `${name} this morning`;
-          await send({ fromName: `${name} · ${BRAND.name}`, to: o.email, subject, body });
+          // The agenda is this owner's own; nobody else's digest carries it.
+          await send({ fromName: `${name} · ${BRAND.name}`, to: o.email, subject, body: agenda ? `${body}\n\nYour next three days, from your assistant:\n\n${agenda}` : body });
           emailed++;
         } catch (e) {
           failed++;

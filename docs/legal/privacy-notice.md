@@ -1,6 +1,6 @@
 # Privacy notice
 
-> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-06.
+> **Draft for legal review.** Written in plain language for a lawyer in India to check before real businesses are invited. Text in [square brackets] must be completed. Version 2026-11-18.
 
 This notice explains what Agentic Office does with personal data: what it collects, why, where it is kept, for how long, who else sees it, and what you can do about it. It is a separate document from the [terms of service](/legal/terms) so that you can read it on its own.
 
@@ -30,6 +30,7 @@ If you are a customer of a business that uses Agentic Office and you want your d
 | Documents the business uploads or emails in (PDFs, photos) | The business and the people named in them | To read bills and invoices into the books | Cloudflare R2 | For the life of the office, and 30 days after it is deleted | Cloudflare; Cloudflare Workers AI reads them |
 | Customer conversations (WhatsApp, email, website chat) | The business's customers | To answer customers and hand questions to the business | The office's storage | 12 months by default; the business can choose 3 to 36 months | Cloudflare; Meta for WhatsApp; Cloudflare Workers AI reads them |
 | Social media posts, comments and messages | The business and people who write to it | To publish posts and keep the inbox | The office's storage | For the life of the office | Meta, LinkedIn or X, only for the platforms the business connects |
+| If you use the Executive Assistant: your calendar's private address, your calendar's events for the next two weeks, the emails you forward to it, your tasks, and the replies it drafts for you | You, and the people in your meetings and emails | To plan your days, brief you before meetings and draft replies you approve | The office's storage, kept apart from the business's books; the calendar address encrypted | Events: two weeks ahead, read again each morning. Emails: the last 50. Drafts: until decided, then the last 30. All of it is deleted when you stop being an owner of the office, and the calendar address when you stop sharing it | Cloudflare; Cloudflare Workers AI reads forwarded emails to draft replies. Not shown to other people in the office |
 | Voice notes sent to the office on WhatsApp | You | To turn them into text and act on them | The office's storage (the transcript); the audio in Cloudflare R2 | As the business's documents | Meta, Cloudflare Workers AI |
 
 We do not sell personal data, use it for advertising, or build profiles of people.
@@ -40,13 +41,14 @@ Several agents in Agentic Office read text with AI models run by Cloudflare Work
 
 - The models are used for **inference only**. Cloudflare does not use what they read to train models, and neither do we.
 - The Customer Service agent **does not write its own replies**. It answers only from the business's saved answers, the business facts the owner wrote, and lookups in the books (an order's status, an invoice balance). Anything else goes to a person at the business.
+- The Executive Assistant **drafts** replies to emails an owner forwards to it, from the email and what the books say about the sender. Every draft waits for that owner, who can change it; amounts or invoice numbers the books do not hold are flagged before it is sent.
 - Customers are told in the first message that they are talking to an AI assistant, and how to reach a person.
 - Anything that changes the books, spends money or sends something on the business's behalf waits for a person to approve it, unless the owner has chosen to trust that agent with routine work.
 
 ## WhatsApp, email and social media
 
 - **WhatsApp.** Messages go through Meta's WhatsApp Business Platform. Meta processes them under its own terms and privacy policy. We send customers only replies to messages they sent, inside WhatsApp's 24-hour window, and never use the conversations for anything except answering them.
-- **Email.** Mail sent to an office's addresses is received and sent through Cloudflare Email Routing.
+- **Email.** Mail sent to an office's addresses is received and sent through Cloudflare Email Routing. Replies an owner approves in the Executive Assistant are sent from the office's address in the owner's name, with replies going to the owner.
 - **Social platforms.** When a business connects Facebook, Instagram, Threads, LinkedIn or X, we keep the platform's sign-in token encrypted, and fetch and publish only what the business's features need.
 
 ## Where the data is
@@ -57,6 +59,7 @@ Agentic Office runs on Cloudflare's global network. Data may be stored and proce
 
 - **The business's books and documents:** for as long as the office exists, and 30 days after the owner deletes it, so that a mistake can be undone. Then they are erased.
 - **Customer conversations:** 12 months by default, deleted each morning once they are older than the period the business chose.
+- **The Executive Assistant's records:** kept only for the owner they belong to, outside the business's books and backups, and deleted when that person is no longer an owner of the office.
 - **Your account:** until you delete it. Your name may stay in an office's audit record (who approved what) for as long as the business must keep its accounts.
 - **Security records** (sign-ins, refused requests, audit of changes): 1 year.
 - **Backups:** Cloudflare keeps point-in-time copies of the databases for up to 30 days. Data deleted from Agentic Office leaves those copies within 30 days.
