@@ -69,7 +69,7 @@ export function OfficeGate({ children }: { children: ReactNode }) {
     ) : null;
   if (me.data.verificationRequired && !me.data.user.emailVerified) return <ConfirmEmail me={me.data} />;
   if (me.data.consentNeeded.length) return <ConsentGate me={me.data} />;
-  if (invite) return <AcceptInvitation token={invite} />;
+  if (invite) return <AcceptInvitation token={invite} me={me.data} />;
   if (params().has("open")) return <OpenOffice me={me.data} />;
   const here = place();
   if (here.kind === "office") {
@@ -164,7 +164,7 @@ function ConfirmEmail({ me }: { me: Me }) {
   );
 }
 
-function AcceptInvitation({ token }: { token: string }) {
+function AcceptInvitation({ token, me }: { token: string; me: Me }) {
   const peek = useQuery({ queryKey: ["invitation", token], queryFn: () => account.peekInvitation(token), retry: false });
   const accept = useMutation({
     mutationFn: () => account.acceptInvitation(token),
@@ -187,6 +187,8 @@ function AcceptInvitation({ token }: { token: string }) {
     );
   if (!peek.data) return null;
   const p = peek.data;
+  // Signed in as someone else, often on a shared computer: say so before anything is pressed, and offer the way through.
+  if (me.user.email.trim().toLowerCase() !== p.email.trim().toLowerCase()) return <SwitchAccount token={token} invited={p.email} signedInAs={me.user.email} officeName={p.officeName} onLater={forget} />;
   return (
     <Door
       title={`Join ${p.officeName}`}
@@ -209,6 +211,30 @@ function AcceptInvitation({ token }: { token: string }) {
         </p>
       ) : null}
       <SignOutLink />
+    </Door>
+  );
+}
+
+function SwitchAccount({ token, invited, signedInAs, officeName, onLater }: { token: string; invited: string; signedInAs: string; officeName: string; onLater: () => void }) {
+  const out = useMutation({
+    mutationFn: account.signOut,
+    // The link stays in this tab, so the sign-in page opens on making an account for the invited address.
+    onSettled: () => {
+      sessionStorage.setItem(INVITE_KEY, token);
+      location.assign(`/?invite=${encodeURIComponent(token)}`);
+    },
+  });
+  return (
+    <Door title={`Join ${officeName}`} lede={<>This invitation is for <strong>{invited}</strong>, but this browser is signed in as <strong>{signedInAs}</strong>.</>}>
+      <p>Sign out, then make an account for {invited} (or sign in, if it already has one). The invitation will be waiting.</p>
+      <div className="approval-actions">
+        <button type="button" className="btn btn-primary" onClick={() => out.mutate()} disabled={out.isPending}>
+          Sign out and continue as {invited}
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={onLater}>
+          Not now
+        </button>
+      </div>
     </Door>
   );
 }

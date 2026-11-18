@@ -75,7 +75,10 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
       return "signed-in";
     },
     onSuccess: (done) => {
-      if (done === "link-sent") return setNotice("If there is an account for that address, a link to choose a new password is on its way. It works for an hour.");
+      if (done === "link-sent")
+        return setNotice(
+          `If there is an account for that address, a link to choose a new password is on its way. It works for an hour.${invited && peek.data && email.trim().toLowerCase() === peek.data.email.toLowerCase() ? ` If you never made an account for ${peek.data.email}, no email will come: choose "Make an account" instead.` : ""}`,
+        );
       if (done === "changed") {
         clearResetUrl();
         setPassword("");
@@ -92,6 +95,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
         setNotice(`There is already an account for ${email}. Sign in with its password${invited ? " to join the office" : ""}, or choose "Forgotten your password?".`);
         submit.reset();
       }
+      // Signing in with the invited address before an account was made for it: point to making one.
+      else if (mode === "sign-in" && invited && peek.data && email.trim().toLowerCase() === peek.data.email.toLowerCase())
+        setNotice(`If you have not made an account for ${peek.data.email} yet, choose "Make an account": the invitation to ${peek.data.officeName} is waiting for it.`);
     },
   });
   const setMode = (m: Mode) => {
