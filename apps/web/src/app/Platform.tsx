@@ -19,7 +19,7 @@ const waiting = (b: PlatformBusiness) => b.owners.length === 0 && b.status !== "
  */
 export function PlatformConsole() {
   const view = useQuery({ queryKey: ["platform"], queryFn: platform.view, retry: false });
-  if (view.error instanceof ApiError && view.error.status === 401) return <SignIn invited={false} staff={{ appAddress: appAddress(), appHref: appUrl("/") }} />;
+  if (view.error instanceof ApiError && view.error.status === 401) return <SignIn staff={{ appAddress: appAddress(), appHref: appUrl("/") }} />;
   if (view.error)
     return (
       <main className="signin" id="main">

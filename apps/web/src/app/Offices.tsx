@@ -33,6 +33,15 @@ function inviteToken(): string | null {
   return sessionStorage.getItem(INVITE_KEY);
 }
 
+/** A used or expired invitation: dropped from this tab and from the address, so signing in goes straight to the person's offices. */
+function forgetSpentInvite() {
+  sessionStorage.removeItem(INVITE_KEY);
+  const u = new URL(location.href);
+  if (!u.searchParams.has("invite")) return;
+  u.searchParams.delete("invite");
+  history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+}
+
 /** `?office=` first, then the office last opened on this device, then the only one; never an office the person is not in. */
 function chooseOffice(offices: OfficeSummary[]): OfficeSummary | null {
   const usable = offices.filter((o) => o.status !== "deleting");
@@ -49,7 +58,7 @@ function chooseOffice(offices: OfficeSummary[]): OfficeSummary | null {
 export function OfficeGate({ children }: { children: ReactNode }) {
   const me = useQuery(q.me());
   const invite = inviteToken();
-  if (me.error instanceof ApiError && me.error.status === 401) return <SignIn invited={Boolean(invite)} />;
+  if (me.error instanceof ApiError && me.error.status === 401) return <SignIn invite={invite} onInviteSpent={forgetSpentInvite} />;
   if (!me.data)
     return me.error ? (
       <Door title="The office could not be reached">

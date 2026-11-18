@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
 import { BRAND } from "@office/contracts";
 import { account } from "../api/client";
 import { BrandPlate, currentDocuments, LegalFooter } from "./Legal";
@@ -25,17 +25,33 @@ function clearResetUrl() {
  * The front door. Anyone can make an account; an account on its own sees nothing.
  * It opens an office of its own, or joins one from an invitation link.
  * A forgotten password is replaced through a link sent to the account's email.
+ * An invitation link is looked up first: a used or expired one opens on Sign in, since the
+ * person most likely already has an account, and a live one names its office and address.
  */
-export function SignIn({ invited, staff }: { invited: boolean; staff?: { appAddress: string; appHref: string } }) {
+export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: string | null; onInviteSpent?: () => void; staff?: { appAddress: string; appHref: string } }) {
   const qc = useQueryClient();
   const [reset] = useState(resetFromUrl);
-  const [mode, setModeState] = useState<Mode>(reset ? "reset" : invited ? "sign-up" : "sign-in");
+  const peek = useQuery({ queryKey: ["invitation", invite], queryFn: () => account.peekInvitation(invite!), enabled: Boolean(invite) && !reset, retry: false, staleTime: Infinity });
+  const invited = Boolean(invite) && !peek.isError;
+  const [mode, setModeState] = useState<Mode>(reset ? "reset" : invite ? "sign-up" : "sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // A spent link: forget it, and sign in instead of making a second account.
+  useEffect(() => {
+    if (!peek.isError) return;
+    onInviteSpent?.();
+    setModeState((m) => (m === "sign-up" ? "sign-in" : m));
+    setNotice("That invitation link has already been used or has expired. If you have an account, sign in; to join an office for the first time, ask its owner for a new invitation.");
+  }, [peek.isError]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A live one: the address it was sent to goes in the form.
+  useEffect(() => {
+    if (peek.data) setEmail((e) => e || peek.data.email);
+  }, [peek.data]);
 
   const submit = useMutation({
     mutationFn: async (): Promise<"signed-in" | "link-sent" | "changed"> => {
@@ -69,11 +85,19 @@ export function SignIn({ invited, staff }: { invited: boolean; staff?: { appAddr
       }
       void qc.resetQueries();
     },
+    onError: (e) => {
+      // Making an account for an address that already has one: sign in with it instead, keeping what was typed.
+      if (mode === "sign-up" && /already exists/i.test(e.message)) {
+        setModeState("sign-in");
+        setNotice(`There is already an account for ${email}. Sign in with its password${invited ? " to join the office" : ""}, or choose "Forgotten your password?".`);
+        submit.reset();
+      }
+    },
   });
   const setMode = (m: Mode) => {
     if (mode === "reset") clearResetUrl();
     submit.reset();
-    setNotice(null);
+    if (!peek.isError) setNotice(null);
     setModeState(m);
   };
   const onSubmit = (e: FormEvent) => {
@@ -84,7 +108,19 @@ export function SignIn({ invited, staff }: { invited: boolean; staff?: { appAddr
 
   const expired = mode === "reset" && Boolean(reset?.expired);
   const heading =
-    mode === "forgot" ? "Forgotten password" : mode === "reset" ? "Choose a new password" : staff ? "Platform console" : mode === "sign-in" ? "Sign in" : invited ? "Join the office" : "Make an account";
+    mode === "forgot"
+      ? "Forgotten password"
+      : mode === "reset"
+        ? "Choose a new password"
+        : staff
+          ? "Platform console"
+          : invited && peek.data
+            ? `Join ${peek.data.officeName}`
+            : mode === "sign-in"
+              ? "Sign in"
+              : invited
+                ? "Join the office"
+                : "Make an account";
   const lede =
     mode === "forgot"
       ? "Give the email address you sign in with. We will send a link to choose a new password."
@@ -95,7 +131,9 @@ export function SignIn({ invited, staff }: { invited: boolean; staff?: { appAddr
         : staff
           ? `For the people who run ${BRAND.name}: every business on the platform, onboarding and suspending. Sign in with your work account; businesses sign in at ${staff.appAddress}.`
           : invited
-            ? "You were invited to an office. Sign in, or make an account with the address the invitation went to."
+            ? peek.data
+              ? `You were invited to ${peek.data.officeName} as ${peek.data.role === "owner" ? "an owner" : "its accountant"}, at ${peek.data.email}. Make an account with that address, or sign in if you already have one.`
+              : "You were invited to an office. Sign in, or make an account with the address the invitation went to."
             : mode === "sign-in"
               ? "Welcome back."
               : "Then open your office, or join one from an invitation link. Each business's books are seen only by the people in it.";
