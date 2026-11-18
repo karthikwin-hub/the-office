@@ -280,7 +280,9 @@ One sign-in covers every address under `office.snilld.in`: the session cookie is
 
 ## 3. The Floor
 
-Each hired agent has a room showing what it is doing now, how much it has done today, and one figure worth your attention, such as the value of bills waiting. A number at a room's door is what that agent has left on your desk. Click a room (or its name plate) to open it. The team log beside the floor lists today's work, newest first.
+Each hired agent has a room showing what it is doing now, how much it has done today, and one figure worth your attention, such as the value of bills waiting. A number at a room's door is what that agent has left on your desk. The team log beside the floor lists today's work, newest first.
+
+**On a computer, a click opens the agent beside the floor.** Click a room, its name plate or the agent in the picture, and the panel on the right shows what the agent is doing, its figures, what is waiting for you (approve or reject right there) and what it did today, without leaving the floor. In the Lived-in office the view glides to that room. **Open the full room** goes to the agent's own page; **×**, **Back to today on the floor** or the Esc key closes the panel. Clicking **Your desk** shows everything waiting for you in the same panel. Hold Ctrl (Cmd on a Mac) while clicking to open the full room in a new tab instead. On a phone or a narrow window, a click opens the room's own page.
 
 Under the floor, **Show the whole floor** also draws the rooms you have not hired for, and **Skin** changes the look (see section 10).
 

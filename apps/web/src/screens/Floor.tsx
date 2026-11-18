@@ -3,15 +3,18 @@ import { actionFor, ClosedLedger, dioramaSupport, FloorPlan, khataYear, LivingFl
 import type { DioramaProps } from "@office/ui/diorama";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type ComponentType, lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { type ComponentType, lazy, type MouseEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { q, useDecide } from "../api/queries";
 import { useChosenSkin, usePrefs, useSimplePicture, useSkin } from "../app/prefs";
+import { AgentPanel, PanelShell } from "./FloorPanel";
 import { SkinMenu } from "./SkinMenu";
 import { count, isOwner, Page, theAgent } from "./common";
 
 /** Work whose body has to be seen before it is approved: never one click from the floor. */
 const REVIEW_ON_DESK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "post"]);
 const WIDE_DESK = "(min-width: 1600px)";
+/** Wide enough for the floor and a panel side by side; narrower screens open the full room instead. */
+const SIDE_PANEL = "(min-width: 1101px) and (pointer: fine)";
 
 function useMedia(query: string) {
   const [match, setMatch] = useState(() => window.matchMedia(query).matches);
@@ -74,6 +77,24 @@ export function FloorScreen() {
   const weather = useQuery({ ...q.weather(), enabled: lived });
   const names = ambient.data?.names ?? {};
   const wideDesk = useMedia(WIDE_DESK);
+  // On a desktop a room (or the desk) opens in the panel beside the floor; elsewhere it opens as its own page.
+  const sidePanel = useMedia(SIDE_PANEL);
+  const [panel, setPanel] = useState<string | null>(null);
+  const shown = sidePanel ? panel : null;
+  useEffect(() => {
+    if (!shown) return;
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPanel(null);
+    };
+    addEventListener("keydown", onEsc);
+    return () => removeEventListener("keydown", onEsc);
+  }, [shown]);
+  /** A plain click opens the panel; a click with Ctrl, Cmd or Shift still opens the page, for a new tab. */
+  const inPanel = (e: MouseEvent, id: string) => {
+    if (!sidePanel || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setPanel(id);
+  };
   const v = office.data;
   const waiting = v?.rooms.filter((r) => r.waitingCount > 0).sort((a, b) => b.waitingCount - a.waitingCount) ?? [];
   const hired = v?.rooms.filter((r) => r.hired).length ?? 0;
@@ -84,7 +105,7 @@ export function FloorScreen() {
   return (
     <Page ready={Boolean(v)} error={office.error} wide>
       {v ? (
-        <div className={`floor${wideDesk && v.deskCount ? " floor-with-desk" : ""}`}>
+        <div className={`floor${shown ? " floor-with-panel" : wideDesk && v.deskCount ? " floor-with-desk" : ""}`}>
           <div className="floor-main">
             <div className="floor-head">
               <h1 className="visually-hidden">The floor</h1>
@@ -130,14 +151,20 @@ export function FloorScreen() {
                   at={picture.at}
                   tempC={picture.temp}
                   onFallback={setFallback}
+                  focus={shown}
+                  onSelect={(t) => {
+                    if (!sidePanel || t.kind === "hiring") return false;
+                    setPanel(t.kind === "desk" ? "desk" : t.id);
+                    return true;
+                  }}
                   onOpen={(t) => (t.kind === "room" ? navigate({ to: "/rooms/$agentId", params: { agentId: t.id } }) : navigate({ to: t.kind === "desk" ? "/desk" : "/hiring" }))}
                   renderLink={(agentId, className, children, label) => (
-                    <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
+                    <Link to="/rooms/$agentId" params={{ agentId }} className={`${className}${shown === agentId ? " is-selected" : ""}`} aria-label={label} onClick={(e) => inPanel(e, agentId)}>
                       {children}
                     </Link>
                   )}
                   renderDeskLink={(className, children, label) => (
-                    <Link to="/desk" className={className} aria-label={label}>
+                    <Link to="/desk" className={`${className}${shown === "desk" ? " is-selected" : ""}`} aria-label={label} onClick={(e) => inPanel(e, "desk")}>
                       {children}
                     </Link>
                   )}
@@ -152,7 +179,7 @@ export function FloorScreen() {
                 nameFor={people && !lived ? (id) => personaLabel(id, names) : undefined}
                 overlay={lived ? (plan) => <LivingFloor plan={plan} inputs={{ rooms: v.rooms, log: v.log, arriving: v.arriving, names, ambient: ambient.data ?? null, weather: weather.data?.weather ?? null }} /> : undefined}
                 renderLink={(agentId, className, children, label) => (
-                  <Link to="/rooms/$agentId" params={{ agentId }} className={className} aria-label={label}>
+                  <Link to="/rooms/$agentId" params={{ agentId }} className={`${className}${shown === agentId ? " is-selected" : ""}`} aria-label={label} onClick={(e) => inPanel(e, agentId)}>
                     {children}
                   </Link>
                 )}
@@ -196,11 +223,30 @@ export function FloorScreen() {
               </div>
             </div>
           </div>
-          {wideDesk && v.deskCount ? <DeskColumn /> : null}
-          <details className="floor-log" open>
-            <summary className="floor-log-summary">Today on the floor</summary>
-            <TeamLog entries={v.log} title="Today on the floor" heading={false} label={people ? (id) => personaLabel(id, names) : undefined} />
-          </details>
+          {shown === "desk" ? (
+            <PanelShell
+              title="Your desk"
+              kicker={v.deskCount ? `${count(v.deskCount, "thing")} waiting` : "Nothing waiting"}
+              onClose={() => setPanel(null)}
+              open={
+                <Link to="/desk" className="floor-panel-open">
+                  Open your desk
+                </Link>
+              }
+            >
+              <DeskColumn embedded />
+            </PanelShell>
+          ) : shown ? (
+            <AgentPanel key={shown} agentId={shown} names={names} people={people} onClose={() => setPanel(null)} />
+          ) : (
+            <>
+              {wideDesk && v.deskCount ? <DeskColumn /> : null}
+              <details className="floor-log" open>
+                <summary className="floor-log-summary">Today on the floor</summary>
+                <TeamLog entries={v.log} title="Today on the floor" heading={false} label={people ? (id) => personaLabel(id, names) : undefined} />
+              </details>
+            </>
+          )}
         </div>
       ) : null}
     </Page>
@@ -208,17 +254,21 @@ export function FloorScreen() {
 }
 
 /** The top of the desk, beside the floor on wide screens. Routine work can be approved here; anything with a body opens on the desk. */
-function DeskColumn() {
+function DeskColumn({ embedded = false }: { embedded?: boolean }) {
   const desk = useQuery(q.desk());
   const decide = useDecide();
   const owner = isOwner();
   const items = desk.data?.items ?? [];
-  const top = items.slice(0, 3);
+  const top = items.slice(0, embedded ? 8 : 3);
+  const Wrap = embedded ? "div" : "aside";
   return (
-    <aside className="floor-desk" aria-labelledby="floor-desk-title">
-      <h2 id="floor-desk-title" className="floor-desk-title">
-        On your desk
-      </h2>
+    <Wrap className={embedded ? "floor-panel-body" : "floor-desk"} aria-labelledby={embedded ? undefined : "floor-desk-title"}>
+      {embedded ? null : (
+        <h2 id="floor-desk-title" className="floor-desk-title">
+          On your desk
+        </h2>
+      )}
+      {embedded && !items.length ? <p className="muted">Nothing is waiting for you.</p> : null}
       <ol className="floor-desk-list">
         {top.map((i: StagedChange) => (
           <li key={i.id} className="floor-desk-item">
@@ -240,9 +290,9 @@ function DeskColumn() {
       </ol>
       {items.length > top.length ? (
         <p className="floor-desk-more">
-          <Link to="/desk">And {count(items.length - top.length, "more")} on your desk</Link>
+          <Link to="/desk">And {items.length - top.length} more on your desk</Link>
         </p>
       ) : null}
-    </aside>
+    </Wrap>
   );
 }

@@ -28,6 +28,10 @@ export type DioramaProps = {
   onFallback: (reason: string) => void;
   /** Every room, hired or not; otherwise only the staffed rooms, with the vacancies in one flat corner. */
   wholeFloor?: boolean;
+  /** A room (or "desk") the app has open beside the picture: the camera glides to it, and home again when it closes. */
+  focus?: string | null;
+  /** A click on the picture, before any page opens; true when the app has handled it (for example in a side panel). */
+  onSelect?: (target: DioramaTarget) => boolean;
   /** Picture only, for demos and screenshots: minutes after midnight in India, and a temperature. */
   at?: number | null;
   tempC?: number | null;
@@ -56,7 +60,7 @@ type Bubble = { id: number; agentId: string; text: string; until: number };
  * second when only small things move, every frame while something moves fast, and not
  * at all when the tab is hidden or the floor is scrolled away.
  */
-export function Diorama({ view, names = {}, ambient = null, weather = null, renderLink, renderDeskLink, onOpen, onFallback, wholeFloor = false, at = null, tempC = null }: DioramaProps) {
+export function Diorama({ view, names = {}, ambient = null, weather = null, renderLink, renderDeskLink, onOpen, onFallback, wholeFloor = false, focus = null, onSelect, at = null, tempC = null }: DioramaProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const office = useRef<PopupOffice | null>(null);
@@ -163,7 +167,10 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
       for (const [id, el] of pins.current) {
         const a = o.plateAnchor(id, p);
         const xy = a ? o.project(a) : null;
-        if (!xy) continue;
+        // A plate whose room is out of view (zoomed in on another room) is hidden rather than piled at the edge.
+        const away = !xy || xy[0] < -40 || xy[0] > box.clientWidth + 40 || xy[1] < 0 || xy[1] > box.clientHeight + 20;
+        el.style.visibility = away ? "hidden" : "";
+        if (!xy || away) continue;
         // Kept inside the picture, so the plate at the corridor's end is never cut off.
         const x = Math.max(4, Math.min(xy[0], box.clientWidth - el.offsetWidth - 6));
         el.style.transform = `translate(${x.toFixed(1)}px, ${Math.max(4, xy[1] - el.offsetHeight).toFixed(1)}px)`;
@@ -236,6 +243,14 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
   /* The weather usually arrives after the book is open: then the sun moves to the right city. */
   useEffect(() => office.current?.setPlace(weather?.city ?? null, where), [weather?.city, where[0], where[1]]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* A room open beside the picture: the camera goes to it, and home again when the panel closes. */
+  useEffect(() => {
+    const o = office.current;
+    if (!o || !opened) return;
+    if (focus) void o.glideTo(focus);
+    else void o.glideHome();
+  }, [focus, opened]);
+
   /* The clock in the corner moves on. */
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -276,8 +291,10 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
           const r = e.currentTarget.getBoundingClientRect();
           const hit = o.hit(e.clientX - r.left, e.clientY - r.top);
           if (!hit) return;
-          if (hit.kind === "vacant") return onOpen({ kind: "hiring" });
-          void o.glideTo(hit.kind === "desk" ? "desk" : hit.id).then(() => onOpen(hit.kind === "desk" ? { kind: "desk" } : { kind: "room", id: hit.id }));
+          const target: DioramaTarget = hit.kind === "vacant" ? { kind: "hiring" } : hit.kind === "desk" ? { kind: "desk" } : { kind: "room", id: hit.id };
+          if (onSelect?.(target)) return;
+          if (target.kind === "hiring") return onOpen(target);
+          void o.glideTo(target.kind === "desk" ? "desk" : target.id).then(() => onOpen(target));
         }}
       />
       <ClosedLedger name={view.business.name || "Your office"} year={khataYear(now)} gone={ready} />

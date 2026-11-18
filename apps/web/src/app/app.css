@@ -1731,3 +1731,105 @@
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   }
 }
+
+/* ---------- The Floor's side panel: a room or the desk, opened beside the floor on a desktop ---------- */
+.floor-with-panel {
+  grid-template-columns: minmax(0, 1fr) 27rem;
+}
+.floor-panel {
+  border-left: var(--rule);
+  padding-left: var(--s-5);
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.floor-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+.floor-panel-kicker {
+  margin: 0;
+  font-size: var(--step--1);
+  color: var(--graphite-soft);
+}
+.floor-panel-head h2 {
+  margin: 2px 0 0;
+  font-size: var(--step-2);
+  line-height: var(--leading-tight);
+}
+.floor-panel-head h2:focus {
+  outline: none;
+}
+.floor-panel-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--sheet);
+  color: var(--graphite);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.floor-panel-close:hover {
+  border-color: var(--carbon);
+  color: var(--carbon);
+}
+.floor-panel-close:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+.floor-panel-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  align-items: baseline;
+  margin: var(--s-2) 0 var(--s-4);
+  font-size: var(--step--1);
+}
+.floor-panel-open {
+  font-weight: 700;
+}
+.floor-panel-body .room-now-line {
+  margin-bottom: var(--s-2);
+}
+.floor-panel-standing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  align-items: baseline;
+  font-size: var(--step--1);
+  margin: 0 0 var(--s-4);
+}
+.floor-panel .register > div {
+  padding: var(--s-2) var(--s-4) var(--s-2) 0;
+  margin-right: var(--s-4);
+}
+.floor-panel .register > div + div {
+  padding-left: var(--s-4);
+}
+.floor-panel .register dd {
+  font-size: var(--step-1);
+}
+.floor-panel-section {
+  font-size: var(--step-0);
+  margin: var(--s-4) 0 var(--s-2);
+}
+.floor-panel .approval {
+  margin-bottom: var(--s-4);
+}
+.floor-panel-more {
+  font-size: var(--step--1);
+  margin: 0 0 var(--s-4);
+}
+/* The room that is open in the panel is marked on the floor. */
+.room.is-selected,
+.diorama-plate.is-selected {
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+}

@@ -832,7 +832,8 @@ export class PopupOffice {
     const hf = 2 * Math.atan(Math.tan((this.camera.fov * RAD) / 2) * this.camera.aspect);
     const half = (this.L.yard.x1 - this.L.yard.x0) / 2 - 2;
     this.home.dist = Math.max(60, half / Math.tan(hf / 2));
-    if (!this.glide) this.view.dist = this.opening ? this.home.dist * 1.18 : this.home.dist;
+    // A resize keeps a room in view if one is open; otherwise the whole office is refitted.
+    if (!this.glide && !this.focusedOn) this.view.dist = this.opening ? this.home.dist * 1.18 : this.home.dist;
     this.rtA?.dispose();
     this.rtB?.dispose();
     this.rtA = this.rtB = null;
@@ -1200,12 +1201,23 @@ export class PopupOffice {
     this.pointer.x = clamp(x, -1, 1);
     this.pointer.y = clamp(y, -1, 1);
   }
-  /** Glide in over a room before its page opens. */
+  /** Glide in over a room: before its page opens, or while it is open in a panel beside the picture. */
   glideTo(id: string): Promise<void> {
     const r = id === "desk" ? { cx: this.L.desk[0] - 4, cz: this.L.desk[1] } : this.L.rooms[id];
     if (!r) return Promise.resolve();
-    const to = { target: new THREE.Vector3(r.cx, 1.5, r.cz), dist: 42, pitch: 48 * RAD };
-    return new Promise((res) => (this.glide = { from: { target: this.view.target.clone(), dist: this.view.dist, pitch: this.view.pitch }, to, t: 0, dur: this.opts.reduced ? 0.01 : 0.55, res }));
+    this.focusedOn = id;
+    return this.glideView({ target: new THREE.Vector3(r.cx, 1.5, r.cz), dist: 42, pitch: 48 * RAD }, 0.55);
+  }
+  /** Back to the whole office. */
+  glideHome(): Promise<void> {
+    if (!this.focusedOn) return Promise.resolve();
+    this.focusedOn = null;
+    return this.glideView({ target: this.home.target.clone(), dist: this.home.dist, pitch: this.home.pitch }, 0.7);
+  }
+  private focusedOn: string | null = null;
+  private glideView(to: { target: THREE.Vector3; dist: number; pitch: number }, dur: number): Promise<void> {
+    this.glide?.res();
+    return new Promise((res) => (this.glide = { from: { target: this.view.target.clone(), dist: this.view.dist, pitch: this.view.pitch }, to, t: 0, dur: this.opts.reduced ? 0.01 : dur, res }));
   }
   /** What is under a point on the canvas, in CSS pixels from its corner. */
   hit(x: number, y: number): Hit {
