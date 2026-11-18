@@ -17,7 +17,7 @@ import {
 } from "@office/contracts";
 import { z } from "zod";
 import { addDays, dateLabel, daysBetween } from "./dates";
-import { parseAmount, parseDate } from "./extract";
+import { gstinValid, parseAmount, parseDate } from "./extract";
 import { ImportError } from "./imports";
 import { inr, inrShort } from "./money";
 
@@ -161,6 +161,7 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const gstinRaw = r.get("gstin").toUpperCase().replace(/\s/g, "");
     const gstin = gstinRaw ? (Gstin.safeParse(gstinRaw).success ? gstinRaw : null) : null;
     if (gstinRaw && !gstin) bad("gstin", `"${gstinRaw}" is not a GSTIN. It has 15 characters, like 29ABCDE1234F1Z5.`);
+    else if (gstin && !gstinValid(gstin)) bad("gstin", `${gstin} fails the GSTIN check digit, so one character is wrong: often a letter I or O typed for the digit 1 or 0. Copy it from the GST certificate or the GST portal.`);
     const pan = gstin ? gstin.slice(2, 12) : r.get("pan").toUpperCase();
     if (pan && !PAN.test(pan)) bad("pan", `"${pan}" is not a PAN. It has 10 characters, like ABCDE1234F.`);
     const state = gstin ? gstin.slice(0, 2) : stateCode(r.get("state"));

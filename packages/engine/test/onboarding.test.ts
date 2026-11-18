@@ -129,6 +129,13 @@ describe("bringing in existing books", () => {
     expect(p.issues[0]!.message).toContain("is not a GSTIN");
   });
 
+  it("refuses a GSTIN whose check digit does not match", () => {
+    const csv = ["type,name,gstin", "supplier,Paper Wonders,30AAKPF0423EIZM", "supplier,Paper Wonders Two,30AAKPF0423E1ZM"].join("\n");
+    const p = fresh().checkOnboarding(only("parties", csv));
+    expect(p.issues.map((i) => [i.row, i.column])).toEqual([[2, "gstin"]]);
+    expect(p.issues[0]!.message).toContain("check digit");
+  });
+
   it("refuses open items from after the start date, unknown parties and repeated numbers", () => {
     const office = imported();
     const csv = [
