@@ -377,4 +377,4 @@ Stop and message the engineer or Puja, without trying workarounds, if:
 
 | Date | Part and step | What was done | Result | By |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 18 Nov 2026 | Part 5, step 9 | Backed up the old account's D1 (`backups/old-account-office.sql`: one test office "Your business", one user); deleted the Workers `the-office` and `the-office-mock` (with their Durable Object data), the D1 database `office` and the empty R2 bucket `office-docs` in the "the-office-agents" account | Nothing left in the old account's Workers, D1, R2 or Durable Objects. Still to do by hand: revoke the old API token in that account and remove `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` from Infisical | Claude, approved by Karthik |
