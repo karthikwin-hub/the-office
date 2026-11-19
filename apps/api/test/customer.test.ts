@@ -3,7 +3,7 @@ import { type IncomingMessage, OfficeService } from "@office/engine";
 import { loadBooks, sampleCustomerService } from "@office/fixtures";
 import PostalMime from "postal-mime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { freshText, splitCustomerDms, toSupportInbound, widgetScript } from "../src/customer/channels";
+import { freshText, splitCustomerDms, toSupportInbound, turnstileOk, widgetScript } from "../src/customer/channels";
 import { CustomerDesk } from "../src/customer/desk";
 import { SqlCsStore } from "../src/customer/store";
 import { mailSender } from "../src/mail";
@@ -132,5 +132,30 @@ describe("the website chat script", () => {
     expect(js).toContain("AI assistant");
     expect(js).toContain('"siteKey":null');
     expect(widgetScript("wkaverichat01", "https://office.example", "0x4AAA")).toContain('"siteKey":"0x4AAA"');
+  });
+});
+
+describe("the office's own conversation store", () => {
+  it("counts the website conversations started since a time, leaving out the owner's tries", async () => {
+    const { o, desk } = world();
+    await desk.receive({ channel: "web", key: "visitor-store-000000000001", name: "Website visitor", text: "Hi" });
+    await desk.receive({ channel: "web", key: "visitor-store-000000000002", name: "Website visitor", text: "Hi" });
+    await desk.receive({ channel: "web", key: "visitor-store-000000000003", name: "Website visitor", text: "Hi", test: true });
+    const store = o.customers.store;
+    expect(store.countStarted("web", new Date(Date.now() - 60_000).toISOString())).toBe(2);
+    expect(store.countStarted("web", new Date(Date.now() + 60_000).toISOString())).toBe(0);
+    expect(store.countStarted("whatsapp", "2000-01-01T00:00:00Z")).toBe(0);
+  });
+});
+
+describe("the website chat's person check", () => {
+  it("shuts the chat live when Turnstile has no secret, and leaves it open in the mockups and tests", async () => {
+    const fetcher = vi.fn(async () => Response.json({ success: true }));
+    expect(await turnstileOk(undefined, null, null, true, fetcher)).toBe(false);
+    expect(await turnstileOk(undefined, "tok", null, true, fetcher)).toBe(false);
+    expect(await turnstileOk(undefined, null, null, false, fetcher)).toBe(true);
+    expect(await turnstileOk("secret", null, null, true, fetcher)).toBe(false);
+    expect(await turnstileOk("secret", "tok", "203.0.113.9", true, fetcher)).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

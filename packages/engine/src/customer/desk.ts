@@ -31,6 +31,8 @@ export const WHATSAPP_FREE_SERVICE = 1000;
 const WINDOW_MS = 24 * 3600_000;
 const RATE_WINDOW_MS = 10 * 60_000;
 const RATE_LIMIT = 8;
+/** New website conversations an office takes in a day, so made-up visitor ids cannot grow its storage without end. */
+export const WEB_THREADS_PER_DAY = 300;
 
 /** A message from a customer, as a channel hands it over. */
 export type Inbound = {
@@ -189,10 +191,15 @@ export class CustomerService {
       return { thread: this.store.thread(prior.threadId)!, outcome: "duplicate", notes };
     }
     let t = this.findThread(m);
+    const isNew = !t;
     if (!t) {
       t = { id: newId("cst"), channel: m.channel, key: m.key, name: m.name.slice(0, 120) || CS_CHANNEL_NAMES[m.channel], partyId: null, verifiedContact: null, status: "open", subject: m.subject?.slice(0, 200) ?? null, startedAt: now, lastAt: now, lastInboundAt: null, disclosed: false, handoffs: 0, firstReplySeconds: null, test: Boolean(m.test) };
     }
     if (!m.test && !this.office.hired(CS_AGENT)) return { thread: t, outcome: "ignored", notes };
+    if (isNew && m.channel === "web" && !m.test && this.store.countStarted("web", new Date(Date.parse(now) - 86_400_000).toISOString()) >= WEB_THREADS_PER_DAY) {
+      notes.push(`The website chat has started ${WEB_THREADS_PER_DAY} conversations in a day; this one was not kept.`);
+      return { thread: t, outcome: "limited", notes };
+    }
     this.identify(t, m.text);
     const recentIn = this.store.messages(t.id).filter((x) => x.direction === "in" && Date.parse(now) - Date.parse(x.at) < RATE_WINDOW_MS).length;
     this.store.addMessage({ id: newId("csm"), threadId: t.id, at: now, direction: "in", by: "customer", text: m.text.slice(0, 4000), intent: c.intent, ground: null, status: "received", externalId: m.externalId ?? null, error: null });

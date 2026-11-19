@@ -1,7 +1,7 @@
 import type { TrustLevel } from "@office/contracts";
 import { loadBooks, sampleCustomerService } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
-import { classifyRules, converse, decisive, handleWhatsApp, type Inbound, newSession, OfficeService, parseClassification, parseOrderCommand, render } from "../src";
+import { classifyRules, converse, decisive, handleWhatsApp, type Inbound, newSession, OfficeService, parseClassification, parseOrderCommand, render, WEB_THREADS_PER_DAY } from "../src";
 
 const ASOF = "2026-11-04";
 
@@ -142,6 +142,18 @@ describe("trust", () => {
     for (let i = 0; i < 10; i++) last = say(o, { ...wa(`hello ${i}`), externalId: `wamid-${i}` }).outcome;
     expect(last).toBe("limited");
     expect(say(o, { ...wa("hello 0"), externalId: "wamid-0" }).outcome).toBe("duplicate");
+  });
+
+  it("keeps no more new website conversations in a day than its limit, and still answers the ones it has", () => {
+    const o = office();
+    const visitor = (i: number) => `visitor-cap-${String(i).padStart(12, "0")}`;
+    for (let i = 0; i < WEB_THREADS_PER_DAY; i++) expect(say(o, web("Hi", visitor(i))).outcome).not.toBe("limited");
+    const turnedAway = say(o, web("Hi", visitor(WEB_THREADS_PER_DAY)));
+    expect(turnedAway.outcome).toBe("limited");
+    expect(o.customers.store.thread(turnedAway.thread.id)).toBeNull();
+    expect(o.customers.store.threadByKey("web", visitor(WEB_THREADS_PER_DAY))).toBeNull();
+    expect(say(o, web("What time do you open on Saturday?", visitor(0))).outcome).not.toBe("limited");
+    expect(say(o, wa("Hi")).outcome).not.toBe("limited");
   });
 
   it("answers nothing while it is not on the team", () => {

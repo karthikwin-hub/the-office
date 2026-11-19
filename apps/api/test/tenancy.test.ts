@@ -455,6 +455,51 @@ describe("the website chat", () => {
     expect((await post(w, "wkaverichat01", { visitor, text: "with token", turnstile: "tok" })).status).toBe(200);
     expect(w.seen.filter((s) => s.path === "/internal/chat")).toHaveLength(3);
   });
+
+  it("refuses messages live when Turnstile has no secret", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "widget", "wkaverichat01");
+    (w.env as { DATA_MODE: string }).DATA_MODE = "live";
+    const res = await post(w, "wkaverichat01", { visitor, text: "hi", turnstile: "tok" });
+    expect(res.status).toBe(503);
+    expect(((await res.json()) as { error: string }).error).toContain("not available");
+    expect(w.seen.filter((s) => s.path === "/internal/chat")).toHaveLength(0);
+  });
+
+  it("limits polling for each visitor and each address, before looking up the key", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "widget", "wkaverichat01");
+    const poll = (v: string, ip = "203.0.113.9") => call(w, null, `/api/chat/wkaverichat01?visitor=${v}`, { headers: { "cf-connecting-ip": ip } });
+    const used = new Map<string, number>();
+    const keys: string[] = [];
+    (w.env as { CHAT_LIMIT?: unknown }).CHAT_LIMIT = {
+      limit: async ({ key }: { key: string }) => {
+        keys.push(key);
+        used.set(key, (used.get(key) ?? 0) + 1);
+        return { success: used.get(key)! <= 2 };
+      },
+    };
+    expect((await poll(visitor)).status).toBe(200);
+    expect((await poll(visitor)).status).toBe(200);
+    const third = await poll(visitor);
+    expect(third.status).toBe(429);
+    expect(third.headers.get("access-control-allow-origin")).toBe("*");
+    expect(keys).toContain(`poll:wkaverichat01:v:${visitor}`);
+    expect(keys).toContain("poll:wkaverichat01:ip:203.0.113.9");
+    // A new visitor id from the same address is still held by the address's limit.
+    expect((await poll("visitor-bbbbbbbbbbbbbbbb")).status).toBe(429);
+    expect((await poll("visitor-cccccccccccccccc", "198.51.100.7")).status).toBe(200);
+    expect(w.seen.filter((s) => s.path === "/internal/chat-messages")).toHaveLength(3);
+  });
+
+  it("tells the visitor when the office took no new conversation today", async () => {
+    const { w, cp, A } = await twoOffices();
+    await cp.claimRoute(A, "widget", "wkaverichat01");
+    (w.env as { Office: unknown }).Office = { idFromName: (name: string) => ({ name }), get: () => ({ fetch: async () => Response.json({ messages: [], business: "Kaveri Electricals" }) }) };
+    const res = await post(w, "wkaverichat01", { visitor, text: "hi" });
+    expect(res.status).toBe(429);
+    expect(((await res.json()) as { error: string }).error).toContain("cannot take more new conversations today");
+  });
 });
 
 describe("the shared WhatsApp number", () => {

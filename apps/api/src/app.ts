@@ -28,7 +28,7 @@ import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "
 import type { Env } from "./env";
 import { AccountRecords } from "./account";
 import type { AssistantInbound } from "./assistant";
-import { type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
+import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { parseInbound } from "./mail";
 import { planMeta } from "./routing";
@@ -127,11 +127,31 @@ app.get("/w/:file", async (c) => {
 
 app.options("/api/chat/:key", (c) => c.body(null, 204, CHAT_CORS));
 
+/** Every key must be under the limit; one for the visitor and one for their address, so new visitor ids do not escape it. */
+async function chatLimited(limit: RateLimit | undefined, keys: (string | null)[]) {
+  if (!limit) return false;
+  for (const key of keys) if (key && !(await limit.limit({ key })).success) return true;
+  return false;
+}
+
+/** The office answers a message with the visitor's conversation; an empty one means it kept nothing. */
+function chatTookNothing(body: string) {
+  try {
+    const m = (JSON.parse(body) as { messages?: unknown }).messages;
+    return Array.isArray(m) && m.length === 0;
+  } catch {
+    return false;
+  }
+}
+
 app.get("/api/chat/:key", async (c) => {
   const key = c.req.param("key");
   const visitor = c.req.query("visitor") ?? "";
-  const officeId = WIDGET_KEY.test(key) ? await cp(c.env).routeFor("widget", key) : null;
-  if (!officeId || !ChatPost.shape.visitor.safeParse(visitor).success) return c.json(NOT_FOUND, 404, CHAT_CORS);
+  if (!WIDGET_KEY.test(key) || !ChatPost.shape.visitor.safeParse(visitor).success) return c.json(NOT_FOUND, 404, CHAT_CORS);
+  const ip = c.req.header("cf-connecting-ip") ?? null;
+  if (await chatLimited(c.env.CHAT_LIMIT, [`poll:${key}:v:${visitor}`, ip ? `poll:${key}:ip:${ip}` : null])) return c.json({ error: "Too many requests. Wait a minute and try again." }, 429, CHAT_CORS);
+  const officeId = await cp(c.env).routeFor("widget", key);
+  if (!officeId) return c.json(NOT_FOUND, 404, CHAT_CORS);
   const res = await toOffice(c.env, internal("/internal/chat-messages", { visitor }), system(officeId));
   return c.body(await res.text(), res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
 });
@@ -144,9 +164,15 @@ app.post("/api/chat/:key", async (c) => {
   if (!parsed.success) return c.json({ error: "Write a message to send." }, 400, CHAT_CORS);
   const ip = c.req.header("cf-connecting-ip") ?? null;
   if (c.env.CHAT_LIMIT && !(await c.env.CHAT_LIMIT.limit({ key: `${key}:${ip ?? parsed.data.visitor}` })).success) return c.json({ error: "That is a lot of messages at once. Wait a minute and try again." }, 429, CHAT_CORS);
-  if (!(await turnstileOk(c.env.TURNSTILE_SECRET, parsed.data.turnstile, ip))) return c.json({ error: "Tick the box to show you are a person, then send again." }, 403, CHAT_CORS);
+  const live = c.env.DATA_MODE === "live";
+  // Live without a secret the widget shows no box to tick, so say the chat is shut rather than blame the visitor.
+  if (live && !c.env.TURNSTILE_SECRET) return c.json({ error: "The chat is not available just now. Write to the business another way." }, 503, CHAT_CORS);
+  if (!(await turnstileOk(c.env.TURNSTILE_SECRET, parsed.data.turnstile, ip, live))) return c.json({ error: "Tick the box to show you are a person, then send again." }, 403, CHAT_CORS);
   const res = await toOffice(c.env, internal("/internal/chat", { visitor: parsed.data.visitor, text: parsed.data.text, name: parsed.data.name ?? null }), system(officeId));
-  return c.body(await res.text(), res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
+  const body = await res.text();
+  // The office keeps every message it takes; none for this visitor means it took no new conversation today.
+  if (res.status === 200 && chatTookNothing(body)) return c.json({ error: CHAT_FULL }, 429, CHAT_CORS);
+  return c.body(body, res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
 });
 
 /* ---------- Everything else needs someone signed in ---------- */

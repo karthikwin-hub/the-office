@@ -5,6 +5,9 @@ export { CS_AGENT };
 /** Customers write here; the address alone says which office. */
 export const supportAddress = (slug: string, domain: string | undefined) => (slug && domain ? `${slug}.help@${domain}`.toLowerCase() : null);
 
+/** What a visitor sees when the office has taken all the new website conversations it takes in a day. */
+export const CHAT_FULL = "The chat cannot take more new conversations today. Write to the business another way, or try again tomorrow.";
+
 export type SupportMail = { from: string; name: string | null; subject: string; text: string; messageId: string | null; inReplyTo: string | null };
 export type ChatPostBody = { visitor: string; text: string; name: string | null };
 
@@ -45,9 +48,12 @@ export const toSupportInbound = (m: SupportMail): Inbound => ({
   inReplyTo: m.inReplyTo ?? undefined,
 });
 
-/** Cloudflare Turnstile, only when a secret is set. Without it the rate limit is the only guard. */
-export async function turnstileOk(secret: string | undefined, token: string | null | undefined, ip: string | null, fetcher: typeof fetch = fetch): Promise<boolean> {
-  if (!secret) return true;
+/**
+ * Cloudflare Turnstile. Live, a missing secret shuts the chat rather than opening it to scripts; in the
+ * mockups, tests and local runs there is no secret and the rate limit is the only guard.
+ */
+export async function turnstileOk(secret: string | undefined, token: string | null | undefined, ip: string | null, live: boolean, fetcher: typeof fetch = fetch): Promise<boolean> {
+  if (!secret) return !live;
   if (!token) return false;
   const form = new FormData();
   form.set("secret", secret);

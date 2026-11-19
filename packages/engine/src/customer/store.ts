@@ -19,6 +19,8 @@ export interface CsStore {
   updateMessage(id: string, patch: Partial<CsMessage>): void;
   /** Messages sent on a channel since a time, for the WhatsApp monthly count. */
   countOut(channel: CsChannel, fromIso: string): number;
+  /** Conversations, not the owner's tries, that started on a channel since a time. */
+  countStarted(channel: CsChannel, fromIso: string): number;
   /** Deletes conversations whose last message is older than this; returns how many went. */
   prune(beforeIso: string): number;
 }
@@ -57,6 +59,9 @@ export class MemoryCsStore implements CsStore {
   countOut(channel: CsChannel, fromIso: string) {
     const ids = new Set([...this.ts.values()].filter((t) => t.channel === channel && !t.test).map((t) => t.id));
     return this.ms.filter((m) => ids.has(m.threadId) && m.direction === "out" && m.status === "sent" && m.at >= fromIso).length;
+  }
+  countStarted(channel: CsChannel, fromIso: string) {
+    return [...this.ts.values()].filter((t) => t.channel === channel && !t.test && t.startedAt >= fromIso).length;
   }
   prune(beforeIso: string) {
     const gone = [...this.ts.values()].filter((t) => t.lastAt < beforeIso).map((t) => t.id);

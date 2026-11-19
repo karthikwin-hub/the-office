@@ -58,6 +58,7 @@ export class SqlCsStore implements CsStore {
       "CREATE TABLE IF NOT EXISTS cs_thread (id TEXT PRIMARY KEY, channel TEXT NOT NULL, key TEXT NOT NULL, name TEXT NOT NULL, party_id TEXT, verified TEXT, status TEXT NOT NULL, subject TEXT, started_at TEXT NOT NULL, last_at TEXT NOT NULL, last_in_at TEXT, disclosed INTEGER NOT NULL, handoffs INTEGER NOT NULL, first_reply_s INTEGER, test INTEGER NOT NULL)",
     );
     sql.exec("CREATE INDEX IF NOT EXISTS cs_thread_by_key ON cs_thread (channel, key, last_at)");
+    sql.exec("CREATE INDEX IF NOT EXISTS cs_thread_by_start ON cs_thread (channel, started_at)");
     sql.exec(
       "CREATE TABLE IF NOT EXISTS cs_message (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, at TEXT NOT NULL, direction TEXT NOT NULL, by_who TEXT NOT NULL, text TEXT NOT NULL, intent TEXT, ground TEXT, status TEXT NOT NULL, external_id TEXT, error TEXT)",
     );
@@ -140,6 +141,11 @@ export class SqlCsStore implements CsStore {
     const r = this.sql
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM cs_message m JOIN cs_thread t ON t.id = m.thread_id WHERE t.channel = ? AND t.test = 0 AND m.direction = 'out' AND m.status = 'sent' AND m.at >= ?", channel, fromIso)
       .toArray()[0];
+    return Number(r?.n ?? 0);
+  }
+
+  countStarted(channel: CsChannel, fromIso: string) {
+    const r = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM cs_thread WHERE channel = ? AND test = 0 AND started_at >= ?", channel, fromIso).toArray()[0];
     return Number(r?.n ?? 0);
   }
 
