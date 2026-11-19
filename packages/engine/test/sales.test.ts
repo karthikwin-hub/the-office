@@ -1,5 +1,5 @@
 import { loadBooks } from "@office/fixtures";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { dateOf, dispatch, findHeader, OfficeService, paiseOf, parseDelimited, stateOf, type ApiRequest } from "../src";
 import { readSheets } from "../src/sales/sheets";
 
@@ -193,6 +193,45 @@ describe("files", () => {
     expect(zipped[0]!.rows[0]![3]).toBe("Transaction Type");
     await expect(readSheets("old.xls", new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]))).rejects.toThrow(/save it as \.xlsx/);
   });
+
+  // A zip bomb: 64 MB of zeros squeezes into about 64 KB. Built once here, not kept as a file.
+  const ZEROS = 64 * 1024 * 1024;
+  let bombBytes: Uint8Array;
+  beforeAll(async () => {
+    const JSZip = (await import("jszip")).default;
+    const z = new JSZip();
+    z.file("xl/worksheets/sheet1.csv", new Uint8Array(ZEROS), { compression: "DEFLATE" });
+    bombBytes = await z.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+    expect(bombBytes.byteLength).toBeLessThan(ZEROS / 500);
+  }, 60_000);
+  /** A copy of the bomb whose headers say its one entry unzips to `size`, as a crafted zip would. */
+  function claimSize(zip: Uint8Array, size: number) {
+    const out = zip.slice();
+    const v = new DataView(out.buffer);
+    for (let i = 0; i + 30 <= out.length; i++) {
+      const sig = v.getUint32(i, true);
+      if (sig === 0x04034b50) v.setUint32(i + 22, size, true);
+      else if (sig === 0x02014b50) v.setUint32(i + 24, size, true);
+    }
+    return out;
+  }
+
+  it("refuses a zip whose reports say they unzip to more than it reads, before unzipping them", async () => {
+    const JSZip = (await import("jszip")).default;
+    const z = new JSZip();
+    z.file("MTR_B2C.csv", mtr());
+    const small = claimSize(await z.generateAsync({ type: "uint8array", compression: "DEFLATE" }), 0x7fffffff);
+    await expect(readSheets("MTR.zip", small)).rejects.toThrow("The zip file holds more than the office reads at once. Send the reports one at a time.");
+  });
+
+  it("stops unzipping a report the moment it passes the limit, whatever its header claims", async () => {
+    await expect(readSheets("MTR.zip", claimSize(bombBytes, 100))).rejects.toThrow("The zip file holds more than the office reads at once. Send the reports one at a time.");
+  }, 30_000);
+
+  it("measures an XLSX before the workbook reader unzips it, by its headers and as it reads", async () => {
+    await expect(readSheets("report.xlsx", bombBytes)).rejects.toThrow("The spreadsheet holds more than the office reads at once. Send the reports one at a time.");
+    await expect(readSheets("report.xlsx", claimSize(bombBytes, 100))).rejects.toThrow("The spreadsheet holds more than the office reads at once. Send the reports one at a time.");
+  }, 30_000);
 });
 
 // Amazon's transaction (date range) report: notes above the header, then orders, refunds, fees and transfers.
