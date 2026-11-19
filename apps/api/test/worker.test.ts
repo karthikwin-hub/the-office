@@ -76,7 +76,7 @@ describe("each person's preferences", () => {
 describe("passwords", () => {
   it("verifies the right password and refuses others", async () => {
     const hash = await hashPassword("correct horse battery");
-    expect(hash).toMatch(/^pbkdf2-sha256\$100000\$/);
+    expect(hash).toMatch(/^pbkdf2-sha256-chain\$\d+\$/);
     expect(await verifyPassword({ hash, password: "correct horse battery" })).toBe(true);
     expect(await verifyPassword({ hash, password: "correct horse batterz" })).toBe(false);
     expect(await verifyPassword({ hash: "scrypt$abc", password: "x" })).toBe(false);

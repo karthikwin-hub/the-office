@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { pbkdf2Sync, randomBytes } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { app } from "../src/app";
+import { hashPassword, ITERATIONS, needsRehash, passwordWork, verifyPassword } from "../src/auth";
 import type { Env } from "../src/env";
 import { d1 } from "./d1";
 import { enrolTwoFactor, totp, withCookies } from "./two-factor";
@@ -101,5 +103,54 @@ describe("two-factor sign-in", () => {
     const res = await post(env, "/api/auth/sign-in/email", { email: "carol@firm.test", password: PASSWORD });
     expect(res.status).toBe(200);
     expect((await get(env, "/api/me", withCookies("", res))).status).toBe(200);
+  });
+});
+
+describe("password hashes", () => {
+  const lowered = passwordWork.iterations;
+  beforeAll(() => void (passwordWork.iterations = ITERATIONS));
+  afterAll(() => void (passwordWork.iterations = lowered));
+  /** A hash as the Worker made them before: one PBKDF2 call of 100,000 iterations. */
+  const legacy = (password: string) => {
+    const salt = randomBytes(16);
+    return `pbkdf2-sha256$100000$${salt.toString("base64")}$${pbkdf2Sync(password.normalize("NFKC"), salt, 100_000, 32, "sha256").toString("base64")}`;
+  };
+
+  it("makes new hashes with 600,000 iterations, in rounds Cloudflare accepts, and still reads the old ones", async () => {
+    const hash = await hashPassword(PASSWORD);
+    expect(hash).toMatch(/^pbkdf2-sha256-chain\$600000\$/);
+    expect(needsRehash(hash)).toBe(false);
+    expect(await verifyPassword({ hash, password: PASSWORD })).toBe(true);
+    expect(await verifyPassword({ hash, password: "a-long-password-2" })).toBe(false);
+    const old = legacy(PASSWORD);
+    expect(needsRehash(old)).toBe(true);
+    expect(await verifyPassword({ hash: old, password: PASSWORD })).toBe(true);
+    expect(await verifyPassword({ hash: old, password: "a-long-password-2" })).toBe(false);
+  });
+
+  it("takes as much work to check an old hash as a new one, so timing does not say which addresses have accounts", async () => {
+    const derive = vi.spyOn(crypto.subtle, "deriveBits");
+    const work = () => derive.mock.calls.reduce((n, [params]) => n + (params as { iterations: number }).iterations, 0);
+    await verifyPassword({ hash: legacy(PASSWORD), password: "a-wrong-password-1" });
+    const old = work();
+    derive.mockClear();
+    await hashPassword("a-wrong-password-1");
+    expect(old).toBe(work());
+    derive.mockRestore();
+  });
+
+  it("hashes an old password again at the next right sign-in, and not after a wrong one", async () => {
+    const { env, db } = liveEnv("test");
+    await signUp(env, "anil@kaveri.test");
+    const stored = () => (db.sqlite.prepare("SELECT password FROM account WHERE provider_id = 'credential'").get() as { password: string }).password;
+    db.sqlite.prepare("UPDATE account SET password = ?").run(legacy(PASSWORD));
+    const before = stored();
+
+    expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: "a-wrong-password-1" })).status).toBe(401);
+    expect(stored()).toBe(before);
+
+    expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD })).status).toBe(200);
+    expect(stored()).toMatch(/^pbkdf2-sha256-chain\$600000\$/);
+    expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD })).status).toBe(200);
   });
 });
