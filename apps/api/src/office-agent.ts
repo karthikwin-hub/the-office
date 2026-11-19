@@ -39,6 +39,8 @@ const MAX_MEDIA = 8 * 1024 * 1024;
 const MAX_IMPORT = 3 * IMPORT_MAX_BYTES + 10_000;
 /** Steps that bring an office's storage up to date, run once each, in order, when it wakes. */
 const SCHEMA_VERSION = 2;
+/** Where the agents SDK looks for a Durable Object's name when the runtime does not give one (PartyServer's key). */
+const LEGACY_NAME = "__ps_name";
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => Response.json(body, { status, headers });
 const parseJson = (text: string): unknown => {
   try {
@@ -103,6 +105,8 @@ export class Office extends Agent<Env> {
     const row = await this.plane().office(id);
     if (!row) return;
     if (!stored) this.kv("office:id", id);
+    // The SDK takes its name from the runtime, which alarms set before 2026-03-15 do not carry; this is the name it falls back to.
+    if ((await this.ctx.storage.get(LEGACY_NAME)) !== id) await this.ctx.storage.put(LEGACY_NAME, id);
     this.officeId = id;
     this.businessName = row.name;
     const routes = await this.plane().routesOf(id, "email");
@@ -346,6 +350,11 @@ export class Office extends Agent<Env> {
       digest: (notes) => this.digest(notes),
       refreshCalendars: () => this.refreshCalendars(),
     };
+  }
+
+  /** The SDK routes any path with `/sub/<class>/<name>` to a child agent of that name; an office has none, so no path reaches one. */
+  async onBeforeSubAgent(): Promise<Response> {
+    return json({ error: "Not found" }, 404);
   }
 
   /** Open browsers listen here. The Worker checked the membership; this checks the request was meant for this office. */
