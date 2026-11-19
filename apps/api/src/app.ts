@@ -30,7 +30,7 @@ import { AccountRecords } from "./account";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
-import { sameOrigin, securityHeaders } from "./edge";
+import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
 import { parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -116,7 +116,7 @@ app.get("/media/:office/:id", async (c) => {
   if (!OFFICE_ID.test(office) || !c.env.SOCIAL_TOKEN_KEY || !(await verifyMedia(c.env.SOCIAL_TOKEN_KEY, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null))) return c.text("Not found", 404);
   const obj = await c.env.DOCS.get(mediaKey(office, id));
   if (!obj) return c.text("Not found", 404);
-  return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream", "cache-control": "public, max-age=600", "x-content-type-options": "nosniff" } });
+  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, null), "cache-control": "public, max-age=600" } });
 });
 
 /* ---------- The website chat: public, on the business's own site; the key decides the office ---------- */
@@ -379,10 +379,7 @@ app.get("/api/o/:office/files/:id", async (c) => {
   if (!/^doc-[\w-]+(\.txt)?$/.test(id)) return c.json({ error: "File not found" }, 404);
   const obj = await c.env.DOCS.get(docKey(c.get("caller").officeId, id));
   if (!obj) return c.json({ error: "File not found" }, 404);
-  const name = (obj.customMetadata?.filename ?? id).replace(/["\\\r\n]/g, "");
-  return new Response(obj.body, {
-    headers: { "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream", "content-disposition": `inline; filename="${name}"`, "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" },
-  });
+  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, obj.customMetadata?.filename ?? id), "cache-control": "private, max-age=3600" } });
 });
 
 app.get("/api/o/:office/social/media/:id", async (c) => {
@@ -390,7 +387,7 @@ app.get("/api/o/:office/social/media/:id", async (c) => {
   if (!MEDIA_ID.test(id)) return c.json({ error: "Picture not found" }, 404);
   const obj = await c.env.DOCS.get(mediaKey(c.get("caller").officeId, id));
   if (!obj) return c.json({ error: "Picture not found" }, 404);
-  return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" } });
+  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, null), "cache-control": "private, max-age=3600" } });
 });
 
 /* ---------- The office as an account: people, invitations, export, deletion ---------- */

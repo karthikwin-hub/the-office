@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { ACCOUNT_ROUTES } from "@office/contracts";
 import { describe, expect, it } from "vitest";
 import { app } from "../src/app";
-import { API_CSP, appCsp, BASE_HEADERS, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
+import { API_CSP, appCsp, BASE_HEADERS, FILE_CSP, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
 import type { Env } from "../src/env";
+import { docKey, mediaKey } from "../src/keys";
+import { signMedia } from "../src/social/media";
 import { d1 } from "./d1";
 
 const BASE = "http://localhost:8787";
@@ -219,5 +221,70 @@ describe("changes come only from the app's own pages", () => {
       expect((res.headers as unknown as { getSetCookie(): string[] }).getSetCookie()).toEqual([]);
     }
     expect((await signIn(BASE)).status).toBe(200);
+  });
+});
+
+describe("stored files", () => {
+  it("sends a file stored as a web page as a sandboxed download, whatever it is called", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    await w.docs.put(docKey(office, "doc-u1"), "<script>fetch('/api/me')</script>", { httpMetadata: { contentType: "text/html" }, customMetadata: { filename: "statement.csv" } });
+    const res = await req(w, `/api/o/${office}/files/doc-u1`, {}, cookie);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    expect(res.headers.get("content-disposition")).toBe('attachment; filename="statement.csv"');
+    expect(res.headers.get("content-security-policy")).toBe(FILE_CSP);
+    expect(res.headers.get("content-security-policy")).toMatch(/^sandbox;/);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(await res.text()).toBe("<script>fetch('/api/me')</script>");
+    for (const type of ["image/svg+xml", "text/html; charset=utf-8", "application/xhtml+xml", "text/plain", "text/csv", "", "APPLICATION/PDFX"]) {
+      await w.docs.put(docKey(office, "doc-u2"), "x", { httpMetadata: type ? { contentType: type } : {} });
+      const r = await req(w, `/api/o/${office}/files/doc-u2`, {}, cookie);
+      expect([type, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual([type, "application/octet-stream", 'attachment; filename="doc-u2"']);
+    }
+  });
+
+  it("still shows a PDF or a photo in the browser, sandboxed", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    await w.docs.put(docKey(office, "doc-u1"), "%PDF-1.4", { httpMetadata: { contentType: "application/pdf" }, customMetadata: { filename: "bill.pdf" } });
+    const pdf = await req(w, `/api/o/${office}/files/doc-u1`, {}, cookie);
+    expect(pdf.headers.get("content-type")).toBe("application/pdf");
+    expect(pdf.headers.get("content-disposition")).toBe('inline; filename="bill.pdf"');
+    expect(pdf.headers.get("content-security-policy")).toBe(FILE_CSP);
+    expect(await pdf.text()).toBe("%PDF-1.4");
+    for (const [stored, sent] of [["image/png", "image/png"], ["image/jpeg", "image/jpeg"], ["image/jpg", "image/jpeg"], ["IMAGE/WEBP", "image/webp"]]) {
+      await w.docs.put(docKey(office, "doc-u2"), "x", { httpMetadata: { contentType: stored } });
+      const r = await req(w, `/api/o/${office}/files/doc-u2`, {}, cookie);
+      expect([stored, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual([stored, sent, 'inline; filename="doc-u2"']);
+    }
+  });
+
+  it("keeps a filename in any script without breaking the header", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    await w.docs.put(docKey(office, "doc-u1"), "%PDF", { httpMetadata: { contentType: "application/pdf" }, customMetadata: { filename: 'बिल "नवंबर"\r\n.pdf' } });
+    const res = await req(w, `/api/o/${office}/files/doc-u1`, {}, cookie);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe(`inline; filename="___ _____.pdf"; filename*=UTF-8''${encodeURIComponent("बिल नवंबर.pdf")}`);
+  });
+
+  it("does the same for pictures, signed in or by a signed link", async () => {
+    const w = makeEnv();
+    Object.assign(w.env, { SOCIAL_TOKEN_KEY: "edge-media-key" });
+    const { cookie, office } = await owner(w);
+    await w.docs.put(mediaKey(office, "media-u1"), "<svg onload=alert(1)>", { httpMetadata: { contentType: "image/svg+xml" } });
+    await w.docs.put(mediaKey(office, "media-u2"), "jpeg", { httpMetadata: { contentType: "image/jpeg" } });
+    const exp = Math.floor(Date.now() / 1000) + 600;
+    for (const id of ["media-u1", "media-u2"]) {
+      const inApp = await req(w, `/api/o/${office}/social/media/${id}`, {}, cookie);
+      const signed = await req(w, `/media/${office}/${id}?exp=${exp}&sig=${await signMedia("edge-media-key", office, id, exp)}`);
+      for (const r of [inApp, signed]) {
+        expect(r.status).toBe(200);
+        expect(r.headers.get("content-security-policy")).toBe(FILE_CSP);
+        expect([id, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual(id === "media-u1" ? [id, "application/octet-stream", "attachment"] : [id, "image/jpeg", "inline"]);
+      }
+    }
   });
 });

@@ -68,6 +68,24 @@ export const securityHeaders: MiddlewareHandler<{ Bindings: Env }> = async (c, n
   c.res = res;
 };
 
+/** The only stored types a browser may show from the app's origin: they run no script there. */
+const INLINE_TYPES: Record<string, string> = { "application/pdf": "application/pdf", "image/png": "image/png", "image/jpeg": "image/jpeg", "image/jpg": "image/jpeg", "image/webp": "image/webp" };
+/** On every stored file: no script, no plugins, no same-origin access, nothing loaded, and never framed. Chrome still shows a PDF under it. */
+export const FILE_CSP = "sandbox; default-src 'none'; frame-ancestors 'none'";
+
+/**
+ * Headers for a file from R2. The stored content type came from whoever sent the file (an email attachment says
+ * whatever its sender wrote), so it decides nothing beyond this: a PDF or a photo shows in the browser, anything else
+ * downloads as bytes. This also covers objects stored before the check, with any type.
+ */
+export function fileHeaders(storedType: string | undefined, filename: string | null): Record<string, string> {
+  const inline = INLINE_TYPES[(storedType ?? "").split(";")[0]!.trim().toLowerCase()];
+  const name = filename?.replace(/["\\\r\n]/g, "") ?? "";
+  const ascii = name.replace(/[^\x20-\x7e]/g, "_");
+  const disposition = `${inline ? "inline" : "attachment"}${name ? `; filename="${ascii}"${ascii === name ? "" : `; filename*=UTF-8''${encodeURIComponent(name)}`}` : ""}`;
+  return { "content-type": inline ?? "application/octet-stream", "content-disposition": disposition, "content-security-policy": FILE_CSP, "x-content-type-options": "nosniff" };
+}
+
 /**
  * Whether a request's Origin is the app itself: this host, or one of the origins Better Auth trusts (BETTER_AUTH_URL,
  * and APP_DOMAIN with every address under it: the console and each office) on BETTER_AUTH_URL's scheme and port.
