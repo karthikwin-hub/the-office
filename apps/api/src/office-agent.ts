@@ -236,6 +236,19 @@ export class Office extends Agent<Env> {
     this.social().reconcile();
   }
 
+  /**
+   * A request that threw is undone: the engine opens again on the books as last saved, so whatever it changed
+   * before the error is not saved by the next request. The store already holds them, so this costs a read only on failure.
+   */
+  private reopen() {
+    try {
+      const saved = this.store.load();
+      if (saved) this.open(saved);
+    } catch (e) {
+      this.log("could not reopen the books after a failed request", e);
+    }
+  }
+
   /** The books' date follows the calendar in India. */
   private fresh() {
     if (istDate() !== this.day) this.open(this.office.books);
@@ -422,7 +435,10 @@ export class Office extends Agent<Env> {
     if (request.method === "POST" && path === "/internal/purge") return json(await this.purge());
     this.fresh();
     try {
-      const res = await this.route(request, caller);
+      const res = await this.route(request, caller).catch((e: unknown) => {
+        this.reopen();
+        throw e;
+      });
       if (request.method !== "GET" || res.status === 302) {
         this.office.recordEdits(caller.name);
         await this.afterChange();
