@@ -333,7 +333,8 @@ export const PublishingPack = z.object({
 export type PublishingPack = z.infer<typeof PublishingPack>;
 
 export const VariantEdit = z.object({ text: z.string().min(1).max(5000).optional(), link: z.string().url().nullable().optional(), mediaIds: z.array(z.string()).max(10).optional() });
-export const MarkPosted = z.object({ url: z.string().url().max(500) });
+/** The link to a post made by hand. The app shows it as a link, so only https: (never javascript: or data:). */
+export const MarkPosted = z.object({ url: z.string().max(500).url().regex(/^https:\/\//i, "Paste the https:// link to the post.") });
 export const ChannelSetup = z.object({ handle: z.string().min(1).max(100).optional(), mode: z.enum(["connected", "manual"]).optional(), postingHours: z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }).optional() });
 export const MetricsImport = z.object({ content: z.string().min(1).max(2_000_000) });
 
