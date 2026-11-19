@@ -159,10 +159,42 @@ const TITLES: [RegExp, DocType][] = [
 ];
 const isTitle = (s: string) => s.length <= 40 && TITLES.some(([re]) => re.test(s.trim()));
 
-/** The document's own title, read from the top of the first page; an untitled page is an invoice or bill. */
+/** A note's own number field. Tally prints a credit note under the heading "Tax Invoice", so the field decides. */
+const NOTE_FIELDS: [RegExp, DocType][] = [
+  [/^credit\s+note\s*(no|number|#)\b/i, "credit_note"],
+  [/^debit\s+note\s*(no|number|#)\b/i, "debit_note"],
+];
+
+/** The document's own title, read from the top of the first page; an untitled page is an invoice or bill. A credit or debit note number on the page outranks an "invoice" title. */
 export function docTypeOf(items: TextItem[]): DocType {
   const top = items.filter((i) => i.page === 1 && i.y < 0.12 && isTitle(i.str)).sort((a, b) => a.y - b.y)[0];
-  return top ? TITLES.find(([re]) => re.test(top.str.trim()))![1] : "invoice";
+  const titled = top ? TITLES.find(([re]) => re.test(top.str.trim()))![1] : "invoice";
+  if (titled !== "invoice") return titled;
+  const note = NOTE_FIELDS.find(([re]) => items.some((i) => i.page === 1 && re.test(i.str.trim())));
+  return note ? note[1] : "invoice";
+}
+
+/**
+ * Sale or purchase, from the page itself: the name in the "Bill to" block, else whose GSTIN is printed
+ * first. Null when the page gives neither, so a model's reading can decide. The model is not asked when
+ * the page says, because it can mistake the buyer for the seller.
+ */
+export function directionOf(items: TextItem[], ctx: Pick<ExtractContext, "business">): Extraction["kind"] | null {
+  const all = phrases(items).map((i) => ({ ...i, str: i.str.replace(/\s+/g, " ").trim() }));
+  const own = new Set([ctx.business.gstin, ...(ctx.business.otherGstins ?? [])].filter(Boolean));
+  // "Buyer's Order No." is a field, not the buyer.
+  const billedTo = all.find((i) => /^(billed to|bill to|buyer(?!['’]s)|recipient)\b/i.test(i.str.trim()));
+  const billedToValue = billedTo ? valueFor(all, billedTo) : null;
+  // A blank name would match every buyer, so only names actually entered count.
+  const isUs = (t: string) => [ctx.business.legalName, ctx.business.name].filter((n) => n.trim()).some((n) => t.trim().toLowerCase().startsWith(n.trim().toLowerCase()));
+  if (billedToValue) return isUs(billedToValue.str) ? "purchase_bill" : "sales_invoice";
+  const first = all
+    .flatMap((i) => {
+      const m = GSTIN_RE.exec(i.str);
+      return m ? [{ item: i, gstin: m[1]! }] : [];
+    })
+    .sort((a, b) => a.item.page - b.item.page || a.item.y - b.item.y)[0];
+  return first ? (own.has(first.gstin) ? "sales_invoice" : "purchase_bill") : null;
 }
 
 /** Tax charged in its own row below the lines, as Tally prints it: "IGST 18%", "CGST OUTPUT MH  9 %", "Round Off". */
@@ -191,13 +223,10 @@ export function extractInvoice(items: TextItem[], ctx: ExtractContext): Extracti
     const m = GSTIN_RE.exec(i.str);
     return m ? [{ item: i, gstin: m[1]! }] : [];
   });
-  const firstGstin = gstins.sort((a, b) => a.item.page - b.item.page || a.item.y - b.item.y)[0];
   // "Buyer's Order No." is a field, not the buyer.
   const billedTo = all.find((i) => /^(billed to|bill to|buyer(?!['’]s)|recipient)\b/i.test(i.str.trim()));
   const billedToValue = billedTo ? valueFor(all, billedTo) : null;
-  // A blank name would match every buyer, so only names actually entered count.
-  const isUs = (t: string) => [ctx.business.legalName, ctx.business.name].filter((n) => n.trim()).some((n) => t.trim().toLowerCase().startsWith(n.trim().toLowerCase()));
-  const kind: Extraction["kind"] = billedToValue ? (isUs(billedToValue.str) ? "purchase_bill" : "sales_invoice") : firstGstin && own.has(firstGstin.gstin) ? "sales_invoice" : "purchase_bill";
+  const kind: Extraction["kind"] = directionOf(items, ctx) ?? "purchase_bill";
   const other = gstins.find((g) => !own.has(g.gstin)) ?? null;
   const partyGstin = other?.gstin ?? null;
   const registration = gstins.find((g) => own.has(g.gstin))?.gstin ?? null;

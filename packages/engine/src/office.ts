@@ -688,6 +688,16 @@ export class OfficeService {
     }
     const worth = e.checks.filter((c) => !c.ok && c.key !== "party");
     if (worth.length) summary += ` Worth a look: ${worth.map((c) => c.detail).join(" ")}`;
+    // The same proforma, challan or note sent again: set aside without asking, as a repeated bill is.
+    const same = (x: string | null | undefined, y: string | null | undefined) => Boolean(x && y && x.trim().toLowerCase() === y.trim().toLowerCase());
+    const earlier = e.number
+      ? this.books.staged.find((s) => {
+          if (s.kind !== "file_document" || s.status === "rejected") return false;
+          const p = s.payload as { docType?: string; number?: string; partyId?: string | null; partyGstin?: string | null; partyName?: string };
+          return p.docType === e.docType && same(p.number, e.number) && ((party && p.partyId === party.id) || same(p.partyGstin, e.partyGstin) || same(p.partyName, who));
+        })
+      : undefined;
+    const dup = earlier ? `${number} came in before and is ${earlier.status === "pending" ? "already on your desk" : "already filed"}.` : null;
     const item: StagedChange = {
       id: `chg-${doc.id}`,
       agentId: "accountant",
@@ -700,11 +710,12 @@ export class OfficeService {
         ...(total ? [{ label: "Total", ref: { kind: "document" as const, id: doc.id, region: "totals.total" } }] : []),
       ],
       payload: { docId: doc.id, docType: e.docType, number, date: e.date, partyId: party?.id ?? null, partyName: who, partyGstin: e.partyGstin, totalPaise: total, qty, checks: e.checks, method: e.method },
-      status: "pending",
+      status: dup ? "rejected" : "pending",
+      ...(dup ? { decidedAt: new Date().toISOString(), decidedBy: "The Accountant", note: dup } : {}),
     };
     this.books.staged.push(item);
-    doc.status = "staged";
-    this.log("accountant", `Read ${what} ${number} ${toFrom} ${who}; it is filed, not posted.`, { kind: "document", id: doc.id });
+    doc.status = dup ? "rejected" : "staged";
+    this.log("accountant", dup ? `Set aside ${what} ${number} ${toFrom} ${who}: ${dup}` : `Read ${what} ${number} ${toFrom} ${who}; it is filed, not posted.`, { kind: "document", id: doc.id });
     return item;
   }
 
@@ -736,7 +747,7 @@ export class OfficeService {
       return { document, staged: null, message: "This does not look like a GST invoice or bill." };
     }
     const staged = this.stageExtraction(docId, e);
-    if (staged.kind === "file_document") return { document, staged, message: `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.` };
+    if (staged.kind === "file_document") return { document, staged, message: staged.status === "rejected" ? (staged.note ?? "Set aside as a duplicate.") : `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.` };
     const failed = e.checks.filter((c) => !c.ok);
     const why = auto ? this.routine(staged) : null;
     const [posted] = why ? this.runTrusted([staged]) : [];

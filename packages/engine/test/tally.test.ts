@@ -4,6 +4,7 @@ import type { Books, Party } from "@office/contracts";
 import { emptyBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
 import { docTypeOf, extractInvoice, parseAmount, parseDate, type TextItem } from "../src/extract";
+import { fromModel } from "../src/extract-model";
 import { computeGstr1, computeGstr3b } from "../src/gst";
 import { OfficeService } from "../src/office";
 
@@ -204,5 +205,56 @@ describe("other GST registrations in Settings", () => {
     const s = o.updateSettings({ business: { ...o.books.business, otherGstins: [OWN_GJ.toLowerCase(), COURIER, OWN, "24AABCS1234Q2Z0"] } });
     expect(s.business.otherGstins).toEqual([OWN_GJ]);
     expect(o.updateSettings({ business: { ...o.books.business, otherGstins: [] } }).business.otherGstins).toBeUndefined();
+  });
+});
+
+// The proforma's layout reprinted as Tally prints a tax invoice and a credit note: the heading says "Tax Invoice" on both.
+const reprint = (as: "invoice" | "credit_note"): TextItem[] =>
+  layer("proforma").map((i) => {
+    if (i.str === "PROFORMA INVOICE") return { ...i, str: "Tax Invoice" };
+    if (as === "credit_note" && i.str === "Invoice No.") return { ...i, str: "Credit Note No." };
+    if (as === "credit_note" && i.str === "2026-27/S046") return { ...i, str: "41" };
+    if (as === "credit_note" && i.str === "Reference No. & Date.") return { ...i, str: "Original Invoice No. & Date." };
+    return i;
+  });
+
+describe("what the page says over its heading or a model", () => {
+  it("knows a credit note by its number field when Tally heads it \"Tax Invoice\", and files it", () => {
+    expect(docTypeOf(reprint("credit_note"))).toBe("credit_note");
+    expect(docTypeOf(reprint("invoice"))).toBe("invoice");
+    const { o } = office();
+    o.receiveDocument({ id: "doc-cn", file: "/Credit Note_41.pdf", channel: "email", from: "accounts@example.com", pages: 1 });
+    const r = o.read("doc-cn", reprint("credit_note"));
+    expect(r.staged).toMatchObject({ kind: "file_document", status: "pending", title: "File credit note 41 to Coastal Distributors, ₹169.92" });
+    expect(o.books.invoices).toEqual([]);
+  });
+
+  it("keeps the sale a sale when a model reading takes the buyer for the seller", () => {
+    const { o } = office();
+    const items = reprint("invoice");
+    const at = (s: string) => items.findIndex((i) => i.str.includes(s));
+    const answer = {
+      kind: "purchase_bill",
+      number: { value: "2026-27/S046", item: at("2026-27/S046") },
+      date: { value: "14-Nov-26", item: null },
+      partyName: { value: "Coastal Distributors", item: null },
+      partyGstin: { value: OWN, item: null },
+      lines: [{ description: "Item", qty: 144, unit: "nos", rate: "1.00", taxable: "144.00", gstRate: 18, tax: "25.92" }],
+      totals: { taxable: { value: "144.00" }, igst: { value: "25.92" }, total: { value: "169.92" } },
+    };
+    const e = fromModel(answer, items, o.books);
+    expect(e.kind).toBe("sales_invoice");
+    // Our own GSTIN is never taken for the customer's.
+    expect(e.partyGstin).toBeNull();
+  });
+
+  it("sets aside a proforma that comes in again, as it does a repeated bill", () => {
+    const { o, read } = office();
+    expect(read("proforma").staged?.status).toBe("pending");
+    const again = read("proforma");
+    expect(again.staged).toMatchObject({ kind: "file_document", status: "rejected", decidedBy: "The Accountant" });
+    expect(again.message).toBe("2026-27/S046 came in before and is already on your desk.");
+    expect(o.books.staged.filter((s) => s.kind === "file_document" && s.status === "pending")).toHaveLength(1);
+    expect(o.books.documents.find((d) => d.id === again.id)?.status).toBe("rejected");
   });
 });

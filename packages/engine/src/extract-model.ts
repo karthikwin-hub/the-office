@@ -1,6 +1,6 @@
 import type { Region, Totals } from "@office/contracts";
 import { z } from "zod";
-import { checkExtraction, type ExtractContext, type Extraction, type ExtractedLine, gstinValid, parseAmount, parseDate, type TextItem } from "./extract";
+import { checkExtraction, directionOf, type ExtractContext, type Extraction, type ExtractedLine, gstinValid, parseAmount, parseDate, type TextItem } from "./extract";
 import { pctOf } from "./money";
 
 /**
@@ -102,8 +102,12 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
   const str = (c: { value: string | number | null } | undefined) => (c?.value === null || c?.value === undefined ? null : String(c.value).trim());
   const money = (v: string | number | null | undefined) => (v === null || v === undefined ? 0 : (parseAmount(typeof v === "number" ? v.toFixed(2) : v) ?? 0));
 
-  const kind = m.kind ?? "purchase_bill";
-  const gstin = str(m.partyGstin)?.toUpperCase().replace(/^GSTIN[:\s]*/, "") ?? null;
+  // The page's "Bill to" block or GSTIN order outranks the model, which can swap buyer and seller.
+  const kind = (items.length ? directionOf(items, ctx) : null) ?? m.kind ?? "purchase_bill";
+  const own = new Set([ctx.business.gstin, ...(ctx.business.otherGstins ?? [])].filter(Boolean));
+  const read = str(m.partyGstin)?.toUpperCase().replace(/^GSTIN[:\s]*/, "") ?? null;
+  // Our own GSTIN is never the other side.
+  const gstin = read && own.has(read) ? null : read;
   const party = (gstin && ctx.parties.find((p) => p.gstin === gstin)) || ctx.parties.find((p) => p.name.toLowerCase() === str(m.partyName)?.toLowerCase()) || null;
   const partyState = gstin?.slice(0, 2) ?? party?.stateCode ?? null;
   const placeOfSupply = kind === "purchase_bill" ? ctx.business.stateCode : (partyState ?? ctx.business.stateCode);
