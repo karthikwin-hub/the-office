@@ -15,11 +15,15 @@ import { stepUp } from "./step-up";
  * hash so it can be raised later without locking anyone out.
  *
  * Cloudflare refuses one PBKDF2 call above 100,000 iterations, so new hashes chain rounds of at
- * most that, each round's output keying the next: 600,000 iterations in all, the same sequential
- * work for anyone guessing. They are marked `pbkdf2-sha256-chain`; the older `pbkdf2-sha256`
- * hashes are one call, and are replaced at the person's next successful sign-in.
+ * most that, each round's output keying the next: the same sequential work for anyone guessing.
+ * They are marked `pbkdf2-sha256-chain`; the older `pbkdf2-sha256` hashes are one call, and are
+ * replaced at the person's next successful sign-in.
+ *
+ * 100,000 while the product is on the Workers free plan: one round costs about 16 ms of CPU, and
+ * OWASP's 600,000 (about 110 ms) needs the paid plan's CPU allowance. Moving to the paid plan is
+ * parked (docs/handbook/06-roadmap.md); then raise this to 600_000 and hashes upgrade at sign-in.
  */
-export const ITERATIONS = 600_000;
+export const ITERATIONS = 100_000;
 /** How much work new hashes take. The test setup lowers it so the suite is not all hashing; nothing else changes it. */
 export const passwordWork = { iterations: ITERATIONS };
 const ROUND = 100_000;

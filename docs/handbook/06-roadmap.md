@@ -89,6 +89,15 @@
 
 **Exit criteria:** a new person can sign up, confirm their email, open an office, receive a bill by email and approve it, on the custom domain, with secrets set and the checklist in the configuration document closed.
 
+### Parked: Cloudflare Workers Paid plan
+
+**Decided 20 November 2026:** the product stays on the Workers free plan for now, and nothing may depend on the paid plan's CPU allowance (the free plan allows about 10 ms of CPU per request). Moving is parked, not dropped. What it unlocks, to do on the day of the move:
+
+| Work | Detail |
+| --- | --- |
+| Stronger password hashes | Raise `ITERATIONS` in `apps/api/src/auth.ts` from 100,000 to 600,000 (OWASP's figure for PBKDF2-SHA256). Hashes are already chained in rounds Cloudflare accepts, so nothing else changes: each person's hash is upgraded at their next sign-in. About 110 ms of CPU per hash, against 16 ms today |
+| Headroom | Longer CPU per request for document reading, imports and routines, and higher Durable Object and D1 limits as offices grow |
+
 ### Phase 7: Pilot and accuracy
 
 **Goal:** ten real offices using the product weekly; evidence that the reading is accurate enough to trust.

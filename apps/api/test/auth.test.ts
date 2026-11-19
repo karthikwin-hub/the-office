@@ -116,9 +116,9 @@ describe("password hashes", () => {
     return `pbkdf2-sha256$100000$${salt.toString("base64")}$${pbkdf2Sync(password.normalize("NFKC"), salt, 100_000, 32, "sha256").toString("base64")}`;
   };
 
-  it("makes new hashes with 600,000 iterations, in rounds Cloudflare accepts, and still reads the old ones", async () => {
+  it("makes new hashes with ITERATIONS iterations, in rounds Cloudflare accepts, and still reads the old ones", async () => {
     const hash = await hashPassword(PASSWORD);
-    expect(hash).toMatch(/^pbkdf2-sha256-chain\$600000\$/);
+    expect(hash).toMatch(new RegExp(`^pbkdf2-sha256-chain\\$${ITERATIONS}\\$`));
     expect(needsRehash(hash)).toBe(false);
     expect(await verifyPassword({ hash, password: PASSWORD })).toBe(true);
     expect(await verifyPassword({ hash, password: "a-long-password-2" })).toBe(false);
@@ -150,7 +150,7 @@ describe("password hashes", () => {
     expect(stored()).toBe(before);
 
     expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD })).status).toBe(200);
-    expect(stored()).toMatch(/^pbkdf2-sha256-chain\$600000\$/);
+    expect(stored()).toMatch(new RegExp(`^pbkdf2-sha256-chain\\$${ITERATIONS}\\$`));
     expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD })).status).toBe(200);
   });
 });
