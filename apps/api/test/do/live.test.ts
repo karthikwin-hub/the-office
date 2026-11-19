@@ -5,9 +5,9 @@ import { asCaller, asSystem, callerFor, listen, openOffice, person, settle } fro
 
 type Stub = Awaited<ReturnType<typeof openOffice>>["stub"];
 const upgrade = { headers: { upgrade: "websocket" } };
-const live = (stub: Stub, caller: Parameters<typeof asCaller>[0]) => stub.fetch(asCaller(caller, "/api/live", upgrade)).then((r) => listen(r));
-const changeSettings = (stub: Stub, caller: Parameters<typeof asCaller>[0], digestTime: string) =>
-  stub.fetch(asCaller(caller, ROUTES.settings, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ digestTime }) }));
+const live = async (stub: Stub, caller: Parameters<typeof asCaller>[0]) => listen(await stub.fetch(await asCaller(caller, "/api/live", upgrade)));
+const changeSettings = async (stub: Stub, caller: Parameters<typeof asCaller>[0], digestTime: string) =>
+  stub.fetch(await asCaller(caller, ROUTES.settings, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ digestTime }) }));
 
 describe("the live connection", () => {
   it("tells a member nothing on connect, and only that the books changed afterwards", async () => {
@@ -57,17 +57,17 @@ describe("the live connection", () => {
     const anil = await live(stub, callerFor(id, owner));
     const carols = [await live(stub, callerFor(id, carol, "accountant")), await live(stub, callerFor(id, carol, "accountant"))];
 
-    const forged = await stub.fetch(asCaller(callerFor(id, owner), "/internal/disconnect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: carol.id }) }));
+    const forged = await stub.fetch(await asCaller(callerFor(id, owner), "/internal/disconnect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: carol.id }) }));
     expect(forged.status).toBe(404);
     await settle();
     expect(carols.map((c) => c.closed)).toEqual([null, null]);
 
-    expect((await stub.fetch(asSystem(id, "/internal/disconnect", { userId: carol.id }))).status).toBe(200);
+    expect((await stub.fetch(await asSystem(id, "/internal/disconnect", { userId: carol.id }))).status).toBe(200);
     await settle();
     expect(carols.map((c) => c.closed?.code)).toEqual([1008, 1008]);
     expect(anil.closed).toBeNull();
 
-    expect((await stub.fetch(asSystem(id, "/internal/disconnect"))).status).toBe(200);
+    expect((await stub.fetch(await asSystem(id, "/internal/disconnect"))).status).toBe(200);
     await settle();
     expect(anil.closed?.code).toBe(1008);
   });

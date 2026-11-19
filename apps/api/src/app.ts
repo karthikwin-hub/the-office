@@ -25,6 +25,7 @@ import {
 import { Hono, type Context } from "hono";
 import { makeAuth, sendMail, verificationRequired } from "./auth";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "./caller";
+import { CALLER_SEAL_HEADER, sealCaller } from "./caller-seal";
 import type { Env } from "./env";
 import { AccountRecords } from "./account";
 import type { AssistantInbound } from "./assistant";
@@ -52,13 +53,15 @@ const NOT_FOUND = { error: "Not found" };
 const iso = (ms: number) => new Date(ms).toISOString();
 const cp = (env: Env) => new ControlPlane(env.DB);
 
-/** The one way into an office's Durable Object: named by the checked office id, carrying who is asking. */
-export function toOffice(env: Env, req: Request, caller: Caller, path?: string): Promise<Response> {
+/** The one way into an office's Durable Object: named by the checked office id, carrying who is asking, sealed so the Office knows the Worker said so. */
+export async function toOffice(env: Env, req: Request, caller: Caller, path?: string): Promise<Response> {
   const url = new URL(req.url);
   if (path !== undefined) url.pathname = path;
   const forwarded = new Request(url, req);
+  const header = JSON.stringify(caller);
   forwarded.headers.set("x-partykit-room", caller.officeId);
-  forwarded.headers.set(CALLER_HEADER, JSON.stringify(caller));
+  forwarded.headers.set(CALLER_HEADER, header);
+  forwarded.headers.set(CALLER_SEAL_HEADER, await sealCaller(env.BETTER_AUTH_SECRET, header));
   forwarded.headers.delete("x-office-as");
   return env.Office.get(env.Office.idFromName(caller.officeId)).fetch(forwarded);
 }

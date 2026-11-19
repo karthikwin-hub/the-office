@@ -7,6 +7,7 @@ import { SqlEditLog } from "./edits";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
+import { CALLER_SEAL_HEADER, callerSealed } from "./caller-seal";
 import type { Env } from "./env";
 import { docKey, fileUrl, mediaKey, mediaUrl } from "./keys";
 import { fromGoogleForwarding, mailSender } from "./mail";
@@ -49,8 +50,8 @@ const parseJson = (text: string): unknown => {
     return null;
   }
 };
-/** Who the Worker says is asking; a header that does not parse is no one. */
-const callerOf = (request: Request): Caller | null => {
+/** Who the Worker says is asking. Unchecked: only for tagging a socket, which `onConnect` closes unless `callerOf` agrees. */
+const claimedCaller = (request: Request): Caller | null => {
   const c = parseJson(request.headers.get(CALLER_HEADER) ?? "null") as Caller | null;
   return c && typeof c === "object" && typeof c.userId === "string" && typeof c.officeId === "string" ? c : null;
 };
@@ -384,7 +385,7 @@ export class Office extends Agent<Env> {
    * nothing goes out on a socket before this check, and none of them goes out after it.
    */
   async onConnect(connection: Connection, ctx: ConnectionContext) {
-    const caller = callerOf(ctx.request);
+    const caller = await this.callerOf(ctx.request);
     if (!this.officeId || !caller || caller.officeId !== this.officeId) {
       connection.close(1008, "Not found");
       return;
@@ -402,7 +403,7 @@ export class Office extends Agent<Env> {
 
   /** Each socket is tagged with whose it is, so a person's sockets can be closed when they leave. */
   getConnectionTags(_connection: Connection, ctx: ConnectionContext): string[] {
-    const caller = callerOf(ctx.request);
+    const caller = claimedCaller(ctx.request);
     return caller ? [userTag(caller.userId)] : [];
   }
 
@@ -421,13 +422,21 @@ export class Office extends Agent<Env> {
     return closed;
   }
 
+  /** Who is asking, only if the Worker set and sealed it; anything else is no one. */
+  private async callerOf(request: Request): Promise<Caller | null> {
+    const header = request.headers.get(CALLER_HEADER);
+    if (!header || !(await callerSealed(this.env.BETTER_AUTH_SECRET, header, request.headers.get(CALLER_SEAL_HEADER)))) return null;
+    return claimedCaller(request);
+  }
+
   async onRequest(request: Request): Promise<Response> {
-    const caller = JSON.parse(request.headers.get(CALLER_HEADER) ?? "null") as Caller | null;
+    const caller = await this.callerOf(request);
     if (!caller) return json({ error: "Sign in to continue." }, 401);
     if (!this.officeId || caller.officeId !== this.officeId) return json({ error: "Not found" }, 404);
     const path = new URL(request.url).pathname;
+    // Mail, webhooks, export, purge and closing sockets are the office's own work, asked for by the Worker, never by a person.
+    if (path.startsWith("/internal/") && caller.userId !== SYSTEM_USER) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/disconnect") {
-      if (caller.userId !== SYSTEM_USER) return json({ error: "Not found" }, 404);
       const body = (await request.json().catch(() => ({}))) as { userId?: unknown };
       return json({ closed: this.disconnect(typeof body.userId === "string" && body.userId ? body.userId : null) });
     }

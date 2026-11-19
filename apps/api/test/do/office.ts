@@ -1,5 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { CALLER_HEADER, type Caller, system } from "../../src/caller";
+import { CALLER_SEAL_HEADER, sealCaller } from "../../src/caller-seal";
 import { ControlPlane } from "../../src/tenancy";
 
 export type Person = { id: string; name: string; email: string };
@@ -29,10 +30,13 @@ export const LEGACY_NAME = "__ps_name";
 
 export const callerFor = (officeId: string, p: Person, role: Caller["role"] = "owner"): Caller => ({ userId: p.id, name: p.name, email: p.email, role, officeId });
 
-/** A request to an office's Durable Object as the Worker sends it: the path within the office and who is asking. */
-export function asCaller(caller: Caller | null, path: string, init: RequestInit = {}): Request {
+/** A request to an office's Durable Object as the Worker sends it: the path within the office and who is asking, sealed. */
+export async function asCaller(caller: Caller | null, path: string, init: RequestInit = {}): Promise<Request> {
   const req = new Request(`https://office.internal${path}`, init);
-  if (caller) req.headers.set(CALLER_HEADER, JSON.stringify(caller));
+  if (!caller) return req;
+  const header = JSON.stringify(caller);
+  req.headers.set(CALLER_HEADER, header);
+  req.headers.set(CALLER_SEAL_HEADER, await sealCaller(env.BETTER_AUTH_SECRET, header));
   return req;
 }
 
@@ -53,5 +57,5 @@ export async function listen(res: Response, ms = 150): Promise<Heard> {
 /** Waits for more of what an open socket hears. */
 export const settle = (ms = 100) => new Promise((r) => setTimeout(r, ms));
 
-export const asSystem =(officeId: string, path: string, body: unknown = {}) =>
+export const asSystem = (officeId: string, path: string, body: unknown = {}) =>
   asCaller(system(officeId), path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

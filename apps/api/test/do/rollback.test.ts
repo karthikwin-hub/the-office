@@ -14,7 +14,7 @@ describe("a request that fails", () => {
   it("leaves the books exactly as they were, for this request and the next one that saves", async () => {
     const { id, owner, stub } = await openOffice();
     const me = callerFor(id, owner);
-    expect((await stub.fetch(asCaller(me, ROUTES.settings))).status).toBe(200);
+    expect((await stub.fetch(await asCaller(me, ROUTES.settings))).status).toBe(200);
     const { before, inMemory } = await runInDurableObject(stub, (o, state) => {
       // The engine hires the agent, then claiming its address fails.
       inside(o).syncSalesRoute = async () => {
@@ -23,11 +23,11 @@ describe("a request that fails", () => {
       return { before: stored(state), inMemory: structuredClone(inside(o).office.books) };
     });
 
-    const res = await stub.fetch(asCaller(me, "/api/hiring/marketplace-manager", put("/api/hiring", { hired: true })));
+    const res = await stub.fetch(await asCaller(me, "/api/hiring/marketplace-manager", put("/api/hiring", { hired: true })));
     expect(res.status).toBe(500);
     await runInDurableObject(stub, (o) => expect(inside(o).office.books).toEqual(inMemory));
 
-    expect((await stub.fetch(asCaller(me, ROUTES.settings, put(ROUTES.settings, { digestTime: "09:15" })))).status).toBe(200);
+    expect((await stub.fetch(await asCaller(me, ROUTES.settings, put(ROUTES.settings, { digestTime: "09:15" })))).status).toBe(200);
     await runInDurableObject(stub, (o, state) => {
       expect(stored(state)).toEqual(before);
       expect(inside(o).office.hired("marketplace-manager")).toBe(false);

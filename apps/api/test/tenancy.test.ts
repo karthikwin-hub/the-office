@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, purgeDeleted, receiveEmail } from "../src/app";
 import { authScope } from "../src/auth";
 import { CALLER_HEADER, type Caller } from "../src/caller";
+import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
 import type { Env } from "../src/env";
 import { docKey, mediaKey } from "../src/keys";
 import { meteredAi, QUOTA, QuotaError, take } from "../src/quota";
@@ -40,7 +41,7 @@ function r2() {
   return bucket;
 }
 
-type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string };
+type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string; sealed: boolean };
 /** Durable Objects that only record what reached them, and answer with whose they are. They take mail unless `mail.admit` says not. */
 function officesNs(docs: { map: Map<string, unknown> }) {
   const seen: Seen[] = [];
@@ -51,7 +52,8 @@ function officesNs(docs: { map: Map<string, unknown> }) {
       fetch: async (req: Request) => {
         const path = new URL(req.url).pathname;
         const caller = JSON.parse(req.headers.get(CALLER_HEADER) ?? "null") as Caller;
-        seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text() });
+        const sealed = await callerSealed(SECRET, req.headers.get(CALLER_HEADER) ?? "", req.headers.get(CALLER_SEAL_HEADER));
+        seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text(), sealed });
         if (path === "/internal/export") return Response.json({ office: id.name, books: { business: { name: id.name } } });
         if (path === "/internal/mail-admit") {
           mail.storedBeforeAsked.push(docs.map.size);
@@ -250,6 +252,17 @@ describe("one office cannot reach another", () => {
     await call(w, anil, inOffice(A, ROUTES.desk));
     for (const s of w.seen) expect([s.stub, s.room, s.caller.officeId]).toEqual([s.stub, s.stub, s.stub]);
     expect(w.seen.map((s) => [s.stub, s.caller.email])).toEqual([[B, bina.email], [B, bina.email], [A, anil.email]]);
+  });
+
+  it("seals every caller it sends to an office, and never passes on a caller or seal the browser sent", async () => {
+    const { w, anil, A } = await twoOffices();
+    const forged = JSON.stringify({ userId: "system", name: "x", email: "x@x", role: "owner", officeId: A });
+    await call(w, anil, `${inOffice(A, ROUTES.desk)}`, { headers: { [CALLER_HEADER]: forged, [CALLER_SEAL_HEADER]: "forged-seal-forged-seal-forged-seal-forged" } });
+    await call(w, anil, inOffice(A, ROUTES.officeExport));
+    expect(w.seen.map((s) => [s.path, s.caller.userId, s.sealed])).toEqual([
+      ["/api/desk", anil.id, true],
+      ["/internal/export", "system", true],
+    ]);
   });
 
   it("refuses ids that are not office ids, and offices that do not exist", async () => {
