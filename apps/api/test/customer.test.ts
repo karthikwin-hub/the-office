@@ -148,6 +148,54 @@ describe("the office's own conversation store", () => {
   });
 });
 
+describe("the website chat's one-time code", () => {
+  const visitor = "visitor-code-000000000001";
+  const chat = (text: string) => ({ channel: "web" as const, key: visitor, name: "Website visitor", text });
+
+  it("goes by email to the address on the order, never into the chat, and confirms the visitor once typed back", async () => {
+    const { o, desk, mail } = world();
+    const r = await desk.receive(chat("Where is order SO-1042? My phone is 9489305653"));
+    expect(mail).toHaveLength(1);
+    const parsed = await PostalMime.parse(mail[0]!.raw);
+    expect(parsed.to?.[0]?.address).toBe("accounts@sharmatraders.in");
+    const code = /\b(\d{6})\b/.exec(parsed.text ?? "")![1]!;
+    expect(o.customers.threadView(r.thread.id).messages.some((m) => m.text.includes(code))).toBe(false);
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBeNull();
+    await desk.receive(chat(code));
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBe("accounts@sharmatraders.in");
+    expect(o.customers.threadView(r.thread.id).messages.at(-1)!.ground).toBe("order");
+  });
+
+  it("asks again in website conversations confirmed the old way, without a code", () => {
+    const sql = sqlStorage();
+    const store = new SqlCsStore(sql);
+    const thread = (id: string, channel: "web" | "whatsapp") => ({ id, channel, key: id, name: "x", partyId: "C01", verifiedContact: "919489305653", status: "open" as const, subject: null, startedAt: "2026-11-01T00:00:00.000Z", lastAt: "2026-11-01T00:00:00.000Z", lastInboundAt: null, disclosed: true, handoffs: 0, firstReplySeconds: null, test: false });
+    store.saveThread(thread("cst-old", "web"));
+    store.saveThread(thread("cst-coded", "web"));
+    store.saveThread(thread("cst-wa", "whatsapp"));
+    store.saveCode({ id: "csc-1", threadId: "cst-coded", code: "123456", contact: "919489305653", partyId: "C01", orderNumber: "SO-1042", ask: "order_status", sentAt: "2026-11-01T00:00:00.000Z", expiresAt: "2026-11-01T00:10:00.000Z", tries: 1, done: true });
+    const reopened = new SqlCsStore(sql);
+    expect(reopened.thread("cst-old")).toMatchObject({ verifiedContact: null, partyId: null });
+    expect(reopened.thread("cst-coded")).toMatchObject({ verifiedContact: "919489305653", partyId: "C01" });
+    expect(reopened.thread("cst-wa")!.verifiedContact).toBe("919489305653");
+  });
+
+  it("goes from the office's own WhatsApp number when the order has no email, and tells the owner when it cannot", async () => {
+    const own = world({ own: true });
+    own.o.books.orders.find((x) => x.number === "SO-1042")!.email = "";
+    await own.desk.receive(chat("Where is order SO-1042? My phone is 9489305653"));
+    const [url, init] = graph.mock.calls.at(-1)!;
+    expect(String(url)).toContain("own-number");
+    expect(String((init as RequestInit).body)).toContain("919489305653");
+    expect(String((init as RequestInit).body)).toMatch(/\d{6} is your code/);
+
+    const none = world();
+    none.o.books.orders.find((x) => x.number === "SO-1042")!.email = "";
+    await none.desk.receive(chat("Where is order SO-1042? My phone is 9489305653"));
+    expect(none.o.books.teamLog.at(-1)!.text).toContain("Could not send a code");
+  });
+});
+
 describe("the website chat's person check", () => {
   it("shuts the chat live when Turnstile has no secret, and leaves it open in the mockups and tests", async () => {
     const fetcher = vi.fn(async () => Response.json({ success: true }));

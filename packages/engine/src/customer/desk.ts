@@ -23,7 +23,7 @@ import {
   verifyPrompt,
 } from "./brain";
 import { BooksOrderSource, importOrders, type OrderSource, orderBelongsTo, STATUS_WORDS } from "./orders";
-import type { CsStore } from "./store";
+import type { CsCode, CsStore } from "./store";
 
 export const CS_AGENT = "customer-service";
 /** Meta's free service messages per business number per month, from 1 October 2026. */
@@ -33,6 +33,13 @@ const RATE_WINDOW_MS = 10 * 60_000;
 const RATE_LIMIT = 8;
 /** New website conversations an office takes in a day, so made-up visitor ids cannot grow its storage without end. */
 export const WEB_THREADS_PER_DAY = 300;
+/** A website visitor proves an order is theirs with a code sent to the phone or email on it. */
+const CODE_MS = 10 * 60_000;
+const CODE_TRIES = 5;
+/** Codes one conversation can ask for in a day, one phone or email receives in an hour, and one office sends in a day. */
+const CODES_PER_THREAD = 3;
+const CODES_PER_CONTACT = 3;
+const CODES_PER_DAY = 100;
 
 /** A message from a customer, as a channel hands it over. */
 export type Inbound = {
@@ -51,7 +58,13 @@ export type Inbound = {
 /** Work for the host: send a message on its channel, or tell the owners on WhatsApp about a hand-off. */
 export type CsEffect =
   | { kind: "send"; threadId: string; messageId: string; channel: CsChannel; to: string; text: string; subject: string | null; inReplyTo: string | null }
-  | { kind: "notify"; stagedId: string; ref: number; text: string };
+  | { kind: "notify"; stagedId: string; ref: number; text: string }
+  /** A one-time code to the email or WhatsApp number on an order. Not part of any conversation. */
+  | { kind: "code"; threadId: string; channel: "whatsapp" | "email"; to: string; text: string; subject: string };
+
+/** Where a website visitor stands on proving who they are: a code waiting to be typed, or no more codes for now. */
+type Gate = { code: CsCode; fresh: boolean } | "limited" | null;
+type Plan = { kind: "reply"; text: string; ground: CsGround } | { kind: "handoff"; reason: string };
 
 export type ReceiveResult = { thread: CsThread; outcome: "sent" | "drafted" | "handed_off" | "duplicate" | "ignored" | "limited"; notes: string[] };
 
@@ -127,21 +140,29 @@ export class CustomerService {
     return parseClassification(raw, rules, candidates, this.setup.facts);
   }
 
-  /** Works out who the customer is, from what the channel proves and what they tell us. */
-  private identify(t: CsThread, text: string) {
+  /**
+   * Works out who the customer is, from what the channel proves. A website visitor who gives an order
+   * number with the phone or email on it is sent a code there; only typing it back proves the order is theirs.
+   */
+  private identify(t: CsThread, text: string, c: Classification, now: string, notes: string[]): Gate {
     const parties = this.office.books.parties.filter((p) => p.kind === "customer");
     if (t.channel === "whatsapp" && !t.test) {
       t.verifiedContact = t.key;
       t.partyId = t.partyId ?? parties.find((p) => p.contact.phone && samePhone(p.contact.phone, t.key))?.id ?? null;
-      return;
+      return null;
     }
     if (t.channel === "email" && !t.test) {
       t.verifiedContact = t.key.toLowerCase();
       t.partyId = t.partyId ?? parties.find((p) => p.contact.email && p.contact.email.toLowerCase() === t.key.toLowerCase())?.id ?? null;
-      return;
+      return null;
     }
-    if (t.verifiedContact) return;
-    const recent = [...this.store.messages(t.id).filter((x) => x.direction === "in").slice(-4).map((x) => x.text), text].join("\n");
+    if (t.verifiedContact) return null;
+    const codes = this.store.codesSince(new Date(Date.parse(now) - 86_400_000).toISOString()).filter((x) => x.threadId === t.id);
+    const waiting = codes.findLast((x) => !x.done && x.expiresAt > now);
+    if (waiting) return { code: waiting, fresh: false };
+    // Only what they wrote since the last code, so an old claim does not send codes on its own.
+    const since = codes.at(-1)?.sentAt ?? "";
+    const recent = [...this.store.messages(t.id).filter((x) => x.direction === "in" && x.at > since).slice(-4).map((x) => x.text), text].join("\n");
     const phones = phonesIn(recent);
     const emails = emailsIn(recent);
     for (const n of orderNumbers(recent)) {
@@ -149,12 +170,56 @@ export class CustomerService {
       if (!o) continue;
       const phone = phones.find((p) => o.phone && samePhone(o.phone, p));
       const email = emails.find((e) => o.email && o.email.toLowerCase() === e);
-      if (phone || email) {
-        t.verifiedContact = phone ?? email!;
-        t.partyId = o.partyId;
-        return;
-      }
+      if (phone || email) return this.sendCode(t, o, c.intent === "balance" ? "balance" : "order_status", now, notes);
     }
+    return null;
+  }
+
+  /** A code to the email on the order, or its WhatsApp number when it has no email; within the limits on how many. */
+  private sendCode(t: CsThread, o: Order, ask: CsCode["ask"], now: string, notes: string[]): Gate {
+    const email = o.email.trim().toLowerCase();
+    const digits = o.phone.replace(/\D/g, "");
+    const contact = email || (digits.length === 10 ? `91${digits}` : digits);
+    if (!contact) return null;
+    const at = Date.parse(now);
+    const today = this.store.codesSince(new Date(at - 86_400_000).toISOString());
+    const real = t.test ? [] : today.filter((x) => !this.store.thread(x.threadId)?.test);
+    if (today.filter((x) => x.threadId === t.id).length >= CODES_PER_THREAD || real.filter((x) => x.contact === contact && at - Date.parse(x.sentAt) < 3600_000).length >= CODES_PER_CONTACT || real.length >= CODES_PER_DAY) return "limited";
+    const n = new Uint32Array(1);
+    crypto.getRandomValues(n);
+    const code: CsCode = { id: newId("csc"), threadId: t.id, code: String(n[0]! % 1_000_000).padStart(6, "0"), contact, partyId: o.partyId, orderNumber: o.number, ask, sentAt: now, expiresAt: new Date(at + CODE_MS).toISOString(), tries: 0, done: false };
+    this.store.saveCode(code);
+    const where = email ? "email address" : "WhatsApp number";
+    if (t.test) notes.push(`A real visitor would get a code on the ${where} on order ${o.number}. To try it here, type ${code.code}.`);
+    else this.effects.push({ kind: "code", threadId: t.id, channel: email ? "email" : "whatsapp", to: contact, subject: `Your code from ${this.business()}`, text: `${code.code} is your code from ${this.business()}, to see order ${o.number} in the chat on our website. It works for 10 minutes. If you did not ask for it, ignore this message.` });
+    return { code, fresh: true };
+  }
+
+  /** What the visitor is told while a code stands between them and their order. */
+  private codePrompt(gate: Exclude<Gate, null>): Plan {
+    if (gate === "limited") return { kind: "reply", ground: "verify", text: "I cannot send another code just now. Try again in an hour, or ask to speak to a person." };
+    const c = gate.code;
+    const where = c.contact.includes("@") ? "email address" : "WhatsApp number";
+    return { kind: "reply", ground: "verify", text: `To keep your account private, I have sent a 6-digit code to the ${where} on order ${c.orderNumber}. Type it here and I will ${c.ask === "balance" ? "tell you what is open on your account" : "tell you about the order"}. It works for 10 minutes.` };
+  }
+
+  /** A code the visitor typed back: right, and the conversation is confirmed and answered; wrong, and they may try a few times. */
+  private codeTyped(t: CsThread, text: string, c: Classification, gate: Gate): Plan | null {
+    if (!gate || gate === "limited" || gate.fresh) return null;
+    const typed = codeIn(text);
+    if (!typed) return null;
+    const code = gate.code;
+    if (typed === code.code) {
+      this.store.saveCode({ ...code, done: true });
+      t.verifiedContact = code.contact;
+      t.partyId = code.partyId ?? t.partyId;
+      const r = code.ask === "balance" ? this.balanceReply(t, null) : this.orderReply(t, { ...c, orderNumber: code.orderNumber }, null);
+      return r.kind === "reply" ? { ...r, text: `Thank you, that confirms it. ${r.text}` } : r;
+    }
+    const tries = code.tries + 1;
+    this.store.saveCode({ ...code, tries, done: tries >= CODE_TRIES });
+    const left = CODE_TRIES - tries;
+    return { kind: "reply", ground: "verify", text: left > 0 ? `That code is not right. Check the message and type the 6 digits again; ${plural(left, "try", "tries")} left.` : "That code is not right, and it no longer works. Send the order number with your phone number or email again for a new one." };
   }
 
   private findOrder(number: string): Order | null {
@@ -200,7 +265,7 @@ export class CustomerService {
       notes.push(`The website chat has started ${WEB_THREADS_PER_DAY} conversations in a day; this one was not kept.`);
       return { thread: t, outcome: "limited", notes };
     }
-    this.identify(t, m.text);
+    const gate = this.identify(t, m.text, c, now, notes);
     const recentIn = this.store.messages(t.id).filter((x) => x.direction === "in" && Date.parse(now) - Date.parse(x.at) < RATE_WINDOW_MS).length;
     this.store.addMessage({ id: newId("csm"), threadId: t.id, at: now, direction: "in", by: "customer", text: m.text.slice(0, 4000), intent: c.intent, ground: null, status: "received", externalId: m.externalId ?? null, error: null });
     t.lastAt = now;
@@ -214,7 +279,7 @@ export class CustomerService {
       return { thread: t, outcome: "limited", notes };
     }
 
-    const plan = this.answer(t, c);
+    const plan = this.codeTyped(t, m.text, c, gate) ?? this.answer(t, c, gate);
     if (plan.kind === "handoff") return this.handoff(t, c, m.text, plan.reason, notes);
     const last = this.store.messages(t.id).filter((x) => x.direction === "out" && x.by === "agent").slice(-2);
     if (last.length === 2 && last.every((x) => x.text.endsWith(plan.text))) return this.handoff(t, c, m.text, "keeps asking something the agent has already answered twice", notes);
@@ -251,7 +316,7 @@ export class CustomerService {
   }
 
   /** What the agent can say, and from which record; or why it must go to the owner. */
-  private answer(t: CsThread, c: Classification): { kind: "reply"; text: string; ground: CsGround } | { kind: "handoff"; reason: string } {
+  private answer(t: CsThread, c: Classification, gate: Gate): Plan {
     const facts = this.setup.facts;
     if (c.intent === "sensitive") return { kind: "handoff", reason: HUMAN_TOPIC_NAMES[c.topic ?? "complaint"] };
     if (c.intent === "human") return { kind: "handoff", reason: "asked for a person" };
@@ -273,16 +338,17 @@ export class CustomerService {
         return { kind: "reply", ground: "fact", text: `${label[c.fact]}: ${v}` };
       }
       case "order_status":
-        return this.orderReply(t, c);
+        return this.orderReply(t, c, gate);
       case "balance":
-        return this.balanceReply(t);
+        return this.balanceReply(t, gate);
     }
     return { kind: "handoff", reason: "asked something the agent could not answer from your records" };
   }
 
-  private orderReply(t: CsThread, c: Classification): { kind: "reply"; text: string; ground: CsGround } | { kind: "handoff"; reason: string } {
+  private orderReply(t: CsThread, c: Classification, gate: Gate): Plan {
     const who = this.who(t);
     const verified = Boolean(t.verifiedContact || t.partyId);
+    if (!verified && gate) return this.codePrompt(gate);
     const asked = c.orderNumber ? this.findOrder(c.orderNumber) : null;
     let orders: Order[];
     if (asked) orders = verified && orderBelongsTo(asked, who) ? [asked] : [];
@@ -299,7 +365,8 @@ export class CustomerService {
     return { kind: "reply", ground: "order", text: show.length === 1 ? lines[0]! : `Here are your latest orders:\n${lines.map((l) => `- ${l}`).join("\n")}` };
   }
 
-  private balanceReply(t: CsThread): { kind: "reply"; text: string; ground: CsGround } | { kind: "handoff"; reason: string } {
+  private balanceReply(t: CsThread, gate: Gate): Plan {
+    if (t.channel === "web" && !t.verifiedContact) return gate ? this.codePrompt(gate) : { kind: "reply", ground: "verify", text: verifyPrompt("web") };
     if (!t.partyId || !this.office.ledger.findParty(t.partyId)) return { kind: "handoff", reason: "asked about their account, but their contact details do not match a customer in your books" };
     const open = openInvoices(this.office.ledger).filter((o) => o.partyId === t.partyId);
     if (!open.length) return { kind: "reply", ground: "balance", text: "Nothing is outstanding on your account. Thank you!" };
@@ -386,6 +453,12 @@ export class CustomerService {
 
   markSent(messageId: string, externalId: string | null) {
     this.store.updateMessage(messageId, { status: "sent", externalId, error: null });
+  }
+
+  /** A code that could not go: the visitor is not confirmed, and the owner reads why in the log. */
+  codeFailed(threadId: string, error: string) {
+    const t = this.store.thread(threadId);
+    this.office.log(CS_AGENT, `Could not send a code to confirm ${t?.name ?? "a website visitor"}: ${error.slice(0, 160)}`, t ? { kind: "conversation", id: t.id } : undefined);
   }
 
   markFailed(messageId: string, error: string) {
@@ -624,6 +697,12 @@ export class CustomerService {
     this.office.log(CS_AGENT, `${by} imported orders: ${r.added} added, ${r.updated} updated${r.skipped.length ? `, ${r.skipped.length} rows skipped` : ""}.`);
     return r;
   }
+}
+
+/** A message that is a code and nothing else ("482913", "the code is 482913"), not a question with a PIN code in it. */
+function codeIn(text: string): string | null {
+  const rest = text.toLowerCase().replace(/\b(the|my|code|otp|is|it|its|here|this)\b/g, "").replace(/[^a-z0-9]/g, "");
+  return /^\d{6}$/.test(rest) ? rest : null;
 }
 
 /** A customer's words in a summary sentence, ended with a full stop unless they already end one. */

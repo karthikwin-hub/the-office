@@ -1,5 +1,5 @@
 import type { CsChannel, CsMessage, CsThread } from "@office/contracts";
-import type { CsStore } from "@office/engine";
+import type { CsCode, CsStore } from "@office/engine";
 
 type ThreadRow = {
   id: string;
@@ -18,6 +18,7 @@ type ThreadRow = {
   first_reply_s: number | null;
   test: number;
 };
+type CodeRow = { id: string; thread_id: string; code: string; contact: string; party_id: string | null; order_no: string; ask: string; sent_at: string; expires_at: string; tries: number; done: number };
 type MessageRow = { id: string; thread_id: string; at: string; direction: string; by_who: string; text: string; intent: string | null; ground: string | null; status: string; external_id: string | null; error: string | null };
 
 const toThread = (r: ThreadRow): CsThread => ({
@@ -36,6 +37,19 @@ const toThread = (r: ThreadRow): CsThread => ({
   handoffs: Number(r.handoffs),
   firstReplySeconds: r.first_reply_s === null ? null : Number(r.first_reply_s),
   test: Boolean(r.test),
+});
+const toCode = (r: CodeRow): CsCode => ({
+  id: r.id,
+  threadId: r.thread_id,
+  code: r.code,
+  contact: r.contact,
+  partyId: r.party_id,
+  orderNumber: r.order_no,
+  ask: r.ask as CsCode["ask"],
+  sentAt: r.sent_at,
+  expiresAt: r.expires_at,
+  tries: Number(r.tries),
+  done: Boolean(r.done),
 });
 const toMessage = (r: MessageRow): CsMessage => ({
   id: r.id,
@@ -64,6 +78,11 @@ export class SqlCsStore implements CsStore {
     );
     sql.exec("CREATE INDEX IF NOT EXISTS cs_message_by_thread ON cs_message (thread_id, at)");
     sql.exec("CREATE INDEX IF NOT EXISTS cs_message_by_external ON cs_message (external_id)");
+    sql.exec("CREATE TABLE IF NOT EXISTS cs_code (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, code TEXT NOT NULL, contact TEXT NOT NULL, party_id TEXT, order_no TEXT NOT NULL, ask TEXT NOT NULL, sent_at TEXT NOT NULL, expires_at TEXT NOT NULL, tries INTEGER NOT NULL, done INTEGER NOT NULL)");
+    sql.exec("CREATE INDEX IF NOT EXISTS cs_code_by_sent ON cs_code (sent_at)");
+    // A website conversation is confirmed only by a code typed back (done in under five tries). Ones confirmed
+    // the old way, by an order number and a phone or email, are asked again.
+    sql.exec("UPDATE cs_thread SET verified = NULL, party_id = NULL WHERE channel = 'web' AND verified IS NOT NULL AND id NOT IN (SELECT thread_id FROM cs_code WHERE done = 1 AND tries < 5)");
   }
 
   thread(id: string) {
@@ -150,10 +169,32 @@ export class SqlCsStore implements CsStore {
   }
 
   prune(beforeIso: string) {
+    this.sql.exec("DELETE FROM cs_code WHERE sent_at < ? OR thread_id IN (SELECT id FROM cs_thread WHERE last_at < ?)", beforeIso, beforeIso);
     const n = Number(this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM cs_thread WHERE last_at < ?", beforeIso).toArray()[0]?.n ?? 0);
     if (!n) return 0;
     this.sql.exec("DELETE FROM cs_message WHERE thread_id IN (SELECT id FROM cs_thread WHERE last_at < ?)", beforeIso);
     this.sql.exec("DELETE FROM cs_thread WHERE last_at < ?", beforeIso);
     return n;
+  }
+
+  saveCode(c: CsCode) {
+    this.sql.exec(
+      "INSERT OR REPLACE INTO cs_code (id, thread_id, code, contact, party_id, order_no, ask, sent_at, expires_at, tries, done) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      c.id,
+      c.threadId,
+      c.code,
+      c.contact,
+      c.partyId,
+      c.orderNumber,
+      c.ask,
+      c.sentAt,
+      c.expiresAt,
+      c.tries,
+      c.done ? 1 : 0,
+    );
+  }
+
+  codesSince(fromIso: string) {
+    return this.sql.exec<CodeRow>("SELECT * FROM cs_code WHERE sent_at >= ? ORDER BY sent_at, rowid", fromIso).toArray().map(toCode);
   }
 }

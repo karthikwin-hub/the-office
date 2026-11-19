@@ -66,16 +66,101 @@ describe("who the customer is", () => {
     expect(lastOut(o, r.thread.id)!.text).toContain("SO-1042");
   });
 
-  it("tells a website visitor nothing about an order until they give the phone or email on it", () => {
+  it("tells a website visitor nothing about an order until they type the code sent to the email on it", () => {
     const o = office();
     const r = say(o, web("where is my order SO-1042"));
     const first = lastOut(o, r.thread.id)!;
     expect(first.ground).toBe("verify");
     expect(first.text).not.toContain("dispatched");
+    o.customers.takeEffects();
+    // The order number and the phone on it are not enough: anyone could have read them off a parcel.
     say(o, web("SO-1042, my phone is 9489305653"));
     const second = lastOut(o, r.thread.id)!;
-    expect(second.ground).toBe("order");
-    expect(second.text).toContain("SO-1042");
+    expect(second.ground).toBe("verify");
+    expect(second.text).toContain("6-digit code to the email address on order SO-1042");
+    expect(second.text).not.toContain("dispatched");
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBeNull();
+    const effects = o.customers.takeEffects();
+    expect(effects).toHaveLength(1);
+    const sent = effects[0]!;
+    if (sent.kind !== "code") throw new Error("expected a code");
+    expect(sent).toMatchObject({ channel: "email", to: "accounts@sharmatraders.in", threadId: r.thread.id });
+    const code = /\b(\d{6})\b/.exec(sent.text)![1]!;
+    // Nothing the visitor can read carries the code.
+    expect(o.customers.threadView(r.thread.id).messages.some((m) => m.text.includes(code))).toBe(false);
+    // Asking again does not send another.
+    say(o, web("where is SO-1042? 9489305653"));
+    expect(o.customers.takeEffects()).toHaveLength(0);
+    // A question with a PIN code in it is answered, not taken as a try.
+    say(o, web("Do you deliver to 415001?"));
+    expect(lastOut(o, r.thread.id)!.text).not.toContain("not right");
+    const wrong = code === "000000" ? "111111" : "000000";
+    say(o, web(wrong));
+    expect(lastOut(o, r.thread.id)!.text).toContain("not right");
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBeNull();
+    say(o, web(`the code is ${code}`));
+    const answered = lastOut(o, r.thread.id)!;
+    expect(answered.ground).toBe("order");
+    expect(answered.text).toContain("Thank you, that confirms it.");
+    expect(answered.text).toContain("SO-1042");
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBe("accounts@sharmatraders.in");
+  });
+
+  it("answers a website visitor's balance only after the code, and sends it on WhatsApp when the order has no email", () => {
+    const o = office();
+    o.books.orders.find((x) => x.number === "SO-1042")!.email = "";
+    const r = say(o, web("How much do we owe you right now?", "visitor-test-000000000005"));
+    expect(lastOut(o, r.thread.id)!.ground).toBe("verify");
+    say(o, web("It is for order SO-1042, phone 9489305653", "visitor-test-000000000005"));
+    expect(lastOut(o, r.thread.id)!.text).toContain("WhatsApp number on order SO-1042");
+    const sent = o.customers.takeEffects().find((e) => e.kind === "code");
+    expect(sent).toMatchObject({ channel: "whatsapp", to: "919489305653" });
+    say(o, web("How much do we owe you right now?", "visitor-test-000000000005"));
+    expect(lastOut(o, r.thread.id)!.ground).toBe("verify");
+    const code = /\b(\d{6})\b/.exec(sent!.kind === "code" ? sent!.text : "")![1]!;
+    say(o, web(code, "visitor-test-000000000005"));
+    expect(lastOut(o, r.thread.id)!.text).toContain("Thank you, that confirms it.");
+    say(o, web("How much do we owe you right now?", "visitor-test-000000000005"));
+    expect(lastOut(o, r.thread.id)!.ground).toBe("balance");
+  });
+
+  it("stops a code after five wrong tries or ten minutes, and sends at most three to one conversation in a day", () => {
+    const o = office();
+    const v = "visitor-test-000000000006";
+    const codeOf = () => {
+      const e = o.customers.takeEffects().find((x) => x.kind === "code");
+      return e && e.kind === "code" ? /\b(\d{6})\b/.exec(e.text)![1]! : null;
+    };
+    const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+    const r = say(o, { ...web("SO-1042 status? my phone is 9489305653", v), at: ago(60) });
+    const first = codeOf()!;
+    expect(first).toBeTruthy();
+    // Typed after it ran out, it confirms nothing.
+    say(o, { ...web(first, v), at: ago(45) });
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBeNull();
+    say(o, { ...web("SO-1042, 9489305653", v), at: ago(40) });
+    const second = codeOf()!;
+    const wrong = second === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++) say(o, { ...web(wrong, v), at: ago(39 - i) });
+    expect(lastOut(o, r.thread.id)!.text).toContain("no longer works");
+    say(o, { ...web(second, v), at: ago(30) });
+    expect(o.customers.store.thread(r.thread.id)!.verifiedContact).toBeNull();
+    say(o, { ...web("SO-1042, 9489305653", v), at: ago(20) });
+    expect(codeOf()).toBeTruthy();
+    say(o, { ...web("000000", v), at: ago(18) });
+    for (let i = 0; i < 5; i++) say(o, { ...web("999999", v), at: ago(17 - i) });
+    say(o, web("SO-1042, 9489305653", v));
+    expect(codeOf()).toBeNull();
+    expect(lastOut(o, r.thread.id)!.text).toContain("cannot send another code");
+  });
+
+  it("shows the owner trying the chat the code instead of sending it", () => {
+    const o = office();
+    const r = say(o, { ...web("Where is SO-1042? my phone is 9489305653", "try:owner"), test: true });
+    expect(o.customers.takeEffects().filter((e) => e.kind === "code")).toHaveLength(0);
+    const code = /type (\d{6})/.exec(r.notes.join(" "))![1]!;
+    say(o, { ...web(code, "try:owner"), test: true });
+    expect(lastOut(o, r.thread.id)!.ground).toBe("order");
   });
 
   it("does not show someone else's order to a number that is not on it", () => {

@@ -78,6 +78,7 @@ export class CustomerDesk {
     for (const e of effects) {
       try {
         if (e.kind === "notify") await this.notify(e.text);
+        else if (e.kind === "code") await this.sendCode(e);
         else if (e.channel === "whatsapp") {
           const keys = await this.d.ownKeys();
           if (!keys) throw new Error("Connect your own WhatsApp number in Settings to answer customers there.");
@@ -90,9 +91,26 @@ export class CustomerDesk {
         } else cs.markSent(e.messageId, null);
       } catch (err) {
         if (e.kind === "send") cs.markFailed(e.messageId, err instanceof Error ? err.message : String(err));
+        else if (e.kind === "code") cs.codeFailed(e.threadId, err instanceof Error ? err.message : String(err));
         else this.d.log("could not tell the owners about a hand-off", err);
       }
     }
+  }
+
+  /**
+   * A one-time code for a website visitor, on its own and never in the conversation. Email goes from the
+   * office's mail; WhatsApp from its own number, where Meta delivers free text only inside the customer's
+   * 24-hour window (outside it, an approved authentication template is needed, which this does not send yet).
+   */
+  private async sendCode(e: Extract<CsEffect, { kind: "code" }>) {
+    if (e.channel === "email") {
+      if (!this.d.send) throw new Error("Email is not set up for this office.");
+      await this.d.send({ fromName: this.d.businessName, to: e.to, subject: e.subject, body: e.text, inReplyTo: null });
+      return;
+    }
+    const keys = await this.d.ownKeys();
+    if (!keys) throw new Error("Connect your own WhatsApp number in Settings to send codes there.");
+    await sendText(keys, e.to, e.text);
   }
 
   /** Owners who wrote to the office on WhatsApp in the last 24 hours hear at once; the rest find it on the desk and in the digest. */
