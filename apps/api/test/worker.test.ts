@@ -120,7 +120,7 @@ describe("mail", () => {
       "",
       "Attached.",
       part("application/pdf", "bill.pdf", "%PDF-1.4 test"),
-      part("image/jpeg", "photo.jpg", "jpeg"),
+      part("image/jpeg", "photo.jpg", "\xff\xd8\xffjpeg"),
       part("application/zip", "all.zip", "zip"),
       `--${boundary}--`,
     ].join("\r\n");

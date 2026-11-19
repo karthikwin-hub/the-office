@@ -4,6 +4,7 @@ import { docKey, fileUrl } from "../keys";
 import type { Fetch } from "../social/adapter";
 import type { WaIncoming } from "../social/webhooks";
 import { downloadMedia, type WaKeys } from "./cloud";
+import { audioType, billType, sheetType } from "../filetype";
 import { isSheetFile } from "../sales";
 import { type Kv, saveSession, sessionFor, type WaPerson } from "./links";
 import { MAX_AUDIO, sortVoice, toEnglish, transcribe, translateParts } from "./voice";
@@ -80,7 +81,9 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
         const file = await downloadMedia(deps.keys, m.media.id, MAX_DOC, deps.fetch);
         const id = deps.newDocId();
         const name = m.media.filename ?? `whatsapp-${id}.csv`;
-        await deps.store(docKey(deps.officeId, id), file.bytes, file.mimeType || "application/octet-stream", { filename: name, by: link.email });
+        const type = sheetType(m.media.filename, file.bytes);
+        if (!type) throw new Error("not a spreadsheet");
+        await deps.store(docKey(deps.officeId, id), file.bytes, type, { filename: name, by: link.email });
         parts = [{ text: await deps.readSales(id, name, file.bytes), translate: true }];
       } catch {
         parts = [{ text: phrase("unreadable", session.language) }];
@@ -89,10 +92,13 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
     else {
       try {
         const file = await downloadMedia(deps.keys, m.media.id, MAX_DOC, deps.fetch);
+        // The type stored comes from the bytes: a "PDF" that is not one, or a "photo" that is not a picture, is not kept.
+        const type = billType(m.media.filename, isPdf ? "application/pdf" : m.media.mimeType, file.bytes);
+        if (!type) throw new Error("not a PDF or a picture");
         const id = deps.newDocId();
-        await deps.store(docKey(deps.officeId, id), file.bytes, isPdf ? "application/pdf" : file.mimeType, { filename: m.media.filename ?? `whatsapp-${id}`, by: link.email });
+        await deps.store(docKey(deps.officeId, id), file.bytes, type, { filename: m.media.filename ?? `whatsapp-${id}`, by: link.email });
         deps.office.receiveDocument({ id, file: fileUrl(deps.officeId, id), channel: "whatsapp", from: link.name, pages: 1 });
-        if (isPdf) parts = [{ text: "Got the PDF. The Accountant reads it the next time the office is open in a browser, and it will wait on your desk.", translate: true }];
+        if (type === "application/pdf") parts = [{ text: "Got the PDF. The Accountant reads it the next time the office is open in a browser, and it will wait on your desk.", translate: true }];
         else {
           const r = await deps.readImage(id, file.bytes, false);
           parts = r.staged?.status === "pending" ? listed(r.staged) : [{ text: phrase("unreadable", session.language) }];
@@ -124,7 +130,7 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
             parts = [echo, { text: phrase("quoteNoted", session.language) }];
           } else {
             const id = deps.newDocId();
-            await deps.store(docKey(deps.officeId, id), audio.bytes, audio.mimeType, { filename: `voice-note-${id}.ogg`, by: link.email });
+            await deps.store(docKey(deps.officeId, id), audio.bytes, audioType(audio.mimeType), { filename: `voice-note-${id}.ogg`, by: link.email });
             await deps.store(docKey(deps.officeId, `${id}.txt`), heard.text, "text/plain; charset=utf-8", { transcriptOf: id });
             deps.office.receiveDocument({ id, file: fileUrl(deps.officeId, id), channel: "whatsapp", from: link.name, pages: 1 });
             const b = deps.office.books.business;

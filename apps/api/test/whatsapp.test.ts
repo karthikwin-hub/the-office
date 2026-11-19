@@ -42,6 +42,9 @@ function fakeGraph(bytes = new Uint8Array([1, 2, 3, 4]), mime = "image/jpeg") {
   }) as unknown as typeof fetch;
 }
 
+/** A picture's bytes, as far as anyone looking at its first bytes can tell. */
+const jpeg = (n: number) => Object.assign(new Uint8Array(n), { 0: 0xff, 1: 0xd8, 2: 0xff });
+
 function setup(o: { ai?: Ai; fetch?: typeof fetch } = {}) {
   const office = new OfficeService(loadBooks());
   const { kv, map } = memoryKv();
@@ -240,7 +243,7 @@ describe("talking to the office", () => {
   });
 
   it("reads a photo of a bill into the Accountant's intake, never posting it, and gives it a number", async () => {
-    const graph = fakeGraph(new Uint8Array(2048), "image/jpeg");
+    const graph = fakeGraph(jpeg(2048), "image/jpeg");
     const { deps, stored, readImage, office } = setup({ fetch: graph });
     const who = person();
     const out = await officeWhatsApp(deps, msg({ kind: "image", media: { id: "media-1", mimeType: "image/jpeg", filename: null } }), who);
@@ -250,6 +253,26 @@ describe("talking to the office", () => {
     expect(out!.text).toMatch(/On your desk as item 1\.$/);
     expect(sessionFor(deps.kv, PHONE).list).toHaveLength(1);
     expect(vi.mocked(graph).mock.calls[0]![1]).toMatchObject({ headers: expect.anything() });
+  });
+
+  it("stores files under the type their bytes show, never the one they were sent with", async () => {
+    const page = new Uint8Array(new TextEncoder().encode("<html><script>alert(1)</script></html>"));
+    const fake = setup({ fetch: fakeGraph(page, "text/html") });
+    const out = await officeWhatsApp(fake.deps, msg({ kind: "image", media: { id: "m-2", mimeType: "image/jpeg", filename: null } }), person());
+    expect(out!.text).toBe("I could not read that. Send a clearer photo or the PDF, up to 10 MB.");
+    expect(fake.stored).toEqual([]);
+    expect(fake.readImage).not.toHaveBeenCalled();
+
+    const sheet = setup({ fetch: fakeGraph(new Uint8Array(new TextEncoder().encode("Order Id,Quantity\n1,2")), "text/html") });
+    sheet.deps.readSales = vi.fn(async () => "Read 1 order.");
+    await officeWhatsApp(sheet.deps, msg({ kind: "document", media: { id: "m-3", mimeType: "text/html", filename: "r.csv" } }), person());
+    expect(sheet.stored).toEqual([{ key: "o/off_kaveri/docs/doc-wa1", contentType: "text/csv" }]);
+
+    // A zip sent without a name is known by its bytes.
+    const zip = setup({ fetch: fakeGraph(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0]), "application/zip") });
+    zip.deps.readSales = vi.fn(async () => "Read 1 order.");
+    await officeWhatsApp(zip.deps, msg({ kind: "document", media: { id: "m-4", mimeType: "application/zip", filename: null } }), person());
+    expect(zip.stored).toEqual([{ key: "o/off_kaveri/docs/doc-wa1", contentType: "application/zip" }]);
   });
 
   it("refuses a file over the size limit without downloading it", async () => {

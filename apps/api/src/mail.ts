@@ -1,6 +1,7 @@
 import { EmailMessage } from "cloudflare:email";
 import PostalMime from "postal-mime";
 import type { Env } from "./env";
+import { billType, sheetType } from "./filetype";
 import { isSheetFile } from "./sales";
 
 const MAX_ATTACHMENTS = 5;
@@ -147,15 +148,8 @@ export async function parseInbound(raw: ReadableStream | ArrayBuffer, opts: { sh
   for (const a of mail.attachments) {
     const name = a.filename ?? "attachment";
     const content = typeof a.content === "string" ? (new TextEncoder().encode(a.content).buffer as ArrayBuffer) : (a.content as ArrayBuffer);
-    const kind = opts.sheets
-      ? isSheetFile(name, a.mimeType)
-        ? a.mimeType || "application/octet-stream"
-        : null
-      : a.mimeType === "application/pdf" || /\.pdf$/i.test(name)
-        ? "application/pdf"
-        : /^image\/(png|jpe?g|webp)$/.test(a.mimeType)
-          ? a.mimeType
-          : null;
+    // The sender's type is only a hint; what is stored comes from the name and the bytes.
+    const kind = opts.sheets ? (isSheetFile(name, a.mimeType) ? sheetType(name, content) : null) : billType(name, a.mimeType, content);
     if (!kind || content.byteLength > MAX_BYTES || attachments.length >= (opts.sheets ? 10 : MAX_ATTACHMENTS)) skipped.push(name);
     else attachments.push({ filename: name, mimeType: kind, content });
   }
