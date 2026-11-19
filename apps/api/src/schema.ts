@@ -182,6 +182,12 @@ export const waAttempt = sqliteTable("wa_attempt", {
   windowStart: integer("window_start").notNull(),
 });
 
+/** Wrong WhatsApp JOIN codes from every number together, per hour (migration 0007). */
+export const waAttemptAll = sqliteTable("wa_attempt_all", {
+  windowStart: integer("window_start").primaryKey(),
+  failures: integer("failures").notNull(),
+});
+
 export const audit = sqliteTable(
   "audit",
   {
