@@ -10,6 +10,7 @@ import type { Env } from "../src/env";
 import { docKey, mediaKey } from "../src/keys";
 import { signMedia } from "../src/social/media";
 import { d1 } from "./d1";
+import { enrolTwoFactor } from "./two-factor";
 
 const BASE = "http://localhost:8787";
 const WEB = join(import.meta.dirname, "..", "..", "web");
@@ -54,7 +55,10 @@ async function owner(w: World) {
   const cookie = (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().map((c) => c.split(";")[0]).join("; ");
   const opened = await req(w, ACCOUNT_ROUTES.offices, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify({ name: "Kaveri Electricals" }) }, cookie);
   expect(opened.status).toBe(201);
-  return { cookie, office: ((await opened.json()) as { id: string }).id };
+  const office = ((await opened.json()) as { id: string }).id;
+  // Owners turn on two-factor sign-in before anything of their office opens.
+  const post = (path: string, body: unknown, c: string) => req(w, path, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify(body) }, c);
+  return { cookie: (await enrolTwoFactor(post, cookie, "a-long-password-1")).cookie, office };
 }
 
 const expectBase = (res: Response) => {

@@ -730,6 +730,8 @@ export const Me = z.object({
   consentNeeded: z.array(z.object({ document: z.enum(["terms", "privacy"]), version: z.string() })).default([]),
   /** An open request to delete this account, if they made one. */
   deletionRequested: z.boolean().default(false),
+  /** Two-factor sign-in: owners and platform owners must turn it on before anything else opens; for others it is a choice. */
+  twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }).default({ enabled: false, required: false }),
 });
 export type Me = z.infer<typeof Me>;
 export const OpenOffice = z.object({ name: z.string().trim().min(2).max(80) });

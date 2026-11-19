@@ -35,6 +35,7 @@ export function mockMe(role: Role, users: Record<Role, Person>, office: OfficeSe
     verificationRequired: false,
     consentNeeded: [],
     deletionRequested: false,
+    twoFactor: { enabled: role === "owner", required: role === "owner" },
   } satisfies Me);
 }
 

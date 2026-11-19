@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { q } from "../api/queries";
 import { isOwner, Page, PageHead, Section } from "./common";
+import { TwoFactorSettings } from "../app/Security";
 import { AccountSettings } from "./SettingsAccount";
 import { BooksRecordSettings, ComplianceSettings } from "./SettingsCompliance";
 import { OfficeSettings } from "./SettingsOffice";
@@ -172,6 +173,7 @@ function SettingsForm({ s }: { s: Settings }) {
       <ComplianceSettings b={b} />
       <BooksRecordSettings />
       <OfficeSettings />
+      <TwoFactorSettings />
       <AccountSettings />
       <Section title="Getting documents in">
         <p>

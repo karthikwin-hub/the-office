@@ -13,6 +13,7 @@ import { newState } from "../src/social/oauth";
 import { ControlPlane, OFFICE_ID, PURGE_AFTER_MS } from "../src/tenancy";
 import { WaDirectory } from "../src/whatsapp/links";
 import { d1 } from "./d1";
+import { enrolTwoFactor } from "./two-factor";
 
 const BASE = "http://localhost:8787";
 const SECRET = "tenancy-test-secret-not-a-real-one";
@@ -108,10 +109,19 @@ async function signUp(w: World, name: string, email: string): Promise<Person> {
   return { cookie, id: me.user.id, email, name };
 }
 
+/** Owners need two-factor sign-in before anything owner-only; this turns it on and keeps the new session. */
+async function twoStep(w: World, who: Person): Promise<Person> {
+  who.cookie = (await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), who.cookie, "a-long-password-1")).cookie;
+  return who;
+}
+
 async function openOffice(w: World, who: Person, name: string): Promise<string> {
   const res = await call(w, who, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name }) });
   expect(res.status).toBe(201);
-  return ((await res.json()) as { id: string }).id;
+  const id = ((await res.json()) as { id: string }).id;
+  const enrolled = w.db.sqlite.prepare("SELECT two_factor_enabled AS enabled FROM user WHERE id = ?").get(who.id) as { enabled: number };
+  if (!enrolled.enabled) await twoStep(w, who);
+  return id;
 }
 
 /** Two businesses on one backend, each with its own owner. */
@@ -620,6 +630,33 @@ describe("the shared WhatsApp number", () => {
   });
 });
 
+describe("two-factor sign-in for owners", () => {
+  it("keeps an owner out of their office until it is on, and leaves it optional for an accountant", async () => {
+    const w = makeEnv();
+    const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
+    const opened = await call(w, anil, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Kaveri Electricals" }) });
+    const A = ((await opened.json()) as { id: string }).id;
+    const me = async (p: Person) => ((await (await call(w, p, ACCOUNT_ROUTES.me)).json()) as { twoFactor: unknown }).twoFactor;
+    expect(await me(anil)).toEqual({ enabled: false, required: true });
+    for (const path of [ROUTES.desk, ROUTES.officeAdmin, ROUTES.officeExport]) {
+      const res = await call(w, anil, inOffice(A, path));
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "two_factor_required" });
+    }
+    expect(w.seen).toEqual([]);
+
+    const carol = await signUp(w, "Carol Rao", "carol@firm.test");
+    const { token } = await new ControlPlane(w.db).invite(A, carol.email, "accountant", anil.email);
+    await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) });
+    expect(await me(carol)).toEqual({ enabled: false, required: false });
+    expect((await call(w, carol, inOffice(A, ROUTES.desk))).status).toBe(200);
+
+    await twoStep(w, anil);
+    expect(await me(anil)).toEqual({ enabled: true, required: true });
+    expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(200);
+  });
+});
+
 describe("people in an office", () => {
   it("invites by link for one address, once, and the accountant sees the office but not its administration", async () => {
     const { w, anil, bina, A } = await twoOffices();
@@ -674,6 +711,9 @@ describe("people in an office", () => {
     expect((await call(w, anil, inOffice(A, ROUTES.officeLeave), { method: "POST" })).status).toBe(409);
     expect((await call(w, anil, inOffice(A, ROUTES.officeTransfer), { method: "POST", body: JSON.stringify({ userId: carol.id }) })).status).toBe(200);
     expect((await cp.membership(A, anil.id))?.role).toBe("accountant");
+    // The new owner turns on two-factor sign-in before acting as one.
+    expect(await (await call(w, carol, inOffice(A, ROUTES.officeMember(anil.id)), { method: "DELETE" })).json()).toMatchObject({ code: "two_factor_required" });
+    await twoStep(w, carol);
     expect((await call(w, carol, inOffice(A, ROUTES.officeMember(anil.id)), { method: "DELETE" })).status).toBe(200);
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(404);
     expect((await cp.auditTrail(A)).map((a) => a.action)).toEqual(expect.arrayContaining(["office.opened", "invitation.sent", "invitation.accepted", "office.transferred", "member.removed"]));
@@ -747,7 +787,7 @@ describe("open screens of someone who leaves", () => {
     const carol = await join("Carol Rao", "carol@firm.test");
     const dev = await join("Dev Iyer", "dev@firm.test");
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
-    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     w.seen.length = 0;
 
     expect((await call(w, anil, inOffice(A, ROUTES.officeMember(carol.id)), { method: "DELETE" })).status).toBe(200);
@@ -776,6 +816,9 @@ describe("the platform owners' console", () => {
     expect((await call(w, anil, PLATFORM_ROUTES.view)).status).toBe(403);
     expect((await call(w, anil, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Sneaky", ownerEmail: "anil@kaveri.test" }) })).status).toBe(403);
     expect((await call(w, null, PLATFORM_ROUTES.view)).status).toBe(401);
+    expect(await (await call(w, puja, PLATFORM_ROUTES.view)).json()).toMatchObject({ code: "two_factor_required" });
+    expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { twoFactor: unknown }).twoFactor).toEqual({ enabled: false, required: true });
+    await twoStep(w, puja);
     const v = await view(w, puja);
     expect(v.businesses.map((b) => b.id).sort()).toEqual([A, B].sort());
     expect(v.businesses.find((b) => b.id === A)).toMatchObject({ name: "Kaveri Electricals", status: "active", owners: [{ name: "Anil Kulkarni", email: "anil@kaveri.test" }], people: 1, onboardedBy: null, ownerInvite: null });
@@ -786,7 +829,7 @@ describe("the platform owners' console", () => {
   it("onboards a business: an empty office, and an owner invitation by email that only that address can accept", async () => {
     const w = makeEnv();
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
-    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     const res = await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "Ravi@Mehta.test" }) });
     expect(res.status).toBe(201);
     const made = (await res.json()) as PlatformInvited;
@@ -800,6 +843,8 @@ describe("the platform owners' console", () => {
     expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
     const ravi = await signUp(w, "Ravi Mehta", "ravi@mehta.test");
     expect(await (await call(w, ravi, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: made.id, role: "owner" });
+    expect(await (await call(w, ravi, inOffice(made.id, ROUTES.desk))).json()).toMatchObject({ code: "two_factor_required" });
+    await twoStep(w, ravi);
     expect((await call(w, ravi, inOffice(made.id, ROUTES.desk))).status).toBe(200);
     expect((await view(w, puja)).businesses[0]).toMatchObject({ owners: [{ name: "Ravi Mehta", email: "ravi@mehta.test" }], people: 1, ownerInvite: null });
     expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(made.id), { method: "POST", body: JSON.stringify({ email: "ravi@mehta.test" }) })).status).toBe(409);
@@ -808,7 +853,8 @@ describe("the platform owners' console", () => {
   it("never invites an owner into an office that has one, and never hands the console the link", async () => {
     const { w, A } = await twoOffices();
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
-    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
+    w.sent.length = 0; // puja was told two-step sign-in is on
     const cp = new ControlPlane(w.db);
     const invite = (id: string, email: string) => call(w, puja, PLATFORM_ROUTES.ownerInvite(id), { method: "POST", body: JSON.stringify({ email }) });
 
@@ -858,7 +904,7 @@ describe("the platform owners' console", () => {
   it("suspends and opens an office again, but leaves an owner's deletion to the owner", async () => {
     const { w, anil, bina, A, B } = await twoOffices();
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
-    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     const status = (id: string, s: string) => call(w, puja, PLATFORM_ROUTES.status(id), { method: "PUT", body: JSON.stringify({ status: s }) });
     expect((await status(A, "suspended")).status).toBe(200);
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(423);

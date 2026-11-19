@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { BRAND } from "@office/contracts";
-import { account } from "../api/client";
+import { account, twoFactor } from "../api/client";
 import { BrandPlate, currentDocuments, LegalFooter } from "./Legal";
 
-type Mode = "sign-in" | "sign-up" | "forgot" | "reset";
+type Mode = "sign-in" | "sign-up" | "forgot" | "reset" | "two-factor";
 
 /** What a password-reset link brought back: a token to choose a new password with, or word that it has expired. */
 function resetFromUrl(): { token: string | null; expired: boolean } | null {
@@ -25,6 +25,7 @@ function clearResetUrl() {
  * The front door. Anyone can make an account; an account on its own sees nothing.
  * It opens an office of its own, or joins one from an invitation link.
  * A forgotten password is replaced through a link sent to the account's email.
+ * With two-factor sign-in on, the password is followed by the authenticator app's code, or a backup code.
  * An invitation link is looked up first: a used or expired one opens on Sign in, since the
  * person most likely already has an account, and a live one names its office and address.
  */
@@ -39,6 +40,8 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [code, setCode] = useState("");
+  const [backup, setBackup] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   // A spent link: forget it, and sign in instead of making a second account.
@@ -54,7 +57,21 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
   }, [peek.data]);
 
   const submit = useMutation({
-    mutationFn: async (): Promise<"signed-in" | "link-sent" | "changed"> => {
+    mutationFn: async (): Promise<"signed-in" | "link-sent" | "changed" | "second-step"> => {
+      if (mode === "two-factor") {
+        await (backup ? twoFactor.verifyBackupCode(code) : twoFactor.verifyCode(code)).catch((e: Error) => {
+          throw new Error(
+            /expired|invalid two factor cookie/i.test(e.message)
+              ? "That took too long. Start again with your password."
+              : /too many/i.test(e.message)
+                ? "Too many tries for this sign-in. Choose \"Start again\" and type your password once more."
+                : backup
+                  ? "That backup code is not right, or was already used."
+                  : "That code is not right. Check the time on your phone, then try the newest code.",
+          );
+        });
+        return "signed-in";
+      }
       if (mode === "forgot") {
         await account.requestPasswordReset(email);
         return "link-sent";
@@ -66,8 +83,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
         });
         return "changed";
       }
-      if (mode === "sign-in") await account.signIn(email, password);
-      else {
+      if (mode === "sign-in") {
+        if ((await account.signIn(email, password)).twoFactorRedirect) return "second-step";
+      } else {
         await account.signUp(name, email, password);
         // If this fails the gate asks again after sign-in; the account exists either way.
         await account.consent(currentDocuments()).catch(() => undefined);
@@ -75,6 +93,12 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
       return "signed-in";
     },
     onSuccess: (done) => {
+      if (done === "second-step") {
+        setPassword("");
+        setCode("");
+        setBackup(false);
+        return setModeState("two-factor");
+      }
       if (done === "link-sent")
         return setNotice(
           `If there is an account for that address, a link to choose a new password is on its way. It works for an hour.${invited && peek.data && email.trim().toLowerCase() === peek.data.email.toLowerCase() ? ` If you never made an account for ${peek.data.email}, no email will come: choose "Make an account" instead.` : ""}`,
@@ -114,7 +138,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
 
   const expired = mode === "reset" && Boolean(reset?.expired);
   const heading =
-    mode === "forgot"
+    mode === "two-factor"
+      ? "Two-step sign-in"
+      : mode === "forgot"
       ? "Forgotten password"
       : mode === "reset"
         ? "Choose a new password"
@@ -128,7 +154,11 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
                 ? "Join the office"
                 : "Make an account";
   const lede =
-    mode === "forgot"
+    mode === "two-factor"
+      ? backup
+        ? "Type one of the backup codes you saved when you turned on two-step sign-in. Each works once."
+        : "Open your authenticator app and type the six-digit code it shows for this account."
+      : mode === "forgot"
       ? "Give the email address you sign in with. We will send a link to choose a new password."
       : mode === "reset"
         ? expired
@@ -143,7 +173,7 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
             : mode === "sign-in"
               ? "Welcome back."
               : "Then open your office, or join one from an invitation link. Each business's books are seen only by the people in it.";
-  const action = mode === "forgot" ? "Send the link" : mode === "reset" ? "Change the password" : mode === "sign-in" ? "Sign in" : "Make the account";
+  const action = mode === "two-factor" ? "Continue" : mode === "forgot" ? "Send the link" : mode === "reset" ? "Change the password" : mode === "sign-in" ? "Sign in" : "Make the account";
 
   return (
     <main className="signin" id="main">
@@ -168,13 +198,40 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
                 <input id="name" className="input" autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
               </div>
             ) : null}
-            {mode !== "reset" ? (
+            {mode === "two-factor" ? (
+              <div className="field">
+                <label htmlFor="code">{backup ? "Backup code" : "Code from your app"}</label>
+                <input
+                  id="code"
+                  className="input"
+                  autoComplete="one-time-code"
+                  inputMode={backup ? "text" : "numeric"}
+                  pattern={backup ? undefined : "[0-9 ]{6,7}"}
+                  required
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="link-button signin-forgot"
+                  onClick={() => {
+                    setBackup((b) => !b);
+                    setCode("");
+                    submit.reset();
+                  }}
+                >
+                  {backup ? "Use the code from my app" : "Use a backup code instead"}
+                </button>
+              </div>
+            ) : null}
+            {mode !== "reset" && mode !== "two-factor" ? (
               <div className="field">
                 <label htmlFor="email">Email</label>
                 <input id="email" className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             ) : null}
-            {mode !== "forgot" ? (
+            {mode !== "forgot" && mode !== "two-factor" ? (
               <div className="field">
                 <label htmlFor="password">{mode === "reset" ? "New password" : "Password"}</label>
                 <input
@@ -228,7 +285,14 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
           </form>
         )}
         <p className="signin-switch">
-          {mode === "forgot" || mode === "reset" ? (
+          {mode === "two-factor" ? (
+            <>
+              Lost your phone and your backup codes? Write to {BRAND.name} from this address.{" "}
+              <button type="button" className="link-button" onClick={() => setMode("sign-in")}>
+                Start again
+              </button>
+            </>
+          ) : mode === "forgot" || mode === "reset" ? (
             <>
               Remembered it?{" "}
               <button type="button" className="link-button" onClick={() => setMode("sign-in")}>

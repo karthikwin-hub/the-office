@@ -4,6 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { account, ApiError, isLive, setActiveOffice } from "../api/client";
 import { q } from "../api/queries";
 import { BrandPlate, ConsentGate, LegalFooter } from "./Legal";
+import { TwoFactorGate } from "./Security";
 import { SignIn } from "./SignIn";
 import { appUrl, hasAppDomain, officeUrl, place } from "./site";
 
@@ -111,6 +112,7 @@ export function OfficeGate({ children }: { children: ReactNode }) {
     ) : null;
   if (me.data.verificationRequired && !me.data.user.emailVerified) return <ConfirmEmail me={me.data} />;
   if (me.data.consentNeeded.length) return <ConsentGate me={me.data} />;
+  if (me.data.twoFactor.required && !me.data.twoFactor.enabled) return <TwoFactorGate me={me.data} />;
   if (invite) return <AcceptInvitation token={invite} me={me.data} />;
   if (params().has("open")) return <OpenOffice me={me.data} />;
   const here = place();

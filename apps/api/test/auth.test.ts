@@ -2,16 +2,18 @@ import { describe, expect, it } from "vitest";
 import { app } from "../src/app";
 import type { Env } from "../src/env";
 import { d1 } from "./d1";
+import { enrolTwoFactor, totp, withCookies } from "./two-factor";
 
 const BASE = "http://localhost:8787";
+const PASSWORD = "a-long-password-1";
 
 /** Just enough of the Worker's bindings to sign up and sign in; "live" switches the rate limit on. */
-function liveEnv() {
+function liveEnv(mode = "live") {
   const db = d1();
   const env = {
     ASSETS: { fetch: async () => new Response("the app") },
     DB: db,
-    DATA_MODE: "live",
+    DATA_MODE: mode,
     EMAIL_VERIFICATION: "off",
     MAIL_FROM: "office@the-office.test",
     BETTER_AUTH_URL: BASE,
@@ -22,6 +24,14 @@ function liveEnv() {
 
 const post = (env: Env, path: string, body: unknown, headers: Record<string, string> = {}) =>
   app.request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json", ...headers }, body: JSON.stringify(body) }, env);
+const get = (env: Env, path: string, cookie: string) => app.request(`${BASE}${path}`, { headers: { origin: BASE, cookie } }, env);
+const postAs = (env: Env) => (path: string, body: unknown, cookie: string) => post(env, path, body, cookie ? { cookie } : {});
+
+async function signUp(env: Env, email: string): Promise<string> {
+  const res = await post(env, "/api/auth/sign-up/email", { name: "Anil Kulkarni", email, password: PASSWORD });
+  expect(res.status).toBe(200);
+  return withCookies("", res);
+}
 
 const randomIp = () => Array.from({ length: 4 }, () => Math.floor(Math.random() * 254) + 1).join(".");
 
@@ -53,5 +63,43 @@ describe("the sign-in rate limit", () => {
     await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: "a-wrong-password-1" }, { "cf-connecting-ip": "203.0.113.9" });
     const rows = db.sqlite.prepare("SELECT key, count FROM rate_limit").all() as { key: string; count: number }[];
     expect(rows).toEqual([expect.objectContaining({ key: expect.stringContaining("203.0.113.9"), count: 1 })]);
+  });
+});
+
+describe("two-factor sign-in", () => {
+  it("asks for the authenticator's code after the password, and only then signs in", async () => {
+    const { env } = liveEnv("test");
+    const enrolled = await enrolTwoFactor(postAs(env), await signUp(env, "anil@kaveri.test"), PASSWORD);
+    expect(enrolled.uri).toMatch(/^otpauth:\/\/totp\//);
+    expect(enrolled.backupCodes).toHaveLength(10);
+    expect(((await (await get(env, "/api/me", enrolled.cookie)).json()) as { twoFactor: unknown }).twoFactor).toEqual({ enabled: true, required: false });
+
+    const first = await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD });
+    expect(await first.json()).toMatchObject({ twoFactorRedirect: true });
+    const halfway = withCookies("", first);
+    expect(halfway).not.toMatch(/session_token/);
+    expect((await get(env, "/api/me", halfway)).status).toBe(401);
+
+    expect((await post(env, "/api/auth/two-factor/verify-totp", { code: "000000" }, { cookie: halfway })).status).toBe(401);
+    const second = await post(env, "/api/auth/two-factor/verify-totp", { code: totp(enrolled.uri) }, { cookie: halfway });
+    expect(second.status).toBe(200);
+    expect((await get(env, "/api/me", withCookies(halfway, second))).status).toBe(200);
+  });
+
+  it("takes a backup code once in place of the authenticator", async () => {
+    const { env } = liveEnv("test");
+    const { backupCodes } = await enrolTwoFactor(postAs(env), await signUp(env, "anil@kaveri.test"), PASSWORD);
+    const signIn = async () => withCookies("", await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD }));
+    const once = await post(env, "/api/auth/two-factor/verify-backup-code", { code: backupCodes[0] }, { cookie: await signIn() });
+    expect(once.status).toBe(200);
+    expect((await post(env, "/api/auth/two-factor/verify-backup-code", { code: backupCodes[0] }, { cookie: await signIn() })).status).toBe(401);
+  });
+
+  it("is not needed by people who have not turned it on", async () => {
+    const { env } = liveEnv("test");
+    await signUp(env, "carol@firm.test");
+    const res = await post(env, "/api/auth/sign-in/email", { email: "carol@firm.test", password: PASSWORD });
+    expect(res.status).toBe(200);
+    expect((await get(env, "/api/me", withCookies("", res))).status).toBe(200);
   });
 });

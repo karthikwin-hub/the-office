@@ -136,18 +136,20 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown; q
   return res.json() as Promise<T>;
 }
 
-async function auth(path: string, body?: unknown): Promise<void> {
+async function auth<T = unknown>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api/auth/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}), credentials: "include" });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
     throw new ApiError(res.status, err.message ?? (res.status === 401 ? "That email and password do not match." : res.statusText));
   }
+  return (await res.json().catch(() => ({}))) as T;
 }
 
 /** The account, outside any office: who is signed in, their offices, opening one, invitations. */
 export const account = {
   me: () => call<Me>(ACCOUNT_ROUTES.me),
-  signIn: (email: string, password: string) => auth("sign-in/email", { email, password, rememberMe: true }),
+  /** With two-factor sign-in on, the password alone signs no one in: the answer asks for the second step. */
+  signIn: (email: string, password: string) => auth<{ twoFactorRedirect?: boolean }>("sign-in/email", { email, password, rememberMe: true }),
   signUp: (name: string, email: string, password: string) => auth("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
   signOut: () => auth("sign-out"),
   resendVerification: (email: string) => auth("send-verification-email", { email, callbackURL: location.pathname + location.search }),
@@ -163,6 +165,18 @@ export const account = {
   requests: () => call<{ requests: RightsRequestView[] }>(ACCOUNT_ROUTES.accountRequests),
   requestDeletion: (note?: string) => call<RightsRequestView>(ACCOUNT_ROUTES.accountRequests, { method: "POST", body: { kind: "delete", note } }),
   withdrawRequest: (id: string) => call<{ ok: true }>(`${ACCOUNT_ROUTES.accountRequests}/${encodeURIComponent(id)}`, { method: "DELETE" }),
+};
+
+/** Two-factor sign-in: the second step at sign-in, and turning it on or off from Settings. */
+export const twoFactor = {
+  /** At sign-in, after the password: the authenticator app's code, or one backup code. */
+  verifyCode: (code: string) => auth("two-factor/verify-totp", { code: code.replace(/\s+/g, "") }),
+  verifyBackupCode: (code: string) => auth("two-factor/verify-backup-code", { code: code.trim() }),
+  /** Starts enrolment: the secret for the authenticator app and ten backup codes. Nothing changes until `confirm`. */
+  enable: (password: string) => auth<{ totpURI: string; backupCodes: string[] }>("two-factor/enable", { password }),
+  confirm: (code: string) => auth("two-factor/verify-totp", { code: code.replace(/\s+/g, "") }),
+  disable: (password: string) => auth("two-factor/disable", { password }),
+  newBackupCodes: (password: string) => auth<{ backupCodes: string[] }>("two-factor/generate-backup-codes", { password }),
 };
 
 /** The platform owners' console: every business on the platform, onboarding one, and suspending. */

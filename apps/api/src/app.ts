@@ -37,6 +37,7 @@ import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
+import { TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
 import { metaChallenge, verifyMetaSignature } from "./social/webhooks";
 import { ControlPlane, ingestAddress, OFFICE_ID, type OfficeRow, PURGE_AFTER_MS } from "./tenancy";
 import { sendText } from "./whatsapp/cloud";
@@ -44,7 +45,7 @@ import { WaDirectory } from "./whatsapp/links";
 import { weatherFor, type Where } from "./weather";
 import { zip, type ZipEntry } from "./zip";
 
-type User = { id: string; name: string; email: string; emailVerified: boolean };
+type User = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled: boolean };
 type Vars = { user: User; caller: Caller; office: OfficeRow };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
@@ -211,16 +212,18 @@ app.use("/api/*", async (c, next) => {
   const session = await makeAuth(c.env, new URL(c.req.url).host).api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.json({ error: "Sign in to continue." }, 401);
   const u = session.user;
-  c.set("user", { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified) });
+  c.set("user", { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified), twoFactorEnabled: Boolean(u.twoFactorEnabled) });
   await next();
 });
 
 app.get("/api/me", async (c) => {
   const user = c.get("user");
   const records = new AccountRecords(c.env.DB);
+  const offices = await cp(c.env).officesOf(user.id);
   return c.json({
-    user,
-    offices: await cp(c.env).officesOf(user.id),
+    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified },
+    offices,
+    twoFactor: { enabled: user.twoFactorEnabled, required: platformOwners(c.env).has(user.email.toLowerCase()) || offices.some((o) => o.role === "owner") },
     verificationRequired: verificationRequired(c.env),
     consentNeeded: await records.consentNeeded(user.id),
     deletionRequested: await records.deletionRequested(user.id),
@@ -288,6 +291,7 @@ const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
   const user = c.get("user");
   if (!platformOwners(c.env).has(user.email.toLowerCase())) return c.json({ error: "This console is for the people who run the platform. Businesses sign in at their own address." }, 403);
   if (verificationRequired(c.env) && !user.emailVerified) return c.json({ error: "Confirm your email address first, then come back." }, 403);
+  if (twoFactorMissing(user)) return c.json(TWO_FACTOR_NEEDED, 403);
   await next();
 };
 app.use(PLATFORM_ROUTES.view, platformOnly);
@@ -369,7 +373,7 @@ app.get("/api/channels/:platform/callback", async (c) => {
   const state = platform.success && c.env.SOCIAL_TOKEN_KEY ? await readState(c.env.SOCIAL_TOKEN_KEY, platform.data, c.req.query("state") ?? null) : null;
   const user = c.get("user");
   const m = state && OFFICE_ID.test(state.officeId) ? await cp(c.env).membership(state.officeId, user.id) : null;
-  if (!state || !m || m.office.status !== "active" || m.role !== "owner" || state.by !== user.email) return c.redirect(`/settings?connect_error=${encodeURIComponent("That sign-in did not come from your office. Try again from Settings.")}#channels`);
+  if (!state || !m || m.office.status !== "active" || m.role !== "owner" || twoFactorMissing(user) || state.by !== user.email) return c.redirect(`/settings?connect_error=${encodeURIComponent("That sign-in did not come from your office. Try again from Settings.")}#channels`);
   return toOffice(c.env, c.req.raw, { userId: user.id, name: user.name, email: user.email, role: m.role, officeId: m.office.id });
 });
 
@@ -384,6 +388,7 @@ app.use("/api/o/:office/*", async (c, next) => {
   const rest = new URL(c.req.url).pathname.slice(`/api/o/${id}`.length);
   if (m.office.status === "deleting" && !(m.role === "owner" && (rest === "/office-admin" || rest === "/office-admin/restore" || rest === "/office-admin/export"))) return c.json(NOT_FOUND, 404);
   if (m.office.status === "suspended") return c.json({ error: "This office is suspended. Write to us to have it opened again." }, 423);
+  if (m.role === "owner" && twoFactorMissing(user)) return c.json(TWO_FACTOR_NEEDED, 403);
   c.set("office", m.office);
   c.set("caller", { userId: user.id, name: user.name, email: user.email, role: m.role, officeId: id });
   await next();

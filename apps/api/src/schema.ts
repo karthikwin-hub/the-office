@@ -10,6 +10,7 @@ export const user = sqliteTable("user", {
   role: text("role", { enum: ["owner", "accountant"] }).notNull().default("accountant"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
 });
 
 export const session = sqliteTable("session", {
@@ -59,6 +60,23 @@ export const rateLimit = sqliteTable("rate_limit", {
   count: integer("count").notNull(),
   lastRequest: integer("last_request").notNull(),
 });
+
+/** Better Auth's two-factor plugin: the authenticator secret and backup codes, both encrypted with BETTER_AUTH_SECRET. */
+export const twoFactor = sqliteTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: integer("verified", { mode: "boolean" }).notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: integer("locked_until", { mode: "timestamp" }),
+  },
+  (t) => [uniqueIndex("two_factor_user_unique").on(t.userId)],
+);
 
 /* ---------- The control plane: who belongs to which office, and where inbound messages go. Times are epoch milliseconds. ---------- */
 

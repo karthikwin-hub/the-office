@@ -1,6 +1,7 @@
 import { BRAND } from "@office/contracts";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { twoFactor } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "./env";
 import { mailSender } from "./mail";
@@ -76,6 +77,7 @@ export function makeAuth(env: Env, host?: string) {
   const db = drizzle(env.DB, { schema });
   const { origins, cookieDomain } = authScope(env, host);
   return betterAuth({
+    appName: BRAND.name,
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
@@ -116,6 +118,9 @@ export function makeAuth(env: Env, host?: string) {
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
     // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
     session: { cookieCache: { enabled: false } },
+    // A second step at sign-in: an authenticator app's code, or one of ten backup codes. Owners must have it; see step-up.ts.
+    // Devices are never trusted for later sign-ins.
+    plugins: [twoFactor({ issuer: BRAND.name, trustDeviceMaxAge: 0 })],
     // Counts live in D1, so every isolate and every restart sees the same attempts.
     rateLimit: { enabled: env.DATA_MODE === "live", storage: "database", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
   });
