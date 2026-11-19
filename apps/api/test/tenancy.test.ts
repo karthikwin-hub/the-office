@@ -41,9 +41,10 @@ function r2() {
 }
 
 type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string };
-/** Durable Objects that only record what reached them, and answer with whose they are. */
-function officesNs() {
+/** Durable Objects that only record what reached them, and answer with whose they are. They take mail unless `mail.admit` says not. */
+function officesNs(docs: { map: Map<string, unknown> }) {
   const seen: Seen[] = [];
+  const mail = { admit: true, storedBeforeAsked: [] as number[] };
   const ns = {
     idFromName: (name: string) => ({ name }),
     get: (id: { name: string }) => ({
@@ -52,17 +53,21 @@ function officesNs() {
         const caller = JSON.parse(req.headers.get(CALLER_HEADER) ?? "null") as Caller;
         seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text() });
         if (path === "/internal/export") return Response.json({ office: id.name, books: { business: { name: id.name } } });
+        if (path === "/internal/mail-admit") {
+          mail.storedBeforeAsked.push(docs.map.size);
+          return Response.json({ admit: mail.admit });
+        }
         return Response.json({ office: id.name, path });
       },
     }),
   };
-  return { seen, ns };
+  return { seen, ns, mail };
 }
 
 function makeEnv() {
   const db = d1();
   const docs = r2();
-  const { seen, ns } = officesNs();
+  const { seen, ns, mail } = officesNs(docs);
   const sent: { to: string; raw: string }[] = [];
   const env = {
     ASSETS: { fetch: async () => new Response("the app") },
@@ -82,7 +87,7 @@ function makeEnv() {
     WHATSAPP_TOKEN: "wa-token",
     WHATSAPP_PHONE_NUMBER_ID: SHARED,
   } as unknown as Env;
-  return { env, db, docs, seen, sent };
+  return { env, db, docs, seen, sent, mail };
 }
 
 type World = ReturnType<typeof makeEnv>;
@@ -319,7 +324,7 @@ describe("one office cannot reach another", () => {
     await receiveEmail(good, w.env);
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
     expect(w.docs.map.size).toBe(1);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/email"]]);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/email"]]);
     const stray = mail("someone-else@in.the-office.test");
     await receiveEmail(stray, w.env);
     expect(stray.setReject).toHaveBeenCalled();
@@ -331,8 +336,8 @@ describe("one office cannot reach another", () => {
     await cp.claimRoute(A, "support_email", "kaveri.help@in.the-office.test");
     const raw = ["From: Mandar Joshi <mandar@joshi.test>", "To: kaveri.help@in.the-office.test", "Subject: Damaged coils", "Message-ID: <m1@joshi.test>", "In-Reply-To: <csm-1@the-office.test>", "Content-Type: text/plain", "", "Two coils were damaged.", "", "On Mon, 2 Nov 2026 at 10:00, Kaveri wrote:", "> earlier", ""].join("\r\n");
     await receiveEmail({ from: "mandar@joshi.test", to: "Kaveri.Help@in.the-office.test", raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/support-email"]]);
-    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ from: "mandar@joshi.test", name: "Mandar Joshi", subject: "Damaged coils", messageId: "<m1@joshi.test>", inReplyTo: "<csm-1@the-office.test>" });
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/support-email"]]);
+    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ from: "mandar@joshi.test", name: "Mandar Joshi", subject: "Damaged coils", messageId: "<m1@joshi.test>", inReplyTo: "<csm-1@the-office.test>" });
     expect(w.docs.map.size).toBe(0);
   });
 });
@@ -344,8 +349,8 @@ describe("the sales address", () => {
     const raw = (to: string) =>
       ["From: Amazon Seller Central <no-reply@amazon.in>", `To: ${to}`, "Subject: Your report is ready", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", "Content-Type: text/plain", "", "Attached.", "--b", 'Content-Type: text/csv; name="MTR.csv"', 'Content-Disposition: attachment; filename="MTR.csv"', "", "Order Id,Quantity", "--b--", ""].join("\r\n");
     await receiveEmail({ from: "no-reply@amazon.in", to: "kaveri.sales@in.the-office.test", raw: new Response(raw("kaveri.sales@in.the-office.test")).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/sales-email"]]);
-    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/sales-email"]]);
+    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
   });
 });
@@ -360,13 +365,13 @@ describe("the assistant's address", () => {
       receiveEmail({ from: envelope, to: "kaveri.assistant@in.the-office.test", headers: new Headers({ "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test", ...(results ? { "authentication-results": results } : {}) }), raw: new Response(raw(top)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
     const stamp = "mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass";
     await send([`Authentication-Results: ${stamp}`], stamp);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/assistant-email"]]);
-    const proven = JSON.parse(w.seen[0]!.body);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/assistant-email"]]);
+    const proven = JSON.parse(w.seen[1]!.body);
     expect(proven).toMatchObject({ envelope, from: "anil@kaverielectricals.in", subject: "Fwd: Statement please", authenticated: true, envelopeSigned: true });
     expect(proven).not.toHaveProperty("forwardedFor");
     // The same message with a forwarding header naming the owner, but nothing from Cloudflare to back it.
     await send(["X-Forwarded-For: anil@kaverielectricals.in kaveri.assistant@in.the-office.test", "Authentication-Results: mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass"]);
-    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ authenticated: false, envelopeSigned: false });
+    expect(JSON.parse(w.seen[3]!.body)).toMatchObject({ authenticated: false, envelopeSigned: false });
   });
 
   it("tells the office when a bill's sender could not be verified", async () => {
@@ -382,6 +387,29 @@ describe("the assistant's address", () => {
     await send(["mx.cloudflare.net; dmarc=fail header.from=supplier.test", "mx.cloudflare.net; dmarc=pass"]);
     const bodies = w.seen.filter((s) => s.path === "/internal/email").map((s) => JSON.parse(s.body) as { authenticated: boolean });
     expect(bodies.map((b) => b.authenticated)).toEqual([true, false]);
+  });
+
+  it("asks the office before storing anything of a message, and stores nothing it refuses", async () => {
+    const { w, anil, cp, A } = await twoOffices();
+    const admin = (await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { ingestEmail: string };
+    await cp.claimRoute(A, "sales_email", "kaveri.sales@in.the-office.test");
+    await cp.claimRoute(A, "assistant_email", "kaveri.assistant@in.the-office.test");
+    const raw = (to: string) =>
+      ["From: Someone <x@attacker.test>", `To: ${to}`, "Subject: Bill", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", 'Content-Type: application/pdf; name="bill.pdf"', 'Content-Disposition: attachment; filename="bill.pdf"', "Content-Transfer-Encoding: base64", "", btoa("%PDF-1.4 a bill"), "--b", 'Content-Type: text/csv; name="r.csv"', 'Content-Disposition: attachment; filename="r.csv"', "", "a,b", "--b--", ""].join("\r\n");
+    const send = (to: string) => receiveEmail({ from: "x@attacker.test", to, raw: new Response(raw(to)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    w.mail.admit = false;
+    for (const to of [admin.ingestEmail, "kaveri.sales@in.the-office.test", "kaveri.assistant@in.the-office.test"]) await send(to);
+    expect(w.docs.map.size).toBe(0);
+    expect(w.seen.map((s) => s.path)).toEqual(["/internal/mail-admit", "/internal/mail-admit", "/internal/mail-admit"]);
+    expect(w.seen.map((s) => JSON.parse(s.body) as { kind: string; bytes: number; from: string })).toMatchObject([
+      { kind: "email", bytes: 15, from: "x@attacker.test" },
+      { kind: "sales", bytes: 4 },
+      { kind: "assistant", bytes: 15 },
+    ]);
+    w.mail.admit = true;
+    await send(admin.ingestEmail);
+    expect(w.mail.storedBeforeAsked).toEqual([0, 0, 0, 0]);
+    expect(w.docs.map.size).toBe(1);
   });
 });
 

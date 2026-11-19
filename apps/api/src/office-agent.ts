@@ -24,7 +24,7 @@ import { BooksStore } from "./store";
 import { SqlRoutineLog } from "./routines";
 import { SqlCsStore } from "./customer/store";
 import { type AssistantInbound, draftReply, fetchCalendar, plainAddress, SqlAssistantStore } from "./assistant";
-import { forwardedByHand, type MailDocs, ownerOf, postsAlone, salesSender } from "./inbound";
+import { countMail, forwardedByHand, MAIL_LIMITS, type MailAdmission, type MailDocs, type MailRate, MAIL_REFUSED, mailSenderOk, ownerOf, postsAlone, provenSender, salesSender } from "./inbound";
 import { readSalesFile, salesReply, SqlSalesStore } from "./sales";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
@@ -386,6 +386,7 @@ export class Office extends Agent<Env> {
     const path = url.pathname;
     const post = request.method === "POST";
 
+    if (post && path === "/internal/mail-admit") return json(await this.admitMail((await request.json()) as MailAdmission));
     if (post && path === "/internal/email") return json(await this.receiveEmail((await request.json()) as MailDocs));
     if (post && path === "/internal/social/meta") return json(await this.receiveMeta(await request.json()));
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
@@ -1016,6 +1017,52 @@ export class Office extends Agent<Env> {
   /** Only mail from a party already in the books, proven to be theirs, may be posted without the owner. */
   private knownSender(from: string | null, docId: string): boolean {
     return postsAlone(this.office.books.parties, from, this.kv(`mail:verified:${docId}`) === "1");
+  }
+
+  /**
+   * Asked by the Worker before it stores anything of a message: this hour's limits for the sender
+   * and the office, the sender itself, then today's upload allowance. A refusal leaves one line in
+   * the team log (a limit, once an hour), and nothing of the message is kept.
+   */
+  private async admitMail(a: MailAdmission) {
+    const proven = provenSender(a)?.slice(0, 120) ?? null;
+    const sender = (proven ?? plainAddress(a.from) ?? plainAddress(a.envelope) ?? "an unknown sender").slice(0, 120);
+    let rate: MailRate | null = null;
+    try {
+      rate = JSON.parse(this.kv("mail:rate") ?? "null") as MailRate | null;
+    } catch {
+      rate = null;
+    }
+    const counted = countMail(rate, new Date().toISOString().slice(0, 13), proven);
+    this.kv("mail:rate", JSON.stringify(counted.state));
+    if (counted.refused) {
+      if (counted.first) this.office.log("office-manager", MAIL_REFUSED[counted.refused](sender));
+      return { admit: false };
+    }
+    const members = a.kind === "sales" || a.kind === "assistant" ? await this.plane().members(this.officeId!) : [];
+    const ok = mailSenderOk(a, { hired: (agent) => this.office.hired(agent), members });
+    if (ok === "refuse") this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.");
+    if (ok !== "admit") return { admit: false };
+    if (a.bytes > 0 && proven) {
+      try {
+        take(this.kv.bind(this), istDate(), "upload", a.bytes);
+      } catch (e) {
+        if (!(e instanceof QuotaError)) throw e;
+        this.office.log("office-manager", `Set aside an email from ${sender}: ${e.message}`);
+        return { admit: false };
+      }
+    } else if (a.bytes > 0) {
+      // Unproven mail has its own small allowance, so it cannot use up the office's uploads for the day.
+      const key = `mail:unproven-bytes:${istDate()}`;
+      const used = Number(this.kv(key) ?? 0);
+      if (used + a.bytes > MAIL_LIMITS.unprovenBytesDay) {
+        if (used <= MAIL_LIMITS.unprovenBytesDay) this.office.log("office-manager", "Set aside attachments from senders that could not be verified: today's allowance for them is used up. It starts again tomorrow.");
+        this.kv(key, String(MAIL_LIMITS.unprovenBytesDay + 1));
+        return { admit: false };
+      }
+      this.kv(key, String(used + a.bytes));
+    }
+    return { admit: true };
   }
 
   private async receiveEmail(mail: MailDocs) {

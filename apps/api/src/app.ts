@@ -31,8 +31,8 @@ import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
-import type { MailDocs } from "./inbound";
-import { envelopeProven, parseInbound } from "./mail";
+import type { MailAdmission, MailDocs, MailKind } from "./inbound";
+import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
@@ -558,12 +558,25 @@ app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 /** Every Authentication-Results header, as Cloudflare documents reading them; the first is its own. */
 const authResults = (message: ForwardableEmailMessage) => message.headers?.get("authentication-results") ?? null;
 
+/**
+ * The office says whether to take a message before anything of it is stored: its sender, this
+ * hour's limits and today's upload allowance. Nothing reaches R2 until it says yes.
+ */
+async function admitted(env: Env, officeId: string, kind: MailKind, mail: Inbound, envelope: string): Promise<boolean> {
+  const bytes = mail.attachments.reduce((n, a) => n + a.content.byteLength, 0);
+  const body: MailAdmission = { kind, from: mail.from, envelope, subject: mail.subject, authenticated: mail.authenticated, envelopeSigned: envelopeProven(mail, envelope), bytes };
+  const res = await toOffice(env, internal("/internal/mail-admit", body), system(officeId));
+  if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
+  return ((await res.json()) as { admit?: boolean }).admit === true;
+}
+
 /** Mail to `<slug>@INGEST_DOMAIN`: the address alone says which office it is for; any other address is refused. */
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
   const to = message.to.trim().toLowerCase();
   const support = await cp(env).routeFor("support_email", to);
   if (support) {
     const mail = await parseInbound(message.raw, { results: authResults(message) });
+    if (!(await admitted(env, support, "support", mail, message.from))) return;
     const body: SupportMail = { from: mail.from ?? message.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, inReplyTo: mail.inReplyTo };
     const res = await toOffice(env, internal("/internal/support-email", body), system(support));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
@@ -572,6 +585,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   const sales = await cp(env).routeFor("sales_email", to);
   if (sales) {
     const mail = await parseInbound(message.raw, { sheets: true, results: authResults(message) });
+    if (!(await admitted(env, sales, "sales", mail, message.from))) return;
     const docs: InboundDocs["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
@@ -586,6 +600,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   const assistant = await cp(env).routeFor("assistant_email", to);
   if (assistant) {
     const mail = await parseInbound(message.raw, { results: authResults(message) });
+    if (!(await admitted(env, assistant, "assistant", mail, message.from))) return;
     const docs: AssistantInbound["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
@@ -603,6 +618,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     return;
   }
   const mail = await parseInbound(message.raw, { results: authResults(message) });
+  if (!(await admitted(env, officeId, "email", mail, message.from))) return;
   const docs: InboundDocs["docs"] = [];
   for (const a of mail.attachments) {
     const id = newDocId();

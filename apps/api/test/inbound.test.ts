@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forwardedByHand, ownerOf, postsAlone, salesSender } from "../src/inbound";
+import { countMail, forwardedByHand, MAIL_LIMITS, type MailAdmission, type MailRate, mailSenderOk, ownerOf, postsAlone, provenSender, salesSender } from "../src/inbound";
 import { envelopeProven, mailVerdict, parseInbound } from "../src/mail";
 
 const bytes = (s: string) => new TextEncoder().encode(s).buffer as ArrayBuffer;
@@ -108,5 +108,68 @@ describe("what the office does with a sender", () => {
     // A forged owner From: that their own filter passed on is proven forwarded, but not forwarded by hand.
     expect(forwardedByHand(owners[0]!, { from: "anil@kaveri.test", authenticated: false })).toBe(false);
     expect(forwardedByHand(owners[0]!, { from: "Anil@Kaveri.test", authenticated: true })).toBe(true);
+  });
+});
+
+describe("what the office takes in before anything is stored", () => {
+  it("limits each proven sender, their domain and the office per hour, and says so once", () => {
+    const run = (state: MailRate | null, senders: (string | null)[], hour = "2026-11-19T10") => {
+      const out = [];
+      for (const who of senders) {
+        const r = countMail(state, hour, who);
+        state = r.state;
+        out.push(r);
+      }
+      return { state, out };
+    };
+    const one = run(null, Array(MAIL_LIMITS.perSenderHour + 2).fill("x@supplier.test"));
+    expect(one.out.filter((r) => !r.refused)).toHaveLength(MAIL_LIMITS.perSenderHour);
+    expect(one.out.slice(-2).map((r) => [r.refused, r.first])).toEqual([["sender", true], ["sender", false]]);
+    // One sender's flood does not shut out the others, and a new hour starts afresh.
+    expect(countMail(one.state, "2026-11-19T10", "bills@other.test").refused).toBeNull();
+    expect(countMail(one.state, "2026-11-19T11", "x@supplier.test").refused).toBeNull();
+    // Many addresses at one domain meet the domain's limit.
+    const domain = run(null, Array.from({ length: MAIL_LIMITS.perDomainHour + 1 }, (_, i) => `s${i}@attacker.test`));
+    expect(domain.out.at(-1)).toMatchObject({ refused: "domain", first: true });
+    // Many proven domains at once meet the office's own limit.
+    const office = run(null, Array.from({ length: MAIL_LIMITS.provenHour + 2 }, (_, i) => `s@d${i}.test`));
+    expect(office.out.filter((r) => r.refused).map((r) => `${r.refused}:${r.first}`)).toEqual(["office:true", "office:false"]);
+    expect(Object.keys(office.state!.senders)).toHaveLength(MAIL_LIMITS.provenHour);
+  });
+
+  it("keeps unproven mail to its own pool, so forged senders cannot lock out a real one", () => {
+    const flood = Array(MAIL_LIMITS.unprovenHour + 5).fill(null) as null[];
+    let state: MailRate | null = null;
+    const refused = [];
+    for (const who of flood) {
+      const r = countMail(state, "2026-11-19T10", who);
+      state = r.state;
+      if (r.refused) refused.push(`${r.refused}:${r.first}`);
+    }
+    expect(refused).toEqual(["unproven:true", ...Array(4).fill("unproven:false")]);
+    expect(state!.senders).toEqual({});
+    expect(countMail(state, "2026-11-19T10", "bills@supplier.test").refused).toBeNull();
+    // Only a proven address is ever a sender of its own.
+    expect(provenSender({ from: "bills@supplier.test", envelope: "x@attacker.test", authenticated: false, envelopeSigned: false })).toBeNull();
+    expect(provenSender({ from: "bills@supplier.test", envelope: "x@attacker.test", authenticated: true, envelopeSigned: false })).toBe("bills@supplier.test");
+    expect(provenSender({ from: "rakesh@sharma.test", envelope: "anil+caf_=x@gmail.com", authenticated: false, envelopeSigned: true })).toBe("anil@gmail.com");
+  });
+
+  it("refuses unproven senders at the sales address and strangers at the assistant's before anything is stored", () => {
+    const office = { hired: () => true, members: [{ email: "anil@kaveri.test", role: "owner" }, { email: "rajesh@kaveri.test", role: "accountant" }] };
+    const a = (o: Partial<MailAdmission>): MailAdmission => ({ kind: "email", from: "x@attacker.test", envelope: "x@attacker.test", subject: "Bill", authenticated: false, envelopeSigned: false, bytes: 10, ...o });
+    expect(mailSenderOk(a({ kind: "email" }), office)).toBe("admit");
+    expect(mailSenderOk(a({ kind: "support" }), office)).toBe("admit");
+    expect(mailSenderOk(a({ kind: "sales", from: "rajesh@kaveri.test" }), office)).toBe("refuse");
+    expect(mailSenderOk(a({ kind: "sales", from: "rajesh@kaveri.test", authenticated: true }), office)).toBe("admit");
+    expect(mailSenderOk(a({ kind: "sales", from: "no-reply@amazon.in", authenticated: true }), { ...office, hired: () => false })).toBe("drop");
+    expect(mailSenderOk(a({ kind: "assistant" }), office)).toBe("drop");
+    expect(mailSenderOk(a({ kind: "assistant", from: "rajesh@kaveri.test", authenticated: true }), office)).toBe("drop");
+    // Claimed as the owner's: taken in, and the office decides how far to trust it.
+    expect(mailSenderOk(a({ kind: "assistant", from: "anil@kaveri.test" }), office)).toBe("admit");
+    expect(mailSenderOk(a({ kind: "assistant", from: "forwarding-noreply@google.com", subject: "Gmail Forwarding Confirmation", authenticated: true }), office)).toBe("admit");
+    expect(mailSenderOk(a({ kind: "assistant", from: "forwarding-noreply@google.com", subject: "Gmail Forwarding Confirmation" }), office)).toBe("drop");
+    // The subject alone, from any proven domain, is not Google's confirmation.
+    expect(mailSenderOk(a({ kind: "assistant", from: "x@attacker.test", subject: "Gmail Forwarding Confirmation (#123456)", authenticated: true }), office)).toBe("drop");
   });
 });
