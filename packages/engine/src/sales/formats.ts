@@ -10,7 +10,8 @@ export type Format = {
   id: string;
   name: string;
   channel: SalesChannel;
-  kind: "sales" | "payout";
+  /** "summary" is a report of totals by product for a month, read by its own reader. */
+  kind: "sales" | "payout" | "summary";
   /** Every one of these headers must be present. */
   needs: string[];
   /** None of these may be present (to tell Amazon's B2C and B2B reports apart). */
@@ -20,6 +21,14 @@ export type Format = {
   status?: Record<string, SalesLineStatus | "skip">;
   /** When the file has no status column: "returns" for a file of returns, decided from its name. */
   statusFromName?: (file: string) => SalesLineStatus;
+  /** Columns added to a field's own, as when the price, shipping and GST are given apart. */
+  add?: Partial<Record<"gross" | "taxable", string[]>>;
+  /** Rows whose status is not a sale or return (fees, transfers) belong to the payout read from the same sheet, so they are not listed as left out. */
+  rest?: "payout";
+  /** The same sheet also says what the platform paid. */
+  alsoPayout?: boolean;
+  /** The file's other sheets are this report's summary and notes, not reports of their own. */
+  wholeFile?: boolean;
 };
 
 const AMAZON_FIELDS: Format["fields"] = {
@@ -68,6 +77,31 @@ export const FORMATS: Format[] = [
     fields: {},
   },
   {
+    // Payments → Reports → "Transaction" date range report: orders, refunds, fees and transfers to the bank, posted date by date.
+    id: "amazon-transactions",
+    name: "Amazon transaction report",
+    channel: "amazon",
+    kind: "sales",
+    needs: ["date time", "settlement id", "type", "order id", "product sales", "selling fees", "total"],
+    fields: {
+      date: ["date time"],
+      order: ["order id"],
+      qty: ["quantity"],
+      gross: ["product sales"],
+      taxable: ["product sales"],
+      tax: ["total sales tax liable"],
+      sku: ["sku"],
+      item: ["description"],
+      state: ["order state"],
+      city: ["order city"],
+      status: ["type"],
+    },
+    add: { gross: ["shipping credits", "gift wrap credits", "promotional rebates", "total sales tax liable"], taxable: ["shipping credits", "gift wrap credits", "promotional rebates"] },
+    status: { order: "sold", refund: "returned" },
+    rest: "payout",
+    alsoPayout: true,
+  },
+  {
     id: "flipkart-sales",
     name: "Flipkart sales report",
     channel: "flipkart",
@@ -105,6 +139,16 @@ export const FORMATS: Format[] = [
       state: ["end customer state new"],
     },
     statusFromName: (file) => (/return/i.test(file) ? "returned" : "sold"),
+  },
+  {
+    // The Partner Portal's monthly "Profit & Loss" workbook: totals by SKU, no orders.
+    id: "myntra-pnl",
+    name: "Myntra P&L report",
+    channel: "myntra",
+    kind: "summary",
+    needs: ["sku code", "grosssalesamount", "grosssalesunit", "returnsandcancellationsamount", "banksettlement projected"],
+    fields: {},
+    wholeFile: true,
   },
 ];
 export const FORMAT_BY_ID: Record<string, Format> = Object.fromEntries(FORMATS.map((f) => [f.id, f]));
@@ -197,6 +241,7 @@ export function channelHint(file: string, sender: string | null): SalesChannel |
   if (/amazon/.test(s)) return "amazon";
   if (/flipkart|ekart/.test(s)) return "flipkart";
   if (/meesho/.test(s)) return "meesho";
+  if (/myntra/.test(s)) return "myntra";
   if (/blinkit|grofers/.test(s)) return "blinkit";
   if (/zepto/.test(s)) return "zepto";
   if (/swiggy|instamart/.test(s)) return "instamart";

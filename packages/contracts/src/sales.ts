@@ -11,6 +11,7 @@ export const SALES_CHANNELS = [
   { id: "amazon", name: "Amazon", kind: "marketplace" },
   { id: "flipkart", name: "Flipkart", kind: "marketplace" },
   { id: "meesho", name: "Meesho", kind: "marketplace" },
+  { id: "myntra", name: "Myntra", kind: "marketplace" },
   { id: "blinkit", name: "Blinkit", kind: "quick" },
   { id: "zepto", name: "Zepto", kind: "quick" },
   { id: "instamart", name: "Swiggy Instamart", kind: "quick" },
@@ -19,7 +20,7 @@ export const SALES_CHANNELS = [
   { id: "website", name: "Your website", kind: "own" },
   { id: "other", name: "Other", kind: "marketplace" },
 ] as const;
-export const SalesChannel = z.enum(["amazon", "flipkart", "meesho", "blinkit", "zepto", "instamart", "bigbasket", "jiomart", "website", "other"]);
+export const SalesChannel = z.enum(["amazon", "flipkart", "meesho", "myntra", "blinkit", "zepto", "instamart", "bigbasket", "jiomart", "website", "other"]);
 export type SalesChannel = z.infer<typeof SalesChannel>;
 export const CHANNEL_NAME: Record<SalesChannel, string> = Object.fromEntries(SALES_CHANNELS.map((c) => [c.id, c.name])) as Record<SalesChannel, string>;
 
@@ -50,7 +51,11 @@ export type ColumnMapping = z.infer<typeof ColumnMapping>;
 export const SalesLineStatus = z.enum(["sold", "returned", "cancelled"]);
 export type SalesLineStatus = z.infer<typeof SalesLineStatus>;
 
-/** One line of one order, as the platform reported it. Amounts in paise; a return is recorded as a return, not as a negative sale. */
+/**
+ * One line of one order, as the platform reported it. Amounts in paise; a return is recorded as a
+ * return, not as a negative sale. A platform that reports only totals by product for a month (Myntra's
+ * P&L report) gives one line per product with an empty order, counted in sales and units but not in orders.
+ */
 export const SalesLine = z.object({
   id: z.string(),
   importId: z.string(),

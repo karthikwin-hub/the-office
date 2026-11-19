@@ -37,9 +37,10 @@ export function OnlineSalesView({ report, compact }: { report: OnlineSalesReport
               initialSort={{ id: "g", desc: true }}
               columns={[
                 { id: "n", header: "Channel", cell: (r) => <span className="os-channel"><i style={{ background: colour.get(r.channel) }} aria-hidden="true" />{r.name}</span>, sortBy: (r) => r.name },
-                { id: "o", header: "Orders", cell: (r) => r.orders.toLocaleString("en-IN"), sortBy: (r) => r.orders, numeric: true },
+                // A platform that reports only totals by product (Myntra) gives units but no orders.
+                { id: "o", header: "Orders", cell: (r) => (r.orders || !r.units ? r.orders.toLocaleString("en-IN") : <span title={`${r.name} reports totals by product, not orders`}>–</span>), sortBy: (r) => r.orders, numeric: true },
                 { id: "g", header: "Sales", cell: (r) => <Amount paise={r.grossPaise} rupees />, sortBy: (r) => r.grossPaise, numeric: true },
-                { id: "a", header: "Average order", cell: (r) => <Amount paise={r.aovPaise} rupees />, sortBy: (r) => r.aovPaise, numeric: true, secondary: true },
+                { id: "a", header: "Average order", cell: (r) => (r.orders ? <Amount paise={r.aovPaise} rupees /> : "–"), sortBy: (r) => r.aovPaise, numeric: true, secondary: true },
                 { id: "r", header: "Returns", cell: (r) => `${r.returnsPct}%`, sortBy: (r) => r.returnsPct, numeric: true },
                 { id: "c", header: "Cancelled", cell: (r) => r.cancelled.toLocaleString("en-IN"), sortBy: (r) => r.cancelled, numeric: true, secondary: true },
                 { id: "v", header: "Change", cell: (r) => pctText(r.vsPreviousPct), sortBy: (r) => r.vsPreviousPct ?? 0, numeric: true, secondary: true },

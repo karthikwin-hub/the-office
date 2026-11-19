@@ -71,6 +71,8 @@ export function numberOf(raw: string | undefined): number | null {
 }
 
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+/** "Oct", "Sept" or "October": the regexes take up to four letters, so a full name is looked up by its first three. */
+const monthOf = (word: string) => MONTHS[word.toLowerCase()] ?? MONTHS[word.slice(0, 3).toLowerCase()];
 const iso = (y: number, m: number, d: number) => {
   if (y < 100) y += 2000;
   if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
@@ -103,12 +105,21 @@ export function dateOf(raw: string | undefined): string | null {
     }
     return d;
   }
-  if ((m = /^(\d{1,2})[-\s]([a-z]{3,4})[a-z]*[-\s,]+(\d{2,4})/i.exec(s))) {
-    const mo = MONTHS[m[2]!.toLowerCase()];
-    return mo ? iso(+m[3]!, mo, +m[1]!) : null;
+  // "03-Oct-2026", or Amazon's "1 Oct 2026 8:33:52 pm UTC".
+  if ((m = /^(\d{1,2})[-\s]([a-z]{3,4})[a-z]*[-\s,]+(\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?\s*(utc|gmt|z)?)?/i.exec(s))) {
+    const mo = monthOf(m[2]!);
+    const d = mo ? iso(+m[3]!, mo, +m[1]!) : null;
+    if (d && m[4] && m[7]) {
+      let h = +m[4] % 12;
+      if (!m[6]) h = +m[4];
+      else if (m[6].toLowerCase() === "pm") h += 12;
+      const t = Date.parse(`${d}T${String(h).padStart(2, "0")}:${m[5]}:00Z`);
+      if (Number.isFinite(t)) return new Date(t + 5.5 * 3600_000).toISOString().slice(0, 10);
+    }
+    return d;
   }
   if ((m = /^([a-z]{3,4})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i.exec(s))) {
-    const mo = MONTHS[m[1]!.toLowerCase()];
+    const mo = monthOf(m[1]!);
     return mo ? iso(+m[3]!, mo, +m[2]!) : null;
   }
   if (/^\d{5}(\.\d+)?$/.test(s)) {

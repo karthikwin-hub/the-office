@@ -123,7 +123,7 @@ export class SqlSalesStore implements SalesStore {
 }
 
 /** The platforms whose mail is taken at the sales address, besides the office's own people. */
-const PLATFORM_DOMAINS = /(^|\.)(amazon\.(in|com)|flipkart\.com|meesho\.com|blinkit\.com|grofers\.com|zeptonow\.com|zepto\.co\.in|swiggy\.(in|com)|bigbasket\.com|jiomart\.com|ril\.com)$/i;
+const PLATFORM_DOMAINS = /(^|\.)(amazon\.(in|com)|flipkart\.com|meesho\.com|myntra\.com|blinkit\.com|grofers\.com|zeptonow\.com|zepto\.co\.in|swiggy\.(in|com)|bigbasket\.com|jiomart\.com|ril\.com)$/i;
 export const fromPlatform = (address: string | null) => Boolean(address && PLATFORM_DOMAINS.test(address.split("@")[1] ?? ""));
 
 /** A spreadsheet, CSV, text export or zip that might be a sales report. */

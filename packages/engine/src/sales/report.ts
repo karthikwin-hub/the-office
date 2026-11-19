@@ -10,11 +10,18 @@ const label = (from: string, to: string) => {
   return `${f(from, from.slice(0, 4) !== to.slice(0, 4))} to ${f(to, true)}`;
 };
 
-type Sums = { orders: Set<string>; units: number; gross: number; returned: number; returnedUnits: number; cancelled: Set<string>; last: string | null };
-const sums = (): Sums => ({ orders: new Set(), units: 0, gross: 0, returned: 0, returnedUnits: 0, cancelled: new Set(), last: null });
+/** `ordered` is the sales on lines with an order number: a platform's summary by product has none, so it stays out of the average order. */
+type Sums = { orders: Set<string>; units: number; gross: number; ordered: number; returned: number; returnedUnits: number; cancelled: Set<string>; last: string | null; days: Set<string> };
+const sums = (): Sums => ({ orders: new Set(), units: 0, gross: 0, ordered: 0, returned: 0, returnedUnits: 0, cancelled: new Set(), last: null, days: new Set() });
+/** Against the period before only when that period was reported too: on at least half as many days. */
+const against = (now: Sums, before: Sums | undefined) => (before && before.days.size * 2 >= now.days.size ? change(now.gross, before.gross) : null);
+const aov = (s: Sums) => (s.orders.size ? Math.round(s.ordered / s.orders.size) : 0);
 function add(s: Sums, l: SalesLine) {
   if (l.status === "sold") {
-    s.orders.add(`${l.channel}|${l.order}`);
+    if (l.order) {
+      s.orders.add(`${l.channel}|${l.order}`);
+      s.ordered += l.grossPaise;
+    }
     s.units += l.qty;
     s.gross += l.grossPaise;
   } else if (l.status === "returned") {
@@ -22,6 +29,7 @@ function add(s: Sums, l: SalesLine) {
     s.returnedUnits += l.qty;
   } else s.cancelled.add(`${l.channel}|${l.order}`);
   if (!s.last || l.date > s.last) s.last = l.date;
+  s.days.add(l.date);
 }
 
 /**
@@ -59,8 +67,8 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
       returnedPaise: s.returned,
       returnsPct: pct(s.returned, s.gross),
       cancelled: s.cancelled.size,
-      aovPaise: s.orders.size ? Math.round(s.gross / s.orders.size) : 0,
-      vsPreviousPct: change(s.gross, prevByChannel.get(channel)?.gross ?? 0),
+      aovPaise: aov(s),
+      vsPreviousPct: against(s, prevByChannel.get(channel)),
       lastDate: s.last,
     }))
     .sort((a, b) => b.grossPaise - a.grossPaise);
@@ -82,7 +90,8 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
   const skuName = new Map(opts.skus.map((s) => [s.id, s.name]));
   const bySku = new Map<string, { skuId: string | null; name: string; units: number; gross: number; returnedUnits: number; channels: Set<SalesChannel> }>();
   for (const l of lines) {
-    const key = l.skuId ?? (l.sellerSku || l.item || "Unnamed item").toLowerCase();
+    // Without a match in the catalogue, a product is known by its name, so the same item listed under two codes (Amazon's own and FBA) is one row.
+    const key = l.skuId ?? (l.item || l.sellerSku || "Unnamed item").toLowerCase();
     const cur = bySku.get(key) ?? { skuId: l.skuId, name: (l.skuId && skuName.get(l.skuId)) || l.item || l.sellerSku || "Unnamed item", units: 0, gross: 0, returnedUnits: 0, channels: new Set() };
     if (l.status === "sold") {
       cur.units += l.qty;
@@ -102,7 +111,7 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
     for (const [map, key] of [[byState, l.state], [byCity, l.city]] as const) {
       if (!key) continue;
       const cur = map.get(key) ?? { orders: new Set<string>(), gross: 0 };
-      cur.orders.add(`${l.channel}|${l.order}`);
+      if (l.order) cur.orders.add(`${l.channel}|${l.order}`);
       cur.gross += l.grossPaise;
       map.set(key, cur);
     }
@@ -116,8 +125,8 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
     grossPaise: total.gross,
     returnedPaise: total.returned,
     returnsPct: pct(total.returned, total.gross),
-    aovPaise: total.orders.size ? Math.round(total.gross / total.orders.size) : 0,
-    vsPreviousPct: change(total.gross, prevTotal.gross),
+    aovPaise: aov(total),
+    vsPreviousPct: against(total, prevTotal),
   };
   const top = channels[0];
   const note = !lines.length

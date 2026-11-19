@@ -4,7 +4,7 @@ import { inrShort } from "../money";
 import type { OfficeService } from "../office";
 import { channelHint, findHeader, guessMapping, layoutKey, missingFields } from "./formats";
 import type { Sheet } from "./parse";
-import { readAmazonSettlement, readLines } from "./read";
+import { type ReadResult, readAmazonSettlement, readAmazonTransactions, readLines, readMyntraPnl } from "./read";
 import { onlineSalesReport } from "./report";
 import type { SalesStore } from "./store";
 
@@ -40,7 +40,10 @@ export class SalesService {
     }
     const out: SalesImport[] = [];
     const sheets = f.sheets.filter((s) => s.rows.length > 1);
+    // A workbook whose report has its summary and notes on other sheets is read as that one report.
+    const main = sheets.find((s) => findHeader(s.rows).format?.wholeFile);
     for (const [n, sheet] of sheets.entries()) {
+      if (main && sheet !== main) continue;
       const hash = sheets.length > 1 ? `${f.hash}#${n}` : f.hash;
       const label = sheets.length > 1 ? `${f.file} (${sheet.name})` : f.file;
       const r = this.readSheet({ ...f, file: label, hash }, sheet);
@@ -70,7 +73,27 @@ export class SalesService {
       this.office.log(SALES_AGENT, `Read a ${format.name}: ${inrShort(p.netPaise)} paid.`, { kind: "sales_import", id });
       return imp;
     }
-    if (format) return this.finish({ ...base, channel: format.channel, format: format.id, formatName: format.name, status: "read", note: "" }, readLines({ rows: sheet.rows, headerAt: at, channel: format.channel, file: f.file, format, skus: this.office.books.skus }));
+    if (format?.kind === "summary") {
+      const r = readMyntraPnl({ rows: sheet.rows, headerAt: at, sheets: f.sheets, skus: this.office.books.skus });
+      let extra = "";
+      if (r.payout) {
+        this.store.savePayout({ ...r.payout, id: newId("pay"), importId: id });
+        extra = ` ${CHANNEL_NAME[format.channel]} expects to pay ${inrShort(r.payout.netPaise)} for the month${r.settled !== null ? `; ${inrShort(r.settled)} settled so far` : ""}.`;
+      }
+      return this.finish({ ...base, channel: format.channel, format: format.id, formatName: format.name, status: "read", note: "" }, r, `${extra} A monthly summary by product: counted on the month's last day, without orders.`);
+    }
+    if (format) {
+      const r = readLines({ rows: sheet.rows, headerAt: at, channel: format.channel, file: f.file, format, skus: this.office.books.skus });
+      let extra = "";
+      if (format.alsoPayout) {
+        const p = readAmazonTransactions(sheet.rows, at);
+        if (p) {
+          this.store.savePayout({ ...p, id: newId("pay"), importId: id });
+          extra = p.paidOn ? ` ${CHANNEL_NAME[format.channel]} paid ${inrShort(p.netPaise)} to your bank, last on ${day(p.paidOn)}.` : "";
+        }
+      }
+      return this.finish({ ...base, channel: format.channel, format: format.id, formatName: format.name, status: "read", note: "" }, r, extra);
+    }
 
     const known = this.store.mapping(layoutKey(headers));
     if (known) {
@@ -107,10 +130,12 @@ export class SalesService {
     };
   }
 
-  private finish(imp: SalesImport, r: ReturnType<typeof readLines>): SalesImport {
+  private finish(imp: SalesImport, r: ReadResult, extra = ""): SalesImport {
     const lines: SalesLine[] = r.lines.map((l) => ({ ...l, importId: imp.id }));
     const added = this.store.addLines(lines);
     const sold = lines.filter((l) => l.status === "sold");
+    const orders = new Set(sold.filter((l) => l.order).map((l) => l.order)).size;
+    const counted = orders ? plural(orders, "order") : plural(sold.reduce((a, l) => a + l.qty, 0), "unit");
     const done: SalesImport = {
       ...imp,
       lines: lines.length,
@@ -119,7 +144,7 @@ export class SalesService {
       period: r.period,
       grossPaise: sold.reduce((a, l) => a + l.grossPaise, 0),
       note: lines.length
-        ? `${plural(new Set(sold.map((l) => l.order)).size, "order")}, ${inrShort(sold.reduce((a, l) => a + l.grossPaise, 0))}${r.period ? `, ${r.period.from === r.period.to ? day(r.period.from) : `${day(r.period.from)} to ${day(r.period.to)}`}` : ""}.${lines.length - added ? ` ${plural(lines.length - added, "line")} had come in before and were not counted twice.` : ""}${r.skipped.length ? ` ${plural(r.skipped.length, "row")} left out.` : ""}`
+        ? `${counted}, ${inrShort(sold.reduce((a, l) => a + l.grossPaise, 0))}${r.period ? `, ${r.period.from === r.period.to ? day(r.period.from) : `${day(r.period.from)} to ${day(r.period.to)}`}` : ""}.${lines.length - added ? ` ${plural(lines.length - added, "line")} had come in before and were not counted twice.` : ""}${r.skipped.length ? ` ${plural(r.skipped.length, "row")} left out.` : ""}${r.inPayout ? ` ${plural(r.inPayout, "row")} of fees and transfers went into the payout.` : ""}${extra}`
         : `Nothing could be read: ${r.skipped[0]?.reason ?? "no rows"}`,
     };
     this.store.saveImport(done);
@@ -166,11 +191,12 @@ export class SalesService {
     return true;
   }
 
-  /** The period ends on the latest day the reports cover, so a monthly report is not shown as a quiet week. */
+  /** The period ends on the latest day the reports cover, so a monthly report is not shown as a quiet week; a period ending on a month's last day is that month. */
   report(opts: { from?: string; to?: string } = {}): OnlineSalesReport {
     const last = this.store.lastDate();
     const to = opts.to ?? (last && last < this.office.asOf ? last : this.office.asOf);
-    const from = opts.from ?? addDays(to, -29);
+    // Reports that end on a month's last day are shown as that month.
+    const from = opts.from ?? (addDays(to, 1).endsWith("-01") ? `${to.slice(0, 7)}-01` : addDays(to, -29));
     const days = daysBetween(from, to) + 1;
     const prevTo = addDays(from, -1);
     const prevFrom = addDays(prevTo, -(Math.max(days, 28) - 1));

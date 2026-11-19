@@ -194,3 +194,94 @@ describe("files", () => {
     await expect(readSheets("old.xls", new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]))).rejects.toThrow(/save it as \.xlsx/);
   });
 });
+
+// Amazon's transaction (date range) report: notes above the header, then orders, refunds, fees and transfers.
+const TXN_HEAD = ["date/time", "settlement id", "type", "order id", "Sku", "description", "quantity", "marketplace", "account type", "fulfillment", "order city", "order state", "order postal", "product sales", "shipping credits", "gift wrap credits", "promotional rebates", "Total sales tax liable(GST before adjusting TCS)", "TCS-CGST", "TCS-SGST", "TCS-IGST", "TDS (Section 194-O)", "selling fees", "fba fees", "other transaction fees", "other", "total", "Transaction Status", "Transaction Release Date"];
+const txn = (...rows: (string | number)[][]) =>
+  [`"Includes Amazon Marketplace, Fulfillment by Amazon (FBA), and Amazon Webstore transactions"`, `"All amounts in INR, unless specified"`, `"Selling fees: Includes variable closing fees and referral fees."`, csv([TXN_HEAD, ...rows])].join("\r\n");
+const order = (when: string, id: string, sku: string, qty: number, sales: string, tax: string, state: string, fees: string, total: string) => [when, "S1", "Order", id, sku, `${sku === "SW-6A" ? "Modular switch 6A" : "LED panel 12W"} | Long lasting | ISI marked`, qty, "amazon.in", "Card", "Merchant", "PUNE", state, "411001", sales, "0", "0", "0", tax, "0", "0", "-2.50", "-0.50", fees, "0", "-50.00", "0", total, "Released", ""];
+const amazonTxn = () =>
+  txn(
+    order("1 Oct 2026 8:33:52 am UTC", "402-1", "SW-6A", 1, "1,000.00", "180.00", "KARNATAKA", "-100.00", "1,027.00"),
+    order("1 Oct 2026 8:40:00 pm UTC", "402-1", "LED-12", 1, "500.00", "90.00", "KARNATAKA", "-50.00", "487.00"),
+    ["5 Oct 2026 9:00:00 am UTC", "S1", "Refund", "402-1", "LED-12", "LED panel 12W", 1, "amazon.in", "Card", "Merchant", "PUNE", "KARNATAKA", "411001", "-500.00", "0", "0", "0", "-90.00", "0", "0", "2.50", "0", "50.00", "0", "50.00", "0", "-487.50", "Released", ""],
+    ["6 Oct 2026 9:00:00 am UTC", "S1", "Shipping Services", "402-1", "", "Easy Ship weight handling fees", "", "amazon.in", "", "Merchant", "", "", "", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-88.50", "0", "-88.50", "Released", ""],
+    ["7 Oct 2026 9:00:00 am UTC", "S1", "Service Fee", "", "", "Cost of Advertising", "", "", "", "", "", "", "", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-100.00", "-18.00", "-118.00", "Released", ""],
+    ["8 Oct 2026 10:30:00 pm UTC", "S1", "Transfer", "", "", "To account ending with: 999", "", "", "", "", "", "", "", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-700.00", "-700.00", "Released", ""],
+  );
+
+// Myntra's P&L workbook: a summary sheet, a glossary, and totals by SKU.
+const myntraBook = (month = "October 2026") => [
+  { name: "PnL_Summary", rows: [["Report Specifications"], ["Report Type:", "Profit & Loss Report"], ["Orders Received During:", month], ["Item", "Amount (INR)", "Units"], ["Gross Sales", "3000", "4"], ["Returns and Cancellations", "-500", "-1"]] },
+  { name: "Glossary", rows: [["Column Name", "Description"], ["sku_code", "Seller's SKU code for the product"]] },
+  {
+    name: "SKU_Detail",
+    rows: [
+      ["seller_id", "sku_code", "article_type", "brand_name", "GrossSalesAmount", "GrossSalesUnit", "ReturnsandCancellationsAmount", "ReturnsandCancellationsUnit", "FwdCommissionFee", "RevCommissionFee", "FwdTaxesTCS", "RevTaxesTCS", "FwdTaxesTDS", "RevTaxesTDS", "FwdLogisticCharge", "RevLogisticCharge", "BankSettlement_Projected", "BankSettlement_Settled"],
+      ["1", "SW-6A", "Switches", "Kaveri", "2000", "3", "500", "1", "100", "25", "10", "2.5", "2", "0.5", "80", "60", "1776", "1500"],
+      ["1", "MY-LAMP", "Lamps", "Kaveri", "1000", "1", "0", "0", "50", "0", "5", "0", "1", "0", "40", "0", "904", "904"],
+    ],
+  },
+];
+
+describe("Amazon's transaction report and Myntra's P&L", () => {
+  it("reads Amazon's posted times as the date in India, and full month names", () => {
+    expect(dateOf("1 Oct 2026 8:33:52 am UTC")).toBe("2026-10-01");
+    expect(dateOf("1 Oct 2026 8:40:00 pm UTC")).toBe("2026-10-02");
+    expect(dateOf("1 October 2026")).toBe("2026-10-01");
+    expect(dateOf("September 3, 2026")).toBe("2026-09-03");
+  });
+
+  it("counts orders and refunds with GST, and puts fees, TCS, TDS and transfers in a payout", () => {
+    const o = office();
+    const [imp] = file(o, "Amazon Sales Report.csv", amazonTxn());
+    expect(imp).toMatchObject({ format: "amazon-transactions", channel: "amazon", status: "read", lines: 3, skipped: [] });
+    expect(imp!.note).toMatch(/1 order, ₹1,770.*3 rows of fees and transfers went into the payout.*paid ₹700 to your bank, last on 9 Oct/);
+    const lines = o.sales.store.lines("2026-10-01", "2026-10-31");
+    expect(lines.find((l) => l.sellerSku === "SW-6A")).toMatchObject({ status: "sold", grossPaise: 118000, taxablePaise: 100000, taxPaise: 18000, state: "29", item: "Modular switch 6A", date: "2026-10-01" });
+    expect(lines.find((l) => l.sellerSku === "LED-12" && l.status === "sold")!.date).toBe("2026-10-02");
+    expect(lines.find((l) => l.status === "returned")).toMatchObject({ grossPaise: 59000, qty: 1 });
+    const [p] = o.sales.store.payouts(5);
+    expect(p).toMatchObject({ channel: "amazon", netPaise: 70000, paidOn: "2026-10-09", from: "2026-10-01", to: "2026-10-09" });
+    const part = (label: string) => p!.parts.find((x) => x.label === label)?.paise;
+    expect(part("Sales, with GST")).toBe(177000);
+    expect(part("Refunds, with GST")).toBe(-59000);
+    expect(part("Tax withheld: TCS")).toBe(-250);
+    expect(part("Advertising")).toBe(-11800);
+    expect(part("Fees: shipping")).toBe(-8850);
+    // The parts add up to what was paid: what Amazon still holds is one of them.
+    expect(p!.parts.reduce((a, x) => a + x.paise, 0)).toBe(70000);
+  });
+
+  it("reads Myntra's P&L as one report of sales and returns by SKU, with no orders and its payout", () => {
+    const o = office();
+    const [imp, ...rest] = o.sales.receive({ file: "Myntra Sales Report.xlsx", sheets: myntraBook(), hash: "m1", via: "upload", sender: null });
+    expect(rest).toHaveLength(0);
+    expect(o.books.staged.filter((s) => s.kind === "sales_mapping")).toHaveLength(0);
+    expect(imp).toMatchObject({ format: "myntra-pnl", channel: "myntra", status: "read", lines: 3, period: { from: "2026-10-31", to: "2026-10-31" } });
+    expect(imp!.note).toMatch(/^4 units, ₹3,000, 31 Oct\. Myntra expects to pay ₹2,680 for the month; ₹2,404 settled so far/);
+    const lines = o.sales.store.lines("2026-10-01", "2026-10-31");
+    expect(lines.every((l) => l.order === "" && l.channel === "myntra")).toBe(true);
+    expect(lines.find((l) => l.sellerSku === "SW-6A" && l.status === "returned")).toMatchObject({ qty: 1, grossPaise: 50000, item: "Kaveri Switches (SW-6A)" });
+    const [p] = o.sales.store.payouts(5);
+    expect(p).toMatchObject({ channel: "myntra", netPaise: 268000, from: "2026-10-01", to: "2026-10-31" });
+    expect(p!.parts.find((x) => x.label === "Fees: commission")!.paise).toBe(-12500);
+
+    // Alongside Amazon: Myntra's sales count, but not in orders or the average order.
+    file(o, "Amazon Sales Report.csv", amazonTxn());
+    const r = o.sales.report();
+    expect(r.period).toMatchObject({ from: "2026-10-01", to: "2026-10-31" });
+    expect(r.channels.find((c) => c.channel === "myntra")).toMatchObject({ orders: 0, units: 4, grossPaise: 300000, aovPaise: 0 });
+    expect(r.totals).toMatchObject({ orders: 1, grossPaise: 477000, aovPaise: 177000, vsPreviousPct: null });
+
+    // The same month sent again under another name is not counted twice.
+    const [again] = o.sales.receive({ file: "Myntra Oct.xlsx", sheets: myntraBook(), hash: "m2", via: "email", sender: "reports@myntra.com" });
+    expect(again).toMatchObject({ lines: 3, repeated: 3 });
+  });
+
+  it("says so when Myntra's report does not give its month", () => {
+    const o = office();
+    const [imp] = o.sales.receive({ file: "Myntra.xlsx", sheets: myntraBook("").map((s) => (s.name === "PnL_Summary" ? { ...s, rows: s.rows.filter((r) => !/received/i.test(r[0]!)) } : s)), hash: "m3", via: "upload", sender: null });
+    expect(imp).toMatchObject({ lines: 0, note: "Nothing could be read: The report does not say which month it covers." });
+  });
+});
