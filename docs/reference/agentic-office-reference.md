@@ -204,9 +204,13 @@ The Lived-in look turns the Floor into a papercraft pop-up book. It is a picture
 
 | Concern | Control |
 | --- | --- |
-| Sign-in | Email and password (better-auth), email confirmation before opening an office or accepting an invitation, rate limiting |
-| Isolation between businesses | Membership check in the Worker, identity check in the Durable Object, a database per office, a file folder per office |
-| Invitations | Single use, bound to the invited address, 14 days, only a hash stored |
+| Sign-in | Email and password (better-auth), email confirmation before opening an office or accepting an invitation, rate limiting by Cloudflare's own client address; sign-up does not show which addresses have accounts |
+| Two-step sign-in | A code from an authenticator app (or a backup code) for office owners and platform owners, set up at their first visit |
+| Sessions | End after 12 idle hours; exporting, inviting, changing roles, handing over, deleting an office and console changes ask to confirm again after 15 minutes |
+| Browser | Strict security headers on every page; changes only from the app's own pages; stored files open in the browser only as PDF or picture, sandboxed |
+| Inbound email | A sender is trusted only when Cloudflare proves it; anything else waits on your desk |
+| Isolation between businesses | Membership check in the Worker, a sealed caller and an identity check in the Durable Object, a database per office, a file folder per office |
+| Invitations | Single use, bound to the invited address, 14 days, only a hash stored, never in a URL the server logs; the console can invite an owner only into an office that has none |
 | Password reset | A link by email that works once, for an hour; other sessions are signed out |
 | Platform tokens | Encrypted per office with a key derived from `SOCIAL_TOKEN_KEY` |
 | Operators | The platform console and admin tool see the control plane only; there is no command to read a business's books |
@@ -221,7 +225,7 @@ The same app built with `VITE_DATA=mock` answers every real API route inside the
 
 ## 11. Quality
 
-The engine has 384 automated tests (tax, ageing, audit, compliance, imports, social, WhatsApp, the 3D office's sky, routes and paper trail) and the Worker 118 (including a two-office isolation suite). `tools/e2e/live.mjs` drives a browser through the live product end to end.
+The engine has 426 automated tests (tax, ageing, audit, compliance, imports, social, WhatsApp, the 3D office's sky, routes and paper trail), the Worker 202 (including a two-office isolation suite, sign-in and inbound mail), and 11 more run the office itself inside Cloudflare's runtime. GitHub Actions runs them, with the type check, on every pull request. The security review of November 2026 and its open work are in `docs/security/README.md`.
 
 # Domains and environments
 

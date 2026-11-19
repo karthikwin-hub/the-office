@@ -92,12 +92,13 @@ Per-office regions are not built yet; every office's live books sit wherever Clo
 
 Both web builds write to `apps/web/dist`, so they are built and deployed one at a time.
 
-1. **Check:** `pnpm test`, `pnpm typecheck`, and the end-to-end check against a local Worker (`tools/e2e/live.mjs`).
-2. **Back up:** `infisical run --env=dev --silent -- node tools/admin/admin.mjs backup` writes the control plane to `backups/` (git-ignored).
-3. **Migrate:** apply D1 migrations to the remote database.
-4. **Deploy live:** build the live web app, then `wrangler deploy` from `apps/api`.
-5. **Deploy demo:** build with `VITE_DATA=mock`, then `wrangler deploy -c ../web/wrangler.mock.jsonc`.
-6. **Smoke check:** health returns 200; office paths without a session return 401; a forged media link returns 404; `admin.mjs list` shows the offices.
+1. **Check:** every pull request runs `pnpm typecheck` and `pnpm test` in GitHub Actions and is merged only green; run `/security-review` and `/code-review` on changes to `apps/api`. For a large change, run the real Worker locally (`api-local` in `.claude/launch.json`) and walk the main flows: the browser end-to-end script `tools/e2e/live.mjs` predates two-step sign-in.
+2. **Back up:** `infisical run --env=dev --silent -- node tools/admin/admin.mjs backup` writes the control plane to `backups/` (git-ignored). Delete the file once the release has settled.
+3. **Migrate and deploy live:** `infisical run --env=dev --silent -- sh tools/admin/deploy.sh` builds the web app, applies D1 migrations to the remote database, then deploys. Migrations run before the new code is live, so they only add.
+4. **Deploy demo:** build with `VITE_DATA=mock`, then `wrangler deploy -c ../web/wrangler.mock.jsonc`.
+5. **Smoke check:** health returns 200; office paths without a session return 401; a forged media link returns 404; a POST from another origin returns 403; the security headers are on app, office and console (commands in `docs/security/README.md`); `admin.mjs list` shows the offices.
+
+The Worker runs on Cloudflare's Workers free plan, about 10 ms of CPU per request: nothing may depend on the paid plan's allowance (see the parked item in the roadmap).
 
 Every Worker command runs through Infisical so the Cloudflare token never touches a file.
 

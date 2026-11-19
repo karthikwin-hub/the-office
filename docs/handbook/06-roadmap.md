@@ -70,6 +70,10 @@
 - **Orders** come in by hand or CSV behind an `OrderSource` interface, so a shop connector can be added later.
 - Research, competitors and the later phases are in [Customer service](08-customer-service.md).
 
+### Security hardening (done 20 November 2026)
+
+A review of the whole product found seven High findings, all fixed and live the next day in one release (version `f924dea8`, then `daea9f8f` for a policy tweak): sign-in limits that cannot be dodged, two-step sign-in for owners and platform owners, shorter sessions with re-confirmation for risky actions, browser security headers, safe file serving, sender authentication for inbound email, a console that cannot make itself owner of a business, and current dependencies, plus CI on every pull request. What is in place and what is still open: `docs/security/README.md`.
+
 ## Next and planned
 
 ### Phase 6: Go-live readiness (next)
@@ -84,6 +88,7 @@
 | Domain | **Built, to be deployed** (6 November 2026): `office.snilld.in` is the product page, `app.office.snilld.in` where businesses sign in, `console.office.snilld.in` the platform owners' console (every business, onboarding, suspending), and each customer's office opens on its own address such as `kaveri.office.snilld.in`, with one sign-in across them (the Clubs and Sports OS pattern). Moving the Worker into the Snilld account, which holds `snilld.in`, is the first step of the go-live runbook |
 | Privacy and terms | **In progress.** Drafts in `docs/legal` (privacy notice, terms, data processing terms, subprocessors, a customer AI notice template) are published at `/legal/...`, with consent recorded at sign-up and self-serve account download and deletion requests. Waiting on review by a lawyer in India and the bracketed details (company name, address, grievance officer) |
 | Monitoring | Error-rate alerts; a weekly `admin.mjs list` review |
+| Security follow-ups | From the November review: an Infisical `prod` environment, staging and deploying from CI, retention and deletion, zod 4, more CI checks; the list is in `docs/security/README.md` |
 | Bringing in existing books | Done 6 November 2026: customers and suppliers, products and stock, and unpaid invoices and bills from three CSV templates, checked row by row in Settings and approved as one Desk card; the books get a fixed start date, and brought-forward items count towards ageing and statements but not returns |
 | Readiness habit | Done 6 November 2026: `country`, `currency`, `locale` and `timeZone` are on the office record (India values only; migration `0004_office_locale.sql`), returned with each office and shown in Settings, so new code reads them instead of constants |
 

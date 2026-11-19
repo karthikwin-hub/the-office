@@ -20,7 +20,7 @@ A pnpm monorepo in TypeScript.
 
 **One contract.** The web app, the demo's mock handlers, the Worker and the engine import the same zod types, so the demo cannot drift from the real product. Switching between them is a build flag (`VITE_DATA=mock` or `live`).
 
-**Tests.** 286 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines), 92 Worker tests (including a two-office isolation suite, the website chat and account rights), Storybook stories for every component state, and a 26-check browser end-to-end run against a local Worker.
+**Tests.** 426 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines, imports), 202 Worker tests (including a two-office isolation suite, sign-in and two-step sign-in, inbound mail, security headers, the website chat and account rights), 11 tests that run the office Durable Object inside workerd (`apps/api/test/do/`), and Storybook stories for every component state. GitHub Actions runs the type check and every test on each pull request. The browser end-to-end script (`tools/e2e/live.mjs`) predates two-step sign-in and needs updating.
 
 ## 2. Runtime
 
@@ -82,17 +82,28 @@ The control plane adds two tables for each person's own rights (migration `0003_
 
 | Concern | Control |
 | --- | --- |
-| Sign-in | better-auth with email and password, email confirmation before opening an office or accepting an invitation, rate limiting on live |
-| Tenant isolation | Membership check in the Worker; identity check in the Durable Object; per-office storage; per-office file prefix |
-| Invitations | Single-use token, only its hash stored, bound to the invited address, expires after 14 days |
+| Sign-in | better-auth with email and password, email confirmation before opening an office or accepting an invitation; sign-up answers the same for new and existing addresses; rate limits counted in D1 per `cf-connecting-ip` |
+| Two-step sign-in | TOTP with ten backup codes, required for office owners and platform owners before any owner action or console change |
+| Sessions | End after 12 idle hours; export, invites, role changes, hand-over, deletion, member removal and console changes need a sign-in or step-up within 15 minutes |
+| Passwords | PBKDF2-SHA256 chained in rounds Cloudflare accepts; 100,000 iterations on the Workers free plan, upgraded at each sign-in when raised |
+| Tenant isolation | Membership check in the Worker; the caller header set by the Worker and sealed with an HMAC; the Durable Object accepts only a sealed caller for its own id, and `/internal/*` only the system caller; per-office storage; per-office file prefix |
+| Browser | Strict Content-Security-Policy, HSTS, no framing, Referrer-Policy and Permissions-Policy on every response; every non-GET `/api` request must come from the app's own origin |
+| Stored files | Shown in the browser only as PDF or image, sandboxed; anything else downloads. Ids are random UUIDs. Types come from the file's name and bytes, never the sender |
+| Inbound email | A sender is trusted only on Cloudflare's own `Authentication-Results` (DMARC, or aligned DKIM); unproven mail waits on the desk; limits and the upload allowance are checked before anything is stored |
+| Live connection | The WebSocket says nothing before the caller check, takes no messages from browsers, and closes when someone is removed or the office is suspended |
+| Failed requests | A request that fails partway reopens the books as last saved |
+| Invitations | Single-use token, only its hash stored, bound to the invited address, expires after 14 days; the token travels after `#` and in request bodies, never in a logged URL. The console invites an owner only into an office with no owner and never sees the link |
 | Social and WhatsApp tokens | Encrypted at rest with a key derived per office (HKDF from `SOCIAL_TOKEN_KEY` and the office id), with a key version for rotation |
 | Webhooks | Meta signatures verified with the app secret; the verify token checked on the handshake |
 | Media links | HMAC-signed, expiring, scoped to one office |
 | Fair use | Per-office daily allowance: 400 AI calls (at most 150 for customer service), 250 MB of uploads; a 429 with a plain explanation when spent |
-| Public website chat | No cookies or credentials; rate-limited per widget and visitor IP; optional Turnstile; message length capped; a disabled chat is indistinguishable from none |
+| Public website chat | No cookies or credentials; rate-limited per widget and visitor IP, polling included; Turnstile required on live; at most 300 new conversations an office a day; orders and balances only after a one-time code to the contact on the order; message length capped; a disabled chat is indistinguishable from none |
+| WhatsApp linking | JOIN codes of 8 unambiguous characters, limited per number and across all numbers; each link is audited and shown in Settings |
 | Secrets | Held in Infisical and put as Worker secrets; never in files or logs |
 | Audit | Office events (invitations, role changes, handover, deletion, restore) in the `audit` table; agent work in each office's team log |
 | Operator access | The admin tool works on the control plane only; it has no command to read an office's books |
+
+The security review of November 2026, what it fixed and what is still open: `docs/security/README.md`.
 
 ## 7. Reading documents
 

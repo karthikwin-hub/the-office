@@ -32,7 +32,7 @@ Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
 | Name | Meaning |
 | --- | --- |
 | `OFFICE_SEED` | `sample` opens new offices with the Kaveri Electricals books |
-| `EMAIL_VERIFICATION` | `off` skips email confirmation |
+| `EMAIL_VERIFICATION` | `off` skips email confirmation. Never on live: it would also let sign-up show which addresses have accounts |
 
 The web build reads one flag: `VITE_DATA=mock` builds the demo; anything else builds the live app.
 
@@ -48,7 +48,7 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 
 | Name | Required | Purpose |
 | --- | --- | --- |
-| `BETTER_AUTH_SECRET` | Yes | Signs sessions |
+| `BETTER_AUTH_SECRET` | Yes | Signs sessions; encrypts two-step sign-in secrets and backup codes; a subkey seals the caller header the Worker sends to each office. Rotating it signs everyone out and makes enrolled authenticators unreadable, so owners enrol again |
 | `RESEND_API_KEY` | Yes on live | Sends all mail through Resend from `MAIL_FROM` (the `snilldai.com` domain, shared with Clubs and Sports OS); without it mail falls back to `MAILER` |
 | `SOCIAL_TOKEN_KEY` | For channels and WhatsApp | Root key: per-office keys are derived from it to seal platform tokens; it also signs media links and OAuth state |
 | `META_APP_ID`, `META_APP_SECRET` | For Facebook and webhooks | The Meta app; the secret verifies webhook signatures |
