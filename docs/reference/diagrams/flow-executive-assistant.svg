@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 604" role="img" aria-labelledby="t-executive-assistant">
+  <title id="t-executive-assistant">The Executive Assistant: each owner's own calendar, three-day agenda, tasks and replies to forwarded emails, private to that owner</title>
+  <defs><marker id="a-executive-assistant" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-executive-assistant)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M185 328H200V86H213"/><path class="ln" d="M185 433H200V86H213"/><path class="ln" d="M243 117V131"/><path class="ln" d="M243 220V234"/><path class="ln" d="M243 307V321"/><path class="ln" d="M495 260H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M495 347H510V196H745V223H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">Email you forward</text><text class="s" x="27" y="102">To the office's</text><text class="s" x="27" y="118">.assistant address,</text><text class="s" x="27" y="134">from your own address</text><text class="s" x="27" y="150">only</text>
+  <rect class="box" x="15" y="183" width="170" height="103" rx="4"/><text class="t" x="27" y="206">Your calendar</text><text class="s" x="27" y="223">Its private link,</text><text class="s" x="27" y="239">read every morning</text><text class="s" x="27" y="255">and when you open the</text><text class="s" x="27" y="271">room</text>
+  <rect class="box" x="15" y="304" width="170" height="87" rx="4"/><text class="t" x="27" y="327">Tasks</text><text class="s" x="27" y="344">In the room, or</text><text class="s" x="27" y="360">"remind me…" and</text><text class="s" x="27" y="376">"done…" on WhatsApp</text>
+  <rect class="box" x="15" y="409" width="170" height="103" rx="4"/><text class="t" x="27" y="432">The morning round</text><text class="s" x="27" y="449">Every morning at the</text><text class="s" x="27" y="465">digest time, 08:45</text><text class="s" x="27" y="481">unless you change it</text><text class="s" x="27" y="497">in Settings</text>
+  <rect class="stop" x="215" y="62" width="280" height="55" rx="4"/><text class="t" x="227" y="85">Has a bill or invoice attached?</text><text class="s" x="227" y="102">Passed to the Accountant</text>
+  <rect class="box" x="215" y="133" width="280" height="87" rx="4"/><text class="t" x="227" y="156">1. Drafts a reply</text><text class="s" x="227" y="173">With the AI model (100 a day), or a</text><text class="s" x="227" y="189">plain template when it is not</text><text class="s" x="227" y="205">available</text>
+  <rect class="box" x="215" y="236" width="280" height="71" rx="4"/><text class="t" x="227" y="259">2. Checks the figures</text><text class="s" x="227" y="276">Any amount in the draft that your</text><text class="s" x="227" y="292">books do not hold is flagged</text>
+  <rect class="box" x="215" y="323" width="280" height="87" rx="4"/><text class="t" x="227" y="346">3. Plans your three days</text><text class="s" x="227" y="363">Meetings with a short brief from the</text><text class="s" x="227" y="379">books on that customer or supplier,</text><text class="s" x="227" y="395">tasks, filings due and a free slot</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Reply to &lt;sender&gt;:</text><text class="t" x="537" y="102">&lt;subject&gt;"</text><text class="s" x="537" y="119">Always waits for you. Only</text><text class="s" x="537" y="135">you see it: not other</text><text class="s" x="537" y="151">owners, not the</text><text class="s" x="537" y="167">accountant.</text>
+  <rect class="done" x="760" y="62" width="185" height="119" rx="4"/><text class="t" x="772" y="85">Send reply</text><text class="s" x="772" y="102">Goes from the office's</text><text class="s" x="772" y="118">address in your name;</text><text class="s" x="772" y="134">replies come to you. A</text><text class="s" x="772" y="150">promise in it becomes a</text><text class="s" x="772" y="166">follow-up task.</text>
+  <rect class="done" x="760" y="199" width="185" height="71" rx="4"/><text class="t" x="772" y="222">Your agenda</text><text class="s" x="772" y="239">In your own morning</text><text class="s" x="772" y="255">digest</text>
+  <rect class="nyet" x="15" y="538" width="930" height="52" rx="4"/><text class="ny" x="27" y="560">Not yet: a brief sent just before each meeting (today it is in the morning agenda); reading Gmail and creating calendar events</text><text class="ny" x="27" y="576">directly.</text>
+</svg>

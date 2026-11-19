@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 452" role="img" aria-labelledby="t-office-manager">
+  <title id="t-office-manager">The Office Manager: answers your questions with figures you can open, does the trusted work each morning and sends the digest</title>
+  <defs><marker id="a-office-manager" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-office-manager)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 192H200V86H213"/><path class="ln" d="M185 297H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M243 236V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">Ask the office</text><text class="t" x="27" y="102">manager</text><text class="s" x="27" y="119">The box at the top of</text><text class="s" x="27" y="135">every page</text>
+  <rect class="box" x="15" y="168" width="170" height="87" rx="4"/><text class="t" x="27" y="191">WhatsApp</text><text class="s" x="27" y="208">"ask" and your</text><text class="s" x="27" y="224">question, by text or</text><text class="s" x="27" y="240">voice</text>
+  <rect class="box" x="15" y="273" width="170" height="103" rx="4"/><text class="t" x="27" y="296">The morning round</text><text class="s" x="27" y="313">Every morning at the</text><text class="s" x="27" y="329">digest time, 08:45</text><text class="s" x="27" y="345">unless you change it</text><text class="s" x="27" y="361">in Settings</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Finds what you asked about</text><text class="s" x="227" y="102">Who owes you, sales, GST, TDS, audit,</text><text class="s" x="227" y="118">stock, what is waiting, and more</text>
+  <rect class="box" x="215" y="149" width="280" height="87" rx="4"/><text class="t" x="227" y="172">2. Answers from your books</text><text class="s" x="227" y="189">Each figure in the answer opens the</text><text class="s" x="227" y="205">documents behind it. No AI writes the</text><text class="s" x="227" y="221">figures.</text>
+  <rect class="box" x="215" y="252" width="280" height="71" rx="4"/><text class="t" x="227" y="275">3. Each morning</text><text class="s" x="227" y="292">Lets Trusted agents finish routine</text><text class="s" x="227" y="308">work, then puts the digest together</text>
+  <rect class="none" x="525" y="62" width="205" height="87" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It answers and reports; it</text><text class="s" x="537" y="118">drafts nothing for you to</text><text class="s" x="537" y="134">approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">The answer</text><text class="s" x="772" y="102">On the page or on</text><text class="s" x="772" y="118">WhatsApp</text>
+  <rect class="done" x="760" y="151" width="185" height="71" rx="4"/><text class="t" x="772" y="174">The morning digest</text><text class="s" x="772" y="191">By WhatsApp or email to</text><text class="s" x="772" y="207">each owner</text>
+  <rect class="nyet" x="15" y="402" width="930" height="36" rx="4"/><text class="ny" x="27" y="424">Not yet: flagging problems between agents.</text>
+</svg>

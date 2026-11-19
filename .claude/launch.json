@@ -12,6 +12,12 @@
       "runtimeExecutable": "apps/web/node_modules/.bin/vite",
       "runtimeArgs": ["apps/web", "--config", "apps/web/vite.config.ts", "--port", "5174", "--strictPort"],
       "port": 5174
+    },
+    {
+      "name": "reference-docs",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "docs/reference"],
+      "port": 8765
     }
   ]
 }

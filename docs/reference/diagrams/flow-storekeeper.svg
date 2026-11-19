@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 519" role="img" aria-labelledby="t-storekeeper">
+  <title id="t-storekeeper">The Storekeeper: each morning finds items at or under their reorder level and drafts one purchase order per supplier</title>
+  <defs><marker id="a-storekeeper" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-storekeeper)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M383 133V147"/><path class="ln" d="M243 133V267"/><path class="ln" d="M243 356V370"/><path class="ln" d="M495 396H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/><path class="ln" d="M495 396H510V196H745V248H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">The morning round</text><text class="s" x="27" y="102">Every morning at the</text><text class="s" x="27" y="118">digest time, 08:45</text><text class="s" x="27" y="134">unless you change it</text><text class="s" x="27" y="150">in Settings</text>
+  <rect class="box" x="15" y="183" width="170" height="55" rx="4"/><text class="t" x="27" y="206">Run now</text><text class="s" x="27" y="223">In its room</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. What is low</text><text class="s" x="227" y="102">Items with stock at or under their</text><text class="s" x="227" y="118">reorder level</text>
+  <rect class="stop" x="271" y="149" width="224" height="104" rx="4"/><text class="t" x="283" y="172">Already ordered, or never</text><text class="t" x="283" y="189">bought?</text><text class="s" x="283" y="206">Left out: an open order</text><text class="s" x="283" y="222">exists, or no bill shows who</text><text class="s" x="283" y="238">supplies it</text>
+  <rect class="box" x="215" y="269" width="280" height="87" rx="4"/><text class="t" x="227" y="292">2. How much</text><text class="s" x="227" y="309">Enough to reach the reorder level</text><text class="s" x="227" y="325">after the last 30 days' sales, at the</text><text class="s" x="227" y="341">rate on the last bill</text>
+  <rect class="box" x="215" y="372" width="280" height="55" rx="4"/><text class="t" x="227" y="395">3. One order per supplier</text><text class="s" x="227" y="412">Grouped from the items' last bills</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Reorder from</text><text class="t" x="537" y="102">&lt;supplier&gt;, ₹&lt;total&gt;"</text><text class="s" x="537" y="119">Trusted: under ₹1 lakh</text><text class="s" x="537" y="135">goes ahead at the next</text><text class="s" x="537" y="151">morning round. Autonomous:</text><text class="s" x="537" y="167">any amount.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Marked as sent in the</text><text class="s" x="772" y="118">books</text>
+  <rect class="stop" x="760" y="151" width="185" height="55" rx="4"/><text class="t" x="772" y="174">Reject</text><text class="s" x="772" y="191">Not sent</text>
+  <rect class="done" x="760" y="224" width="185" height="87" rx="4"/><text class="t" x="772" y="247">The digest</text><text class="s" x="772" y="264">How many items are low</text><text class="s" x="772" y="280">and how many orders</text><text class="s" x="772" y="296">were drafted</text>
+  <rect class="nyet" x="15" y="453" width="930" height="52" rx="4"/><text class="ny" x="27" y="475">Not yet: emailing the order to the supplier; setting reorder levels from sales; stock changing with sales and bills (it comes from</text><text class="ny" x="27" y="491">your products file).</text>
+</svg>

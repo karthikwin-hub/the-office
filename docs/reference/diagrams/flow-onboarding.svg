@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 337" role="img" aria-labelledby="t-onboarding">
+  <title id="t-onboarding">Bringing in your books: the CSV templates are checked row by row, then one card on your Desk brings in the parties, products, stock and unpaid items from before your start date</title>
+  <defs><marker id="a-onboarding" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-onboarding)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 224H200V86H213"/><path class="ln" d="M383 149V163"/><path class="ln" d="M243 149V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V223H758"/>
+  <rect class="box" x="15" y="62" width="170" height="120" rx="4"/><text class="t" x="27" y="85">Settings → Bring</text><text class="t" x="27" y="102">in your books</text><text class="s" x="27" y="119">Up to three CSV</text><text class="s" x="27" y="135">files: parties,</text><text class="s" x="27" y="151">products, unpaid</text><text class="s" x="27" y="167">invoices and bills</text>
+  <rect class="box" x="15" y="200" width="170" height="103" rx="4"/><text class="t" x="27" y="223">Tally parties</text><text class="s" x="27" y="240">Today written into</text><text class="s" x="27" y="256">the same parties</text><text class="s" x="27" y="272">template; no direct</text><text class="s" x="27" y="288">Tally import yet</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Check the files</text><text class="s" x="227" y="102">Every row: required columns, GSTIN</text><text class="s" x="227" y="118">check digit, duplicates. Each problem</text><text class="s" x="227" y="134">is listed with its row.</text>
+  <rect class="stop" x="271" y="165" width="224" height="71" rx="4"/><text class="t" x="283" y="188">Problems?</text><text class="s" x="283" y="205">Fix the file and check again;</text><text class="s" x="283" y="221">nothing is staged</text>
+  <rect class="box" x="215" y="252" width="280" height="71" rx="4"/><text class="t" x="227" y="275">2. Bring them in</text><text class="s" x="227" y="292">One card is put on the Desk for the</text><text class="s" x="227" y="308">Accountant's import</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Bring in your books</text><text class="t" x="537" y="102">from before &lt;date&gt;"</text><text class="s" x="537" y="119">Shows how many customers,</text><text class="s" x="537" y="135">suppliers and products,</text><text class="s" x="537" y="151">and what is owed each way.</text><text class="s" x="537" y="167">Always waits for you.</text>
+  <rect class="done" x="760" y="62" width="185" height="119" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Parties, products and</text><text class="s" x="772" y="118">stock are added; each</text><text class="s" x="772" y="134">unpaid item comes in as</text><text class="s" x="772" y="150">a brought-forward</text><text class="s" x="772" y="166">invoice or bill.</text>
+  <rect class="stop" x="760" y="199" width="185" height="55" rx="4"/><text class="t" x="772" y="222">Reject</text><text class="s" x="772" y="239">Nothing is added</text>
+  
+</svg>

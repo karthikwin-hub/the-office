@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 670" role="img" aria-labelledby="t-accountant">
+  <title id="t-accountant">The Accountant: reads each bill and invoice, checks it, sets aside duplicates, files proformas and notes, and puts the rest on your Desk to post</title>
+  <defs><marker id="a-accountant" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-accountant)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M185 296H200V86H213"/><path class="ln" d="M185 385H200V86H213"/><path class="ln" d="M243 181V195"/><path class="ln" d="M383 284V298"/><path class="ln" d="M243 284V402"/><path class="ln" d="M383 507V521"/><path class="ln" d="M495 428H510V86H523"/><path class="ln" d="M495 324H510V290H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 290H745V207H758"/><path class="ln" d="M730 86H745V312H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">Email</text><text class="s" x="27" y="102">To the office's</text><text class="s" x="27" y="118">address: PDFs and</text><text class="s" x="27" y="134">photos, up to 5 a</text><text class="s" x="27" y="150">message</text>
+  <rect class="box" x="15" y="183" width="170" height="71" rx="4"/><text class="t" x="27" y="206">Upload</text><text class="s" x="27" y="223">In the Accountant's</text><text class="s" x="27" y="239">room</text>
+  <rect class="box" x="15" y="272" width="170" height="71" rx="4"/><text class="t" x="27" y="295">From the assistant</text><text class="s" x="27" y="312">Bills attached to</text><text class="s" x="27" y="328">email you forwarded</text>
+  <rect class="box" x="15" y="361" width="170" height="71" rx="4"/><text class="t" x="27" y="384">WhatsApp</text><text class="s" x="27" y="401">A photo of a bill, or</text><text class="s" x="27" y="417">a voice note</text>
+  <rect class="box" x="215" y="62" width="280" height="119" rx="4"/><text class="t" x="227" y="85">1. Reads the page</text><text class="s" x="227" y="102">Rules read the text first; the AI</text><text class="s" x="227" y="118">model only where the rules miss</text><text class="s" x="227" y="134">something; scans by the vision model.</text><text class="s" x="227" y="150">Emailed PDFs are read when someone</text><text class="s" x="227" y="166">next opens the app.</text>
+  <rect class="box" x="215" y="197" width="280" height="87" rx="4"/><text class="t" x="227" y="220">2. What is it?</text><text class="s" x="227" y="237">By its title and its number field:</text><text class="s" x="227" y="253">tax invoice or bill, proforma,</text><text class="s" x="227" y="269">delivery note, credit or debit note</text>
+  <rect class="stop" x="271" y="300" width="224" height="88" rx="4"/><text class="t" x="283" y="323">Proforma, challan or</text><text class="t" x="283" y="340">note?</text><text class="s" x="283" y="357">Filed for the record, not</text><text class="s" x="283" y="373">posted</text>
+  <rect class="box" x="215" y="404" width="280" height="103" rx="4"/><text class="t" x="227" y="427">3. Checks it</text><text class="s" x="227" y="444">GSTIN check digit, lines times rates,</text><text class="s" x="227" y="460">tax by rate, CGST and SGST or IGST</text><text class="s" x="227" y="476">for the place of supply, the total,</text><text class="s" x="227" y="492">TDS due, input credit</text>
+  <rect class="stop" x="271" y="523" width="224" height="71" rx="4"/><text class="t" x="283" y="546">Already in the books?</text><text class="s" x="283" y="563">Set aside as a duplicate,</text><text class="s" x="283" y="579">without asking</text>
+  <rect class="desk" x="525" y="62" width="205" height="186" rx="4"/><text class="t" x="537" y="85">"Post bill &lt;no&gt; from</text><text class="t" x="537" y="102">&lt;supplier&gt;" or "Record</text><text class="t" x="537" y="119">sales invoice &lt;no&gt; to</text><text class="t" x="537" y="136">&lt;customer&gt;"</text><text class="s" x="537" y="153">Failed checks are listed</text><text class="s" x="537" y="169">on the card. Trusted: goes</text><text class="s" x="537" y="185">ahead alone only if every</text><text class="s" x="537" y="201">check passed, the party is</text><text class="s" x="537" y="217">known and it is under ₹1</text><text class="s" x="537" y="233">lakh.</text>
+  <rect class="desk" x="525" y="266" width="205" height="89" rx="4"/><text class="t" x="537" y="289">"File proforma … /</text><text class="t" x="537" y="306">delivery note … /</text><text class="t" x="537" y="323">credit note …"</text><text class="s" x="537" y="340">Always waits for you</text>
+  <rect class="done" x="760" y="62" width="185" height="103" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Posted: it counts in</text><text class="s" x="772" y="118">GST, TDS, who owes you</text><text class="s" x="772" y="134">and what you owe. A new</text><text class="s" x="772" y="150">party is added.</text>
+  <rect class="done" x="760" y="183" width="185" height="87" rx="4"/><text class="t" x="772" y="206">File it</text><text class="s" x="772" y="223">Kept with its page;</text><text class="s" x="772" y="239">nothing changes in the</text><text class="s" x="772" y="255">books or returns</text>
+  <rect class="stop" x="760" y="288" width="185" height="71" rx="4"/><text class="t" x="772" y="311">Reject</text><text class="s" x="772" y="328">The bill is rejected or</text><text class="s" x="772" y="344">the invoice cancelled</text>
+  <rect class="nyet" x="15" y="620" width="930" height="36" rx="4"/><text class="ny" x="27" y="642">Not yet: matching bank receipts to invoices; posting credit notes and stock movements.</text>
+</svg>

@@ -131,7 +131,7 @@ The demo at https://demo.office.snilld.in runs the real app with a sample busine
 | Storekeeper, Buyer | Operations | Reorder points, vendor quotes | Preview on the books |
 | Payroll Clerk | People | Payroll summary and payslip runs for approval | Preview on the books |
 
-"Preview on the books" means the room, its reports and its approval cards work from the office's books, but the agent has no live outside data source yet.
+"Preview on the books" means the room, its reports and its approval cards work from the office's books, but the agent has no live outside data source yet. For exactly what each agent does today, step by step, see **How the work flows**.
 
 **Trust levels.** Every agent starts as a **Trainee** (everything waits for approval), can be promoted to **Trusted** (routine work runs on its own and is logged) and then **Autonomous**. Audit flags, file sharing, payroll runs, campaigns, calendars, broadcasts and posts are always reviewed on the Desk whatever the level, and the Executive Assistant's replies always wait for their owner.
 
@@ -374,6 +374,157 @@ Choose a look in **Settings → Your office** or with **Skin** under the floor. 
 
 In **Settings → Your account** you can download a copy of your account data or ask for your account to be deleted. An owner can export the whole office as a zip (books and every file) and delete it in **Settings → Office**; a deleted office can be restored for 30 days.
 
+# How the work flows
+
+> **In one paragraph.** A diagram for each agent, for owners: what starts its work, what it does, what reaches your Desk and what happens when you approve or reject. Each diagram shows what the office does today. Where an agent's job description goes further than what is built, the diagram says so in its "Not yet" line, so nothing here is a promise.
+
+**Reading the diagrams.** An agent's diagram always has the same four columns: **what starts it**, **what it does**, **on your Desk** and **what happens next**. Blue boxes are cards on your Desk. Green boxes are results: posted, sent, filed or reported. Brown boxes are work set aside or rejected. A dashed box means nothing happens there. The tag at the top right says how much of the agent is built:
+- **Works today:** it reads, drafts and acts as shown.
+- **Partly built:** most of it works; the "Not yet" line says what does not.
+- **Reports only:** it shows figures from your books but drafts nothing for you yet.
+
+## 1. How work moves through your office
+
+![How work moves through your office](diagrams/flow-overview.svg)
+
+Everything that comes in goes to the agent for that job: your office's own email addresses (each is shown in the agent's room), an upload, WhatsApp, your social media accounts, or the morning round. The agent checks it against your books and drafts what should happen. Every amount and tax figure is worked out by code, never by AI. You decide on your Desk, on the web or by number on WhatsApp. Only work you have allowed by trust level goes ahead without you, and a document from someone not in your books never posts as it arrives.
+
+## 2. Trust levels
+
+![Trust levels](diagrams/flow-trust.svg)
+
+Every agent you hire starts as a Trainee. Each decision you make is counted, and only an approval without changes counts as correct. When the record is good enough, the agent's room offers a promotion. Nothing promotes itself: the level is yours to set in the agent's room, up or down, at any time. Some work always waits for you, whatever the level.
+
+## 3. The morning round
+
+![The morning round](diagrams/flow-morning.svg)
+
+Once a day, at the digest time (08:45 unless you change it in **Settings**), each hired agent does its morning work in the order shown, and then the digest goes to each owner. A routine whose agent is not hired is skipped. Each routine can also be run or paused from its agent's room, and **Routines** lists them all with their last runs.
+
+## 4. Front office
+
+### The Office Manager
+
+![The Office Manager](diagrams/flow-office-manager.svg)
+
+Ask in your own words, on any page or on WhatsApp. The answer comes from your books, and every figure in it opens the documents behind it. Each morning it lets your Trusted agents finish their routine work and sends you the digest.
+
+### Customer Service
+
+![Customer Service](diagrams/flow-customer-service.svg)
+
+It answers your customers on your own WhatsApp number, by email and in the website chat, from the answers you saved and your records: orders, balances and business facts. Anything sensitive or unclear comes to you as a hand-off, and the customer is told someone will reply. While it is a Trainee, every reply waits for you.
+
+### The Executive Assistant
+
+![The Executive Assistant](diagrams/flow-executive-assistant.svg)
+
+Each owner has their own. It reads your calendar from its private link, plans your next three days and drafts replies to the emails you forward. Every reply waits for you, and only you see your calendar, emails, tasks and drafts.
+
+## 5. Accounts
+
+### The Accountant: bills and invoices
+
+![The Accountant](diagrams/flow-accountant.svg)
+
+Send bills and invoices by email, upload them, or forward them through your assistant. Each page is read, checked line by line and set against your books. A duplicate is set aside without asking, and a proforma, delivery note or credit note is filed for the record rather than posted. Everything else waits on your Desk with its checks, unless the Accountant is Trusted and the document is routine.
+
+### The Accountant: bringing in your books
+
+![Bringing in your books](diagrams/flow-onboarding.svg)
+
+When you start, bring in your customers and suppliers, products and stock, and what was unpaid before your start date, using the three CSV templates. The files are checked row by row first; nothing comes in until you approve the one card on your Desk.
+
+### The Credit Controller
+
+![The Credit Controller](diagrams/flow-credit-controller.svg)
+
+It works out who is overdue from your posted invoices and drafts a reminder of the right tone for each customer. Edit the letter if you like; when you approve, it is emailed in your business's name and replies come to you.
+
+### The Tax Clerk
+
+![The Tax Clerk](diagrams/flow-tax-clerk.svg)
+
+GST and TDS are worked out from your posted books by fixed rules, and the return files are ready to download for you or your accountant to file.
+
+### The Auditor
+
+![The Auditor](diagrams/flow-auditor.svg)
+
+Bring in a return as it was filed, or the GSTR-2B statement, and the Auditor compares it with your books. Each difference waits on your Desk, with its working, for you or your accountant.
+
+## 6. Sales
+
+### The Marketplace Manager
+
+![The Marketplace Manager](diagrams/flow-marketplace-manager.svg)
+
+Send it the reports Amazon, Flipkart, Meesho, Myntra and the quick-commerce apps already send you. A layout it knows is read straight away; a new one is confirmed by you once and read on its own after that. It shows sales by channel, product, state and city, with returns and payouts. It does not change your books yet.
+
+### The Sales Rep
+
+![The Sales Rep](diagrams/flow-sales-rep.svg)
+
+### The Quote Desk
+
+![The Quote Desk](diagrams/flow-quote-desk.svg)
+
+### The Account Manager
+
+![The Account Manager](diagrams/flow-account-manager.svg)
+
+These three show reports from your books today. The Sales Rep keeps the pipeline of leads that come in from social media and WhatsApp, the Quote Desk lists your quotations, and the Account Manager shows which customers are due or late to reorder.
+
+## 7. Marketing
+
+### The Marketer
+
+![The Marketer](diagrams/flow-marketer.svg)
+
+### The Market Watcher
+
+![The Market Watcher](diagrams/flow-market-watcher.svg)
+
+Both show reports today: the Marketer finds slow-moving stock and lists your campaigns and the dates ahead, and the Market Watcher compares your prices with competitor prices held in the office. Slow stock and campaigns also become topics in the Social Media Manager's calendar.
+
+## 8. Social media
+
+### The Social Media Manager: messages and reviews
+
+![The Social Media Manager: messages and reviews](diagrams/flow-social-messages.svg)
+
+Every comment, review and message on your connected accounts is sorted. An enquiry also becomes a lead for the Sales Rep. Each reply is drafted in your brand's voice with any price checked against your books, and waits for you, except thank-yous to good reviews once the agent is Trusted.
+
+### The Social Media Manager: calendar and posts
+
+![The Social Media Manager: calendar and posts](diagrams/flow-social-posts.svg)
+
+Next month's calendar is drafted from the 25th. Approve the calendar, then each post. At its time every post is checked again, and one that changed or fails a check comes back to you instead of going out.
+
+## 9. Operations
+
+### The Storekeeper
+
+![The Storekeeper](diagrams/flow-storekeeper.svg)
+
+Each morning it finds items at or under their reorder level and drafts one purchase order per supplier from the last bills. Approving marks the order sent in the books; send it to the supplier yourself for now.
+
+### The Buyer
+
+![The Buyer](diagrams/flow-buyer.svg)
+
+### The Compliance Officer
+
+![The Compliance Officer](diagrams/flow-compliance-officer.svg)
+
+It keeps your company's filing calendar from its profile and reminds whoever files each item, you or your CA or CS, at 7 days, 2 days and on the day. It also checks the books for MSME suppliers to pay and advance tax to set aside.
+
+## 10. People
+
+### The Payroll Clerk
+
+![The Payroll Clerk](diagrams/flow-payroll-clerk.svg)
+
 # Platform console
 
 > **In one paragraph.** The console at https://console.office.snilld.in is for the people who run the platform. It lists every business on the platform and lets a platform owner open an office for a new business, send or re-send the owner's invitation, and suspend or reopen an office. It shows accounts, not books: no office's books, files or conversations can be seen or reached from it.
@@ -578,6 +729,7 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Emailed documents | Read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments; no spreadsheets or zip files by email |
 | Several GST registrations, credit notes, stock movements, e-commerce settlements | Partly built (other registrations recognised on invoices); fuller support planned |
 | Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
+| Agents that do less than their job description | Shown in each agent's "Not yet" line in **How the work flows**. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, stock moving with sales and bills, and the cash plan acting on an approved compliance proposal |
 | Filing on government portals | Out of scope by design: the office prepares, the owner or CA files |
 | The Lived-in office | Not shown on phones by design; needs WebGL 2 |
 | Online sales | Reports only: nothing is posted to the books yet. Next: one sales entry per channel, month, state and rate with GST (e-commerce operator supplies in GSTR-1), credit notes for returns, settlements matched to payouts with fees, TCS and 194-O TDS, and stock reduced by sales. Blinkit, Zepto and Instamart layouts are confirmed by the owner until real samples are added; no platform APIs |

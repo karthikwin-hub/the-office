@@ -117,6 +117,8 @@ figure { margin: 24px 0 28px; }
 figure svg, figure img { display: block; width: 100%; height: auto; border: 1px solid var(--plan-line); border-radius: 4px; background: #fff; }
 figure.diagram svg { background: #fcfcfd; padding: 8px; font-family: var(--font); }
 figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+/* On a phone a diagram keeps a readable size and scrolls sideways within its figure; the page itself does not. */
+@media (max-width: 720px) { figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; } figure.diagram svg { min-width: 760px; } }
 
 .foot { padding: 28px 0; color: var(--muted); font-size: 0.85rem; }
 
@@ -178,8 +180,8 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
     <input id="find" type="search" placeholder="For example: invitation, deploy, GST" autocomplete="off">
     <p class="find-none" id="find-none" hidden>Nothing matches. Try another word.</p>
   </div>
-  <nav><ol><li data-part="part-1"><a class="nav-doc" href="#at-a-glance"><span class="nav-num">1</span>At a glance</a><ol></ol></li><li data-part="part-2"><a class="nav-doc" href="#business-scenarios"><span class="nav-num">2</span>Business scenarios</a><ol><li data-section="2-1-the-problem-the-product-solves"><a href="#2-1-the-problem-the-product-solves">The problem the product solves</a></li><li data-section="2-2-a-supplier-39-s-bill-arrives"><a href="#2-2-a-supplier-39-s-bill-arrives">A supplier&#39;s bill arrives</a></li><li data-section="2-3-customers-who-have-not-paid"><a href="#2-3-customers-who-have-not-paid">Customers who have not paid</a></li><li data-section="2-4-monthly-gst-and-tds-and-checking-the-accountant"><a href="#2-4-monthly-gst-and-tds-and-checking-the-accountant">Monthly GST and TDS, and checking the accountant</a></li><li data-section="2-5-the-company-39-s-statutory-calendar"><a href="#2-5-the-company-39-s-statutory-calendar">The company&#39;s statutory calendar</a></li><li data-section="2-6-bringing-in-the-books-a-business-already-keeps"><a href="#2-6-bringing-in-the-books-a-business-already-keeps">Bringing in the books a business already keeps</a></li><li data-section="2-7-approving-from-whatsapp-in-the-owner-39-s-language"><a href="#2-7-approving-from-whatsapp-in-the-owner-39-s-language">Approving from WhatsApp, in the owner&#39;s language</a></li><li data-section="2-8-the-business-39-s-own-customers-ask-questions"><a href="#2-8-the-business-39-s-own-customers-ask-questions">The business&#39;s own customers ask questions</a></li><li data-section="2-8a-the-owner-39-s-own-assistant"><a href="#2-8a-the-owner-39-s-own-assistant">a. The owner&#39;s own assistant</a></li><li data-section="2-8b-sales-on-amazon-flipkart-blinkit-and-the-other-apps"><a href="#2-8b-sales-on-amazon-flipkart-blinkit-and-the-other-apps">b. Sales on Amazon, Flipkart, Blinkit and the other apps</a></li><li data-section="2-9-social-media-that-never-misstates-a-price"><a href="#2-9-social-media-that-never-misstates-a-price">Social media that never misstates a price</a></li><li data-section="2-10-an-accountant-who-looks-after-several-businesses"><a href="#2-10-an-accountant-who-looks-after-several-businesses">An accountant who looks after several businesses</a></li><li data-section="2-11-opening-a-new-client-39-s-office-our-team"><a href="#2-11-opening-a-new-client-39-s-office-our-team">Opening a new client&#39;s office (our team)</a></li><li data-section="2-12-showing-the-product"><a href="#2-12-showing-the-product">Showing the product</a></li></ol></li><li data-part="part-3"><a class="nav-doc" href="#solution-and-architecture"><span class="nav-num">3</span>Solution and architecture</a><ol><li data-section="3-1-the-product-in-three-spaces"><a href="#3-1-the-product-in-three-spaces">The product in three spaces</a></li><li data-section="3-2-the-team"><a href="#3-2-the-team">The team</a></li><li data-section="3-3-components"><a href="#3-3-components">Components</a></li><li data-section="3-4-how-a-request-finds-its-office"><a href="#3-4-how-a-request-finds-its-office">How a request finds its office</a></li><li data-section="3-5-where-data-lives"><a href="#3-5-where-data-lives">Where data lives</a></li><li data-section="3-6-inbound-traffic"><a href="#3-6-inbound-traffic">Inbound traffic</a></li><li data-section="3-7-reading-documents-and-keeping-ai-away-from-the-figures"><a href="#3-7-reading-documents-and-keeping-ai-away-from-the-figures">Reading documents, and keeping AI away from the figures</a></li><li data-section="3-8-the-lived-in-office-3d"><a href="#3-8-the-lived-in-office-3d">The Lived-in office (3D)</a></li><li data-section="3-9-security-model"><a href="#3-9-security-model">Security model</a></li><li data-section="3-10-the-demo-build"><a href="#3-10-the-demo-build">The demo build</a></li><li data-section="3-11-quality"><a href="#3-11-quality">Quality</a></li></ol></li><li data-part="part-4"><a class="nav-doc" href="#domains-and-environments"><span class="nav-num">4</span>Domains and environments</a><ol><li data-section="4-1-addresses"><a href="#4-1-addresses">Addresses</a></li><li data-section="4-2-environments"><a href="#4-2-environments">Environments</a></li><li data-section="4-3-outside-services"><a href="#4-3-outside-services">Outside services</a></li></ol></li><li data-part="part-5"><a class="nav-doc" href="#user-guide"><span class="nav-num">5</span>User guide</a><ol><li data-section="5-1-getting-in"><a href="#5-1-getting-in">Getting in</a></li><li data-section="5-2-finding-your-way-round"><a href="#5-2-finding-your-way-round">Finding your way round</a></li><li data-section="5-3-the-floor"><a href="#5-3-the-floor">The Floor</a></li><li data-section="5-4-your-desk-approving-work"><a href="#5-4-your-desk-approving-work">Your Desk: approving work</a></li><li data-section="5-5-the-boardroom"><a href="#5-5-the-boardroom">The Boardroom</a></li><li data-section="5-6-sending-documents-in"><a href="#5-6-sending-documents-in">Sending documents in</a></li><li data-section="5-7-bringing-in-your-existing-books"><a href="#5-7-bringing-in-your-existing-books">Bringing in your existing books</a></li><li data-section="5-8-hiring-and-trusting-agents"><a href="#5-8-hiring-and-trusting-agents">Hiring and trusting agents</a></li><li data-section="5-8a-your-assistant"><a href="#5-8a-your-assistant">a. Your assistant</a></li><li data-section="5-8b-online-sales"><a href="#5-8b-online-sales">b. Online sales</a></li><li data-section="5-9-people-whatsapp-and-the-accountant"><a href="#5-9-people-whatsapp-and-the-accountant">People, WhatsApp and the accountant</a></li><li data-section="5-10-how-the-office-looks"><a href="#5-10-how-the-office-looks">How the office looks</a></li><li data-section="5-11-your-own-account-and-your-data"><a href="#5-11-your-own-account-and-your-data">Your own account and your data</a></li></ol></li><li data-part="part-6"><a class="nav-doc" href="#platform-console"><span class="nav-num">6</span>Platform console</a><ol><li data-section="6-1-who-can-use-it"><a href="#6-1-who-can-use-it">Who can use it</a></li><li data-section="6-2-what-it-shows"><a href="#6-2-what-it-shows">What it shows</a></li><li data-section="6-3-opening-an-office-for-a-new-business"><a href="#6-3-opening-an-office-for-a-new-business">Opening an office for a new business</a></li><li data-section="6-4-other-actions"><a href="#6-4-other-actions">Other actions</a></li></ol></li><li data-part="part-7"><a class="nav-doc" href="#support-manual"><span class="nav-num">7</span>Support manual</a><ol><li data-section="7-1-first-steps-for-any-problem"><a href="#7-1-first-steps-for-any-problem">First steps for any problem</a></li><li data-section="7-2-common-questions"><a href="#7-2-common-questions">Common questions</a></li><li data-section="7-3-the-admin-tool"><a href="#7-3-the-admin-tool">The admin tool</a></li><li data-section="7-4-invitations-and-access-step-by-step"><a href="#7-4-invitations-and-access-step-by-step">Invitations and access, step by step</a></li><li data-section="7-5-reading-the-live-database-read-only"><a href="#7-5-reading-the-live-database-read-only">Reading the live database (read only)</a></li><li data-section="7-6-releasing-and-rolling-back"><a href="#7-6-releasing-and-rolling-back">Releasing, and rolling back</a></li><li data-section="7-7-backups"><a href="#7-7-backups">Backups</a></li><li data-section="7-8-monitoring"><a href="#7-8-monitoring">Monitoring</a></li><li data-section="7-9-security-incidents"><a href="#7-9-security-incidents">Security incidents</a></li><li data-section="7-10-when-to-escalate"><a href="#7-10-when-to-escalate">When to escalate</a></li></ol></li><li data-part="part-8"><a class="nav-doc" href="#configuration"><span class="nav-num">8</span>Configuration</a><ol><li data-section="8-1-resources"><a href="#8-1-resources">Resources</a></li><li data-section="8-2-settings-live-values"><a href="#8-2-settings-live-values">Settings (live values)</a></li><li data-section="8-3-secrets-names-only"><a href="#8-3-secrets-names-only">Secrets (names only)</a></li></ol></li><li data-part="part-9"><a class="nav-doc" href="#open-items-and-limits"><span class="nav-num">9</span>Open items and limits</a><ol></ol></li><li data-part="part-10"><a class="nav-doc" href="#glossary"><span class="nav-num">10</span>Glossary</a><ol></ol></li><li data-part="part-11"><a class="nav-doc" href="#where-to-find-more"><span class="nav-num">11</span>Where to find more</a><ol></ol></li></ol></nav>
-  <p class="sidebar-foot">Version 4675b0b · 19 November 2026</p>
+  <nav><ol><li data-part="part-1"><a class="nav-doc" href="#at-a-glance"><span class="nav-num">1</span>At a glance</a><ol></ol></li><li data-part="part-2"><a class="nav-doc" href="#business-scenarios"><span class="nav-num">2</span>Business scenarios</a><ol><li data-section="2-1-the-problem-the-product-solves"><a href="#2-1-the-problem-the-product-solves">The problem the product solves</a></li><li data-section="2-2-a-supplier-39-s-bill-arrives"><a href="#2-2-a-supplier-39-s-bill-arrives">A supplier&#39;s bill arrives</a></li><li data-section="2-3-customers-who-have-not-paid"><a href="#2-3-customers-who-have-not-paid">Customers who have not paid</a></li><li data-section="2-4-monthly-gst-and-tds-and-checking-the-accountant"><a href="#2-4-monthly-gst-and-tds-and-checking-the-accountant">Monthly GST and TDS, and checking the accountant</a></li><li data-section="2-5-the-company-39-s-statutory-calendar"><a href="#2-5-the-company-39-s-statutory-calendar">The company&#39;s statutory calendar</a></li><li data-section="2-6-bringing-in-the-books-a-business-already-keeps"><a href="#2-6-bringing-in-the-books-a-business-already-keeps">Bringing in the books a business already keeps</a></li><li data-section="2-7-approving-from-whatsapp-in-the-owner-39-s-language"><a href="#2-7-approving-from-whatsapp-in-the-owner-39-s-language">Approving from WhatsApp, in the owner&#39;s language</a></li><li data-section="2-8-the-business-39-s-own-customers-ask-questions"><a href="#2-8-the-business-39-s-own-customers-ask-questions">The business&#39;s own customers ask questions</a></li><li data-section="2-8a-the-owner-39-s-own-assistant"><a href="#2-8a-the-owner-39-s-own-assistant">a. The owner&#39;s own assistant</a></li><li data-section="2-8b-sales-on-amazon-flipkart-blinkit-and-the-other-apps"><a href="#2-8b-sales-on-amazon-flipkart-blinkit-and-the-other-apps">b. Sales on Amazon, Flipkart, Blinkit and the other apps</a></li><li data-section="2-9-social-media-that-never-misstates-a-price"><a href="#2-9-social-media-that-never-misstates-a-price">Social media that never misstates a price</a></li><li data-section="2-10-an-accountant-who-looks-after-several-businesses"><a href="#2-10-an-accountant-who-looks-after-several-businesses">An accountant who looks after several businesses</a></li><li data-section="2-11-opening-a-new-client-39-s-office-our-team"><a href="#2-11-opening-a-new-client-39-s-office-our-team">Opening a new client&#39;s office (our team)</a></li><li data-section="2-12-showing-the-product"><a href="#2-12-showing-the-product">Showing the product</a></li></ol></li><li data-part="part-3"><a class="nav-doc" href="#solution-and-architecture"><span class="nav-num">3</span>Solution and architecture</a><ol><li data-section="3-1-the-product-in-three-spaces"><a href="#3-1-the-product-in-three-spaces">The product in three spaces</a></li><li data-section="3-2-the-team"><a href="#3-2-the-team">The team</a></li><li data-section="3-3-components"><a href="#3-3-components">Components</a></li><li data-section="3-4-how-a-request-finds-its-office"><a href="#3-4-how-a-request-finds-its-office">How a request finds its office</a></li><li data-section="3-5-where-data-lives"><a href="#3-5-where-data-lives">Where data lives</a></li><li data-section="3-6-inbound-traffic"><a href="#3-6-inbound-traffic">Inbound traffic</a></li><li data-section="3-7-reading-documents-and-keeping-ai-away-from-the-figures"><a href="#3-7-reading-documents-and-keeping-ai-away-from-the-figures">Reading documents, and keeping AI away from the figures</a></li><li data-section="3-8-the-lived-in-office-3d"><a href="#3-8-the-lived-in-office-3d">The Lived-in office (3D)</a></li><li data-section="3-9-security-model"><a href="#3-9-security-model">Security model</a></li><li data-section="3-10-the-demo-build"><a href="#3-10-the-demo-build">The demo build</a></li><li data-section="3-11-quality"><a href="#3-11-quality">Quality</a></li></ol></li><li data-part="part-4"><a class="nav-doc" href="#domains-and-environments"><span class="nav-num">4</span>Domains and environments</a><ol><li data-section="4-1-addresses"><a href="#4-1-addresses">Addresses</a></li><li data-section="4-2-environments"><a href="#4-2-environments">Environments</a></li><li data-section="4-3-outside-services"><a href="#4-3-outside-services">Outside services</a></li></ol></li><li data-part="part-5"><a class="nav-doc" href="#user-guide"><span class="nav-num">5</span>User guide</a><ol><li data-section="5-1-getting-in"><a href="#5-1-getting-in">Getting in</a></li><li data-section="5-2-finding-your-way-round"><a href="#5-2-finding-your-way-round">Finding your way round</a></li><li data-section="5-3-the-floor"><a href="#5-3-the-floor">The Floor</a></li><li data-section="5-4-your-desk-approving-work"><a href="#5-4-your-desk-approving-work">Your Desk: approving work</a></li><li data-section="5-5-the-boardroom"><a href="#5-5-the-boardroom">The Boardroom</a></li><li data-section="5-6-sending-documents-in"><a href="#5-6-sending-documents-in">Sending documents in</a></li><li data-section="5-7-bringing-in-your-existing-books"><a href="#5-7-bringing-in-your-existing-books">Bringing in your existing books</a></li><li data-section="5-8-hiring-and-trusting-agents"><a href="#5-8-hiring-and-trusting-agents">Hiring and trusting agents</a></li><li data-section="5-8a-your-assistant"><a href="#5-8a-your-assistant">a. Your assistant</a></li><li data-section="5-8b-online-sales"><a href="#5-8b-online-sales">b. Online sales</a></li><li data-section="5-9-people-whatsapp-and-the-accountant"><a href="#5-9-people-whatsapp-and-the-accountant">People, WhatsApp and the accountant</a></li><li data-section="5-10-how-the-office-looks"><a href="#5-10-how-the-office-looks">How the office looks</a></li><li data-section="5-11-your-own-account-and-your-data"><a href="#5-11-your-own-account-and-your-data">Your own account and your data</a></li></ol></li><li data-part="part-6"><a class="nav-doc" href="#how-the-work-flows"><span class="nav-num">6</span>How the work flows</a><ol><li data-section="6-1-how-work-moves-through-your-office"><a href="#6-1-how-work-moves-through-your-office">How work moves through your office</a></li><li data-section="6-2-trust-levels"><a href="#6-2-trust-levels">Trust levels</a></li><li data-section="6-3-the-morning-round"><a href="#6-3-the-morning-round">The morning round</a></li><li data-section="6-4-front-office"><a href="#6-4-front-office">Front office</a></li><li data-section="6-5-accounts"><a href="#6-5-accounts">Accounts</a></li><li data-section="6-6-sales"><a href="#6-6-sales">Sales</a></li><li data-section="6-7-marketing"><a href="#6-7-marketing">Marketing</a></li><li data-section="6-8-social-media"><a href="#6-8-social-media">Social media</a></li><li data-section="6-9-operations"><a href="#6-9-operations">Operations</a></li><li data-section="6-10-people"><a href="#6-10-people">People</a></li></ol></li><li data-part="part-7"><a class="nav-doc" href="#platform-console"><span class="nav-num">7</span>Platform console</a><ol><li data-section="7-1-who-can-use-it"><a href="#7-1-who-can-use-it">Who can use it</a></li><li data-section="7-2-what-it-shows"><a href="#7-2-what-it-shows">What it shows</a></li><li data-section="7-3-opening-an-office-for-a-new-business"><a href="#7-3-opening-an-office-for-a-new-business">Opening an office for a new business</a></li><li data-section="7-4-other-actions"><a href="#7-4-other-actions">Other actions</a></li></ol></li><li data-part="part-8"><a class="nav-doc" href="#support-manual"><span class="nav-num">8</span>Support manual</a><ol><li data-section="8-1-first-steps-for-any-problem"><a href="#8-1-first-steps-for-any-problem">First steps for any problem</a></li><li data-section="8-2-common-questions"><a href="#8-2-common-questions">Common questions</a></li><li data-section="8-3-the-admin-tool"><a href="#8-3-the-admin-tool">The admin tool</a></li><li data-section="8-4-invitations-and-access-step-by-step"><a href="#8-4-invitations-and-access-step-by-step">Invitations and access, step by step</a></li><li data-section="8-5-reading-the-live-database-read-only"><a href="#8-5-reading-the-live-database-read-only">Reading the live database (read only)</a></li><li data-section="8-6-releasing-and-rolling-back"><a href="#8-6-releasing-and-rolling-back">Releasing, and rolling back</a></li><li data-section="8-7-backups"><a href="#8-7-backups">Backups</a></li><li data-section="8-8-monitoring"><a href="#8-8-monitoring">Monitoring</a></li><li data-section="8-9-security-incidents"><a href="#8-9-security-incidents">Security incidents</a></li><li data-section="8-10-when-to-escalate"><a href="#8-10-when-to-escalate">When to escalate</a></li></ol></li><li data-part="part-9"><a class="nav-doc" href="#configuration"><span class="nav-num">9</span>Configuration</a><ol><li data-section="9-1-resources"><a href="#9-1-resources">Resources</a></li><li data-section="9-2-settings-live-values"><a href="#9-2-settings-live-values">Settings (live values)</a></li><li data-section="9-3-secrets-names-only"><a href="#9-3-secrets-names-only">Secrets (names only)</a></li></ol></li><li data-part="part-10"><a class="nav-doc" href="#open-items-and-limits"><span class="nav-num">10</span>Open items and limits</a><ol></ol></li><li data-part="part-11"><a class="nav-doc" href="#glossary"><span class="nav-num">11</span>Glossary</a><ol></ol></li><li data-part="part-12"><a class="nav-doc" href="#where-to-find-more"><span class="nav-num">12</span>Where to find more</a><ol></ol></li></ol></nav>
+  <p class="sidebar-foot">Version eafe3c3 · 19 November 2026</p>
 </aside>
 <main>
 <section class="cover" id="top">
@@ -187,12 +189,12 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
   <h1 class="cover-title">Reference guide</h1>
   <p class="cover-lede">What the product does for a business, how it is built and run, how to use it, and how to support it: one place to look things up.</p>
   <dl class="cover-meta">
-    <div><dt>Version</dt><dd>4675b0b</dd></div>
+    <div><dt>Version</dt><dd>eafe3c3</dd></div>
     <div><dt>Date</dt><dd>19 November 2026</dd></div>
     <div><dt>App</dt><dd><a href="https://app.office.snilld.in">app.office.snilld.in</a></dd></div>
     <div><dt>Demo</dt><dd><a href="https://demo.office.snilld.in">demo.office.snilld.in</a></dd></div>
   </dl>
-  <ol class="cover-parts"><li><a href="#at-a-glance"><b><span class="nav-num">1</span>At a glance</b><span>Agentic Office by Snilld AI gives the owner of a small business a team of AI agents (an Accountant, a Credit Controller, a Tax Clerk, an Auditor, a Compliance Officer, a Social Media Manager and more) that work inside the business&amp;#39;s own books.</span></a></li><li><a href="#business-scenarios"><b><span class="nav-num">2</span>Business scenarios</b><span>Each scenario below is something an owner, an accountant or our own team does with the product, from the trigger to the result.</span></a></li><li><a href="#solution-and-architecture"><b><span class="nav-num">3</span>Solution and architecture</b><span>The product is one Cloudflare Worker that serves the React app and the API, plus one Durable Object per business that holds that business&amp;#39;s books in its own private SQLite database and is their only writer.</span></a></li><li><a href="#domains-and-environments"><b><span class="nav-num">4</span>Domains and environments</b><span>Everything the public sees is under office.snilld.in, in the Snilld Cloudflare account.</span></a></li><li><a href="#user-guide"><b><span class="nav-num">5</span>User guide</b><span>This part is for the owner of a business and their accountant.</span></a></li><li><a href="#platform-console"><b><span class="nav-num">6</span>Platform console</b><span>The console at https://console.office.snilld.in is for the people who run the platform.</span></a></li><li><a href="#support-manual"><b><span class="nav-num">7</span>Support manual</b><span>This part is for whoever answers support questions and keeps the platform running.</span></a></li><li><a href="#configuration"><b><span class="nav-num">8</span>Configuration</b><span>The Worker&amp;#39;s resources and plain settings are declared in apps/api/wrangler.jsonc; keys and tokens are Worker secrets put from Infisical.</span></a></li><li><a href="#open-items-and-limits"><b><span class="nav-num">9</span>Open items and limits</b><span>What is not done yet, or not done fully, so nobody promises it by mistake.</span></a></li><li><a href="#glossary"><b><span class="nav-num">10</span>Glossary</b><span></span></a></li><li><a href="#where-to-find-more"><b><span class="nav-num">11</span>Where to find more</b><span></span></a></li></ol>
+  <ol class="cover-parts"><li><a href="#at-a-glance"><b><span class="nav-num">1</span>At a glance</b><span>Agentic Office by Snilld AI gives the owner of a small business a team of AI agents (an Accountant, a Credit Controller, a Tax Clerk, an Auditor, a Compliance Officer, a Social Media Manager and more) that work inside the business&amp;#39;s own books.</span></a></li><li><a href="#business-scenarios"><b><span class="nav-num">2</span>Business scenarios</b><span>Each scenario below is something an owner, an accountant or our own team does with the product, from the trigger to the result.</span></a></li><li><a href="#solution-and-architecture"><b><span class="nav-num">3</span>Solution and architecture</b><span>The product is one Cloudflare Worker that serves the React app and the API, plus one Durable Object per business that holds that business&amp;#39;s books in its own private SQLite database and is their only writer.</span></a></li><li><a href="#domains-and-environments"><b><span class="nav-num">4</span>Domains and environments</b><span>Everything the public sees is under office.snilld.in, in the Snilld Cloudflare account.</span></a></li><li><a href="#user-guide"><b><span class="nav-num">5</span>User guide</b><span>This part is for the owner of a business and their accountant.</span></a></li><li><a href="#how-the-work-flows"><b><span class="nav-num">6</span>How the work flows</b><span>A diagram for each agent, for owners: what starts its work, what it does, what reaches your Desk and what happens when you approve or reject.</span></a></li><li><a href="#platform-console"><b><span class="nav-num">7</span>Platform console</b><span>The console at https://console.office.snilld.in is for the people who run the platform.</span></a></li><li><a href="#support-manual"><b><span class="nav-num">8</span>Support manual</b><span>This part is for whoever answers support questions and keeps the platform running.</span></a></li><li><a href="#configuration"><b><span class="nav-num">9</span>Configuration</b><span>The Worker&amp;#39;s resources and plain settings are declared in apps/api/wrangler.jsonc; keys and tokens are Worker secrets put from Infisical.</span></a></li><li><a href="#open-items-and-limits"><b><span class="nav-num">10</span>Open items and limits</b><span>What is not done yet, or not done fully, so nobody promises it by mistake.</span></a></li><li><a href="#glossary"><b><span class="nav-num">11</span>Glossary</b><span></span></a></li><li><a href="#where-to-find-more"><b><span class="nav-num">12</span>Where to find more</b><span></span></a></li></ol>
   <p class="cover-note">Built from <code>docs/reference/agentic-office-reference.md</code>. Edit the Markdown, then run <code>node tools/docs/reference.mjs</code>.</p>
 </section>
 <section class="doc" id="part-1"><header class="doc-head"><p class="doc-num">Part 1</p><h1 id="at-a-glance">At a glance</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> Agentic Office by Snilld AI gives the owner of a small business a team of AI agents (an Accountant, a Credit Controller, a Tax Clerk, an Auditor, a Compliance Officer, a Social Media Manager and more) that work inside the business&#39;s own books. The team shows its work on an office floor plan, every figure can be opened down to the document it came from, and nothing changes until the owner approves it. India is the first market. The product runs on Cloudflare, with one private database per business, and reads documents with open-weight AI models while every amount and tax figure is calculated by tested code.</p>
@@ -471,7 +473,7 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
 <td>Preview on the books</td>
 </tr>
 </tbody></table></div>
-<p>&quot;Preview on the books&quot; means the room, its reports and its approval cards work from the office&#39;s books, but the agent has no live outside data source yet.</p>
+<p>&quot;Preview on the books&quot; means the room, its reports and its approval cards work from the office&#39;s books, but the agent has no live outside data source yet. For exactly what each agent does today, step by step, see <strong>How the work flows</strong>.</p>
 <p><strong>Trust levels.</strong> Every agent starts as a <strong>Trainee</strong> (everything waits for approval), can be promoted to <strong>Trusted</strong> (routine work runs on its own and is logged) and then <strong>Autonomous</strong>. Audit flags, file sharing, payroll runs, campaigns, calendars, broadcasts and posts are always reviewed on the Desk whatever the level, and the Executive Assistant&#39;s replies always wait for their owner.</p>
 <h2 id="3-3-components">3. Components</h2><div class="table-wrap"><table>
 <thead>
@@ -1001,31 +1003,807 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
 </ul>
 <h2 id="5-11-your-own-account-and-your-data">11. Your own account and your data</h2><p>In <strong>Settings → Your account</strong> you can download a copy of your account data or ask for your account to be deleted. An owner can export the whole office as a zip (books and every file) and delete it in <strong>Settings → Office</strong>; a deleted office can be restored for 30 days.</p>
 </section>
-<section class="doc" id="part-6"><header class="doc-head"><p class="doc-num">Part 6</p><h1 id="platform-console">Platform console</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> The console at <a href="https://console.office.snilld.in">https://console.office.snilld.in</a> is for the people who run the platform. It lists every business on the platform and lets a platform owner open an office for a new business, send or re-send the owner&#39;s invitation, and suspend or reopen an office. It shows accounts, not books: no office&#39;s books, files or conversations can be seen or reached from it.</p>
+<section class="doc" id="part-6"><header class="doc-head"><p class="doc-num">Part 6</p><h1 id="how-the-work-flows">How the work flows</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> A diagram for each agent, for owners: what starts its work, what it does, what reaches your Desk and what happens when you approve or reject. Each diagram shows what the office does today. Where an agent&#39;s job description goes further than what is built, the diagram says so in its &quot;Not yet&quot; line, so nothing here is a promise.</p>
 </blockquote>
-<h2 id="6-1-who-can-use-it">1. Who can use it</h2><p>Only the addresses in <code>PLATFORM_OWNERS</code> (today <a href="mailto:puja@snilldai.com">puja@snilldai.com</a> and <a href="mailto:appforge.3b@gmail.com">appforge.3b@gmail.com</a>), signed in with a confirmed address. Anyone else is refused. To add someone, add their address to <code>PLATFORM_OWNERS</code> in <code>apps/api/wrangler.jsonc</code> and deploy.</p>
-<h2 id="6-2-what-it-shows">2. What it shows</h2><p>For each business: name, owners, how many people, status (active, suspended, deleting), when and how it was opened (signed up, or onboarded by whom), its email-in address and web address, any pending owner invitation, and the date of its last account change.</p>
-<h2 id="6-3-opening-an-office-for-a-new-business">3. Opening an office for a new business</h2><ol>
+<p><strong>Reading the diagrams.</strong> An agent&#39;s diagram always has the same four columns: <strong>what starts it</strong>, <strong>what it does</strong>, <strong>on your Desk</strong> and <strong>what happens next</strong>. Blue boxes are cards on your Desk. Green boxes are results: posted, sent, filed or reported. Brown boxes are work set aside or rejected. A dashed box means nothing happens there. The tag at the top right says how much of the agent is built:</p>
+<ul>
+<li><strong>Works today:</strong> it reads, drafts and acts as shown.</li>
+<li><strong>Partly built:</strong> most of it works; the &quot;Not yet&quot; line says what does not.</li>
+<li><strong>Reports only:</strong> it shows figures from your books but drafts nothing for you yet.</li>
+</ul>
+<h2 id="6-1-how-work-moves-through-your-office">1. How work moves through your office</h2><figure class="diagram"><svg id="d-flow-overview" role="img" aria-label="How work moves through your office" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 658" role="img" aria-labelledby="t-overview">
+  <title id="t-overview">How work moves through your office: it comes in, the agent for that job drafts what should happen, you decide on your Desk, and the result goes into your books or out to the right person</title>
+  <defs><marker id="a-overview" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-overview .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-overview .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-overview .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-overview .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-overview .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-overview .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-overview .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-overview .s{font-size:12px;fill:#4A5260}
+#d-flow-overview .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-overview .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-overview .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-overview .tag-works{fill:#3C6E47}
+#d-flow-overview .tag-reports{fill:#5A6270}
+#d-flow-overview .tag-partly{fill:#8A5A2B}
+#d-flow-overview .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-overview)}
+  </style>
+  <text class="hd" x="20" y="28">WAYS IN</text><text class="hd" x="245" y="28">THE AGENTS</text><text class="hd" x="495" y="28">YOUR DESK</text><text class="hd" x="735" y="28">THE RESULT</text>
+  <path class="ln" d="M215 64H230V64H243"/><path class="ln" d="M215 249H230V64H243"/><path class="ln" d="M215 354H230V64H243"/><path class="ln" d="M215 475H230V64H243"/><path class="ln" d="M215 581H230V64H243"/><path class="ln" d="M273 159V175"/><path class="ln" d="M273 280V296"/><path class="ln" d="M465 64H480V64H493"/><path class="ln" d="M523 175V191"/><path class="ln" d="M705 64H720V64H733"/><path class="ln" d="M705 64H720V169H733"/><path class="ln" d="M705 64H720V274H733"/><path class="ln" d="M705 217H720V379H733"/>
+  <rect class="box" x="20" y="40" width="195" height="167" rx="4"/><text class="t" x="32" y="63">Email</text><text class="s" x="32" y="80">• Bills and invoices:</text><text class="s" x="32" y="96">your office's address</text><text class="s" x="32" y="112">• Marketplace reports:</text><text class="s" x="32" y="128">its .sales address</text><text class="s" x="32" y="144">• Your own email: its</text><text class="s" x="32" y="160">.assistant address</text><text class="s" x="32" y="176">• Customers: its .help</text><text class="s" x="32" y="192">address</text>
+  <rect class="box" x="20" y="225" width="195" height="87" rx="4"/><text class="t" x="32" y="248">Upload in the app</text><text class="s" x="32" y="265">PDFs, photos, sales</text><text class="s" x="32" y="281">reports and the CSV files</text><text class="s" x="32" y="297">of your existing books</text>
+  <rect class="box" x="20" y="330" width="195" height="103" rx="4"/><text class="t" x="32" y="353">WhatsApp</text><text class="s" x="32" y="370">The office's shared</text><text class="s" x="32" y="386">number for you and your</text><text class="s" x="32" y="402">people; your own business</text><text class="s" x="32" y="418">number for customers</text>
+  <rect class="box" x="20" y="451" width="195" height="88" rx="4"/><text class="t" x="32" y="474">Instagram, Facebook,</text><text class="t" x="32" y="491">Threads</text><text class="s" x="32" y="508">Comments, reviews and</text><text class="s" x="32" y="524">messages</text>
+  <rect class="box" x="20" y="557" width="195" height="87" rx="4"/><text class="t" x="32" y="580">The morning round</text><text class="s" x="32" y="597">Every morning at the</text><text class="s" x="32" y="613">digest time, 08:45 unless</text><text class="s" x="32" y="629">you change it in Settings</text>
+  <rect class="box" x="245" y="40" width="220" height="119" rx="4"/><text class="t" x="257" y="63">The agent for that job</text><text class="s" x="257" y="80">Reads it, checks it against</text><text class="s" x="257" y="96">your books and drafts what</text><text class="s" x="257" y="112">should happen. Every amount</text><text class="s" x="257" y="128">and tax figure is worked out</text><text class="s" x="257" y="144">by code, never by AI.</text>
+  <rect class="stop" x="245" y="177" width="220" height="103" rx="4"/><text class="t" x="257" y="200">From someone new?</text><text class="s" x="257" y="217">A document from a sender who</text><text class="s" x="257" y="233">is not in your books is</text><text class="s" x="257" y="249">never posted as it arrives:</text><text class="s" x="257" y="265">it waits for you.</text>
+  <rect class="stop" x="245" y="298" width="220" height="87" rx="4"/><text class="t" x="257" y="321">Seen before?</text><text class="s" x="257" y="338">The same bill, invoice,</text><text class="s" x="257" y="354">proforma or report again is</text><text class="s" x="257" y="370">set aside without asking.</text>
+  <rect class="desk" x="495" y="40" width="210" height="135" rx="4"/><text class="t" x="507" y="63">A card on your Desk</text><text class="s" x="507" y="80">Says exactly what will</text><text class="s" x="507" y="96">happen, with the page</text><text class="s" x="507" y="112">behind each figure.</text><text class="s" x="507" y="128">Approve, edit or reject: on</text><text class="s" x="507" y="144">the web, or by number on</text><text class="s" x="507" y="160">WhatsApp for most cards.</text>
+  <rect class="none" x="495" y="193" width="210" height="87" rx="4"/><text class="t" x="507" y="216">Or done on its own</text><text class="s" x="507" y="233">Only routine work, and only</text><text class="s" x="507" y="249">for an agent you have made</text><text class="s" x="507" y="265">Trusted or Autonomous.</text>
+  <rect class="done" x="735" y="40" width="205" height="87" rx="4"/><text class="t" x="747" y="63">Your books</text><text class="s" x="747" y="80">Posted bills and invoices</text><text class="s" x="747" y="96">feed GST, TDS, who owes</text><text class="s" x="747" y="112">you and the Boardroom.</text>
+  <rect class="done" x="735" y="145" width="205" height="87" rx="4"/><text class="t" x="747" y="168">Sent out</text><text class="s" x="747" y="185">Payment reminders, replies</text><text class="s" x="747" y="201">to customers, posts and</text><text class="s" x="747" y="217">replies to your own email.</text>
+  <rect class="done" x="735" y="250" width="205" height="87" rx="4"/><text class="t" x="747" y="273">Filed for the record</text><text class="s" x="747" y="290">Proformas, delivery notes</text><text class="s" x="747" y="306">and credit notes: kept,</text><text class="s" x="747" y="322">not posted.</text>
+  <rect class="done" x="735" y="355" width="205" height="120" rx="4"/><text class="t" x="747" y="378">The team log and the</text><text class="t" x="747" y="395">digest</text><text class="s" x="747" y="412">Every action is written in</text><text class="s" x="747" y="428">the log; the morning</text><text class="s" x="747" y="444">digest tells you what</text><text class="s" x="747" y="460">happened.</text>
+  
+</svg>
+<figcaption>How work moves through your office</figcaption></figure>
+<p>Everything that comes in goes to the agent for that job: your office&#39;s own email addresses (each is shown in the agent&#39;s room), an upload, WhatsApp, your social media accounts, or the morning round. The agent checks it against your books and drafts what should happen. Every amount and tax figure is worked out by code, never by AI. You decide on your Desk, on the web or by number on WhatsApp. Only work you have allowed by trust level goes ahead without you, and a document from someone not in your books never posts as it arrives.</p>
+<h2 id="6-2-trust-levels">2. Trust levels</h2><figure class="diagram"><svg id="d-flow-trust" role="img" aria-label="Trust levels" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 407" role="img" aria-labelledby="t-trust">
+  <title id="t-trust">Trust levels: every agent starts as a Trainee, you can promote it to Trusted and then Autonomous when its record allows, and some work always waits for you</title>
+  <defs><marker id="a-trust" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-trust .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-trust .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-trust .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-trust .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-trust .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-trust .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-trust .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-trust .s{font-size:12px;fill:#4A5260}
+#d-flow-trust .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-trust .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-trust .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-trust .tag-works{fill:#3C6E47}
+#d-flow-trust .tag-reports{fill:#5A6270}
+#d-flow-trust .tag-partly{fill:#8A5A2B}
+#d-flow-trust .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-trust)}
+  </style>
+  <text class="hd" x="10" y="28">TRAINEE</text><text class="hd" x="245" y="28">TRUSTED</text><text class="hd" x="520" y="28">AUTONOMOUS</text><text class="hd" x="740" y="28">ALWAYS WAITS FOR YOU</text>
+  <path class="ln" d="M38 176V192"/><path class="ln" d="M215 218H230V64H243"/><path class="ln" d="M273 304V320"/><path class="ln" d="M490 346H505V64H518"/>
+  <rect class="box" x="10" y="40" width="205" height="136" rx="4"/><text class="t" x="22" y="63">Every card waits for</text><text class="t" x="22" y="80">you</text><text class="s" x="22" y="97">Each agent starts here.</text><text class="s" x="22" y="113">Every decision you make is</text><text class="s" x="22" y="129">counted; an approval</text><text class="s" x="22" y="145">without changes counts as</text><text class="s" x="22" y="161">correct.</text>
+  <rect class="none" x="10" y="194" width="205" height="119" rx="4"/><text class="t" x="22" y="217">Promotion offered</text><text class="s" x="22" y="234">After 50 decisions with</text><text class="s" x="22" y="250">97% approved unchanged.</text><text class="s" x="22" y="266">Nothing promotes itself:</text><text class="s" x="22" y="282">you choose the level in</text><text class="s" x="22" y="298">the agent's room.</text>
+  <rect class="box" x="245" y="40" width="245" height="264" rx="4"/><text class="t" x="257" y="63">Routine work goes ahead</text><text class="t" x="257" y="80">alone</text><text class="s" x="257" y="97">• A bill or invoice from a party</text><text class="s" x="257" y="113">already in your books, every</text><text class="s" x="257" y="129">check passed, under ₹1 lakh</text><text class="s" x="257" y="145">• A polite first payment</text><text class="s" x="257" y="161">reminder</text><text class="s" x="257" y="177">• A quotation or purchase order</text><text class="s" x="257" y="193">under ₹1 lakh</text><text class="s" x="257" y="209">• A thank-you to a 4 or 5 star</text><text class="s" x="257" y="225">review, with no figures or</text><text class="s" x="257" y="241">promises</text><text class="s" x="257" y="257">• A post from a calendar you</text><text class="s" x="257" y="273">approved, unchanged and passing</text><text class="s" x="257" y="289">every check again</text>
+  <rect class="none" x="245" y="322" width="245" height="71" rx="4"/><text class="t" x="257" y="345">Promotion offered</text><text class="s" x="257" y="362">After 300 decisions with 99.5%</text><text class="s" x="257" y="378">approved unchanged.</text>
+  <rect class="box" x="520" y="40" width="190" height="135" rx="4"/><text class="t" x="532" y="63">Acts, and reports</text><text class="s" x="532" y="80">Everything goes ahead on</text><text class="s" x="532" y="96">its own and is logged,</text><text class="s" x="532" y="112">except the work that</text><text class="s" x="532" y="128">always waits. Social</text><text class="s" x="532" y="144">replies and posts keep</text><text class="s" x="532" y="160">the Trusted rules.</text>
+  <rect class="desk" x="740" y="40" width="210" height="247" rx="4"/><text class="t" x="752" y="63">At every level</text><text class="s" x="752" y="80">• Bringing in your books</text><text class="s" x="752" y="96">• A new layout of sales</text><text class="s" x="752" y="112">report</text><text class="s" x="752" y="128">• A customer handed to you</text><text class="s" x="752" y="144">• Replies to your own email</text><text class="s" x="752" y="160">• Audit findings</text><text class="s" x="752" y="176">• Sharing files with your</text><text class="s" x="752" y="192">accountant</text><text class="s" x="752" y="208">• Compliance proposals</text><text class="s" x="752" y="224">• Campaigns, social</text><text class="s" x="752" y="240">calendars and WhatsApp</text><text class="s" x="752" y="256">broadcasts</text><text class="s" x="752" y="272">• Payroll runs</text>
+  
+</svg>
+<figcaption>Trust levels</figcaption></figure>
+<p>Every agent you hire starts as a Trainee. Each decision you make is counted, and only an approval without changes counts as correct. When the record is good enough, the agent&#39;s room offers a promotion. Nothing promotes itself: the level is yours to set in the agent&#39;s room, up or down, at any time. Some work always waits for you, whatever the level.</p>
+<h2 id="6-3-the-morning-round">3. The morning round</h2><figure class="diagram"><svg id="d-flow-morning" role="img" aria-label="The morning round" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 821" role="img" aria-labelledby="t-morning">
+  <title id="t-morning">The morning round: at the digest time each hired agent does its morning work in a fixed order, then the digest goes to each owner by WhatsApp or email</title>
+  <defs><marker id="a-morning" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-morning .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-morning .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-morning .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-morning .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-morning .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-morning .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-morning .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-morning .s{font-size:12px;fill:#4A5260}
+#d-flow-morning .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-morning .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-morning .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-morning .tag-works{fill:#3C6E47}
+#d-flow-morning .tag-reports{fill:#5A6270}
+#d-flow-morning .tag-partly{fill:#8A5A2B}
+#d-flow-morning .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-morning)}
+  </style>
+  <text class="hd" x="10" y="28">WHEN</text><text class="hd" x="210" y="28">IN THIS ORDER</text><text class="hd" x="540" y="28">HOW IT REACHES YOU</text><text class="hd" x="770" y="28">THEN</text>
+  <path class="ln" d="M180 64H195V64H208"/><path class="ln" d="M180 185H195V64H208"/><path class="ln" d="M238 127V135"/><path class="ln" d="M238 208V216"/><path class="ln" d="M238 305V313"/><path class="ln" d="M238 386V394"/><path class="ln" d="M238 483V491"/><path class="ln" d="M238 564V572"/><path class="ln" d="M238 645V653"/><path class="ln" d="M238 726V734"/><path class="ln" d="M510 760H525V64H538"/><path class="ln" d="M510 760H525V169H538"/><path class="ln" d="M510 760H525V258H538"/><path class="ln" d="M740 64H755V64H768"/>
+  <rect class="box" x="10" y="40" width="170" height="103" rx="4"/><text class="t" x="22" y="63">The morning round</text><text class="s" x="22" y="80">Every morning at the</text><text class="s" x="22" y="96">digest time, 08:45</text><text class="s" x="22" y="112">unless you change it</text><text class="s" x="22" y="128">in Settings</text>
+  <rect class="none" x="10" y="161" width="170" height="87" rx="4"/><text class="t" x="22" y="184">Run now</text><text class="s" x="22" y="201">Any routine can also</text><text class="s" x="22" y="217">be run from its room,</text><text class="s" x="22" y="233">or paused there.</text>
+  <rect class="box" x="210" y="40" width="300" height="87" rx="4"/><text class="t" x="222" y="63">1. Trusted work</text><text class="s" x="222" y="80">Agents you have made Trusted or</text><text class="s" x="222" y="96">Autonomous finish the routine cards</text><text class="s" x="222" y="112">waiting</text>
+  <rect class="box" x="210" y="137" width="300" height="71" rx="4"/><text class="t" x="222" y="160">2. Payment reminders</text><text class="s" x="222" y="177">Approved reminders that could not be</text><text class="s" x="222" y="193">sent are tried again</text>
+  <rect class="box" x="210" y="218" width="300" height="87" rx="4"/><text class="t" x="222" y="241">3. Social media</text><text class="s" x="222" y="258">Comments and results fetched; posts due</text><text class="s" x="222" y="274">published; from the 25th, next month's</text><text class="s" x="222" y="290">calendar drafted</text>
+  <rect class="box" x="210" y="315" width="300" height="71" rx="4"/><text class="t" x="222" y="338">4. Reorder check</text><text class="s" x="222" y="355">Purchase orders drafted for items at or</text><text class="s" x="222" y="371">under their reorder level</text>
+  <rect class="box" x="210" y="396" width="300" height="87" rx="4"/><text class="t" x="222" y="419">5. Online sales</text><text class="s" x="222" y="436">The last day the marketplace reports</text><text class="s" x="222" y="452">cover, and products whose returns are</text><text class="s" x="222" y="468">climbing</text>
+  <rect class="box" x="210" y="493" width="300" height="71" rx="4"/><text class="t" x="222" y="516">6. Filings due</text><text class="s" x="222" y="533">Reminders 7 days and 2 days before, on</text><text class="s" x="222" y="549">the day, and weekly while late</text>
+  <rect class="box" x="210" y="574" width="300" height="71" rx="4"/><text class="t" x="222" y="597">7. Customers waiting</text><text class="s" x="222" y="614">Hand-offs waiting more than 4 hours;</text><text class="s" x="222" y="630">WhatsApp chats about to close</text>
+  <rect class="box" x="210" y="655" width="300" height="71" rx="4"/><text class="t" x="222" y="678">8. Your agenda</text><text class="s" x="222" y="695">Each owner's next three days, for that</text><text class="s" x="222" y="711">owner only</text>
+  <rect class="box" x="210" y="736" width="300" height="71" rx="4"/><text class="t" x="222" y="759">9. The digest</text><text class="s" x="222" y="776">What is waiting on your Desk, and what</text><text class="s" x="222" y="792">each routine did</text>
+  <rect class="done" x="540" y="40" width="200" height="87" rx="4"/><text class="t" x="552" y="63">WhatsApp</text><text class="s" x="552" y="80">If you chose the digest</text><text class="s" x="552" y="96">and wrote to the office</text><text class="s" x="552" y="112">in the last 24 hours</text>
+  <rect class="done" x="540" y="145" width="200" height="71" rx="4"/><text class="t" x="552" y="168">A WhatsApp template</text><text class="s" x="552" y="185">Otherwise, if one is set</text><text class="s" x="552" y="201">up</text>
+  <rect class="done" x="540" y="234" width="200" height="55" rx="4"/><text class="t" x="552" y="257">Email</text><text class="s" x="552" y="274">Otherwise</text>
+  <rect class="desk" x="770" y="40" width="180" height="167" rx="4"/><text class="t" x="782" y="63">Reply to decide</text><text class="s" x="782" y="80">"1 yes 2 no" or "all</text><text class="s" x="782" y="96">yes" on WhatsApp.</text><text class="s" x="782" y="112">Campaigns, calendars,</text><text class="s" x="782" y="128">broadcasts, posts,</text><text class="s" x="782" y="144">audit findings, file</text><text class="s" x="782" y="160">shares and payroll</text><text class="s" x="782" y="176">open on the Desk</text><text class="s" x="782" y="192">instead.</text>
+  
+</svg>
+<figcaption>The morning round</figcaption></figure>
+<p>Once a day, at the digest time (08:45 unless you change it in <strong>Settings</strong>), each hired agent does its morning work in the order shown, and then the digest goes to each owner. A routine whose agent is not hired is skipped. Each routine can also be run or paused from its agent&#39;s room, and <strong>Routines</strong> lists them all with their last runs.</p>
+<h2 id="6-4-front-office">4. Front office</h2><h3 id="6-the-office-manager">The Office Manager</h3><figure class="diagram"><svg id="d-flow-office-manager" role="img" aria-label="The Office Manager" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 452" role="img" aria-labelledby="t-office-manager">
+  <title id="t-office-manager">The Office Manager: answers your questions with figures you can open, does the trusted work each morning and sends the digest</title>
+  <defs><marker id="a-office-manager" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-office-manager .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-office-manager .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-office-manager .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-office-manager .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-office-manager .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-office-manager .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-office-manager .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-office-manager .s{font-size:12px;fill:#4A5260}
+#d-flow-office-manager .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-office-manager .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-office-manager .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-office-manager .tag-works{fill:#3C6E47}
+#d-flow-office-manager .tag-reports{fill:#5A6270}
+#d-flow-office-manager .tag-partly{fill:#8A5A2B}
+#d-flow-office-manager .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-office-manager)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 192H200V86H213"/><path class="ln" d="M185 297H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M243 236V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">Ask the office</text><text class="t" x="27" y="102">manager</text><text class="s" x="27" y="119">The box at the top of</text><text class="s" x="27" y="135">every page</text>
+  <rect class="box" x="15" y="168" width="170" height="87" rx="4"/><text class="t" x="27" y="191">WhatsApp</text><text class="s" x="27" y="208">"ask" and your</text><text class="s" x="27" y="224">question, by text or</text><text class="s" x="27" y="240">voice</text>
+  <rect class="box" x="15" y="273" width="170" height="103" rx="4"/><text class="t" x="27" y="296">The morning round</text><text class="s" x="27" y="313">Every morning at the</text><text class="s" x="27" y="329">digest time, 08:45</text><text class="s" x="27" y="345">unless you change it</text><text class="s" x="27" y="361">in Settings</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Finds what you asked about</text><text class="s" x="227" y="102">Who owes you, sales, GST, TDS, audit,</text><text class="s" x="227" y="118">stock, what is waiting, and more</text>
+  <rect class="box" x="215" y="149" width="280" height="87" rx="4"/><text class="t" x="227" y="172">2. Answers from your books</text><text class="s" x="227" y="189">Each figure in the answer opens the</text><text class="s" x="227" y="205">documents behind it. No AI writes the</text><text class="s" x="227" y="221">figures.</text>
+  <rect class="box" x="215" y="252" width="280" height="71" rx="4"/><text class="t" x="227" y="275">3. Each morning</text><text class="s" x="227" y="292">Lets Trusted agents finish routine</text><text class="s" x="227" y="308">work, then puts the digest together</text>
+  <rect class="none" x="525" y="62" width="205" height="87" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It answers and reports; it</text><text class="s" x="537" y="118">drafts nothing for you to</text><text class="s" x="537" y="134">approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">The answer</text><text class="s" x="772" y="102">On the page or on</text><text class="s" x="772" y="118">WhatsApp</text>
+  <rect class="done" x="760" y="151" width="185" height="71" rx="4"/><text class="t" x="772" y="174">The morning digest</text><text class="s" x="772" y="191">By WhatsApp or email to</text><text class="s" x="772" y="207">each owner</text>
+  <rect class="nyet" x="15" y="402" width="930" height="36" rx="4"/><text class="ny" x="27" y="424">Not yet: flagging problems between agents.</text>
+</svg>
+<figcaption>The Office Manager</figcaption></figure>
+<p>Ask in your own words, on any page or on WhatsApp. The answer comes from your books, and every figure in it opens the documents behind it. Each morning it lets your Trusted agents finish their routine work and sends you the digest.</p>
+<h3 id="6-customer-service">Customer Service</h3><figure class="diagram"><svg id="d-flow-customer-service" role="img" aria-label="Customer Service" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 504" role="img" aria-labelledby="t-customer-service">
+  <title id="t-customer-service">Customer Service: answers your customers on WhatsApp, email and website chat from your own answers and records, and hands anything sensitive to you</title>
+  <defs><marker id="a-customer-service" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-customer-service .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-customer-service .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-customer-service .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-customer-service .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-customer-service .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-customer-service .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-customer-service .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-customer-service .s{font-size:12px;fill:#4A5260}
+#d-flow-customer-service .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-customer-service .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-customer-service .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-customer-service .tag-works{fill:#3C6E47}
+#d-flow-customer-service .tag-reports{fill:#5A6270}
+#d-flow-customer-service .tag-partly{fill:#8A5A2B}
+#d-flow-customer-service .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-customer-service)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 192H200V86H213"/><path class="ln" d="M185 281H200V86H213"/><path class="ln" d="M185 354H200V86H213"/><path class="ln" d="M243 149V163"/><path class="ln" d="M383 236V250"/><path class="ln" d="M243 236V385"/><path class="ln" d="M495 411H510V86H523"/><path class="ln" d="M495 276H510V224H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 224H745V191H758"/><path class="ln" d="M730 224H745V296H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">Your business</text><text class="t" x="27" y="102">WhatsApp</text><text class="s" x="27" y="119">Customers write to</text><text class="s" x="27" y="135">your own number</text>
+  <rect class="box" x="15" y="168" width="170" height="71" rx="4"/><text class="t" x="27" y="191">Email</text><text class="s" x="27" y="208">To the office's .help</text><text class="s" x="27" y="224">address</text>
+  <rect class="box" x="15" y="257" width="170" height="55" rx="4"/><text class="t" x="27" y="280">Website chat</text><text class="s" x="27" y="297">When you switch it on</text>
+  <rect class="box" x="15" y="330" width="170" height="71" rx="4"/><text class="t" x="27" y="353">The morning round</text><text class="s" x="27" y="370">Chases customers</text><text class="s" x="27" y="386">still waiting</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Knows the customer</text><text class="s" x="227" y="102">By their number or email; on the</text><text class="s" x="227" y="118">website by an order number and phone</text><text class="s" x="227" y="134">or email</text>
+  <rect class="box" x="215" y="165" width="280" height="71" rx="4"/><text class="t" x="227" y="188">2. Understands the message</text><text class="s" x="227" y="205">Rules first; the AI model only when</text><text class="s" x="227" y="221">the rules are unsure (150 a day)</text>
+  <rect class="stop" x="271" y="252" width="224" height="119" rx="4"/><text class="t" x="283" y="275">Sensitive or unsure?</text><text class="s" x="283" y="292">Refunds, complaints, legal</text><text class="s" x="283" y="308">threats, anger, price talk,</text><text class="s" x="283" y="324">cancellations, asking for a</text><text class="s" x="283" y="340">person, or low confidence:</text><text class="s" x="283" y="356">handed to you</text>
+  <rect class="box" x="215" y="387" width="280" height="103" rx="4"/><text class="t" x="227" y="410">3. Otherwise answers</text><text class="s" x="227" y="427">From your saved answers, business</text><text class="s" x="227" y="443">facts, order status or the customer's</text><text class="s" x="227" y="459">balance. The first reply says it is</text><text class="s" x="227" y="475">an AI and how to reach you.</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Reply to &lt;name&gt; on</text><text class="t" x="537" y="102">&lt;channel&gt;"</text><text class="s" x="537" y="119">While it is a Trainee, and</text><text class="s" x="537" y="135">when a Trusted agent</text><text class="s" x="537" y="151">answers from business</text><text class="s" x="537" y="167">facts</text>
+  <rect class="desk" x="525" y="200" width="205" height="104" rx="4"/><text class="t" x="537" y="223">"&lt;name&gt; on &lt;channel&gt;</text><text class="t" x="537" y="240">wants …"</text><text class="s" x="537" y="257">A hand-off: always waits</text><text class="s" x="537" y="273">for you. The customer is</text><text class="s" x="537" y="289">told someone will reply.</text>
+  <rect class="done" x="760" y="62" width="185" height="87" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">The reply goes to the</text><text class="s" x="772" y="118">customer, as written or</text><text class="s" x="772" y="134">as you edited it</text>
+  <rect class="done" x="760" y="167" width="185" height="87" rx="4"/><text class="t" x="772" y="190">Answer a hand-off</text><text class="s" x="772" y="207">Your reply is sent, and</text><text class="s" x="772" y="223">can be saved as a new</text><text class="s" x="772" y="239">answer for next time</text>
+  <rect class="stop" x="760" y="272" width="185" height="71" rx="4"/><text class="t" x="772" y="295">Reject</text><text class="s" x="772" y="312">Nothing is sent; a</text><text class="s" x="772" y="328">hand-off is closed</text>
+  
+</svg>
+<figcaption>Customer Service</figcaption></figure>
+<p>It answers your customers on your own WhatsApp number, by email and in the website chat, from the answers you saved and your records: orders, balances and business facts. Anything sensitive or unclear comes to you as a hand-off, and the customer is told someone will reply. While it is a Trainee, every reply waits for you.</p>
+<h3 id="6-the-executive-assistant">The Executive Assistant</h3><figure class="diagram"><svg id="d-flow-executive-assistant" role="img" aria-label="The Executive Assistant" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 604" role="img" aria-labelledby="t-executive-assistant">
+  <title id="t-executive-assistant">The Executive Assistant: each owner's own calendar, three-day agenda, tasks and replies to forwarded emails, private to that owner</title>
+  <defs><marker id="a-executive-assistant" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-executive-assistant .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-executive-assistant .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-executive-assistant .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-executive-assistant .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-executive-assistant .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-executive-assistant .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-executive-assistant .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-executive-assistant .s{font-size:12px;fill:#4A5260}
+#d-flow-executive-assistant .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-executive-assistant .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-executive-assistant .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-executive-assistant .tag-works{fill:#3C6E47}
+#d-flow-executive-assistant .tag-reports{fill:#5A6270}
+#d-flow-executive-assistant .tag-partly{fill:#8A5A2B}
+#d-flow-executive-assistant .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-executive-assistant)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M185 328H200V86H213"/><path class="ln" d="M185 433H200V86H213"/><path class="ln" d="M243 117V131"/><path class="ln" d="M243 220V234"/><path class="ln" d="M243 307V321"/><path class="ln" d="M495 260H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M495 347H510V196H745V223H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">Email you forward</text><text class="s" x="27" y="102">To the office's</text><text class="s" x="27" y="118">.assistant address,</text><text class="s" x="27" y="134">from your own address</text><text class="s" x="27" y="150">only</text>
+  <rect class="box" x="15" y="183" width="170" height="103" rx="4"/><text class="t" x="27" y="206">Your calendar</text><text class="s" x="27" y="223">Its private link,</text><text class="s" x="27" y="239">read every morning</text><text class="s" x="27" y="255">and when you open the</text><text class="s" x="27" y="271">room</text>
+  <rect class="box" x="15" y="304" width="170" height="87" rx="4"/><text class="t" x="27" y="327">Tasks</text><text class="s" x="27" y="344">In the room, or</text><text class="s" x="27" y="360">"remind me…" and</text><text class="s" x="27" y="376">"done…" on WhatsApp</text>
+  <rect class="box" x="15" y="409" width="170" height="103" rx="4"/><text class="t" x="27" y="432">The morning round</text><text class="s" x="27" y="449">Every morning at the</text><text class="s" x="27" y="465">digest time, 08:45</text><text class="s" x="27" y="481">unless you change it</text><text class="s" x="27" y="497">in Settings</text>
+  <rect class="stop" x="215" y="62" width="280" height="55" rx="4"/><text class="t" x="227" y="85">Has a bill or invoice attached?</text><text class="s" x="227" y="102">Passed to the Accountant</text>
+  <rect class="box" x="215" y="133" width="280" height="87" rx="4"/><text class="t" x="227" y="156">1. Drafts a reply</text><text class="s" x="227" y="173">With the AI model (100 a day), or a</text><text class="s" x="227" y="189">plain template when it is not</text><text class="s" x="227" y="205">available</text>
+  <rect class="box" x="215" y="236" width="280" height="71" rx="4"/><text class="t" x="227" y="259">2. Checks the figures</text><text class="s" x="227" y="276">Any amount in the draft that your</text><text class="s" x="227" y="292">books do not hold is flagged</text>
+  <rect class="box" x="215" y="323" width="280" height="87" rx="4"/><text class="t" x="227" y="346">3. Plans your three days</text><text class="s" x="227" y="363">Meetings with a short brief from the</text><text class="s" x="227" y="379">books on that customer or supplier,</text><text class="s" x="227" y="395">tasks, filings due and a free slot</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Reply to &lt;sender&gt;:</text><text class="t" x="537" y="102">&lt;subject&gt;"</text><text class="s" x="537" y="119">Always waits for you. Only</text><text class="s" x="537" y="135">you see it: not other</text><text class="s" x="537" y="151">owners, not the</text><text class="s" x="537" y="167">accountant.</text>
+  <rect class="done" x="760" y="62" width="185" height="119" rx="4"/><text class="t" x="772" y="85">Send reply</text><text class="s" x="772" y="102">Goes from the office's</text><text class="s" x="772" y="118">address in your name;</text><text class="s" x="772" y="134">replies come to you. A</text><text class="s" x="772" y="150">promise in it becomes a</text><text class="s" x="772" y="166">follow-up task.</text>
+  <rect class="done" x="760" y="199" width="185" height="71" rx="4"/><text class="t" x="772" y="222">Your agenda</text><text class="s" x="772" y="239">In your own morning</text><text class="s" x="772" y="255">digest</text>
+  <rect class="nyet" x="15" y="538" width="930" height="52" rx="4"/><text class="ny" x="27" y="560">Not yet: a brief sent just before each meeting (today it is in the morning agenda); reading Gmail and creating calendar events</text><text class="ny" x="27" y="576">directly.</text>
+</svg>
+<figcaption>The Executive Assistant</figcaption></figure>
+<p>Each owner has their own. It reads your calendar from its private link, plans your next three days and drafts replies to the emails you forward. Every reply waits for you, and only you see your calendar, emails, tasks and drafts.</p>
+<h2 id="6-5-accounts">5. Accounts</h2><h3 id="6-the-accountant-bills-and-invoices">The Accountant: bills and invoices</h3><figure class="diagram"><svg id="d-flow-accountant" role="img" aria-label="The Accountant" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 670" role="img" aria-labelledby="t-accountant">
+  <title id="t-accountant">The Accountant: reads each bill and invoice, checks it, sets aside duplicates, files proformas and notes, and puts the rest on your Desk to post</title>
+  <defs><marker id="a-accountant" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-accountant .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-accountant .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-accountant .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-accountant .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-accountant .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-accountant .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-accountant .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-accountant .s{font-size:12px;fill:#4A5260}
+#d-flow-accountant .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-accountant .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-accountant .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-accountant .tag-works{fill:#3C6E47}
+#d-flow-accountant .tag-reports{fill:#5A6270}
+#d-flow-accountant .tag-partly{fill:#8A5A2B}
+#d-flow-accountant .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-accountant)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M185 296H200V86H213"/><path class="ln" d="M185 385H200V86H213"/><path class="ln" d="M243 181V195"/><path class="ln" d="M383 284V298"/><path class="ln" d="M243 284V402"/><path class="ln" d="M383 507V521"/><path class="ln" d="M495 428H510V86H523"/><path class="ln" d="M495 324H510V290H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 290H745V207H758"/><path class="ln" d="M730 86H745V312H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">Email</text><text class="s" x="27" y="102">To the office's</text><text class="s" x="27" y="118">address: PDFs and</text><text class="s" x="27" y="134">photos, up to 5 a</text><text class="s" x="27" y="150">message</text>
+  <rect class="box" x="15" y="183" width="170" height="71" rx="4"/><text class="t" x="27" y="206">Upload</text><text class="s" x="27" y="223">In the Accountant's</text><text class="s" x="27" y="239">room</text>
+  <rect class="box" x="15" y="272" width="170" height="71" rx="4"/><text class="t" x="27" y="295">From the assistant</text><text class="s" x="27" y="312">Bills attached to</text><text class="s" x="27" y="328">email you forwarded</text>
+  <rect class="box" x="15" y="361" width="170" height="71" rx="4"/><text class="t" x="27" y="384">WhatsApp</text><text class="s" x="27" y="401">A photo of a bill, or</text><text class="s" x="27" y="417">a voice note</text>
+  <rect class="box" x="215" y="62" width="280" height="119" rx="4"/><text class="t" x="227" y="85">1. Reads the page</text><text class="s" x="227" y="102">Rules read the text first; the AI</text><text class="s" x="227" y="118">model only where the rules miss</text><text class="s" x="227" y="134">something; scans by the vision model.</text><text class="s" x="227" y="150">Emailed PDFs are read when someone</text><text class="s" x="227" y="166">next opens the app.</text>
+  <rect class="box" x="215" y="197" width="280" height="87" rx="4"/><text class="t" x="227" y="220">2. What is it?</text><text class="s" x="227" y="237">By its title and its number field:</text><text class="s" x="227" y="253">tax invoice or bill, proforma,</text><text class="s" x="227" y="269">delivery note, credit or debit note</text>
+  <rect class="stop" x="271" y="300" width="224" height="88" rx="4"/><text class="t" x="283" y="323">Proforma, challan or</text><text class="t" x="283" y="340">note?</text><text class="s" x="283" y="357">Filed for the record, not</text><text class="s" x="283" y="373">posted</text>
+  <rect class="box" x="215" y="404" width="280" height="103" rx="4"/><text class="t" x="227" y="427">3. Checks it</text><text class="s" x="227" y="444">GSTIN check digit, lines times rates,</text><text class="s" x="227" y="460">tax by rate, CGST and SGST or IGST</text><text class="s" x="227" y="476">for the place of supply, the total,</text><text class="s" x="227" y="492">TDS due, input credit</text>
+  <rect class="stop" x="271" y="523" width="224" height="71" rx="4"/><text class="t" x="283" y="546">Already in the books?</text><text class="s" x="283" y="563">Set aside as a duplicate,</text><text class="s" x="283" y="579">without asking</text>
+  <rect class="desk" x="525" y="62" width="205" height="186" rx="4"/><text class="t" x="537" y="85">"Post bill &lt;no&gt; from</text><text class="t" x="537" y="102">&lt;supplier&gt;" or "Record</text><text class="t" x="537" y="119">sales invoice &lt;no&gt; to</text><text class="t" x="537" y="136">&lt;customer&gt;"</text><text class="s" x="537" y="153">Failed checks are listed</text><text class="s" x="537" y="169">on the card. Trusted: goes</text><text class="s" x="537" y="185">ahead alone only if every</text><text class="s" x="537" y="201">check passed, the party is</text><text class="s" x="537" y="217">known and it is under ₹1</text><text class="s" x="537" y="233">lakh.</text>
+  <rect class="desk" x="525" y="266" width="205" height="89" rx="4"/><text class="t" x="537" y="289">"File proforma … /</text><text class="t" x="537" y="306">delivery note … /</text><text class="t" x="537" y="323">credit note …"</text><text class="s" x="537" y="340">Always waits for you</text>
+  <rect class="done" x="760" y="62" width="185" height="103" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Posted: it counts in</text><text class="s" x="772" y="118">GST, TDS, who owes you</text><text class="s" x="772" y="134">and what you owe. A new</text><text class="s" x="772" y="150">party is added.</text>
+  <rect class="done" x="760" y="183" width="185" height="87" rx="4"/><text class="t" x="772" y="206">File it</text><text class="s" x="772" y="223">Kept with its page;</text><text class="s" x="772" y="239">nothing changes in the</text><text class="s" x="772" y="255">books or returns</text>
+  <rect class="stop" x="760" y="288" width="185" height="71" rx="4"/><text class="t" x="772" y="311">Reject</text><text class="s" x="772" y="328">The bill is rejected or</text><text class="s" x="772" y="344">the invoice cancelled</text>
+  <rect class="nyet" x="15" y="620" width="930" height="36" rx="4"/><text class="ny" x="27" y="642">Not yet: matching bank receipts to invoices; posting credit notes and stock movements.</text>
+</svg>
+<figcaption>The Accountant</figcaption></figure>
+<p>Send bills and invoices by email, upload them, or forward them through your assistant. Each page is read, checked line by line and set against your books. A duplicate is set aside without asking, and a proforma, delivery note or credit note is filed for the record rather than posted. Everything else waits on your Desk with its checks, unless the Accountant is Trusted and the document is routine.</p>
+<h3 id="6-the-accountant-bringing-in-your-books">The Accountant: bringing in your books</h3><figure class="diagram"><svg id="d-flow-onboarding" role="img" aria-label="Bringing in your books" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 337" role="img" aria-labelledby="t-onboarding">
+  <title id="t-onboarding">Bringing in your books: the CSV templates are checked row by row, then one card on your Desk brings in the parties, products, stock and unpaid items from before your start date</title>
+  <defs><marker id="a-onboarding" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-onboarding .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-onboarding .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-onboarding .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-onboarding .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-onboarding .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-onboarding .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-onboarding .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-onboarding .s{font-size:12px;fill:#4A5260}
+#d-flow-onboarding .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-onboarding .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-onboarding .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-onboarding .tag-works{fill:#3C6E47}
+#d-flow-onboarding .tag-reports{fill:#5A6270}
+#d-flow-onboarding .tag-partly{fill:#8A5A2B}
+#d-flow-onboarding .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-onboarding)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 224H200V86H213"/><path class="ln" d="M383 149V163"/><path class="ln" d="M243 149V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V223H758"/>
+  <rect class="box" x="15" y="62" width="170" height="120" rx="4"/><text class="t" x="27" y="85">Settings → Bring</text><text class="t" x="27" y="102">in your books</text><text class="s" x="27" y="119">Up to three CSV</text><text class="s" x="27" y="135">files: parties,</text><text class="s" x="27" y="151">products, unpaid</text><text class="s" x="27" y="167">invoices and bills</text>
+  <rect class="box" x="15" y="200" width="170" height="103" rx="4"/><text class="t" x="27" y="223">Tally parties</text><text class="s" x="27" y="240">Today written into</text><text class="s" x="27" y="256">the same parties</text><text class="s" x="27" y="272">template; no direct</text><text class="s" x="27" y="288">Tally import yet</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Check the files</text><text class="s" x="227" y="102">Every row: required columns, GSTIN</text><text class="s" x="227" y="118">check digit, duplicates. Each problem</text><text class="s" x="227" y="134">is listed with its row.</text>
+  <rect class="stop" x="271" y="165" width="224" height="71" rx="4"/><text class="t" x="283" y="188">Problems?</text><text class="s" x="283" y="205">Fix the file and check again;</text><text class="s" x="283" y="221">nothing is staged</text>
+  <rect class="box" x="215" y="252" width="280" height="71" rx="4"/><text class="t" x="227" y="275">2. Bring them in</text><text class="s" x="227" y="292">One card is put on the Desk for the</text><text class="s" x="227" y="308">Accountant's import</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Bring in your books</text><text class="t" x="537" y="102">from before &lt;date&gt;"</text><text class="s" x="537" y="119">Shows how many customers,</text><text class="s" x="537" y="135">suppliers and products,</text><text class="s" x="537" y="151">and what is owed each way.</text><text class="s" x="537" y="167">Always waits for you.</text>
+  <rect class="done" x="760" y="62" width="185" height="119" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Parties, products and</text><text class="s" x="772" y="118">stock are added; each</text><text class="s" x="772" y="134">unpaid item comes in as</text><text class="s" x="772" y="150">a brought-forward</text><text class="s" x="772" y="166">invoice or bill.</text>
+  <rect class="stop" x="760" y="199" width="185" height="55" rx="4"/><text class="t" x="772" y="222">Reject</text><text class="s" x="772" y="239">Nothing is added</text>
+  
+</svg>
+<figcaption>Bringing in your books</figcaption></figure>
+<p>When you start, bring in your customers and suppliers, products and stock, and what was unpaid before your start date, using the three CSV templates. The files are checked row by row first; nothing comes in until you approve the one card on your Desk.</p>
+<h3 id="6-the-credit-controller">The Credit Controller</h3><figure class="diagram"><svg id="d-flow-credit-controller" role="img" aria-label="The Credit Controller" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 337" role="img" aria-labelledby="t-credit-controller">
+  <title id="t-credit-controller">The Credit Controller: works out who is overdue each time you open the Desk and drafts a reminder of the right tone for each customer</title>
+  <defs><marker id="a-credit-controller" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-credit-controller .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-credit-controller .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-credit-controller .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-credit-controller .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-credit-controller .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-credit-controller .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-credit-controller .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-credit-controller .s{font-size:12px;fill:#4A5260}
+#d-flow-credit-controller .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-credit-controller .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-credit-controller .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-credit-controller .tag-works{fill:#3C6E47}
+#d-flow-credit-controller .tag-reports{fill:#5A6270}
+#d-flow-credit-controller .tag-partly{fill:#8A5A2B}
+#d-flow-credit-controller .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-credit-controller)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 224H200V86H213"/><path class="ln" d="M243 149V163"/><path class="ln" d="M243 252V266"/><path class="ln" d="M495 292H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V223H758"/>
+  <rect class="box" x="15" y="62" width="170" height="120" rx="4"/><text class="t" x="27" y="85">Your posted</text><text class="t" x="27" y="102">invoices</text><text class="s" x="27" y="119">Due dates from each</text><text class="s" x="27" y="135">customer's payment</text><text class="s" x="27" y="151">terms (30 days unless</text><text class="s" x="27" y="167">set)</text>
+  <rect class="box" x="15" y="200" width="170" height="103" rx="4"/><text class="t" x="27" y="223">The morning round</text><text class="s" x="27" y="240">Retries reminders</text><text class="s" x="27" y="256">that could not be</text><text class="s" x="27" y="272">sent; Trusted sends</text><text class="s" x="27" y="288">polite ones</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Who is overdue</text><text class="s" x="227" y="102">Overdue invoices grouped by customer;</text><text class="s" x="227" y="118">customers owing under ₹10,000 in all</text><text class="s" x="227" y="134">are left alone</text>
+  <rect class="box" x="215" y="165" width="280" height="87" rx="4"/><text class="t" x="227" y="188">2. Picks the tone</text><text class="s" x="227" y="205">From the oldest invoice: polite from</text><text class="s" x="227" y="221">1 day late, firm from 16 days, final</text><text class="s" x="227" y="237">from 46 days</text>
+  <rect class="box" x="215" y="268" width="280" height="55" rx="4"/><text class="t" x="227" y="291">3. Writes the letter</text><text class="s" x="227" y="308">Listing each invoice and the total</text>
+  <rect class="desk" x="525" y="62" width="205" height="137" rx="4"/><text class="t" x="537" y="85">"Send a reminder / a</text><text class="t" x="537" y="102">firm reminder / a final</text><text class="t" x="537" y="119">reminder to &lt;customer&gt;"</text><text class="s" x="537" y="136">Edit the subject and</text><text class="s" x="537" y="152">letter before approving.</text><text class="s" x="537" y="168">Trusted: polite first</text><text class="s" x="537" y="184">reminders go alone.</text>
+  <rect class="done" x="760" y="62" width="185" height="119" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Emailed to the customer</text><text class="s" x="772" y="118">in your business's</text><text class="s" x="772" y="134">name, replies to you;</text><text class="s" x="772" y="150">tried again up to 3</text><text class="s" x="772" y="166">times if it fails</text>
+  <rect class="stop" x="760" y="199" width="185" height="87" rx="4"/><text class="t" x="772" y="222">Reject</text><text class="s" x="772" y="239">Not sent; drafted again</text><text class="s" x="772" y="255">another day if still</text><text class="s" x="772" y="271">overdue</text>
+  
+</svg>
+<figcaption>The Credit Controller</figcaption></figure>
+<p>It works out who is overdue from your posted invoices and drafts a reminder of the right tone for each customer. Edit the letter if you like; when you approve, it is emailed in your business&#39;s name and replies come to you.</p>
+<h3 id="6-the-tax-clerk">The Tax Clerk</h3><figure class="diagram"><svg id="d-flow-tax-clerk" role="img" aria-label="The Tax Clerk" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 347" role="img" aria-labelledby="t-tax-clerk">
+  <title id="t-tax-clerk">The Tax Clerk: works out GST and TDS from the posted books by fixed rules and prepares the return files for download</title>
+  <defs><marker id="a-tax-clerk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-tax-clerk .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-tax-clerk .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-tax-clerk .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-tax-clerk .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-tax-clerk .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-tax-clerk .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-tax-clerk .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-tax-clerk .s{font-size:12px;fill:#4A5260}
+#d-flow-tax-clerk .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-tax-clerk .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-tax-clerk .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-tax-clerk .tag-works{fill:#3C6E47}
+#d-flow-tax-clerk .tag-reports{fill:#5A6270}
+#d-flow-tax-clerk .tag-partly{fill:#8A5A2B}
+#d-flow-tax-clerk .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-tax-clerk)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M243 149V163"/><path class="ln" d="M495 189H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V207H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">You open GST or</text><text class="t" x="27" y="102">TDS</text><text class="s" x="27" y="119">In the Boardroom, or</text><text class="s" x="27" y="135">ask for a file</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Works out the returns</text><text class="s" x="227" y="102">GSTR-1 and GSTR-3B, and TDS by</text><text class="s" x="227" y="118">section, from posted documents only,</text><text class="s" x="227" y="134">by fixed rules</text>
+  <rect class="box" x="215" y="165" width="280" height="71" rx="4"/><text class="t" x="227" y="188">2. Prepares the files</text><text class="s" x="227" y="205">GSTR-1 as the portal's JSON; GSTR-3B</text><text class="s" x="227" y="221">and TDS as spreadsheets</text>
+  <rect class="none" x="525" y="62" width="205" height="87" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">Nothing in the real flow;</text><text class="s" x="537" y="118">the demo shows a sample</text><text class="s" x="537" y="134">card.</text>
+  <rect class="done" x="760" y="62" width="185" height="103" rx="4"/><text class="t" x="772" y="85">Download</text><text class="s" x="772" y="102">You or your accountant</text><text class="s" x="772" y="118">file them on the</text><text class="s" x="772" y="134">portal; the office</text><text class="s" x="772" y="150">never files</text>
+  <rect class="done" x="760" y="183" width="185" height="88" rx="4"/><text class="t" x="772" y="206">Ask the office</text><text class="t" x="772" y="223">manager</text><text class="s" x="772" y="240">"What GST do I pay this</text><text class="s" x="772" y="256">month?"</text>
+  <rect class="nyet" x="15" y="297" width="930" height="36" rx="4"/><text class="ny" x="27" y="319">Not yet: sending the files to your accountant from the Desk.</text>
+</svg>
+<figcaption>The Tax Clerk</figcaption></figure>
+<p>GST and TDS are worked out from your posted books by fixed rules, and the return files are ready to download for you or your accountant to file.</p>
+<h3 id="6-the-auditor">The Auditor</h3><figure class="diagram"><svg id="d-flow-auditor" role="img" aria-label="The Auditor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 383" role="img" aria-labelledby="t-auditor">
+  <title id="t-auditor">The Auditor: when you bring in a filed return or GSTR-2B, compares it with the books and puts each difference on your Desk to raise with your accountant</title>
+  <defs><marker id="a-auditor" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-auditor .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-auditor .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-auditor .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-auditor .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-auditor .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-auditor .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-auditor .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-auditor .s{font-size:12px;fill:#4A5260}
+#d-flow-auditor .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-auditor .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-auditor .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-auditor .tag-works{fill:#3C6E47}
+#d-flow-auditor .tag-reports{fill:#5A6270}
+#d-flow-auditor .tag-partly{fill:#8A5A2B}
+#d-flow-auditor .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-auditor)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-partly" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Partly built</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M243 236V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/><path class="ln" d="M495 276H510V196H745V248H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">Bring in a filed</text><text class="t" x="27" y="102">return</text><text class="s" x="27" y="119">GSTR-1, GSTR-3B or</text><text class="s" x="27" y="135">26Q as filed, or the</text><text class="s" x="27" y="151">GSTR-2B statement</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Compares with the books</text><text class="s" x="227" y="102">Each return against what the books</text><text class="s" x="227" y="118">say it should be</text>
+  <rect class="box" x="215" y="149" width="280" height="87" rx="4"/><text class="t" x="227" y="172">2. Checks credit and TDS</text><text class="s" x="227" y="189">Input credit claimed for bills not in</text><text class="s" x="227" y="205">GSTR-2B; TDS customers deducted that</text><text class="s" x="227" y="221">is missing from Form 26AS</text>
+  <rect class="box" x="215" y="252" width="280" height="55" rx="4"/><text class="t" x="227" y="275">3. Explains each difference</text><text class="s" x="227" y="292">With the documents on both sides</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Raise with &lt;firm&gt;:</text><text class="t" x="537" y="102">&lt;finding&gt;"</text><text class="s" x="537" y="119">One card per finding.</text><text class="s" x="537" y="135">Always waits; your</text><text class="s" x="537" y="151">accountant can decide it</text><text class="s" x="537" y="167">too.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Recorded as raised in</text><text class="s" x="772" y="118">the log</text>
+  <rect class="stop" x="760" y="151" width="185" height="55" rx="4"/><text class="t" x="772" y="174">Reject</text><text class="s" x="772" y="191">Dismissed</text>
+  <rect class="done" x="760" y="224" width="185" height="71" rx="4"/><text class="t" x="772" y="247">The Audit screen</text><text class="s" x="772" y="264">Every finding with its</text><text class="s" x="772" y="280">working</text>
+  <rect class="nyet" x="15" y="333" width="930" height="36" rx="4"/><text class="ny" x="27" y="355">Not yet: checking anything before a return is brought in; raising a finding contacts no one yet.</text>
+</svg>
+<figcaption>The Auditor</figcaption></figure>
+<p>Bring in a return as it was filed, or the GSTR-2B statement, and the Auditor compares it with your books. Each difference waits on your Desk, with its working, for you or your accountant.</p>
+<h2 id="6-6-sales">6. Sales</h2><h3 id="6-the-marketplace-manager">The Marketplace Manager</h3><figure class="diagram"><svg id="d-flow-marketplace-manager" role="img" aria-label="The Marketplace Manager" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 534" role="img" aria-labelledby="t-marketplace-manager">
+  <title id="t-marketplace-manager">The Marketplace Manager: reads the sales and payout reports the marketplaces send into sales by channel, product, state and city, asking you once about a new layout</title>
+  <defs><marker id="a-marketplace-manager" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-marketplace-manager .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-marketplace-manager .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-marketplace-manager .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-marketplace-manager .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-marketplace-manager .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-marketplace-manager .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-marketplace-manager .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-marketplace-manager .s{font-size:12px;fill:#4A5260}
+#d-flow-marketplace-manager .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-marketplace-manager .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-marketplace-manager .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-marketplace-manager .tag-works{fill:#3C6E47}
+#d-flow-marketplace-manager .tag-reports{fill:#5A6270}
+#d-flow-marketplace-manager .tag-partly{fill:#8A5A2B}
+#d-flow-marketplace-manager .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-marketplace-manager)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 223H200V86H213"/><path class="ln" d="M185 312H200V86H213"/><path class="ln" d="M243 117V131"/><path class="ln" d="M383 236V250"/><path class="ln" d="M243 236V337"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V207H758"/><path class="ln" d="M495 363H510V196H745V280H758"/>
+  <rect class="box" x="15" y="62" width="170" height="119" rx="4"/><text class="t" x="27" y="85">Email</text><text class="s" x="27" y="102">To the office's</text><text class="s" x="27" y="118">.sales address, from</text><text class="s" x="27" y="134">your people or the</text><text class="s" x="27" y="150">platforms; anything</text><text class="s" x="27" y="166">else is set aside</text>
+  <rect class="box" x="15" y="199" width="170" height="71" rx="4"/><text class="t" x="27" y="222">Upload</text><text class="s" x="27" y="239">In its room: CSV,</text><text class="s" x="27" y="255">XLSX or zip</text>
+  <rect class="box" x="15" y="288" width="170" height="71" rx="4"/><text class="t" x="27" y="311">WhatsApp</text><text class="s" x="27" y="328">A spreadsheet sent to</text><text class="s" x="27" y="344">the office</text>
+  <rect class="stop" x="215" y="62" width="280" height="55" rx="4"/><text class="t" x="227" y="85">Same file as before?</text><text class="s" x="227" y="102">Set aside; nothing counted twice</text>
+  <rect class="box" x="215" y="133" width="280" height="103" rx="4"/><text class="t" x="227" y="156">1. Recognises the report</text><text class="s" x="227" y="173">Amazon tax, transaction and</text><text class="s" x="227" y="189">settlement reports; Flipkart; Meesho;</text><text class="s" x="227" y="205">Myntra's P&amp;L; or a layout you</text><text class="s" x="227" y="221">confirmed before</text>
+  <rect class="stop" x="271" y="252" width="224" height="71" rx="4"/><text class="t" x="283" y="275">A layout it has not seen?</text><text class="s" x="283" y="292">It guesses the columns and</text><text class="s" x="283" y="308">asks you once</text>
+  <rect class="box" x="215" y="339" width="280" height="119" rx="4"/><text class="t" x="227" y="362">2. Reads every row</text><text class="s" x="227" y="379">Into sales and returns by channel,</text><text class="s" x="227" y="395">product, state and city; fees, TCS,</text><text class="s" x="227" y="411">TDS and transfers into payouts. A row</text><text class="s" x="227" y="427">it cannot read is listed, never</text><text class="s" x="227" y="443">guessed.</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Read &lt;file&gt; as</text><text class="t" x="537" y="102">&lt;platform&gt; sales"</text><text class="s" x="537" y="119">Always waits for you.</text><text class="s" x="537" y="135">Choose the date, order,</text><text class="s" x="537" y="151">quantity and amount</text><text class="s" x="537" y="167">columns.</text>
+  <rect class="done" x="760" y="62" width="185" height="103" rx="4"/><text class="t" x="772" y="85">Read it this way</text><text class="s" x="772" y="102">The file is read, and</text><text class="s" x="772" y="118">every file in that</text><text class="s" x="772" y="134">layout after it,</text><text class="s" x="772" y="150">without asking</text>
+  <rect class="stop" x="760" y="183" width="185" height="55" rx="4"/><text class="t" x="772" y="206">Reject</text><text class="s" x="772" y="223">The file is not read</text>
+  <rect class="done" x="760" y="256" width="185" height="152" rx="4"/><text class="t" x="772" y="279">Online sales and</text><text class="t" x="772" y="296">payouts</text><text class="s" x="772" y="313">In the Boardroom; each</text><text class="s" x="772" y="329">morning, the last day's</text><text class="s" x="772" y="345">sales and any product</text><text class="s" x="772" y="361">whose returns are</text><text class="s" x="772" y="377">climbing go in the</text><text class="s" x="772" y="393">digest</text>
+  <rect class="nyet" x="15" y="484" width="930" height="36" rx="4"/><text class="ny" x="27" y="506">Not yet: posting online sales to the books with GST; matching payouts to the bank.</text>
+</svg>
+<figcaption>The Marketplace Manager</figcaption></figure>
+<p>Send it the reports Amazon, Flipkart, Meesho, Myntra and the quick-commerce apps already send you. A layout it knows is read straight away; a new one is confirmed by you once and read on its own after that. It shows sales by channel, product, state and city, with returns and payouts. It does not change your books yet.</p>
+<h3 id="6-the-sales-rep">The Sales Rep</h3><figure class="diagram"><svg id="d-flow-sales-rep" role="img" aria-label="The Sales Rep" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 364" role="img" aria-labelledby="t-sales-rep">
+  <title id="t-sales-rep">The Sales Rep: shows the pipeline of leads that come in from social media enquiries and WhatsApp voice notes</title>
+  <defs><marker id="a-sales-rep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-sales-rep .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-sales-rep .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-sales-rep .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-sales-rep .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-sales-rep .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-sales-rep .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-sales-rep .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-sales-rep .s{font-size:12px;fill:#4A5260}
+#d-flow-sales-rep .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-sales-rep .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-sales-rep .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-sales-rep .tag-works{fill:#3C6E47}
+#d-flow-sales-rep .tag-reports{fill:#5A6270}
+#d-flow-sales-rep .tag-partly{fill:#8A5A2B}
+#d-flow-sales-rep .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-sales-rep)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 208H200V86H213"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M730 86H745V86H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">A social media</text><text class="t" x="27" y="102">enquiry</text><text class="s" x="27" y="119">The Social Media</text><text class="s" x="27" y="135">Manager turns it into</text><text class="s" x="27" y="151">a lead</text>
+  <rect class="box" x="15" y="184" width="170" height="104" rx="4"/><text class="t" x="27" y="207">A WhatsApp voice</text><text class="t" x="27" y="224">note</text><text class="s" x="27" y="241">Asking for a quote,</text><text class="s" x="27" y="257">when the Quote Desk</text><text class="s" x="27" y="273">is not hired</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Keeps the pipeline</text><text class="s" x="227" y="102">Open leads, their value and stage,</text><text class="s" x="227" y="118">new this week</text>
+  <rect class="none" x="525" y="62" width="205" height="71" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It drafts nothing for you</text><text class="s" x="537" y="118">to approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="87" rx="4"/><text class="t" x="772" y="85">Boardroom → Pipeline</text><text class="s" x="772" y="102">And answers about leads</text><text class="s" x="772" y="118">through the Office</text><text class="s" x="772" y="134">Manager</text>
+  <rect class="nyet" x="15" y="314" width="930" height="36" rx="4"/><text class="ny" x="27" y="336">Not yet: qualifying enquiries; following up open leads; moving leads between stages.</text>
+</svg>
+<figcaption>The Sales Rep</figcaption></figure>
+<h3 id="6-the-quote-desk">The Quote Desk</h3><figure class="diagram"><svg id="d-flow-quote-desk" role="img" aria-label="The Quote Desk" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 242" role="img" aria-labelledby="t-quote-desk">
+  <title id="t-quote-desk">The Quote Desk: shows your quotations and which customers are overdue</title>
+  <defs><marker id="a-quote-desk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-quote-desk .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-quote-desk .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-quote-desk .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-quote-desk .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-quote-desk .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-quote-desk .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-quote-desk .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-quote-desk .s{font-size:12px;fill:#4A5260}
+#d-flow-quote-desk .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-quote-desk .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-quote-desk .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-quote-desk .tag-works{fill:#3C6E47}
+#d-flow-quote-desk .tag-reports{fill:#5A6270}
+#d-flow-quote-desk .tag-partly{fill:#8A5A2B}
+#d-flow-quote-desk .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-quote-desk)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M730 86H745V86H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">A WhatsApp voice</text><text class="t" x="27" y="102">note</text><text class="s" x="27" y="119">Asking for a quote</text><text class="s" x="27" y="135">becomes a lead marked</text><text class="s" x="27" y="151">"Draft the quotation"</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Lists your quotations</text><text class="s" x="227" y="102">With customers more than 60 days</text><text class="s" x="227" y="118">overdue marked</text>
+  <rect class="none" x="525" y="62" width="205" height="87" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">Nothing in the real flow;</text><text class="s" x="537" y="118">the demo shows a sample</text><text class="s" x="537" y="134">card.</text>
+  <rect class="done" x="760" y="62" width="185" height="88" rx="4"/><text class="t" x="772" y="85">Boardroom →</text><text class="t" x="772" y="102">Quotations</text><text class="s" x="772" y="119">Open, sent and accepted</text><text class="s" x="772" y="135">quotations</text>
+  <rect class="nyet" x="15" y="192" width="930" height="36" rx="4"/><text class="ny" x="27" y="214">Not yet: drafting quotations from your price list; discounts within your limits; sending a quotation when you approve it.</text>
+</svg>
+<figcaption>The Quote Desk</figcaption></figure>
+<h3 id="6-the-account-manager">The Account Manager</h3><figure class="diagram"><svg id="d-flow-account-manager" role="img" aria-label="The Account Manager" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 296" role="img" aria-labelledby="t-account-manager">
+  <title id="t-account-manager">The Account Manager: learns each customer's ordering rhythm from their invoices and shows who is due or late to reorder</title>
+  <defs><marker id="a-account-manager" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-account-manager .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-account-manager .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-account-manager .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-account-manager .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-account-manager .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-account-manager .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-account-manager .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-account-manager .s{font-size:12px;fill:#4A5260}
+#d-flow-account-manager .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-account-manager .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-account-manager .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-account-manager .tag-works{fill:#3C6E47}
+#d-flow-account-manager .tag-reports{fill:#5A6270}
+#d-flow-account-manager .tag-partly{fill:#8A5A2B}
+#d-flow-account-manager .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-account-manager)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M495 173H510V86H523"/><path class="ln" d="M730 86H745V86H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">Your posted</text><text class="t" x="27" y="102">invoices</text><text class="s" x="27" y="119">Customers with at</text><text class="s" x="27" y="135">least 3 orders on</text><text class="s" x="27" y="151">different days</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Learns the rhythm</text><text class="s" x="227" y="102">The usual gap between each customer's</text><text class="s" x="227" y="118">orders</text>
+  <rect class="box" x="215" y="149" width="280" height="71" rx="4"/><text class="t" x="227" y="172">2. Due or late?</text><text class="s" x="227" y="189">Due once the usual gap has passed;</text><text class="s" x="227" y="205">late at 1.4 times it</text>
+  <rect class="none" x="525" y="62" width="205" height="71" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It drafts nothing for you</text><text class="s" x="537" y="118">to approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="87" rx="4"/><text class="t" x="772" y="85">Boardroom → Reorders</text><text class="s" x="772" y="102">Who is due and late,</text><text class="s" x="772" y="118">and the latest in the</text><text class="s" x="772" y="134">sales report</text>
+  <rect class="nyet" x="15" y="246" width="930" height="36" rx="4"/><text class="ny" x="27" y="268">Not yet: drafting reorder nudges; spotting customers who are buying less.</text>
+</svg>
+<figcaption>The Account Manager</figcaption></figure>
+<p>These three show reports from your books today. The Sales Rep keeps the pipeline of leads that come in from social media and WhatsApp, the Quote Desk lists your quotations, and the Account Manager shows which customers are due or late to reorder.</p>
+<h2 id="6-7-marketing">7. Marketing</h2><h3 id="6-the-marketer">The Marketer</h3><figure class="diagram"><svg id="d-flow-marketer" role="img" aria-label="The Marketer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" role="img" aria-labelledby="t-marketer">
+  <title id="t-marketer">The Marketer: shows slow-moving stock, your campaigns and the festival dates ahead</title>
+  <defs><marker id="a-marketer" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-marketer .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-marketer .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-marketer .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-marketer .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-marketer .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-marketer .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-marketer .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-marketer .s{font-size:12px;fill:#4A5260}
+#d-flow-marketer .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-marketer .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-marketer .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-marketer .tag-works{fill:#3C6E47}
+#d-flow-marketer .tag-reports{fill:#5A6270}
+#d-flow-marketer .tag-partly{fill:#8A5A2B}
+#d-flow-marketer .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-marketer)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M495 173H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">Your stock and</text><text class="t" x="27" y="102">sales</text><text class="s" x="27" y="119">Each product's stock</text><text class="s" x="27" y="135">against its last 60</text><text class="s" x="27" y="151">days of sales</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Finds slow stock</text><text class="s" x="227" y="102">Products with more than 120 days of</text><text class="s" x="227" y="118">stock at the recent rate</text>
+  <rect class="box" x="215" y="149" width="280" height="71" rx="4"/><text class="t" x="227" y="172">2. Lists campaigns and dates</text><text class="s" x="227" y="189">Your campaigns, and festivals and</text><text class="s" x="227" y="205">sale dates ahead</text>
+  <rect class="none" x="525" y="62" width="205" height="87" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">Nothing in the real flow;</text><text class="s" x="537" y="118">the demo shows a sample</text><text class="s" x="537" y="134">card.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Boardroom tabs</text><text class="s" x="772" y="102">Campaigns, Slow stock,</text><text class="s" x="772" y="118">Dates ahead</text>
+  <rect class="done" x="760" y="151" width="185" height="103" rx="4"/><text class="t" x="772" y="174">Social media</text><text class="s" x="772" y="191">Slow stock and</text><text class="s" x="772" y="207">campaigns become post</text><text class="s" x="772" y="223">topics in the monthly</text><text class="s" x="772" y="239">calendar</text>
+  <rect class="nyet" x="15" y="280" width="930" height="36" rx="4"/><text class="ny" x="27" y="302">Not yet: drafting campaigns; working out the sales each campaign brought.</text>
+</svg>
+<figcaption>The Marketer</figcaption></figure>
+<h3 id="6-the-market-watcher">The Market Watcher</h3><figure class="diagram"><svg id="d-flow-market-watcher" role="img" aria-label="The Market Watcher" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 242" role="img" aria-labelledby="t-market-watcher">
+  <title id="t-market-watcher">The Market Watcher: compares your prices with competitor prices held in the office</title>
+  <defs><marker id="a-market-watcher" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-market-watcher .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-market-watcher .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-market-watcher .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-market-watcher .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-market-watcher .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-market-watcher .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-market-watcher .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-market-watcher .s{font-size:12px;fill:#4A5260}
+#d-flow-market-watcher .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-market-watcher .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-market-watcher .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-market-watcher .tag-works{fill:#3C6E47}
+#d-flow-market-watcher .tag-reports{fill:#5A6270}
+#d-flow-market-watcher .tag-partly{fill:#8A5A2B}
+#d-flow-market-watcher .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-market-watcher)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M730 86H745V86H758"/>
+  <rect class="box" x="15" y="62" width="170" height="71" rx="4"/><text class="t" x="27" y="85">Competitor prices</text><text class="s" x="27" y="102">Held in the office's</text><text class="s" x="27" y="118">books</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Compares each product</text><text class="s" x="227" y="102">Your price against the market's, as a</text><text class="s" x="227" y="118">percentage</text>
+  <rect class="none" x="525" y="62" width="205" height="71" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It drafts nothing for you</text><text class="s" x="537" y="118">to approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="104" rx="4"/><text class="t" x="772" y="85">Boardroom → Market</text><text class="t" x="772" y="102">prices</text><text class="s" x="772" y="119">Products priced more</text><text class="s" x="772" y="135">than 5% above the</text><text class="s" x="772" y="151">market are marked</text>
+  <rect class="nyet" x="15" y="192" width="930" height="36" rx="4"/><text class="ny" x="27" y="214">Not yet: collecting competitor prices; an alert when you are priced out.</text>
+</svg>
+<figcaption>The Market Watcher</figcaption></figure>
+<p>Both show reports today: the Marketer finds slow-moving stock and lists your campaigns and the dates ahead, and the Market Watcher compares your prices with competitor prices held in the office. Slow stock and campaigns also become topics in the Social Media Manager&#39;s calendar.</p>
+<h2 id="6-8-social-media">8. Social media</h2><h3 id="6-the-social-media-manager-messages-and-reviews">The Social Media Manager: messages and reviews</h3><figure class="diagram"><svg id="d-flow-social-messages" role="img" aria-label="The Social Media Manager: messages and reviews" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 454" role="img" aria-labelledby="t-social-messages">
+  <title id="t-social-messages">The Social Media Manager, messages and reviews: sorts each comment, review and message, passes enquiries to sales, and drafts a reply for your Desk</title>
+  <defs><marker id="a-social-messages" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-social-messages .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-social-messages .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-social-messages .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-social-messages .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-social-messages .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-social-messages .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-social-messages .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-social-messages .s{font-size:12px;fill:#4A5260}
+#d-flow-social-messages .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-social-messages .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-social-messages .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-social-messages .tag-works{fill:#3C6E47}
+#d-flow-social-messages .tag-reports{fill:#5A6270}
+#d-flow-social-messages .tag-partly{fill:#8A5A2B}
+#d-flow-social-messages .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-social-messages)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 208H200V86H213"/><path class="ln" d="M383 133V147"/><path class="ln" d="M243 133V234"/><path class="ln" d="M243 291V305"/><path class="ln" d="M495 331H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V207H758"/>
+  <rect class="box" x="15" y="62" width="170" height="104" rx="4"/><text class="t" x="27" y="85">Instagram,</text><text class="t" x="27" y="102">Facebook, Threads</text><text class="s" x="27" y="119">Comments, reviews and</text><text class="s" x="27" y="135">messages, as they</text><text class="s" x="27" y="151">arrive</text>
+  <rect class="box" x="15" y="184" width="170" height="71" rx="4"/><text class="t" x="27" y="207">The morning round</text><text class="s" x="27" y="224">Fetches anything</text><text class="s" x="27" y="240">missed</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Sorts it</text><text class="s" x="227" y="102">Spam, complaint, enquiry, question or</text><text class="s" x="227" y="118">praise</text>
+  <rect class="stop" x="271" y="149" width="224" height="71" rx="4"/><text class="t" x="283" y="172">Spam?</text><text class="s" x="283" y="189">Kept, and nothing else</text><text class="s" x="283" y="205">happens</text>
+  <rect class="box" x="215" y="236" width="280" height="55" rx="4"/><text class="t" x="227" y="259">2. An enquiry becomes a lead</text><text class="s" x="227" y="276">For the Sales Rep's pipeline</text>
+  <rect class="box" x="215" y="307" width="280" height="71" rx="4"/><text class="t" x="227" y="330">3. Drafts a reply</text><text class="s" x="227" y="347">In your brand's voice; any price is</text><text class="s" x="227" y="363">checked against your books</text>
+  <rect class="desk" x="525" y="62" width="205" height="137" rx="4"/><text class="t" x="537" y="85">"Reply to &lt;author&gt;'s</text><text class="t" x="537" y="102">review / comment /</text><text class="t" x="537" y="119">message on &lt;platform&gt;"</text><text class="s" x="537" y="136">Trusted: only thank-yous</text><text class="s" x="537" y="152">to 4 and 5 star reviews</text><text class="s" x="537" y="168">with no figures or</text><text class="s" x="537" y="184">promises go alone.</text>
+  <rect class="done" x="760" y="62" width="185" height="103" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Posted through the</text><text class="s" x="772" y="118">platform if connected;</text><text class="s" x="772" y="134">otherwise ready to</text><text class="s" x="772" y="150">paste</text>
+  <rect class="stop" x="760" y="183" width="185" height="55" rx="4"/><text class="t" x="772" y="206">Reject</text><text class="s" x="772" y="223">No reply</text>
+  <rect class="nyet" x="15" y="404" width="930" height="36" rx="4"/><text class="ny" x="27" y="426">Not yet: an alert when the review rating drops.</text>
+</svg>
+<figcaption>The Social Media Manager: messages and reviews</figcaption></figure>
+<p>Every comment, review and message on your connected accounts is sorted. An enquiry also becomes a lead for the Sales Rep. Each reply is drafted in your brand&#39;s voice with any price checked against your books, and waits for you, except thank-yous to good reviews once the agent is Trusted.</p>
+<h3 id="6-the-social-media-manager-calendar-and-posts">The Social Media Manager: calendar and posts</h3><figure class="diagram"><svg id="d-flow-social-posts" role="img" aria-label="The Social Media Manager: calendar and posts" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 456" role="img" aria-labelledby="t-social-posts">
+  <title id="t-social-posts">The Social Media Manager, calendar and posts: drafts next month's calendar, puts each post on your Desk, and checks it again before it goes out</title>
+  <defs><marker id="a-social-posts" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-social-posts .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-social-posts .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-social-posts .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-social-posts .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-social-posts .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-social-posts .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-social-posts .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-social-posts .s{font-size:12px;fill:#4A5260}
+#d-flow-social-posts .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-social-posts .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-social-posts .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-social-posts .tag-works{fill:#3C6E47}
+#d-flow-social-posts .tag-reports{fill:#5A6270}
+#d-flow-social-posts .tag-partly{fill:#8A5A2B}
+#d-flow-social-posts .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-social-posts)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 191H200V86H213"/><path class="ln" d="M243 165V179"/><path class="ln" d="M243 252V266"/><path class="ln" d="M383 355V369"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M495 205H510V176H523"/><path class="ln" d="M495 205H510V314H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 176H745V175H758"/><path class="ln" d="M730 86H745V312H758"/>
+  <rect class="box" x="15" y="62" width="170" height="87" rx="4"/><text class="t" x="27" y="85">The morning round</text><text class="s" x="27" y="102">From the 25th, if</text><text class="s" x="27" y="118">next month has no</text><text class="s" x="27" y="134">calendar</text>
+  <rect class="box" x="15" y="167" width="170" height="71" rx="4"/><text class="t" x="27" y="190">Draft a calendar</text><text class="s" x="27" y="207">The button in its</text><text class="s" x="27" y="223">room, any time</text>
+  <rect class="box" x="215" y="62" width="280" height="103" rx="4"/><text class="t" x="227" y="85">1. Plans the month</text><text class="s" x="227" y="102">Festival posts first, then your</text><text class="s" x="227" y="118">content themes, weighted to what did</text><text class="s" x="227" y="134">best last month, with slow stock and</text><text class="s" x="227" y="150">campaigns as topics</text>
+  <rect class="box" x="215" y="181" width="280" height="71" rx="4"/><text class="t" x="227" y="204">2. Each post on your Desk</text><text class="s" x="227" y="221">Once the calendar is approved, in</text><text class="s" x="227" y="237">each channel's version</text>
+  <rect class="box" x="215" y="268" width="280" height="87" rx="4"/><text class="t" x="227" y="291">3. Checks again at posting time</text><text class="s" x="227" y="308">Prices and facts against the books,</text><text class="s" x="227" y="324">and that the text is what you</text><text class="s" x="227" y="340">approved</text>
+  <rect class="stop" x="271" y="371" width="224" height="71" rx="4"/><text class="t" x="283" y="394">Changed or a check fails?</text><text class="s" x="283" y="411">Held back and returned to</text><text class="s" x="283" y="427">your Desk</text>
+  <rect class="desk" x="525" y="62" width="205" height="72" rx="4"/><text class="t" x="537" y="85">"Approve the &lt;month&gt;</text><text class="t" x="537" y="102">calendar: N posts"</text><text class="s" x="537" y="119">Always waits for you</text>
+  <rect class="desk" x="525" y="152" width="205" height="120" rx="4"/><text class="t" x="537" y="175">"Publish &lt;topic&gt; on</text><text class="t" x="537" y="192">&lt;channels&gt;, &lt;date&gt;"</text><text class="s" x="537" y="209">Trusted: an unchanged post</text><text class="s" x="537" y="225">from your calendar that</text><text class="s" x="537" y="241">passes every check goes</text><text class="s" x="537" y="257">alone</text>
+  <rect class="desk" x="525" y="290" width="205" height="105" rx="4"/><text class="t" x="537" y="313">"Send &lt;topic&gt; on</text><text class="t" x="537" y="330">WhatsApp to N</text><text class="t" x="537" y="347">customers"</text><text class="s" x="537" y="364">A broadcast: always waits,</text><text class="s" x="537" y="380">with its cost</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Calendar approved</text><text class="s" x="772" y="102">Its posts come to the</text><text class="s" x="772" y="118">Desk one by one</text>
+  <rect class="done" x="760" y="151" width="185" height="119" rx="4"/><text class="t" x="772" y="174">Post approved</text><text class="s" x="772" y="191">Scheduled; at its time</text><text class="s" x="772" y="207">published if the</text><text class="s" x="772" y="223">channel is connected,</text><text class="s" x="772" y="239">otherwise a pack to</text><text class="s" x="772" y="255">post by hand</text>
+  <rect class="stop" x="760" y="288" width="185" height="71" rx="4"/><text class="t" x="772" y="311">Reject</text><text class="s" x="772" y="328">A rejected calendar</text><text class="s" x="772" y="344">removes its draft posts</text>
+  
+</svg>
+<figcaption>The Social Media Manager: calendar and posts</figcaption></figure>
+<p>Next month&#39;s calendar is drafted from the 25th. Approve the calendar, then each post. At its time every post is checked again, and one that changed or fails a check comes back to you instead of going out.</p>
+<h2 id="6-9-operations">9. Operations</h2><h3 id="6-the-storekeeper">The Storekeeper</h3><figure class="diagram"><svg id="d-flow-storekeeper" role="img" aria-label="The Storekeeper" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 519" role="img" aria-labelledby="t-storekeeper">
+  <title id="t-storekeeper">The Storekeeper: each morning finds items at or under their reorder level and drafts one purchase order per supplier</title>
+  <defs><marker id="a-storekeeper" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-storekeeper .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-storekeeper .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-storekeeper .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-storekeeper .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-storekeeper .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-storekeeper .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-storekeeper .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-storekeeper .s{font-size:12px;fill:#4A5260}
+#d-flow-storekeeper .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-storekeeper .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-storekeeper .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-storekeeper .tag-works{fill:#3C6E47}
+#d-flow-storekeeper .tag-reports{fill:#5A6270}
+#d-flow-storekeeper .tag-partly{fill:#8A5A2B}
+#d-flow-storekeeper .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-storekeeper)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 207H200V86H213"/><path class="ln" d="M383 133V147"/><path class="ln" d="M243 133V267"/><path class="ln" d="M243 356V370"/><path class="ln" d="M495 396H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/><path class="ln" d="M495 396H510V196H745V248H758"/>
+  <rect class="box" x="15" y="62" width="170" height="103" rx="4"/><text class="t" x="27" y="85">The morning round</text><text class="s" x="27" y="102">Every morning at the</text><text class="s" x="27" y="118">digest time, 08:45</text><text class="s" x="27" y="134">unless you change it</text><text class="s" x="27" y="150">in Settings</text>
+  <rect class="box" x="15" y="183" width="170" height="55" rx="4"/><text class="t" x="27" y="206">Run now</text><text class="s" x="27" y="223">In its room</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. What is low</text><text class="s" x="227" y="102">Items with stock at or under their</text><text class="s" x="227" y="118">reorder level</text>
+  <rect class="stop" x="271" y="149" width="224" height="104" rx="4"/><text class="t" x="283" y="172">Already ordered, or never</text><text class="t" x="283" y="189">bought?</text><text class="s" x="283" y="206">Left out: an open order</text><text class="s" x="283" y="222">exists, or no bill shows who</text><text class="s" x="283" y="238">supplies it</text>
+  <rect class="box" x="215" y="269" width="280" height="87" rx="4"/><text class="t" x="227" y="292">2. How much</text><text class="s" x="227" y="309">Enough to reach the reorder level</text><text class="s" x="227" y="325">after the last 30 days' sales, at the</text><text class="s" x="227" y="341">rate on the last bill</text>
+  <rect class="box" x="215" y="372" width="280" height="55" rx="4"/><text class="t" x="227" y="395">3. One order per supplier</text><text class="s" x="227" y="412">Grouped from the items' last bills</text>
+  <rect class="desk" x="525" y="62" width="205" height="120" rx="4"/><text class="t" x="537" y="85">"Reorder from</text><text class="t" x="537" y="102">&lt;supplier&gt;, ₹&lt;total&gt;"</text><text class="s" x="537" y="119">Trusted: under ₹1 lakh</text><text class="s" x="537" y="135">goes ahead at the next</text><text class="s" x="537" y="151">morning round. Autonomous:</text><text class="s" x="537" y="167">any amount.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Marked as sent in the</text><text class="s" x="772" y="118">books</text>
+  <rect class="stop" x="760" y="151" width="185" height="55" rx="4"/><text class="t" x="772" y="174">Reject</text><text class="s" x="772" y="191">Not sent</text>
+  <rect class="done" x="760" y="224" width="185" height="87" rx="4"/><text class="t" x="772" y="247">The digest</text><text class="s" x="772" y="264">How many items are low</text><text class="s" x="772" y="280">and how many orders</text><text class="s" x="772" y="296">were drafted</text>
+  <rect class="nyet" x="15" y="453" width="930" height="52" rx="4"/><text class="ny" x="27" y="475">Not yet: emailing the order to the supplier; setting reorder levels from sales; stock changing with sales and bills (it comes from</text><text class="ny" x="27" y="491">your products file).</text>
+</svg>
+<figcaption>The Storekeeper</figcaption></figure>
+<p>Each morning it finds items at or under their reorder level and drafts one purchase order per supplier from the last bills. Approving marks the order sent in the books; send it to the supplier yourself for now.</p>
+<h3 id="6-the-buyer">The Buyer</h3><figure class="diagram"><svg id="d-flow-buyer" role="img" aria-label="The Buyer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 225" role="img" aria-labelledby="t-buyer">
+  <title id="t-buyer">The Buyer: compares vendor quotes held in the office and recommends one on price, lead time and credit</title>
+  <defs><marker id="a-buyer" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-buyer .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-buyer .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-buyer .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-buyer .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-buyer .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-buyer .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-buyer .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-buyer .s{font-size:12px;fill:#4A5260}
+#d-flow-buyer .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-buyer .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-buyer .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-buyer .tag-works{fill:#3C6E47}
+#d-flow-buyer .tag-reports{fill:#5A6270}
+#d-flow-buyer .tag-partly{fill:#8A5A2B}
+#d-flow-buyer .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-buyer)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M730 86H745V86H758"/>
+  <rect class="box" x="15" y="62" width="170" height="71" rx="4"/><text class="t" x="27" y="85">Vendor quotes</text><text class="s" x="27" y="102">Held in the office's</text><text class="s" x="27" y="118">books</text>
+  <rect class="box" x="215" y="62" width="280" height="87" rx="4"/><text class="t" x="227" y="85">1. Scores each quote</text><text class="s" x="227" y="102">Price, lead time and credit days</text><text class="s" x="227" y="118">together; the lowest score is</text><text class="s" x="227" y="134">recommended</text>
+  <rect class="none" x="525" y="62" width="205" height="71" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It drafts nothing for you</text><text class="s" x="537" y="118">to approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="87" rx="4"/><text class="t" x="772" y="85">Its room</text><text class="s" x="772" y="102">Open requests for</text><text class="s" x="772" y="118">quotes, and the</text><text class="s" x="772" y="134">recommended supplier</text>
+  <rect class="nyet" x="15" y="175" width="930" height="36" rx="4"/><text class="ny" x="27" y="197">Not yet: collecting quotes from suppliers.</text>
+</svg>
+<figcaption>The Buyer</figcaption></figure>
+<h3 id="6-the-compliance-officer">The Compliance Officer</h3><figure class="diagram"><svg id="d-flow-compliance-officer" role="img" aria-label="The Compliance Officer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 436" role="img" aria-labelledby="t-compliance-officer">
+  <title id="t-compliance-officer">The Compliance Officer: keeps the company's filing calendar from its profile, reminds whoever files each item, and proposes actions from the books</title>
+  <defs><marker id="a-compliance-officer" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-compliance-officer .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-compliance-officer .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-compliance-officer .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-compliance-officer .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-compliance-officer .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-compliance-officer .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-compliance-officer .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-compliance-officer .s{font-size:12px;fill:#4A5260}
+#d-flow-compliance-officer .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-compliance-officer .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-compliance-officer .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-compliance-officer .tag-works{fill:#3C6E47}
+#d-flow-compliance-officer .tag-reports{fill:#5A6270}
+#d-flow-compliance-officer .tag-partly{fill:#8A5A2B}
+#d-flow-compliance-officer .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-compliance-officer)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 192H200V86H213"/><path class="ln" d="M185 281H200V86H213"/><path class="ln" d="M243 133V147"/><path class="ln" d="M243 236V250"/><path class="ln" d="M495 276H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M495 173H510V197H745V159H758"/><path class="ln" d="M495 173H510V197H745V264H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">Your company's</text><text class="t" x="27" y="102">profile</text><text class="s" x="27" y="119">Type, registrations,</text><text class="s" x="27" y="135">directors, events</text>
+  <rect class="box" x="15" y="168" width="170" height="71" rx="4"/><text class="t" x="27" y="191">Filing proofs</text><text class="s" x="27" y="208">Uploaded, with the</text><text class="s" x="27" y="224">SRN</text>
+  <rect class="box" x="15" y="257" width="170" height="103" rx="4"/><text class="t" x="27" y="280">The morning round</text><text class="s" x="27" y="297">Every morning at the</text><text class="s" x="27" y="313">digest time, 08:45</text><text class="s" x="27" y="329">unless you change it</text><text class="s" x="27" y="345">in Settings</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Builds the calendar</text><text class="s" x="227" y="102">GST, TDS, PF and ESI, ROC and income</text><text class="s" x="227" y="118">tax dates for this company</text>
+  <rect class="box" x="215" y="149" width="280" height="87" rx="4"/><text class="t" x="227" y="172">2. Reminds</text><text class="s" x="227" y="189">7 days and 2 days before, on the day,</text><text class="s" x="227" y="205">then weekly while late, naming who</text><text class="s" x="227" y="221">files: you, or your CA or CS</text>
+  <rect class="box" x="215" y="252" width="280" height="71" rx="4"/><text class="t" x="227" y="275">3. Checks the books</text><text class="s" x="227" y="292">MSME suppliers to be paid within 45</text><text class="s" x="227" y="308">days; advance tax to set aside</text>
+  <rect class="desk" x="525" y="62" width="205" height="121" rx="4"/><text class="t" x="537" y="85">"Pay MSME suppliers</text><text class="t" x="537" y="102">first" / "Set aside</text><text class="t" x="537" y="119">advance tax"</text><text class="s" x="537" y="136">Always waits for you;</text><text class="s" x="537" y="152">comes back next month if</text><text class="s" x="537" y="168">rejected</text>
+  <rect class="done" x="760" y="62" width="185" height="55" rx="4"/><text class="t" x="772" y="85">Approve</text><text class="s" x="772" y="102">Recorded in the log</text>
+  <rect class="done" x="760" y="135" width="185" height="87" rx="4"/><text class="t" x="772" y="158">Working papers</text><text class="s" x="772" y="175">The filing pack to</text><text class="s" x="772" y="191">download; mark filed,</text><text class="s" x="772" y="207">assign or snooze</text>
+  <rect class="done" x="760" y="240" width="185" height="71" rx="4"/><text class="t" x="772" y="263">The digest</text><text class="s" x="772" y="280">What is due and who</text><text class="s" x="772" y="296">files it</text>
+  <rect class="nyet" x="15" y="386" width="930" height="36" rx="4"/><text class="ny" x="27" y="408">Not yet: the cash plan acting on an approved proposal; Desk cards for ROC events.</text>
+</svg>
+<figcaption>The Compliance Officer</figcaption></figure>
+<p>It keeps your company&#39;s filing calendar from its profile and reminds whoever files each item, you or your CA or CS, at 7 days, 2 days and on the day. It also checks the books for MSME suppliers to pay and advance tax to set aside.</p>
+<h2 id="6-10-people">10. People</h2><h3 id="6-the-payroll-clerk">The Payroll Clerk</h3><figure class="diagram"><svg id="d-flow-payroll-clerk" role="img" aria-label="The Payroll Clerk" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 298" role="img" aria-labelledby="t-payroll-clerk">
+  <title id="t-payroll-clerk">The Payroll Clerk: works out pay, PF, ESI and professional tax from attendance held in the office</title>
+  <defs><marker id="a-payroll-clerk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>#d-flow-payroll-clerk .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+#d-flow-payroll-clerk .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+#d-flow-payroll-clerk .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+#d-flow-payroll-clerk .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+#d-flow-payroll-clerk .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-payroll-clerk .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+#d-flow-payroll-clerk .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+#d-flow-payroll-clerk .s{font-size:12px;fill:#4A5260}
+#d-flow-payroll-clerk .ny{font-size:12px;fill:#5A6270;font-style:italic}
+#d-flow-payroll-clerk .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+#d-flow-payroll-clerk .tg{font-size:12px;font-weight:700;fill:#fff}
+#d-flow-payroll-clerk .tag-works{fill:#3C6E47}
+#d-flow-payroll-clerk .tag-reports{fill:#5A6270}
+#d-flow-payroll-clerk .tag-partly{fill:#8A5A2B}
+#d-flow-payroll-clerk .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-payroll-clerk)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-reports" x="834" y="10" width="114" height="24" rx="12"/><text class="tg" x="891" y="26" text-anchor="middle">Reports only</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 86H745V175H758"/>
+  <rect class="box" x="15" y="62" width="170" height="88" rx="4"/><text class="t" x="27" y="85">Employees and</text><text class="t" x="27" y="102">attendance</text><text class="s" x="27" y="119">Held in the office's</text><text class="s" x="27" y="135">books</text>
+  <rect class="box" x="215" y="62" width="280" height="71" rx="4"/><text class="t" x="227" y="85">1. Works out pay</text><text class="s" x="227" y="102">Gross pay, PF, ESI and professional</text><text class="s" x="227" y="118">tax by state slab</text>
+  <rect class="none" x="525" y="62" width="205" height="71" rx="4"/><text class="t" x="537" y="85">Nothing on your Desk</text><text class="s" x="537" y="102">It drafts nothing for you</text><text class="s" x="537" y="118">to approve.</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Its room</text><text class="s" x="772" y="102">The month's payroll</text><text class="s" x="772" y="118">summary</text>
+  <rect class="done" x="760" y="151" width="185" height="71" rx="4"/><text class="t" x="772" y="174">Compliance</text><text class="s" x="772" y="191">PF and ESI amounts in</text><text class="s" x="772" y="207">the filing calendar</text>
+  <rect class="nyet" x="15" y="248" width="930" height="36" rx="4"/><text class="ny" x="27" y="270">Not yet: entering attendance; a payroll run for you to approve; payslips.</text>
+</svg>
+<figcaption>The Payroll Clerk</figcaption></figure>
+</section>
+<section class="doc" id="part-7"><header class="doc-head"><p class="doc-num">Part 7</p><h1 id="platform-console">Platform console</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> The console at <a href="https://console.office.snilld.in">https://console.office.snilld.in</a> is for the people who run the platform. It lists every business on the platform and lets a platform owner open an office for a new business, send or re-send the owner&#39;s invitation, and suspend or reopen an office. It shows accounts, not books: no office&#39;s books, files or conversations can be seen or reached from it.</p>
+</blockquote>
+<h2 id="7-1-who-can-use-it">1. Who can use it</h2><p>Only the addresses in <code>PLATFORM_OWNERS</code> (today <a href="mailto:puja@snilldai.com">puja@snilldai.com</a> and <a href="mailto:appforge.3b@gmail.com">appforge.3b@gmail.com</a>), signed in with a confirmed address. Anyone else is refused. To add someone, add their address to <code>PLATFORM_OWNERS</code> in <code>apps/api/wrangler.jsonc</code> and deploy.</p>
+<h2 id="7-2-what-it-shows">2. What it shows</h2><p>For each business: name, owners, how many people, status (active, suspended, deleting), when and how it was opened (signed up, or onboarded by whom), its email-in address and web address, any pending owner invitation, and the date of its last account change.</p>
+<h2 id="7-3-opening-an-office-for-a-new-business">3. Opening an office for a new business</h2><ol>
 <li>Enter the business name and the owner&#39;s email address.</li>
 <li>Press <strong>Open the office and invite</strong>. An empty office is created and the owner is emailed a 14-day invitation from <code>support@snilldai.com</code>. The link is also shown on screen with <strong>Copy the link</strong>, in case the email goes astray.</li>
 <li>The owner makes an account with that address and lands in the office. Add more owners or the accountant from the office&#39;s own <strong>Settings → Office</strong>, or a second owner from the console.</li>
 </ol>
-<h2 id="6-4-other-actions">4. Other actions</h2><ul>
+<h2 id="7-4-other-actions">4. Other actions</h2><ul>
 <li><strong>Send the invitation again</strong> when an owner has not received it or it has expired.</li>
 <li><strong>Suspend</strong> closes an office to its people (they see that it is suspended); <strong>Open</strong> reopens it.</li>
 <li>Every console action is written to that office&#39;s audit trail under the platform owner&#39;s address.</li>
 </ul>
 </section>
-<section class="doc" id="part-7"><header class="doc-head"><p class="doc-num">Part 7</p><h1 id="support-manual">Support manual</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> This part is for whoever answers support questions and keeps the platform running. It starts with how to tell what is wrong, lists the questions people actually ask with their fixes, then gives the procedures: the admin tool, read-only database queries, deploying and rolling back, backups, monitoring and security incidents. Every command that needs a Cloudflare token runs through Infisical; nothing is put in a file.</p>
+<section class="doc" id="part-8"><header class="doc-head"><p class="doc-num">Part 8</p><h1 id="support-manual">Support manual</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> This part is for whoever answers support questions and keeps the platform running. It starts with how to tell what is wrong, lists the questions people actually ask with their fixes, then gives the procedures: the admin tool, read-only database queries, deploying and rolling back, backups, monitoring and security incidents. Every command that needs a Cloudflare token runs through Infisical; nothing is put in a file.</p>
 </blockquote>
-<h2 id="7-1-first-steps-for-any-problem">1. First steps for any problem</h2><ol>
+<h2 id="8-1-first-steps-for-any-problem">1. First steps for any problem</h2><ol>
 <li><strong>Is the site up?</strong> Open <a href="https://app.office.snilld.in">https://app.office.snilld.in</a>. The sign-in page should load.</li>
 <li><strong>Is sign-in working?</strong> Signing in with a made-up address should say &quot;Invalid email or password&quot;. Any other error points at the Worker or the database.</li>
 <li><strong>Is it one person or everyone?</strong> One person: their account, membership or invitation (sections 2 and 4). Everyone: the latest deploy (section 6) or Cloudflare&#39;s status page.</li>
 <li><strong>Is the data there?</strong> Read the control plane (section 5). It shows every office, person, membership and invitation.</li>
 <li><strong>Write down</strong> what was found and done (section 9).</li>
 </ol>
-<h2 id="7-2-common-questions">2. Common questions</h2><div class="table-wrap"><table>
+<h2 id="8-2-common-questions">2. Common questions</h2><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>What the person says</th>
@@ -1114,7 +1892,7 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
 <td>Nothing to fix; the sun uses the GST state&#39;s capital instead</td>
 </tr>
 </tbody></table></div>
-<h2 id="7-3-the-admin-tool">3. The admin tool</h2><p>Run from the repository root:</p>
+<h2 id="8-3-the-admin-tool">3. The admin tool</h2><p>Run from the repository root:</p>
 <pre><code class="language-sh">infisical run --env=dev --silent -- node tools/admin/admin.mjs &lt;command&gt;
 </code></pre>
 <div class="table-wrap"><table>
@@ -1166,12 +1944,12 @@ mark.hit { background: #fff1b8; color: inherit; border-radius: 2px; }
 </tr>
 </tbody></table></div>
 <p>Add <code>--local</code> to work on the local development database.</p>
-<h2 id="7-4-invitations-and-access-step-by-step">4. Invitations and access, step by step</h2><ul>
+<h2 id="8-4-invitations-and-access-step-by-step">4. Invitations and access, step by step</h2><ul>
 <li><strong>A person cannot get in.</strong> Look them up (section 5): does the account exist, is the address confirmed, are they a member of the office? If they are a member, they sign in at the app. If they are not, the owner invites them.</li>
 <li><strong>An office has lost its owner.</strong> <code>admin.mjs invite-owner &lt;office&gt; &lt;email&gt;</code> prints a fresh owner link to send them.</li>
 <li><strong>Which invitation is a link?</strong> Each link&#39;s token is stored only as a SHA-256 hash (base64url). Hash the token from the link and look it up in the <code>invitation</code> table&#39;s <code>token_hash</code> column; <code>accepted_at</code> shows whether and when it was used.</li>
 </ul>
-<h2 id="7-5-reading-the-live-database-read-only">5. Reading the live database (read only)</h2><p>Use a small script so the token stays in Infisical. From <code>apps/api</code>:</p>
+<h2 id="8-5-reading-the-live-database-read-only">5. Reading the live database (read only)</h2><p>Use a small script so the token stays in Infisical. From <code>apps/api</code>:</p>
 <pre><code class="language-sh">cat &gt; &quot;$TMPDIR/d1q.sh&quot; &lt;&lt;&#39;EOF&#39;
 export CLOUDFLARE_API_TOKEN=&quot;$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE&quot;
 exec ./node_modules/.bin/wrangler d1 execute office --remote --json --command &quot;$1&quot;
@@ -1204,7 +1982,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 </tr>
 </tbody></table></div>
 <p>Only ever run <code>SELECT</code> this way. Changes go through the app, the console or the admin tool, so they are audited. A business&#39;s books are not in D1 and cannot be read from here.</p>
-<h2 id="7-6-releasing-and-rolling-back">6. Releasing, and rolling back</h2><ol>
+<h2 id="8-6-releasing-and-rolling-back">6. Releasing, and rolling back</h2><ol>
 <li><strong>Check.</strong> <code>pnpm test</code> and <code>pnpm typecheck</code> (or the per-package commands), and the end-to-end check where possible.</li>
 <li><strong>Back up.</strong> <code>infisical run --env=dev --silent -- node tools/admin/admin.mjs backup</code>.</li>
 <li><strong>Deploy live.</strong> <code>infisical run --env=dev --silent -- sh tools/admin/deploy.sh</code>. It builds the app, applies any new database migrations, and deploys the Worker. The output ends with the new version id.</li>
@@ -1212,7 +1990,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 <li><strong>Smoke check.</strong> The sign-in page loads; a made-up sign-in answers &quot;Invalid email or password&quot;; an office path without a session answers 401; <code>admin.mjs list</code> shows the offices.</li>
 </ol>
 <p><strong>Rolling back.</strong> Every deploy is a version. Run <code>wrangler rollback</code> for the Worker through Infisical with the token, or redeploy the previous commit. The database is not rolled back by this: D1 Time Travel restores it to a point in time within 30 days, and should be needed only after a bad migration.</p>
-<h2 id="7-7-backups">7. Backups</h2><div class="table-wrap"><table>
+<h2 id="8-7-backups">7. Backups</h2><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>What</th>
@@ -1241,23 +2019,23 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 <td>Settings → <strong>Books record</strong> shows the last copy</td>
 </tr>
 </tbody></table></div>
-<h2 id="7-8-monitoring">8. Monitoring</h2><ul>
+<h2 id="8-8-monitoring">8. Monitoring</h2><ul>
 <li><strong>Live logs:</strong> <code>wrangler tail the-office</code> through Infisical shows requests and errors as they happen. Every office log line starts with the office id.</li>
 <li><strong>History:</strong> Workers observability in the Cloudflare dashboard (Snilld account → Workers → <code>the-office</code> → Logs).</li>
 <li><strong>Gap:</strong> logs are kept only briefly. Exporting them to long-term storage (for example Logpush to R2) is an open item before wider pilots; the data protection rules expect a year.</li>
 </ul>
-<h2 id="7-9-security-incidents">9. Security incidents</h2><ol>
+<h2 id="8-9-security-incidents">9. Security incidents</h2><ol>
 <li><strong>Contain.</strong> Suspend the affected office, revoke or rotate keys through Infisical (<code>BETTER_AUTH_SECRET</code> signs everyone out; <code>SOCIAL_TOKEN_KEY</code> covers platform tokens), and tell the founder the same day.</li>
 <li><strong>Record.</strong> What happened, when it was found, which offices and people, what data, what was done. Keep the record even if nothing is notifiable.</li>
 <li><strong>Tell the businesses</strong> within 24 hours of confirming it, as the data processing terms promise.</li>
 <li><strong>Tell the Data Protection Board and the people affected</strong> as the Digital Personal Data Protection Rules require; confirm current timelines with the lawyer.</li>
 <li><strong>Afterwards:</strong> write down the cause and the fix, and add a test or check so it cannot happen the same way again.</li>
 </ol>
-<h2 id="7-10-when-to-escalate">10. When to escalate</h2><p>Escalate to engineering when sign-in fails for everyone, when a deploy&#39;s smoke check fails, when any office can see another&#39;s data, when the database answers errors to <code>SELECT</code> queries, or when the Worker logs show the same error repeating. Escalate to the founder for anything involving personal data leaving its office, legal requests, or deleting an office or account on someone&#39;s behalf.</p>
+<h2 id="8-10-when-to-escalate">10. When to escalate</h2><p>Escalate to engineering when sign-in fails for everyone, when a deploy&#39;s smoke check fails, when any office can see another&#39;s data, when the database answers errors to <code>SELECT</code> queries, or when the Worker logs show the same error repeating. Escalate to the founder for anything involving personal data leaving its office, legal requests, or deleting an office or account on someone&#39;s behalf.</p>
 </section>
-<section class="doc" id="part-8"><header class="doc-head"><p class="doc-num">Part 8</p><h1 id="configuration">Configuration</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> The Worker&#39;s resources and plain settings are declared in <code>apps/api/wrangler.jsonc</code>; keys and tokens are Worker secrets put from Infisical. This part lists what is set today. Values of secrets are never written down; only their names.</p>
+<section class="doc" id="part-9"><header class="doc-head"><p class="doc-num">Part 9</p><h1 id="configuration">Configuration</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> The Worker&#39;s resources and plain settings are declared in <code>apps/api/wrangler.jsonc</code>; keys and tokens are Worker secrets put from Infisical. This part lists what is set today. Values of secrets are never written down; only their names.</p>
 </blockquote>
-<h2 id="8-1-resources">1. Resources</h2><div class="table-wrap"><table>
+<h2 id="9-1-resources">1. Resources</h2><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Binding</th>
@@ -1301,7 +2079,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 <td>Website chat</td>
 </tr>
 </tbody></table></div>
-<h2 id="8-2-settings-live-values">2. Settings (live values)</h2><div class="table-wrap"><table>
+<h2 id="9-2-settings-live-values">2. Settings (live values)</h2><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Name</th>
@@ -1350,7 +2128,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 <td>Purges offices deleted more than 30 days ago</td>
 </tr>
 </tbody></table></div>
-<h2 id="8-3-secrets-names-only">3. Secrets (names only)</h2><div class="table-wrap"><table>
+<h2 id="9-3-secrets-names-only">3. Secrets (names only)</h2><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Name</th>
@@ -1396,7 +2174,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 </tbody></table></div>
 <p>In Infisical, the deploy token is <code>CLOUDFLARE_API_TOKEN_SNILLD_OFFICE</code>. The rule: no <code>.env</code> files; every command that needs a secret runs as <code>infisical run --env=dev -- &lt;command&gt;</code>.</p>
 </section>
-<section class="doc" id="part-9"><header class="doc-head"><p class="doc-num">Part 9</p><h1 id="open-items-and-limits">Open items and limits</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> What is not done yet, or not done fully, so nobody promises it by mistake.</p>
+<section class="doc" id="part-10"><header class="doc-head"><p class="doc-num">Part 10</p><h1 id="open-items-and-limits">Open items and limits</h1></header><blockquote class="callout summary"><p><strong class="callout-label">In one paragraph</strong> What is not done yet, or not done fully, so nobody promises it by mistake.</p>
 </blockquote>
 <div class="table-wrap"><table>
 <thead>
@@ -1434,6 +2212,10 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 <td>Parties and open items come in through the CSV templates; no direct Tally import or export yet</td>
 </tr>
 <tr>
+<td>Agents that do less than their job description</td>
+<td>Shown in each agent&#39;s &quot;Not yet&quot; line in <strong>How the work flows</strong>. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, stock moving with sales and bills, and the cash plan acting on an approved compliance proposal</td>
+</tr>
+<tr>
 <td>Filing on government portals</td>
 <td>Out of scope by design: the office prepares, the owner or CA files</td>
 </tr>
@@ -1451,7 +2233,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 </tr>
 </tbody></table></div>
 </section>
-<section class="doc" id="part-10"><header class="doc-head"><p class="doc-num">Part 10</p><h1 id="glossary">Glossary</h1></header><div class="table-wrap"><table>
+<section class="doc" id="part-11"><header class="doc-head"><p class="doc-num">Part 11</p><h1 id="glossary">Glossary</h1></header><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Term</th>
@@ -1516,7 +2298,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 </tr>
 </tbody></table></div>
 </section>
-<section class="doc" id="part-11"><header class="doc-head"><p class="doc-num">Part 11</p><h1 id="where-to-find-more">Where to find more</h1></header><div class="table-wrap"><table>
+<section class="doc" id="part-12"><header class="doc-head"><p class="doc-num">Part 12</p><h1 id="where-to-find-more">Where to find more</h1></header><div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Document</th>
@@ -1549,7 +2331,7 @@ infisical run --env=dev --silent -- sh &quot;$TMPDIR/d1q.sh&quot; &quot;SELECT n
 </tr>
 </tbody></table></div>
 </section>
-<footer class="foot">Built from <code>docs/reference/agentic-office-reference.md</code> with <code>node tools/docs/reference.mjs</code>. Version 4675b0b, 19 November 2026.</footer>
+<footer class="foot">Built from <code>docs/reference/agentic-office-reference.md</code> with <code>node tools/docs/reference.mjs</code>. Version eafe3c3, 19 November 2026.</footer>
 </main>
 <a class="top-link" href="#top">Back to the top</a>
 <script>

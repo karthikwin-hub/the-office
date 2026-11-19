@@ -9,6 +9,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { Marked } from "marked";
+import { writeFlows } from "./flows.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const source = join(root, "docs/reference/agentic-office-reference.md");
@@ -41,6 +42,9 @@ function embedImage(path, alt) {
   const type = extname(path) === ".jpg" || extname(path) === ".jpeg" ? "jpeg" : "png";
   return `<figure class="shot"><img alt="${escape(alt)}" loading="lazy" src="data:image/${type};base64,${readFileSync(path).toString("base64")}"><figcaption>${escape(alt)}</figcaption></figure>`;
 }
+
+// The owners' process diagrams are drawn from their data first, so the page always carries the current ones.
+writeFlows();
 
 // Split the document into parts at each top-level heading; anything before the first is a comment.
 const text = readFileSync(source, "utf8").replace(/<!--[\s\S]*?-->/g, "");

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 456" role="img" aria-labelledby="t-social-posts">
+  <title id="t-social-posts">The Social Media Manager, calendar and posts: drafts next month's calendar, puts each post on your Desk, and checks it again before it goes out</title>
+  <defs><marker id="a-social-posts" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#27408B"/></marker></defs>
+  <style>
+    .box{fill:#fff;stroke:#2A2D31;stroke-width:1.3}
+    .desk{fill:#E8ECF6;stroke:#27408B;stroke-width:1.6}
+    .done{fill:#EEF4EE;stroke:#3C6E47;stroke-width:1.3}
+    .stop{fill:#F7F1EC;stroke:#8A5A2B;stroke-width:1.3}
+    .none{fill:#fafafa;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .nyet{fill:#fbfaf7;stroke:#9AA1AB;stroke-width:1.2;stroke-dasharray:5 4}
+    .t{font-size:13.5px;fill:#2A2D31;font-weight:700}
+    .s{font-size:12px;fill:#4A5260}
+    .ny{font-size:12px;fill:#5A6270;font-style:italic}
+    .hd{font-size:11px;fill:#5A6270;font-weight:700;letter-spacing:.08em}
+    .tg{font-size:12px;font-weight:700;fill:#fff}
+    .tag-works{fill:#3C6E47}
+    .tag-reports{fill:#5A6270}
+    .tag-partly{fill:#8A5A2B}
+    .ln{stroke:#27408B;stroke-width:1.4;fill:none;marker-end:url(#a-social-posts)}
+  </style>
+  <text class="hd" x="15" y="50">WHAT STARTS IT</text><text class="hd" x="215" y="50">WHAT IT DOES</text><text class="hd" x="525" y="50">ON YOUR DESK</text><text class="hd" x="760" y="50">WHAT HAPPENS NEXT</text><rect class="tag-works" x="842" y="10" width="106" height="24" rx="12"/><text class="tg" x="895" y="26" text-anchor="middle">Works today</text>
+  <path class="ln" d="M185 86H200V86H213"/><path class="ln" d="M185 191H200V86H213"/><path class="ln" d="M243 165V179"/><path class="ln" d="M243 252V266"/><path class="ln" d="M383 355V369"/><path class="ln" d="M495 86H510V86H523"/><path class="ln" d="M495 205H510V176H523"/><path class="ln" d="M495 205H510V314H523"/><path class="ln" d="M730 86H745V86H758"/><path class="ln" d="M730 176H745V175H758"/><path class="ln" d="M730 86H745V312H758"/>
+  <rect class="box" x="15" y="62" width="170" height="87" rx="4"/><text class="t" x="27" y="85">The morning round</text><text class="s" x="27" y="102">From the 25th, if</text><text class="s" x="27" y="118">next month has no</text><text class="s" x="27" y="134">calendar</text>
+  <rect class="box" x="15" y="167" width="170" height="71" rx="4"/><text class="t" x="27" y="190">Draft a calendar</text><text class="s" x="27" y="207">The button in its</text><text class="s" x="27" y="223">room, any time</text>
+  <rect class="box" x="215" y="62" width="280" height="103" rx="4"/><text class="t" x="227" y="85">1. Plans the month</text><text class="s" x="227" y="102">Festival posts first, then your</text><text class="s" x="227" y="118">content themes, weighted to what did</text><text class="s" x="227" y="134">best last month, with slow stock and</text><text class="s" x="227" y="150">campaigns as topics</text>
+  <rect class="box" x="215" y="181" width="280" height="71" rx="4"/><text class="t" x="227" y="204">2. Each post on your Desk</text><text class="s" x="227" y="221">Once the calendar is approved, in</text><text class="s" x="227" y="237">each channel's version</text>
+  <rect class="box" x="215" y="268" width="280" height="87" rx="4"/><text class="t" x="227" y="291">3. Checks again at posting time</text><text class="s" x="227" y="308">Prices and facts against the books,</text><text class="s" x="227" y="324">and that the text is what you</text><text class="s" x="227" y="340">approved</text>
+  <rect class="stop" x="271" y="371" width="224" height="71" rx="4"/><text class="t" x="283" y="394">Changed or a check fails?</text><text class="s" x="283" y="411">Held back and returned to</text><text class="s" x="283" y="427">your Desk</text>
+  <rect class="desk" x="525" y="62" width="205" height="72" rx="4"/><text class="t" x="537" y="85">"Approve the &lt;month&gt;</text><text class="t" x="537" y="102">calendar: N posts"</text><text class="s" x="537" y="119">Always waits for you</text>
+  <rect class="desk" x="525" y="152" width="205" height="120" rx="4"/><text class="t" x="537" y="175">"Publish &lt;topic&gt; on</text><text class="t" x="537" y="192">&lt;channels&gt;, &lt;date&gt;"</text><text class="s" x="537" y="209">Trusted: an unchanged post</text><text class="s" x="537" y="225">from your calendar that</text><text class="s" x="537" y="241">passes every check goes</text><text class="s" x="537" y="257">alone</text>
+  <rect class="desk" x="525" y="290" width="205" height="105" rx="4"/><text class="t" x="537" y="313">"Send &lt;topic&gt; on</text><text class="t" x="537" y="330">WhatsApp to N</text><text class="t" x="537" y="347">customers"</text><text class="s" x="537" y="364">A broadcast: always waits,</text><text class="s" x="537" y="380">with its cost</text>
+  <rect class="done" x="760" y="62" width="185" height="71" rx="4"/><text class="t" x="772" y="85">Calendar approved</text><text class="s" x="772" y="102">Its posts come to the</text><text class="s" x="772" y="118">Desk one by one</text>
+  <rect class="done" x="760" y="151" width="185" height="119" rx="4"/><text class="t" x="772" y="174">Post approved</text><text class="s" x="772" y="191">Scheduled; at its time</text><text class="s" x="772" y="207">published if the</text><text class="s" x="772" y="223">channel is connected,</text><text class="s" x="772" y="239">otherwise a pack to</text><text class="s" x="772" y="255">post by hand</text>
+  <rect class="stop" x="760" y="288" width="185" height="71" rx="4"/><text class="t" x="772" y="311">Reject</text><text class="s" x="772" y="328">A rejected calendar</text><text class="s" x="772" y="344">removes its draft posts</text>
+  
+</svg>

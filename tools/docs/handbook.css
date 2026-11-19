@@ -107,6 +107,8 @@ figure { margin: 24px 0 28px; }
 figure svg, figure img { display: block; width: 100%; height: auto; border: 1px solid var(--plan-line); border-radius: 4px; background: #fff; }
 figure.diagram svg { background: #fcfcfd; padding: 8px; font-family: var(--font); }
 figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+/* On a phone a diagram keeps a readable size and scrolls sideways within its figure; the page itself does not. */
+@media (max-width: 720px) { figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; } figure.diagram svg { min-width: 760px; } }
 
 .foot { padding: 28px 0; color: var(--muted); font-size: 0.85rem; }
 
