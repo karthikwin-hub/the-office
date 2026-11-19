@@ -376,7 +376,7 @@ app.get(`/api/o/:office${ROUTES.weather.slice(4)}`, async (c) => {
 
 app.get("/api/o/:office/files/:id", async (c) => {
   const id = c.req.param("id");
-  if (!/^doc-[\w-]+(\.txt)?$/.test(id)) return c.json({ error: "File not found" }, 404);
+  if (!/^(doc|proof)-[\w-]+(\.txt)?$/.test(id)) return c.json({ error: "File not found" }, 404);
   const obj = await c.env.DOCS.get(docKey(c.get("caller").officeId, id));
   if (!obj) return c.json({ error: "File not found" }, 404);
   return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, obj.customMetadata?.filename ?? id), "cache-control": "private, max-age=3600" } });

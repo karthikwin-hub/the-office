@@ -8,4 +8,5 @@ export const system = (officeId: string): Caller => ({ userId: "system", name: B
 
 export type InboundDocs = { from: string | null; subject: string; docs: { id: string; mimeType: string; filename: string }[]; skipped: string[] };
 
-export const newDocId = () => `doc-u${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`;
+/** A stored file's id: 122 random bits, so one cannot be guessed from another or from when it arrived. */
+export const newDocId = () => `doc-${crypto.randomUUID()}`;

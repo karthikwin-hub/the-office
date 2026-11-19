@@ -5,6 +5,7 @@ import { ACCOUNT_ROUTES } from "@office/contracts";
 import { describe, expect, it } from "vitest";
 import { app } from "../src/app";
 import { API_CSP, appCsp, BASE_HEADERS, FILE_CSP, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
+import { newDocId } from "../src/caller";
 import type { Env } from "../src/env";
 import { docKey, mediaKey } from "../src/keys";
 import { signMedia } from "../src/social/media";
@@ -286,5 +287,32 @@ describe("stored files", () => {
         expect([id, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual(id === "media-u1" ? [id, "application/octet-stream", "attachment"] : [id, "image/jpeg", "inline"]);
       }
     }
+  });
+});
+
+describe("document ids", () => {
+  it("are a random UUID behind doc-, which the file route serves", async () => {
+    const ids = Array.from({ length: 500 }, () => newDocId());
+    for (const id of ids) expect(id).toMatch(/^doc-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(new Set(ids).size).toBe(ids.length);
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    const id = ids[0]!;
+    await w.docs.put(docKey(office, id), "%PDF-1.4", { httpMetadata: { contentType: "application/pdf" }, customMetadata: { filename: "bill.pdf" } });
+    await w.docs.put(docKey(office, `${id}.txt`), "what the voice note said", { httpMetadata: { contentType: "text/plain; charset=utf-8" } });
+    expect(await (await req(w, `/api/o/${office}/files/${id}`, {}, cookie)).text()).toBe("%PDF-1.4");
+    expect(await (await req(w, `/api/o/${office}/files/${id}.txt`, {}, cookie)).text()).toBe("what the voice note said");
+  });
+
+  it("lets the owner download a filing's proof, which is kept under proof-", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    const id = `proof-${crypto.randomUUID()}`;
+    await w.docs.put(docKey(office, id), "%PDF-1.4 challan", { httpMetadata: { contentType: "application/pdf" }, customMetadata: { filename: "challan.pdf" } });
+    const res = await req(w, `/api/o/${office}/files/${id}`, {}, cookie);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe('inline; filename="challan.pdf"');
+    expect(await res.text()).toBe("%PDF-1.4 challan");
+    for (const bad of ["proof-", "media-u1", "other-1", "proofx-1"]) expect([bad, (await req(w, `/api/o/${office}/files/${bad}`, {}, cookie)).status]).toEqual([bad, 404]);
   });
 });
