@@ -52,6 +52,14 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp" }),
 });
 
+/** Better Auth's rate-limit counts, one row per caller and path, shared by every isolate. */
+export const rateLimit = sqliteTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: integer("last_request").notNull(),
+});
+
 /* ---------- The control plane: who belongs to which office, and where inbound messages go. Times are epoch milliseconds. ---------- */
 
 export const office = sqliteTable(

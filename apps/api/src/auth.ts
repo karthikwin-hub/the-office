@@ -80,8 +80,14 @@ export function makeAuth(env: Env, host?: string) {
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
     trustedOrigins: origins,
-    // Cookies on a parent domain are refused on any other host, so other hosts (workers.dev, localhost) keep their own.
-    advanced: cookieDomain ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } } : undefined,
+    advanced: {
+      // Cookies on a parent domain are refused on any other host, so other hosts (workers.dev, localhost) keep their own.
+      ...(cookieDomain ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } } : {}),
+      // Cloudflare sets this header itself; X-Forwarded-For is whatever the client sent, so it never names the caller.
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
+      // Better Auth skips the origin check when NODE_ENV is "test"; it is never skipped here.
+      disableOriginCheck: false,
+    },
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
     emailAndPassword: {
       enabled: true,
@@ -110,7 +116,8 @@ export function makeAuth(env: Env, host?: string) {
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
     // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
     session: { cookieCache: { enabled: false } },
-    rateLimit: { enabled: env.DATA_MODE === "live", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
+    // Counts live in D1, so every isolate and every restart sees the same attempts.
+    rateLimit: { enabled: env.DATA_MODE === "live", storage: "database", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
   });
 }
 
