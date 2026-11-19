@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ACCOUNT_ROUTES } from "@office/contracts";
 import { describe, expect, it } from "vitest";
 import { app } from "../src/app";
-import { API_CSP, appCsp, BASE_HEADERS, SKIN_SCRIPT_HASH } from "../src/edge";
+import { API_CSP, appCsp, BASE_HEADERS, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
 import type { Env } from "../src/env";
 import { d1 } from "./d1";
 
@@ -133,3 +133,91 @@ describe("security headers", () => {
   });
 });
 
+
+describe("changes come only from the app's own pages", () => {
+  const json = (origin: string | null, body: unknown, extra: Record<string, string> = {}) => ({ method: "POST", headers: { ...(origin ? { origin } : {}), "content-type": "application/json", ...extra }, body: JSON.stringify(body) });
+
+  it("refuses a signed-in person's request forged from another site, and takes the app's own", async () => {
+    const w = makeEnv();
+    const { cookie } = await owner(w);
+    const forged = await req(w, ACCOUNT_ROUTES.offices, json("https://evil.test", { name: "Forged" }), cookie);
+    expect(forged.status).toBe(403);
+    expect(await forged.json()).toEqual({ error: expect.stringMatching(/did not come from the app/) });
+    expect((await req(w, ACCOUNT_ROUTES.offices, json(null, { name: "No origin" }), cookie)).status).toBe(403);
+    expect((await req(w, ACCOUNT_ROUTES.offices, json("null", { name: "Sandboxed" }), cookie)).status).toBe(403);
+    const offices = async () => ((await (await req(w, ACCOUNT_ROUTES.me, {}, cookie)).json()) as { offices: { name: string }[] }).offices.map((o) => o.name);
+    expect(await offices()).toEqual(["Kaveri Electricals"]);
+    expect((await req(w, ACCOUNT_ROUTES.offices, json(BASE, { name: "Mehta Hardware" }), cookie)).status).toBe(201);
+    expect((await offices()).sort()).toEqual(["Kaveri Electricals", "Mehta Hardware"]);
+  });
+
+  it("refuses a body a plain HTML form could send, even from the app", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    for (const type of ["text/plain", "application/x-www-form-urlencoded"]) {
+      const res = await req(w, `/api/o/${office}/settings`, { method: "PUT", headers: { origin: BASE, "content-type": type }, body: '{"x":1}' }, cookie);
+      expect([type, res.status]).toEqual([type, 415]);
+    }
+    expect(w.seen).toEqual([]);
+  });
+
+  it("checks uploads and body-less changes by Origin too", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    const upload = (origin: string) => {
+      const form = new FormData();
+      form.set("file", new File(["%PDF-1.4"], "bill.pdf", { type: "application/pdf" }));
+      return req(w, `/api/o/${office}/documents`, { method: "POST", headers: { origin }, body: form }, cookie);
+    };
+    expect((await upload("https://evil.test")).status).toBe(403);
+    expect((await req(w, `/api/o/${office}/office-admin/leave`, { method: "POST", headers: { origin: "https://evil.test" } }, cookie)).status).toBe(403);
+    expect(w.seen).toEqual([]);
+    expect((await upload(BASE)).status).toBe(200);
+    expect((await req(w, `/api/o/${office}/routines/compliance-due/run`, { method: "POST", headers: { origin: BASE } }, cookie)).status).toBe(200);
+    expect((await req(w, `/api/o/${office}/office-admin/restore`, { method: "POST", headers: { origin: BASE, "content-length": "0" }, body: new Uint8Array(0) }, cookie)).status).toBe(409);
+    expect((await req(w, `/api/o/${office}/settings`, { method: "PUT", headers: { origin: BASE, "content-length": "7" }, body: '{"x":1}' }, cookie)).status).toBe(415);
+    expect((await req(w, `/api/o/${office}/documents/doc-1/scan`, { method: "POST", headers: { origin: BASE, "content-type": "image/png" }, body: new Uint8Array([137, 80, 78, 71]) }, cookie)).status).toBe(200);
+    expect(w.seen).toEqual(["POST /api/documents", "POST /api/routines/compliance-due/run", "POST /api/documents/doc-1/scan"]);
+  });
+
+  it("opens the live connection only for the app's own pages", async () => {
+    const w = makeEnv();
+    const { cookie, office } = await owner(w);
+    const live = (origin: string | null) => req(w, `/api/o/${office}/live`, { headers: { upgrade: "websocket", ...(origin ? { origin } : {}) } }, cookie);
+    expect((await live("https://evil.test")).status).toBe(403);
+    expect((await live(null)).status).toBe(403);
+    expect(w.seen).toEqual([]);
+    expect((await live(BASE)).status).toBe(200);
+    expect(w.seen).toEqual(["GET /api/live"]);
+  });
+
+  it("knows the app's addresses: its own host, BETTER_AUTH_URL, APP_DOMAIN and the offices under it", () => {
+    const env = { BETTER_AUTH_URL: "https://app.office.snilld.in", APP_DOMAIN: "office.snilld.in" };
+    const at = "https://kaveri.office.snilld.in/api/o/off_x/settings";
+    for (const o of ["https://app.office.snilld.in", "https://office.snilld.in", "https://console.office.snilld.in", "https://kaveri.office.snilld.in", "https://mehta.office.snilld.in"]) expect([o, ownOrigin(env, o, at)]).toEqual([o, true]);
+    for (const o of ["https://evil.test", "https://evil-office.snilld.in", "https://office.snilld.in.evil.test", "http://kaveri.office.snilld.in", "https://kaveri.office.snilld.in:8443", "https://snilld.in", "null", "", "https://kaveri.office.snilld.in/path"])
+      expect([o, ownOrigin(env, o, "https://app.office.snilld.in/api/offices")]).toEqual([o, false]);
+    expect(ownOrigin({ BETTER_AUTH_URL: BASE }, "https://the-office.example.workers.dev", "https://the-office.example.workers.dev/api/offices")).toBe(true);
+    expect(ownOrigin({ BETTER_AUTH_URL: BASE }, "https://other.example.workers.dev", "https://the-office.example.workers.dev/api/offices")).toBe(false);
+  });
+
+  it("leaves what is cross-origin by design to its own checks", async () => {
+    const w = makeEnv();
+    const hook = await req(w, "/api/hooks/meta", json(null, { object: "instagram", entry: [] }, { "x-hub-signature-256": "sha256=00" }));
+    expect([hook.status, await hook.text()]).toEqual([401, "Bad signature"]);
+    const chat = await req(w, "/api/chat/wabcdefgh1", json("https://shop.example", { visitor: "v1234567890", text: "hello" }));
+    expect(chat.status).toBe(404);
+  });
+
+  it("holds sign-in to the app's Origin too, which Better Auth checks only when a cookie comes with it", async () => {
+    const w = makeEnv();
+    await owner(w);
+    const signIn = (origin: string | null) => req(w, "/api/auth/sign-in/email", json(origin, { email: "anil@kaveri.test", password: "a-long-password-1" }));
+    for (const origin of ["https://evil.test", null]) {
+      const res = await signIn(origin);
+      expect([origin, res.status]).toEqual([origin, 403]);
+      expect((res.headers as unknown as { getSetCookie(): string[] }).getSetCookie()).toEqual([]);
+    }
+    expect((await signIn(BASE)).status).toBe(200);
+  });
+});

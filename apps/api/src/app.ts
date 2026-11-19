@@ -30,7 +30,7 @@ import { AccountRecords } from "./account";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
-import { securityHeaders } from "./edge";
+import { sameOrigin, securityHeaders } from "./edge";
 import { parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -66,8 +66,9 @@ const internal = (path: string, body: unknown) => new Request(`https://office.in
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-/* ---------- Every response: browser security headers ---------- */
+/* ---------- Every response: browser security headers; every change: from the app's own pages ---------- */
 app.use("*", securityHeaders);
+app.use("/api/*", sameOrigin);
 
 /** Public. The web app reads `appDomain` before anything else, to know whether this host is the product page, the console or an office. */
 app.get("/api/health", (c) => c.json({ ok: true, mode: c.env.DATA_MODE, appDomain: c.env.APP_DOMAIN || null }));

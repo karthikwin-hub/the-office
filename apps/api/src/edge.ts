@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { authScope } from "./auth";
 import type { Env } from "./env";
 
 /**
@@ -65,4 +66,52 @@ export const securityHeaders: MiddlewareHandler<{ Bindings: Env }> = async (c, n
   // Cleared first so Hono takes the copy as it is instead of copying it again.
   c.res = undefined;
   c.res = res;
+};
+
+/**
+ * Whether a request's Origin is the app itself: this host, or one of the origins Better Auth trusts (BETTER_AUTH_URL,
+ * and APP_DOMAIN with every address under it: the console and each office) on BETTER_AUTH_URL's scheme and port.
+ * `null` and anything unparsable are not.
+ */
+export function ownOrigin(env: Pick<Env, "BETTER_AUTH_URL" | "APP_DOMAIN">, origin: string | null, requestUrl: string): boolean {
+  if (!origin) return false;
+  let o: URL;
+  try {
+    o = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (o.origin !== origin.toLowerCase().replace(/\/$/, "")) return false;
+  if (o.origin === new URL(requestUrl).origin) return true;
+  const scheme = env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).protocol : null;
+  return authScope(env).origins.some((t) => (t.startsWith("*.") ? o.protocol === scheme && o.host.endsWith(t.slice(1)) : t === o.origin));
+}
+
+/**
+ * Cross-origin by design, so not held to the app's Origin: platform webhooks (their signature is the check), the
+ * website chat, and platform sign-in callbacks. Sign-in itself is held to it: Better Auth checks the Origin only when
+ * a cookie comes with the request, which would let another site sign a visitor into an account of its choosing.
+ */
+const CROSS_ORIGIN = /^\/api\/(hooks\/|chat\/|channels\/[a-z]+\/callback$)/;
+/** What the app sends in a body: JSON, file uploads, and a page pictured in the browser for the scanner. */
+const BODY_TYPES = /^(application\/json|multipart\/form-data|image\/(png|jpeg|webp))\s*(;|$)/i;
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Against cross-site requests riding the session cookie: anything under /api that changes something, and the live
+ * WebSocket, must come from the app's own pages. The Origin is the defence (browsers send it on every such request);
+ * the body type check adds that text/plain and form-encoded bodies, which a plain HTML form sends, are refused.
+ * Multipart is a form type too, so uploads rest on the Origin alone.
+ */
+export const sameOrigin: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
+  const upgrade = c.req.header("upgrade")?.toLowerCase() === "websocket";
+  if ((SAFE_METHODS.has(c.req.method) && !upgrade) || CROSS_ORIGIN.test(new URL(c.req.url).pathname)) return next();
+  if (!ownOrigin(c.env, c.req.header("origin") ?? null, c.req.url)) return c.json({ error: "This request did not come from the app. Reload the page and try again." }, 403);
+  if (upgrade) return next();
+  const type = c.req.header("content-type");
+  // A browser's body-less POST says Content-Length: 0, which may still arrive as an empty stream.
+  const length = c.req.header("content-length");
+  const hasBody = length !== undefined ? length.trim() !== "0" : c.req.header("transfer-encoding") !== undefined || c.req.raw.body !== null;
+  if (type ? !BODY_TYPES.test(type) : hasBody) return c.json({ error: "Send this as JSON." }, 415);
+  return next();
 };
