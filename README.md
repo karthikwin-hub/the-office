@@ -33,8 +33,11 @@ pnpm dev                 # mock demo in the browser, no backend
 pnpm test && pnpm typecheck
 pnpm docs                # rebuilds docs/handbook/the-office-handbook.html from the Markdown in docs/handbook
 
-# Live Worker locally, with a fresh office (add --var OFFICE_SEED:sample for the Kaveri sample books)
-cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler dev --port 8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787'
+# Live Worker locally, with a fresh office (add --var OFFICE_SEED:sample for the Kaveri sample books).
+# --local-upstream keeps requests on localhost (otherwise wrangler rewrites them to the live custom domain and
+# sign-in refuses the origin); APP_DOMAIN is cleared for the same reason. Build the web app first (pnpm build) and
+# apply migrations (pnpm --filter @office/api run db:migrate:local). Also in .claude/launch.json as "api-local".
+cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler dev --port 8787 --local-upstream localhost:8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787 --var EMAIL_VERIFICATION:off --var APP_DOMAIN:'
 
 # The same with one address per office: open http://office.localhost:8787 (product page), http://app.office.localhost:8787
 # (businesses) and http://console.office.localhost:8787 (platform owners, the addresses in PLATFORM_OWNERS);
