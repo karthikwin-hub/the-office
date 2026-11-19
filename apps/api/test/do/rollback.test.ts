@@ -34,4 +34,22 @@ describe("a request that fails", () => {
       expect(inside(o).office.settings().digestTime).toBe("09:15");
     });
   });
+
+  it("does not undo another request that is still working", async () => {
+    const { id, owner, stub } = await openOffice();
+    const me = callerFor(id, owner);
+    expect((await stub.fetch(await asCaller(me, ROUTES.settings))).status).toBe(200);
+    await runInDurableObject(stub, (o) => {
+      const slow = o as unknown as { syncAssistantRoute: () => Promise<void> };
+      slow.syncAssistantRoute = () => new Promise((r) => setTimeout(r, 300));
+      inside(o).syncSalesRoute = async () => {
+        throw new Error("the control plane is down");
+      };
+    });
+    const working = stub.fetch(await asCaller(me, "/api/hiring/executive-assistant", put("/api/hiring", { hired: true })));
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await stub.fetch(await asCaller(me, "/api/hiring/marketplace-manager", put("/api/hiring", { hired: true })))).status).toBe(500);
+    expect((await working).status).toBe(200);
+    await runInDurableObject(stub, (o) => expect(inside(o).office.hired("executive-assistant")).toBe(true));
+  });
 });

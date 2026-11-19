@@ -78,6 +78,8 @@ export class Office extends Agent<Env> {
   private vault!: TokenVault;
   private spentStates!: SpentStates;
   private day = "";
+  /** Requests inside `route()` now; a failed one reopens the books only when it is alone. */
+  private routing = 0;
   /** Null until the office knows who it is; an office that does not know does nothing. */
   private officeId: string | null = null;
   private ingestEmail = "";
@@ -445,11 +447,16 @@ export class Office extends Agent<Env> {
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/purge") return json(await this.purge());
     this.fresh();
+    this.routing++;
     try {
-      const res = await this.route(request, caller).catch((e: unknown) => {
-        this.reopen();
-        throw e;
-      });
+      const res = await this.route(request, caller)
+        .catch((e: unknown) => {
+          // Another request still working holds the engine it started on; swapping it would drop that request's changes.
+          if (this.routing === 1) this.reopen();
+          else this.log("a request failed while another was running; the books were not reopened");
+          throw e;
+        })
+        .finally(() => this.routing--);
       if (request.method !== "GET" || res.status === 302) {
         this.office.recordEdits(caller.name);
         await this.afterChange();
