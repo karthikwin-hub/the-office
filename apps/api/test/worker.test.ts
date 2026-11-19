@@ -3,7 +3,7 @@ import { loadBooks } from "@office/fixtures";
 import PostalMime from "postal-mime";
 import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "../src/auth";
-import { parseInbound, plainMessage } from "../src/mail";
+import { mailSender, parseInbound, plainMessage } from "../src/mail";
 import { readPrefs, savePrefs } from "../src/prefs";
 import { BooksStore } from "../src/store";
 import { digestCron, istDate } from "../src/time";
@@ -97,6 +97,22 @@ describe("time", () => {
 });
 
 describe("mail", () => {
+  it("keeps addresses and message ids from a received message on one header line", async () => {
+    const raw = plainMessage({ fromName: "Kaveri", from: "office@example.in", to: "rakesh@sharma.in>\r\nBcc: <x@attacker.test", replyTo: "a@kaveri.in>\nBcc: <y@attacker.test", subject: "Statement", body: "Attached.", inReplyTo: "<m1@sharma.in>\r\nBcc: z@attacker.test" });
+    const headers = raw.split("\r\n\r\n")[0]!.split("\r\n");
+    expect(headers.filter((h) => /^bcc:/i.test(h))).toEqual([]);
+    expect(headers.filter((h) => /^(To|Reply-To|In-Reply-To|References):/.test(h))).toHaveLength(4);
+    expect(raw.split("\r\n\r\n")[0]).not.toMatch(/\n(?!(From|To|Reply-To|Subject|Message-ID|In-Reply-To|References|Date|MIME-Version|Content-Type|Content-Transfer-Encoding):)/);
+    const sent: string[] = [];
+    const send = mailSender({ MAIL_FROM: "office@example.in", RESEND_API_KEY: "re_test", MAILER: undefined }, (async (_u: string, init: RequestInit) => {
+      sent.push(String(init.body));
+      return Response.json({ id: "x" });
+    }) as unknown as typeof fetch)!;
+    await send({ fromName: "Kaveri", to: "rakesh@sharma.in\r\nBcc: x@attacker.test", subject: "S", body: "B", inReplyTo: "<m1@sharma.in>\r\nBcc: z@attacker.test" });
+    const body = JSON.parse(sent[0]!) as { to: string[]; headers: Record<string, string> };
+    expect([...body.to, ...Object.values(body.headers)].some((v) => /[\r\n]/.test(v))).toBe(false);
+  });
+
   it("builds a message that parses back to the same text", async () => {
     const raw = plainMessage({ fromName: "Kaveri Electricals", from: "office@example.in", to: "accounts@sharma.in", replyTo: "a@kaveri.in", subject: "Payment reminder: ₹85,930", body: "Dear Rakesh,\n\nThe invoice of ₹85,930 is due." });
     const back = await PostalMime.parse(raw);

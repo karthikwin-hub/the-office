@@ -164,17 +164,21 @@ const b64 = (s: string) => {
   return btoa(bin);
 };
 
+/** A header value on one line: an address or message id from a received message cannot add headers of its own. */
+export const oneLine = (v: string) => v.replace(/[\r\n\0]+/g, " ").trim();
+
 /** A plain-text message in UTF-8, as `send_email` takes it. */
 export function plainMessage(m: { fromName: string; from: string; to: string; subject: string; body: string; replyTo?: string; messageId?: string; inReplyTo?: string | null }): string {
   const domain = m.from.split("@")[1] ?? "localhost";
-  const id = m.messageId ?? `<${crypto.randomUUID()}@${domain}>`;
+  const id = oneLine(m.messageId ?? `<${crypto.randomUUID()}@${domain}>`);
+  const inReplyTo = m.inReplyTo ? oneLine(m.inReplyTo) : "";
   const headers = [
-    `From: =?UTF-8?B?${b64(m.fromName)}?= <${m.from}>`,
-    `To: <${m.to}>`,
-    ...(m.replyTo ? [`Reply-To: <${m.replyTo}>`] : []),
+    `From: =?UTF-8?B?${b64(m.fromName)}?= <${oneLine(m.from)}>`,
+    `To: <${oneLine(m.to)}>`,
+    ...(m.replyTo ? [`Reply-To: <${oneLine(m.replyTo)}>`] : []),
     `Subject: =?UTF-8?B?${b64(m.subject)}?=`,
     `Message-ID: ${id}`,
-    ...(m.inReplyTo ? [`In-Reply-To: ${m.inReplyTo}`, `References: ${m.inReplyTo}`] : []),
+    ...(inReplyTo ? [`In-Reply-To: ${inReplyTo}`, `References: ${inReplyTo}`] : []),
     `Date: ${new Date().toUTCString()}`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
@@ -201,11 +205,12 @@ export function mailSender(env: Pick<Env, "MAILER" | "MAIL_FROM" | "RESEND_API_K
     const key = env.RESEND_API_KEY;
     return async (m) => {
       const id = idFor(m);
-      const headers: Record<string, string> = { "Message-ID": id, ...(m.inReplyTo ? { "In-Reply-To": m.inReplyTo, References: m.inReplyTo } : {}) };
+      const inReplyTo = m.inReplyTo ? oneLine(m.inReplyTo) : "";
+      const headers: Record<string, string> = { "Message-ID": oneLine(id), ...(inReplyTo ? { "In-Reply-To": inReplyTo, References: inReplyTo } : {}) };
       const res = await fetcher("https://api.resend.com/emails", {
         method: "POST",
         headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ from: `${m.fromName.replace(/[<>"]/g, "")} <${from}>`, to: [m.to], subject: m.subject, text: m.body, ...(m.replyTo ? { reply_to: m.replyTo } : {}), headers }),
+        body: JSON.stringify({ from: `${oneLine(m.fromName).replace(/[<>"]/g, "")} <${from}>`, to: [oneLine(m.to)], subject: oneLine(m.subject), text: m.body, ...(m.replyTo ? { reply_to: oneLine(m.replyTo) } : {}), headers }),
       });
       if (!res.ok) throw new Error(`the mail service refused the message (${res.status})`);
       return id;
