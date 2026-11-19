@@ -412,8 +412,11 @@ export const ComplianceCheck = z.object({
   summary: z.string(),
   amountPaise: Paise,
   rows: z.array(z.object({ label: z.string(), detail: z.string(), amountPaise: Paise.nullable(), ref: Ref.nullable() })),
-  /** A proposal the Compliance Officer can put on the owner's desk. */
-  proposal: z.object({ id: z.string(), label: z.string() }).nullable(),
+  /**
+   * A proposal the Compliance Officer can put on the owner's desk. A set-aside names the payment it
+   * reserves cash for, which the cash plan shows once the owner agrees.
+   */
+  proposal: z.object({ id: z.string(), label: z.string(), setAside: z.object({ dueOn: IsoDate, amountPaise: Paise }).optional() }).nullable(),
 });
 export type ComplianceCheck = z.infer<typeof ComplianceCheck>;
 

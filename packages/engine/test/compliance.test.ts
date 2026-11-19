@@ -5,6 +5,7 @@ import {
   addManual,
   assign,
   buildObligations,
+  cashReport,
   chain,
   ComplianceError,
   complianceView,
@@ -157,6 +158,32 @@ describe("checks from the books", () => {
     const msme = complianceView(b, AS_OF).checks.find((c) => c.id === "msme")!;
     expect(msme.tone).not.toBe("red");
     expect(msme.amountPaise).toBe(0);
+  });
+
+  it("puts what the owner agreed into the cash plan: micro and small suppliers first, and advance tax set aside", () => {
+    const o = new OfficeService(books(), { asOf: AS_OF });
+    o.setHiring("compliance-officer", { hired: true });
+    const out = () => cashReport(o.ledger).weeks.flatMap((w) => w.items).filter((i) => i.direction === "out");
+    const before = out();
+    expect(before.some((i) => i.label.includes("paid first"))).toBe(false);
+    const msme = o.pending().find((s) => s.kind === "compliance_action" && s.payload.checkId === "msme")!;
+    o.decide(msme.id, { action: "approve" }, "Anil Kaveri");
+    const after = out();
+    const first = after.filter((i) => i.label.includes("(micro or small supplier, paid first)"));
+    expect(first.length).toBeGreaterThan(0);
+    for (const i of first) expect(i.date <= before.find((b) => i.label === `${b.label} (micro or small supplier, paid first)`)!.date).toBe(true);
+    expect(cashReport(o.ledger).assumptions.some((a) => a.startsWith("Micro and small suppliers are paid first"))).toBe(true);
+    expect(o.books.teamLog.some((a) => a.text.includes("cash plan now pays them by their legal limit"))).toBe(true);
+
+    const tax = o.pending().find((s) => s.kind === "compliance_action" && s.payload.checkId === "advance-tax");
+    expect(tax).toBeDefined();
+    if (tax) {
+      const aside = tax.payload.setAside as { dueOn: string; amountPaise: number };
+      o.decide(tax.id, { action: "approve" }, "Anil Kaveri");
+      const cash = cashReport(o.ledger);
+      const shown = cash.weeks.flatMap((w) => w.items).some((i) => i.label.startsWith("Advance tax for") && i.amountPaise === aside.amountPaise && i.date === aside.dueOn);
+      expect(shown || cash.assumptions.some((a) => a.includes("of advance tax is set aside for"))).toBe(true);
+    }
   });
 
   it("lists the loans for DPT-3", () => {

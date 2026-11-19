@@ -235,7 +235,7 @@ export const FLOWS = [
         width: 220,
         boxes: [
           { id: "ag", title: "The agent for that job", text: "Reads it, checks it against your books and drafts what should happen. Every amount and tax figure is worked out by code, never by AI." },
-          { id: "unk", kind: "stop", title: "From someone new?", text: "A document from a sender who is not in your books is never posted as it arrives: it waits for you." },
+          { id: "unk", kind: "stop", title: "From someone new?", text: "A document from a sender who is not in your books is never posted on its own, at any trust level: it waits for you." },
           { id: "dup", kind: "stop", title: "Seen before?", text: "The same bill, invoice, proforma or report again is set aside without asking." },
         ],
       },
@@ -611,7 +611,7 @@ export const FLOWS = [
     desk: [{ title: "\"Reorder from <supplier>, ₹<total>\"", text: "Trusted: under ₹1 lakh goes ahead at the next morning round. Autonomous: any amount." }],
     next: [
       { title: "Approve", text: "Marked as sent in the books" },
-      { kind: "stop", title: "Reject", text: "Not sent" },
+      { kind: "stop", title: "Reject", text: "Cancelled, not sent; drafted again from the next day if still low" },
       { title: "The digest", text: "How many items are low and how many orders were drafted", from: "do3" },
     ],
     notYet: ["emailing the order to the supplier", "setting reorder levels from sales", "stock changing with sales and bills (it comes from your products file)"],
@@ -638,11 +638,11 @@ export const FLOWS = [
     ],
     desk: [{ title: "\"Pay MSME suppliers first\" / \"Set aside advance tax\"", text: "Always waits for you; comes back next month if rejected" }],
     next: [
-      { title: "Approve", text: "Recorded in the log" },
+      { title: "Approve", text: "The cash plan pays micro and small suppliers by their legal limit, or sets the advance tax aside for its date" },
       { title: "Working papers", text: "The filing pack to download; mark filed, assign or snooze", from: "do1" },
       { title: "The digest", text: "What is due and who files it", from: "do1" },
     ],
-    notYet: ["the cash plan acting on an approved proposal", "Desk cards for ROC events"],
+    notYet: ["Desk cards for ROC events"],
   }),
 
   // ── People ──

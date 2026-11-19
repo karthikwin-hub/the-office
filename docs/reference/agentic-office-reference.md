@@ -387,7 +387,7 @@ In **Settings → Your account** you can download a copy of your account data or
 
 ![How work moves through your office](diagrams/flow-overview.svg)
 
-Everything that comes in goes to the agent for that job: your office's own email addresses (each is shown in the agent's room), an upload, WhatsApp, your social media accounts, or the morning round. The agent checks it against your books and drafts what should happen. Every amount and tax figure is worked out by code, never by AI. You decide on your Desk, on the web or by number on WhatsApp. Only work you have allowed by trust level goes ahead without you, and a document from someone not in your books never posts as it arrives.
+Everything that comes in goes to the agent for that job: your office's own email addresses (each is shown in the agent's room), an upload, WhatsApp, your social media accounts, or the morning round. The agent checks it against your books and drafts what should happen. Every amount and tax figure is worked out by code, never by AI. You decide on your Desk, on the web or by number on WhatsApp. Only work you have allowed by trust level goes ahead without you, and a document from someone not in your books never posts on its own.
 
 ## 2. Trust levels
 
@@ -507,7 +507,7 @@ Next month's calendar is drafted from the 25th. Approve the calendar, then each 
 
 ![The Storekeeper](diagrams/flow-storekeeper.svg)
 
-Each morning it finds items at or under their reorder level and drafts one purchase order per supplier from the last bills. Approving marks the order sent in the books; send it to the supplier yourself for now.
+Each morning it finds items at or under their reorder level and drafts one purchase order per supplier from the last bills. Approving marks the order sent in the books; send it to the supplier yourself for now. Rejecting cancels the draft, and the item is drafted again from the next day if it is still low.
 
 ### The Buyer
 
@@ -517,7 +517,7 @@ Each morning it finds items at or under their reorder level and drafts one purch
 
 ![The Compliance Officer](diagrams/flow-compliance-officer.svg)
 
-It keeps your company's filing calendar from its profile and reminds whoever files each item, you or your CA or CS, at 7 days, 2 days and on the day. It also checks the books for MSME suppliers to pay and advance tax to set aside.
+It keeps your company's filing calendar from its profile and reminds whoever files each item, you or your CA or CS, at 7 days, 2 days and on the day. It also checks the books for MSME suppliers to pay and advance tax to set aside. Once you agree, the Credit Controller's cash plan pays those suppliers by their legal limit, or sets the advance tax aside for its date.
 
 ## 10. People
 
@@ -729,7 +729,7 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Emailed documents | Read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments; no spreadsheets or zip files by email |
 | Several GST registrations, credit notes, stock movements, e-commerce settlements | Partly built (other registrations recognised on invoices); fuller support planned |
 | Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
-| Agents that do less than their job description | Shown in each agent's "Not yet" line in **How the work flows**. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, stock moving with sales and bills, and the cash plan acting on an approved compliance proposal |
+| Agents that do less than their job description | Shown in each agent's "Not yet" line in **How the work flows**. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, and stock moving with sales and bills |
 | Filing on government portals | Out of scope by design: the office prepares, the owner or CA files |
 | The Lived-in office | Not shown on phones by design; needs WebGL 2 |
 | Online sales | Reports only: nothing is posted to the books yet. Next: one sales entry per channel, month, state and rate with GST (e-commerce operator supplies in GSTR-1), credit notes for returns, settlements matched to payouts with fees, TCS and 194-O TDS, and stock reduced by sales. Blinkit, Zepto and Instamart layouts are confirmed by the owner until real samples are added; no platform APIs |

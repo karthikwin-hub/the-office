@@ -111,7 +111,7 @@ export function advanceTaxCheck(l: Ledger, p: ComplianceProfile, paidPaise: numb
       { label: `Tax at ${COMPANY_TAX_PCT}%`, detail: "The new regime for companies: 22% plus surcharge and cess.", amountPaise: est.taxPaise, ref: null },
       { label: "Paid so far", detail: "Instalments marked paid in the calendar.", amountPaise: paidPaise, ref: null },
     ],
-    proposal: next && nextAmount > 0 ? { id: "advance-tax", label: "Set aside advance tax" } : null,
+    proposal: next && nextAmount > 0 ? { id: "advance-tax", label: "Set aside advance tax", setAside: { dueOn: next[0], amountPaise: nextAmount } } : null,
   };
 }
 

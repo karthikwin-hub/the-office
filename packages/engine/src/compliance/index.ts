@@ -190,7 +190,7 @@ export function complianceProposals(books: Books, asOf = books.business.asOf): S
       title: c.proposal!.label,
       summary: c.summary,
       evidence: c.rows.filter((r) => r.ref).slice(0, 4).map((r) => ({ label: r.label, ref: r.ref! })),
-      payload: { checkId: c.id, amountPaise: c.amountPaise, rows: c.rows.filter((r) => r.amountPaise).map((r) => r.label) },
+      payload: { checkId: c.id, amountPaise: c.amountPaise, rows: c.rows.filter((r) => r.amountPaise).map((r) => r.label), ...(c.proposal!.setAside ? { setAside: c.proposal!.setAside } : {}) },
       status: "pending" as const,
     }));
 }

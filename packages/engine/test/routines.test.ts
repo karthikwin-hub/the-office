@@ -27,6 +27,27 @@ describe("reorder check", () => {
     expect(o.reorderCheck().drafted).toBe(0);
   });
 
+  it("cancels a rejected order, so the item is drafted again on a later day", () => {
+    const books = loadBooks();
+    const low = books.stock.find((s) => s.onHand > 0)!;
+    low.onHand = low.reorderPoint;
+    const o = new OfficeService(books, { asOf: "2026-11-04" });
+    o.setHiring("storekeeper", { hired: true });
+    const first = o.reorderCheck();
+    expect(first.drafted).toBeGreaterThan(0);
+    const card = o.books.staged.find((s) => s.kind === "purchase_order" && s.status === "pending")!;
+    const poId = (card.payload as { poId: string }).poId;
+    const skus = o.books.purchaseOrders.find((p) => p.id === poId)!.lines.map((l) => l.skuId);
+    o.decide(card.id, { action: "reject" }, "Anil Kaveri");
+    expect(o.books.purchaseOrders.find((p) => p.id === poId)!.status).toBe("cancelled");
+    expect(o.reorderCheck().drafted).toBe(0); // not again the same day
+    const next = new OfficeService(o.books, { asOf: "2026-11-05" });
+    next.setHiring("storekeeper", { hired: true });
+    expect(next.reorderCheck().drafted).toBeGreaterThan(0);
+    const again = next.books.purchaseOrders.filter((p) => p.status === "draft" && p.date === "2026-11-05").flatMap((p) => p.lines.map((l) => l.skuId));
+    expect(skus.every((s) => again.includes(s))).toBe(true);
+  });
+
   it("only lists, and drafts nothing, without the Storekeeper", () => {
     const o = new OfficeService(loadBooks(), { asOf: "2026-11-04" });
     o.setHiring("storekeeper", { hired: false });

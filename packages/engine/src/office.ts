@@ -420,7 +420,7 @@ export class OfficeService {
         return [
           { label: "SKUs to reorder", value: String(o.stock.filter((s) => s.status === "reorder").length), tone: "red" },
           { label: "Excess stock at cost", value: inrShort(o.stock.filter((s) => s.status === "excess").reduce((a, s) => a + s.stockValuePaise, 0)), figureId: "operations:excess" },
-          { label: "Purchase orders open", value: String(o.purchaseOrders.filter((p) => p.status !== "received").length) },
+          { label: "Purchase orders open", value: String(o.purchaseOrders.filter((p) => p.status === "draft" || p.status === "sent").length) },
         ];
       }
       case "payroll-clerk": {
@@ -450,12 +450,13 @@ export class OfficeService {
   /**
    * Items at or under their reorder level. With the Storekeeper on the team, each supplier they were last
    * bought from gets one draft purchase order for the desk, unless an order for the item is already open.
+   * A draft the owner rejected is cancelled and no longer open, so the item is drafted again from the next day if still low.
    */
   reorderCheck(): { items: string[]; drafted: number; covered: boolean } {
     const o = operationsReport(this.ledger);
     const low = o.stock.filter((s) => s.status === "reorder");
     if (!low.length) return { items: [], drafted: 0, covered: false };
-    const onOrder = new Set(this.books.purchaseOrders.filter((p) => p.status !== "received").flatMap((p) => p.lines.map((x) => x.skuId)));
+    const onOrder = new Set(this.books.purchaseOrders.filter((p) => p.status === "draft" || p.status === "sent" || p.cancelledOn === this.asOf).flatMap((p) => p.lines.map((x) => x.skuId)));
     const lastBought = new Map<string, { vendorId: string; ratePaise: number; date: string }>();
     for (const b of this.books.bills) {
       if (b.status !== "posted") continue;
@@ -749,6 +750,11 @@ export class OfficeService {
     const staged = this.stageExtraction(docId, e);
     if (staged.kind === "file_document") return { document, staged, message: staged.status === "rejected" ? (staged.note ?? "Set aside as a duplicate.") : `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.` };
     const failed = e.checks.filter((c) => !c.ok);
+    if (!auto && staged.status === "pending") {
+      // Mail from a sender who is not in the books waits for the owner, now and at every later morning round.
+      staged.payload.holdForOwner = true;
+      staged.summary = `${staged.summary} It came from ${document.from ?? "an address"}, which is not in your books, so it waits for you.`;
+    }
     const why = auto ? this.routine(staged) : null;
     const [posted] = why ? this.runTrusted([staged]) : [];
     if (posted && why) return { document, staged: posted, message: `Posted on its own: the Accountant is ${why.level} and ${why.reason}.` };
@@ -850,7 +856,7 @@ export class OfficeService {
    * everything except the decisions that stay with the owner.
    */
   routine(item: StagedChange): { level: TrustLevel; reason: string } | null {
-    if (item.status !== "pending" || ALWAYS_ASK.has(item.kind)) return null;
+    if (item.status !== "pending" || ALWAYS_ASK.has(item.kind) || item.payload.holdForOwner) return null;
     const level = this.state(item.agentId)?.trustLevel ?? "trainee";
     if (level === "trainee") return null;
     if (item.kind === "post" || item.kind === "social_reply") return this.socialRoutine(item, level);
@@ -921,8 +927,16 @@ export class OfficeService {
     return done;
   }
 
-  /** A rejected ledger entry leaves its bill or invoice out of the books; a rejected calendar drops its drafts. */
+  /**
+   * A rejected ledger entry leaves its bill or invoice out of the books; a rejected calendar drops its drafts;
+   * a rejected purchase order is cancelled, so its items count as not on order.
+   */
   private withdraw(item: StagedChange) {
+    if (item.kind === "purchase_order") {
+      const po = this.books.purchaseOrders.find((x) => x.id === (item.payload as { poId?: string }).poId);
+      if (po?.status === "draft") Object.assign(po, { status: "cancelled", cancelledOn: this.asOf });
+      return;
+    }
     if (item.kind === "customer_reply" || item.kind === "handoff") return this.customers.decided(item, false);
     if (item.kind === "sales_mapping") return this.sales.dropPending(String((item.payload as { importId?: string }).importId));
     if (item.kind === "calendar") {
@@ -1041,13 +1055,22 @@ export class OfficeService {
       case "payroll_run":
         this.log("payroll-clerk", "Released payslips.");
         break;
-      case "compliance_action":
+      case "compliance_action": {
+        // The Credit Controller's cash plan (cashReport) reads approved proposals: see reports.ts.
+        const aside = (item.payload as { setAside?: { dueOn: string; amountPaise: number } }).setAside;
         this.log(
           "compliance-officer",
-          p.checkId === "msme" ? "Micro and small suppliers go first in the next payment run; the Credit Controller's cash plan now shows them." : p.checkId === "advance-tax" ? "Advance tax is set aside in the cash plan for the next instalment." : `Done: ${item.title}.`,
+          p.checkId === "msme"
+            ? "Micro and small suppliers go first in the next payment run; the Credit Controller's cash plan now pays them by their legal limit."
+            : p.checkId === "advance-tax"
+              ? aside
+                ? `₹${inr(aside.amountPaise, { rupees: true })} of advance tax is set aside in the cash plan for ${dateLabel(aside.dueOn)}.`
+                : "Advance tax is to be set aside for the next instalment."
+              : `Done: ${item.title}.`,
           { kind: "compliance", id: String(p.checkId ?? "") },
         );
         break;
+      }
       case "customer_reply":
       case "handoff":
         this.customers.decided(item, true);

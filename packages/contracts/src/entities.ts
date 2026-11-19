@@ -724,7 +724,10 @@ export const PurchaseOrder = z.object({
   number: z.string(),
   vendorId: z.string(),
   date: IsoDate,
-  status: z.enum(["draft", "sent", "received"]),
+  /** "cancelled": the owner rejected the draft, so it no longer counts as on order. */
+  status: z.enum(["draft", "sent", "received", "cancelled"]),
+  /** The day the owner rejected it; its items are not drafted again until the next day. */
+  cancelledOn: IsoDate.optional(),
   lines: z.array(z.object({ skuId: z.string(), qty: z.number().int(), ratePaise: Paise })),
   totalPaise: Paise,
 });

@@ -130,6 +130,24 @@ describe("intake", () => {
     expect(office.books.agents.find((a) => a.agentId === "accountant")!.accuracy.checked).toBe(checked);
   });
 
+  it("keeps mail from a sender not in the books waiting, even at the next trusted round", async () => {
+    const fresh = loadBooks();
+    const small = fresh.bills.find((b) => b.status === "posted" && b.totals.totalPaise < 1_00_000_00 && fresh.parties.find((p) => p.id === b.partyId)?.gstin)!;
+    fresh.bills = fresh.bills.filter((b) => b !== small);
+    const office = new OfficeService(fresh);
+    office.receiveDocument({ id: "doc-u0012", file: "/x.pdf", channel: "email", from: "stranger@example.com", pages: 1 });
+    const items = await read(fresh.documents.find((d) => d.id === small.docId)!.file);
+    const r = office.ingest("doc-u0012", extractInvoice(items, office.books), false);
+    expect(r.staged?.status).toBe("pending");
+    expect(r.staged?.payload.holdForOwner).toBe(true);
+    expect(r.staged?.summary).toMatch(/stranger@example\.com, which is not in your books/);
+    // The supplier is known by GSTIN, so without the hold the morning round would post it.
+    expect(office.runTrusted().some((d) => d.id === r.staged!.id)).toBe(false);
+    expect(office.books.bills.find((b) => b.docId === "doc-u0012")?.status).toBe("staged");
+    office.decide(r.staged!.id, { action: "approve" }, "Anil Kaveri");
+    expect(office.books.bills.find((b) => b.docId === "doc-u0012")?.status).toBe("posted");
+  });
+
   it("never acts alone on unplanned posts, unhappy messages or the accountant's files", () => {
     const fresh = loadBooks();
     for (const a of fresh.agents) a.trustLevel = "autonomous";

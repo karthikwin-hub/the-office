@@ -1,5 +1,6 @@
 import type { CashReport, GstReport, SalesReport, TdsReport, TdsSection } from "@office/contracts";
 import { paymentBehaviour, openInvoices } from "./ageing";
+import { msmeLimitDays, msmeProtected } from "./compliance/profile";
 import { addDays, dateLabel, monthKey, monthLabel, nextMonth, quarterLabel, quarterMonths, quarterOf, weekStart } from "./dates";
 import { gstDueDates, itcFor, outwardFor, setOff } from "./gst";
 import type { Ledger } from "./ledger";
@@ -263,10 +264,27 @@ export function cashReport(l: Ledger): CashReport {
     if (o.bucket >= 4) continue; // over 90 days: not counted on
     place(expected, { label: `${o.partyName}, ${o.number}`, amountPaise: o.outstandingPaise, direction: "in", date: expected });
   }
+  // What the owner agreed with the Compliance Officer: micro and small suppliers paid by their legal limit, and advance tax set aside.
+  const agreed = l.books.staged.filter((s) => s.kind === "compliance_action" && s.status === "approved");
+  const msmeFirst = agreed.some((s) => s.payload.checkId === "msme");
   for (const b of l.books.bills) {
     if (l.vendorBillPaid(b.id) || b.status === "rejected") continue;
     const tds = b.tds?.amountPaise ?? 0;
-    place(addDays(b.date, 30), { label: `${l.party(b.partyId).name}, ${b.number}`, amountPaise: b.totals.totalPaise - tds, direction: "out", date: addDays(b.date, 30) });
+    const party = l.party(b.partyId);
+    const first = msmeFirst && msmeProtected(party);
+    const on = addDays(b.date, first ? Math.min(30, msmeLimitDays(party)) : 30);
+    place(on, { label: `${party.name}, ${b.number}${first ? " (micro or small supplier, paid first)" : ""}`, amountPaise: b.totals.totalPaise - tds, direction: "out", date: on });
+  }
+  const setAside = new Map<string, number>();
+  for (const s of agreed) {
+    const a = s.payload.checkId === "advance-tax" ? (s.payload.setAside as { dueOn: string; amountPaise: number } | undefined) : undefined;
+    if (a && a.dueOn >= l.asOf && a.amountPaise > 0) setAside.set(a.dueOn, a.amountPaise);
+  }
+  const horizon = addDays(start, 28);
+  const later: string[] = [];
+  for (const [dueOn, amountPaise] of [...setAside].sort()) {
+    if (dueOn < horizon) place(dueOn, { label: `Advance tax for ${dateLabel(dueOn)}, set aside`, amountPaise, direction: "out", date: dueOn });
+    else later.push(`${inrShort(amountPaise)} of advance tax is set aside for ${dateLabel(dueOn)}, after these four weeks.`);
   }
   const lastMonth = gstPeriods(l).find((x) => x < monthKey(l.asOf));
   if (lastMonth) {
@@ -308,6 +326,8 @@ export function cashReport(l: Ledger): CashReport {
       "Supplier bills are paid 30 days after the bill date, net of TDS.",
       "Salaries are paid on the 1st at gross; deductions are not yet netted off.",
       "Opening bank balance is not connected yet, so this shows movements only.",
+      ...(msmeFirst ? ["Micro and small suppliers are paid first, by their legal limit, as you agreed with the Compliance Officer."] : []),
+      ...later,
     ],
   };
 }
