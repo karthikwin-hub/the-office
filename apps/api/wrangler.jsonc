@@ -57,7 +57,7 @@
   // Delivers only to addresses verified in Email Routing on the account.
   "send_email": [{ "name": "MAILER" }],
   // The website chat: 20 messages a minute for one visitor's address on one office's chat.
-  // TURNSTILE_SECRET is an optional secret; TURNSTILE_SITE_KEY, when set, is a plain var.
+  // On live both TURNSTILE_SECRET (a secret) and TURNSTILE_SITE_KEY (a plain var) are required; without them the website chat answers 503.
   "ratelimits": [{ "name": "CHAT_LIMIT", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }],
   "observability": { "enabled": true }
 }

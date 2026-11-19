@@ -24,7 +24,7 @@
 | `BETTER_AUTH_URL` | The app, where businesses sign in: sign-in, invitation and confirmation links, and the social sign-in callbacks | `https://app.office.snilld.in` |
 | `APP_DOMAIN` | Optional. The bare domain shows the product page, `app.<APP_DOMAIN>` is the app, `console.<APP_DOMAIN>` the platform console, and an office with a subdomain opens on `<subdomain>.<APP_DOMAIN>`; the sign-in cookie covers them all. Without it, everything is on one host (the console at `/?platform`) | `office.snilld.in` |
 | `PLATFORM_OWNERS` | Comma-separated addresses that may use the platform console: every business's account, onboarding, suspending. Each signs in with a confirmed address; no one else gets past a 403 | `puja@snilldai.com` |
-| `TURNSTILE_SITE_KEY` | Optional. The public Turnstile site key the website chat shows; set together with `TURNSTILE_SECRET` | Not set (the chat relies on the rate limit) |
+| `TURNSTILE_SITE_KEY` | Required on live, together with `TURNSTILE_SECRET`. The public Turnstile site key the website chat shows | Not set: on live the website chat answers 503; locally and in the mockups it relies on the rate limit |
 | `INDIA_BACKUP_ENDPOINT`, `INDIA_BACKUP_BUCKET`, `INDIA_BACKUP_REGION` | The S3-compatible bucket in an Indian region that holds the daily copy of every office's books (for example an `ap-south-1` endpoint); set with the two `INDIA_BACKUP_*` secrets. See section 4d | Not set (the copy is skipped and Settings says so) |
 
 Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
@@ -60,7 +60,7 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 | `WHATSAPP_TEMPLATE` | For broadcasts | Approved template name for messages outside the 24-hour window |
 | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | For LinkedIn | LinkedIn app |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For X | X app (OAuth 2.0) |
-| `TURNSTILE_SECRET` | Optional, for the website chat | Verifies the Turnstile token on each chat message; without it the chat accepts messages within the rate limit |
+| `TURNSTILE_SECRET` | Required on live, for the website chat; set together with `TURNSTILE_SITE_KEY` | Verifies the Turnstile token on each chat message. Without it the website chat answers 503 on live; locally and in the mockups it accepts messages within the rate limit |
 | `INDIA_BACKUP_ACCESS_KEY_ID`, `INDIA_BACKUP_SECRET_ACCESS_KEY` | For companies' books (rule 3(5)) | A key that may only put objects into the India bucket; signs each upload with AWS Signature Version 4 |
 
 In Infisical (environment `dev`), the Cloudflare deploy token for the Snilld account is held as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
