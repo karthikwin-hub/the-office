@@ -29,11 +29,13 @@ export function WhatsAppSettings() {
       ) : s.linked ? (
         <div className="wa-linked">
           <p>
-            Linked to <span className="num">{s.number}</span>.{" "}
+            Linked to <span className="num">{s.number}</span>
+            {s.linkedAt ? <> since {new Date(s.linkedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</> : null}.{" "}
             <button type="button" className="btn btn-quiet btn-small" onClick={() => unlink.mutate()} disabled={unlink.isPending}>
               Unlink
             </button>
           </p>
+          <p className="field-help">Not your phone, or not when you linked it? Unlink it now and get a new code: whoever has that number can talk to the office as you.</p>
           <div className="wa-fields">
             <label className="field">
               <span>Reply language</span>

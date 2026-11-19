@@ -292,6 +292,7 @@ const ACTIONS: Record<string, string> = {
   "member.role": "changed a role:",
   "member.removed": "removed",
   "member.left": "left the office",
+  "whatsapp.linked": "linked WhatsApp",
 };
 
 function auditLine(e: OfficeAdmin["audit"][number]): string {

@@ -1,6 +1,6 @@
 import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
 import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
-import { gmailConfirmation, readForward } from "@office/engine";
+import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RETENTION_YEARS, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { backupKey, backupTarget, gzip, putObject, retainedKey } from "./backup";
 import { SqlEditLog } from "./edits";
@@ -637,9 +637,9 @@ export class Office extends Agent<Env> {
     for (const m of parseWhatsAppMessages(body)) {
       let person = await dir.personIn(this.officeId!, m.from);
       let joined = false;
-      const join = m.kind === "text" ? /^join\s*(\d{6})$/i.exec(m.text.trim()) : null;
-      if (join) {
-        const r = await dir.redeem(m.from, join[1]!, this.officeId!);
+      const cmd = m.kind === "text" ? parseCommand(m.text) : null;
+      if (cmd?.kind === "join") {
+        const r = await dir.redeem(m.from, cmd.code, this.officeId!);
         if ("error" in r) {
           handled.add(m.id);
           continue;
@@ -892,7 +892,7 @@ export class Office extends Agent<Env> {
     const status = async (): Promise<WhatsAppStatus> => {
       const l = await dir.linkOfUser(caller.userId);
       const handle = this.office.books.channels.find((c) => c.platform === "whatsapp")?.handle ?? null;
-      return { available: Boolean(this.sharedWaKeys()), linked: Boolean(l), number: l ? maskPhone(l.phone) : null, language: l?.language ?? "auto", digest: l?.digest ?? false, businessNumber: handle && /\d{6}/.test(handle.replace(/\D/g, "")) ? handle : null, template: Boolean(this.env.WHATSAPP_TEMPLATE) };
+      return { available: Boolean(this.sharedWaKeys()), linked: Boolean(l), number: l ? maskPhone(l.phone) : null, linkedAt: l ? new Date(l.linkedAt).toISOString() : null, language: l?.language ?? "auto", digest: l?.digest ?? false, businessNumber: handle && /\d{6}/.test(handle.replace(/\D/g, "")) ? handle : null, template: Boolean(this.env.WHATSAPP_TEMPLATE) };
     };
     if (path === "/api/whatsapp/code" && request.method === "POST") {
       if (!this.sharedWaKeys()) return json({ error: "WhatsApp is not set up yet: add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID." }, 409);

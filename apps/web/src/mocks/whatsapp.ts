@@ -1,4 +1,4 @@
-import { type JoinCode, type Role, WhatsAppChange, WhatsAppDemoMessage, type WhatsAppDemoReply, type WhatsAppStatus } from "@office/contracts";
+import { type JoinCode, makeJoinCode, readJoinCode, type Role, showJoinCode, WhatsAppChange, WhatsAppDemoMessage, type WhatsAppDemoReply, type WhatsAppStatus } from "@office/contracts";
 import { detectLanguage, handleWhatsApp, newSession, noteQuoteRequest, type OfficeService, parseCommand, phrase, render, type WaSession } from "@office/engine";
 import { HttpResponse } from "msw";
 import { SAMPLE_VOICE } from "./voice-samples";
@@ -12,12 +12,12 @@ let seq = 0;
 
 const load = (): State => ({ linked: true, language: "auto", digest: false, ...JSON.parse(localStorage.getItem(STATE_KEY) ?? "{}") });
 const save = (s: State) => localStorage.setItem(STATE_KEY, JSON.stringify(s));
-const status = (s: State): WhatsAppStatus => ({ available: true, linked: s.linked, number: s.linked ? "+91 ••••• ••345" : null, language: s.language, digest: s.digest, businessNumber: BUSINESS_NUMBER, template: false });
+const status = (s: State): WhatsAppStatus => ({ available: true, linked: s.linked, number: s.linked ? "+91 ••••• ••345" : null, linkedAt: null, language: s.language, digest: s.digest, businessNumber: BUSINESS_NUMBER, template: false });
 
 /** The mock office on WhatsApp: the same conversation module as the live office, without the models. */
 export async function mockWhatsApp(request: Request, path: string, role: Role, office: OfficeService, user: { name: string; email: string }): Promise<Response | null> {
   if (path === "/api/whatsapp/code" && request.method === "POST") {
-    const code = String(1000 + Math.floor(Math.random() * 9000));
+    const code = showJoinCode(makeJoinCode((n) => crypto.getRandomValues(new Uint8Array(n))));
     pendingCode = { code, expiresAt: Date.now() + 15 * 60_000 };
     return HttpResponse.json({ code, expiresAt: new Date(pendingCode.expiresAt).toISOString(), businessNumber: BUSINESS_NUMBER, link: `https://wa.me/912027124480?text=${encodeURIComponent(`JOIN ${code}`)}` } satisfies JoinCode);
   }
@@ -48,7 +48,7 @@ export async function mockWhatsApp(request: Request, path: string, role: Role, o
   if (!s.linked) {
     const cmd = parseCommand(text);
     const lang = detectLanguage(text) ?? "en";
-    if (cmd.kind !== "join" || !pendingCode || cmd.code !== pendingCode.code || pendingCode.expiresAt < Date.now()) return reply(cmd.kind === "join" ? phrase("badCode", lang) : "This phone is not linked to the office yet. Get a code in Settings, under Your WhatsApp, and send JOIN with it.");
+    if (cmd.kind !== "join" || !pendingCode || cmd.code !== readJoinCode(pendingCode.code) || pendingCode.expiresAt < Date.now()) return reply(cmd.kind === "join" ? phrase("badCode", lang) : "This phone is not linked to the office yet. Get a code in Settings, under Your WhatsApp, and send JOIN with it.");
     pendingCode = null;
     save({ ...s, linked: true });
     return reply(phrase("linked", lang));

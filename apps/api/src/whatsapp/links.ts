@@ -1,4 +1,4 @@
-import type { Role, WaLanguage } from "@office/contracts";
+import { makeJoinCode, readJoinCode, type Role, showJoinCode, type WaLanguage } from "@office/contracts";
 import { newSession, type WaSession } from "@office/engine";
 
 /** The Office's key-value table; numbers live only here and in D1, never in logs. */
@@ -9,8 +9,14 @@ export type Link = { phone: string; userId: string; email: string; name: string;
 export type WaPerson = { phone: string; userId: string; name: string; email: string; role: Role; language: "auto" | WaLanguage; digest: boolean };
 
 export const CODE_TTL_MS = 15 * 60_000;
-/** Wrong codes from one number before it has to wait. Six digits and five tries an hour make guessing hopeless. */
+/** Wrong codes from one number before it has to wait. */
 export const MAX_FAILURES = 5;
+/**
+ * Wrong codes from every unlinked number together before linking pauses for the rest of the hour, so guessing
+ * from many numbers runs out too. Codes come from about 780 billion; at this rate even 50 live codes would take
+ * over a thousand years to hit. High enough that pausing it on purpose takes 200 numbers every hour.
+ */
+export const MAX_FAILURES_ALL = 1000;
 export const FAILURE_WINDOW_MS = 3600_000;
 
 /** WhatsApp gives numbers as digits with the country code; keep only the digits. */
@@ -30,42 +36,62 @@ export class WaDirectory {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** A new six-digit code for this person in this office, replacing any they had. */
-  async newJoinCode(officeId: string, userId: string, random: () => number = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32): Promise<{ code: string; expiresAt: string }> {
+  /** A new code for this person in this office, replacing any they had: eight characters, shown as "K7QD-M3XP". */
+  async newJoinCode(officeId: string, userId: string, random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): Promise<{ code: string; expiresAt: string }> {
     const at = this.now();
     const expiresAt = at + CODE_TTL_MS;
     await this.db.prepare("DELETE FROM wa_code WHERE user_id = ? OR expires_at < ?").bind(userId, at).run();
     for (let i = 0; i < 20; i++) {
-      const code = String(100000 + Math.floor(random() * 900000));
+      const code = makeJoinCode(random);
       const r = await this.db.prepare("INSERT INTO wa_code (code, office_id, user_id, expires_at) VALUES (?, ?, ?, ?) ON CONFLICT (code) DO NOTHING").bind(code, officeId, userId, expiresAt).run();
-      if (r.meta.changes) return { code, expiresAt: new Date(expiresAt).toISOString() };
+      if (r.meta.changes) return { code: showJoinCode(code), expiresAt: new Date(expiresAt).toISOString() };
     }
     throw new Error("Could not make a code");
   }
 
   /**
-   * `JOIN 482193` from a phone links that number to the person the code was made for, in that office.
-   * `onlyOffice` is for an office's own number, which may only redeem its own codes.
+   * `JOIN K7QD-M3XP` from a phone links that number to the person the code was made for, in that office,
+   * and writes it to that office's audit trail. `onlyOffice` is for an office's own number, which may only
+   * redeem its own codes. Wrong codes count against the number and against every number together.
    */
-  async redeem(phone: string, code: string, onlyOffice?: string): Promise<{ link: Link; officeId: string } | { error: "badCode" | "tooMany" }> {
+  async redeem(phone: string, code: string, onlyOffice?: string): Promise<{ link: Link; officeId: string } | { error: "badCode" | "tooMany" | "paused" }> {
     const number = normalisePhone(phone);
     const at = this.now();
-    const tries = await this.db.prepare("SELECT failures, window_start FROM wa_attempt WHERE phone = ?").bind(number).first<{ failures: number; window_start: number }>();
+    const hour = at - (at % FAILURE_WINDOW_MS);
+    const [tries, all] = await Promise.all([
+      this.db.prepare("SELECT failures, window_start FROM wa_attempt WHERE phone = ?").bind(number).first<{ failures: number; window_start: number }>(),
+      this.db.prepare("SELECT failures FROM wa_attempt_all WHERE window_start = ?").bind(hour).first<{ failures: number }>(),
+    ]);
     const fresh = !tries || at - tries.window_start > FAILURE_WINDOW_MS;
     if (!fresh && tries.failures >= MAX_FAILURES) return { error: "tooMany" };
-    const c = await this.db.prepare("SELECT office_id, user_id FROM wa_code WHERE code = ? AND expires_at > ?").bind(code, at).first<{ office_id: string; user_id: string }>();
+    if ((all?.failures ?? 0) >= MAX_FAILURES_ALL) return { error: "paused" };
+    const wanted = readJoinCode(code);
+    const c = wanted ? await this.db.prepare("SELECT office_id, user_id FROM wa_code WHERE code = ? AND expires_at > ?").bind(wanted, at).first<{ office_id: string; user_id: string }>() : null;
     const member = c && (!onlyOffice || c.office_id === onlyOffice) ? await this.db.prepare("SELECT 1 FROM membership WHERE office_id = ? AND user_id = ?").bind(c.office_id, c.user_id).first() : null;
     if (!c || !member) {
-      await this.db
-        .prepare("INSERT INTO wa_attempt (phone, failures, window_start) VALUES (?, 1, ?) ON CONFLICT (phone) DO UPDATE SET failures = CASE WHEN ? THEN 1 ELSE failures + 1 END, window_start = CASE WHEN ? THEN ? ELSE window_start END")
-        .bind(number, at, fresh ? 1 : 0, fresh ? 1 : 0, at)
-        .run();
+      // A number already linked is a known person mistyping; only strangers count towards the platform's limit.
+      const stranger = !(await this.linkByPhone(number));
+      await this.db.batch([
+        this.db
+          .prepare("INSERT INTO wa_attempt (phone, failures, window_start) VALUES (?, 1, ?) ON CONFLICT (phone) DO UPDATE SET failures = CASE WHEN ? THEN 1 ELSE failures + 1 END, window_start = CASE WHEN ? THEN ? ELSE window_start END")
+          .bind(number, at, fresh ? 1 : 0, fresh ? 1 : 0, at),
+        ...(stranger
+          ? [
+              this.db.prepare("INSERT INTO wa_attempt_all (window_start, failures) VALUES (?, 1) ON CONFLICT (window_start) DO UPDATE SET failures = failures + 1").bind(hour),
+              this.db.prepare("DELETE FROM wa_attempt_all WHERE window_start < ?").bind(hour),
+            ]
+          : []),
+      ]);
+      if (stranger && (all?.failures ?? 0) + 1 === MAX_FAILURES_ALL) console.log(JSON.stringify({ event: "wa.join.paused", until: new Date(hour + FAILURE_WINDOW_MS).toISOString() }));
       return { error: "badCode" };
     }
     const previous = await this.linkOfUser(c.user_id);
+    const replaced = previous && previous.phone !== number ? `, in place of ${maskPhone(previous.phone)}` : "";
     await this.db.batch([
-      this.db.prepare("DELETE FROM wa_code WHERE code = ?").bind(code),
+      this.db.prepare("DELETE FROM wa_code WHERE code = ?").bind(wanted),
       this.db.prepare("DELETE FROM wa_attempt WHERE phone = ?").bind(number),
+      // In the office's audit trail, so a link the person did not make can be seen and undone.
+      this.db.prepare("INSERT INTO audit (office_id, actor, action, detail, at) SELECT ?, email, 'whatsapp.linked', ?, ? FROM `user` WHERE id = ?").bind(c.office_id, `${maskPhone(number)}${replaced}`, at, c.user_id),
       // One phone per person and one person per phone: a new link replaces either old one.
       this.db.prepare("DELETE FROM wa_link WHERE (user_id = ? AND phone != ?) OR (phone = ? AND user_id != ?)").bind(c.user_id, number, number, c.user_id),
       this.db

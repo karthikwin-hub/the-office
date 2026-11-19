@@ -1,10 +1,10 @@
-import type { IngestResult, StagedChange } from "@office/contracts";
+import { type IngestResult, JOIN_CODE_ALPHABET, JoinCode, makeJoinCode, type StagedChange } from "@office/contracts";
 import { OfficeService, REVIEW_ON_DESK, type TextItem } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { parseMetaDelivery, parseWhatsAppMessages, type WaIncoming } from "../src/social/webhooks";
 import { ControlPlane, type OfficeRow } from "../src/tenancy";
-import { CODE_TTL_MS, maskPhone, sessionFor, WaDirectory, type WaPerson } from "../src/whatsapp/links";
+import { CODE_TTL_MS, MAX_FAILURES_ALL, maskPhone, sessionFor, WaDirectory, type WaPerson } from "../src/whatsapp/links";
 import { addUser, d1 } from "./d1";
 import { morningDigest, officeWhatsApp, type WaDeps } from "../src/whatsapp/office";
 import { WHISPER } from "../src/whatsapp/voice";
@@ -84,10 +84,10 @@ async function directory() {
 }
 
 describe("linking a number", () => {
-  it("links with a six-digit code from the person's own phone, once, within 15 minutes", async () => {
+  it("links with an eight-character code from the person's own phone, once, within 15 minutes", async () => {
     const { dir, kaveri, tick } = await directory();
     const { code, expiresAt } = await dir.newJoinCode(kaveri.id, "u-anil");
-    expect(code).toMatch(/^\d{6}$/);
+    expect(code).toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
     expect(Date.parse(expiresAt) - Date.parse("2026-11-04T04:00:00Z")).toBe(CODE_TTL_MS);
     expect(await dir.redeem("0000", "999999")).toEqual({ error: "badCode" });
     tick(60_000);
@@ -100,8 +100,9 @@ describe("linking a number", () => {
 
   it("refuses an expired code and replaces an older one", async () => {
     const { dir, kaveri, tick } = await directory();
-    const first = (await dir.newJoinCode(kaveri.id, "u-anil", () => 0.1)).code;
-    const second = (await dir.newJoinCode(kaveri.id, "u-anil", () => 0.9)).code;
+    const first = (await dir.newJoinCode(kaveri.id, "u-anil", (n) => new Uint8Array(n).fill(1))).code;
+    const second = (await dir.newJoinCode(kaveri.id, "u-anil", (n) => new Uint8Array(n).fill(2))).code;
+    expect([first, second]).toEqual(["3333-3333", "4444-4444"]);
     expect(await dir.redeem(PHONE, first)).toEqual({ error: "badCode" });
     tick(CODE_TTL_MS + 1);
     expect(await dir.redeem(PHONE, second)).toEqual({ error: "badCode" });
@@ -114,6 +115,58 @@ describe("linking a number", () => {
     expect(await dir.redeem(PHONE, code)).toEqual({ error: "tooMany" });
     tick(3600_001);
     expect(await dir.redeem(PHONE, code)).toEqual({ error: "badCode" });
+  });
+
+  it("makes codes with nothing to misread, and reads them however they are typed", async () => {
+    expect(JOIN_CODE_ALPHABET).not.toMatch(/[01OIL]/);
+    expect(JOIN_CODE_ALPHABET).toHaveLength(31);
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) for (const ch of makeJoinCode((n) => crypto.getRandomValues(new Uint8Array(n)))) seen.add(ch);
+    expect([...seen].every((ch) => JOIN_CODE_ALPHABET.includes(ch))).toBe(true);
+    // Never all letters, so a code cannot be mistaken for a word.
+    let calls = 0;
+    expect(makeJoinCode((n) => new Uint8Array(n).fill(++calls === 1 ? 10 : 3))).toBe("55555555");
+    // Bytes that would favour some characters are skipped, not folded in.
+    expect(makeJoinCode((n) => new Uint8Array(n).map((_, i) => (i % 2 ? 250 : 5)))).toBe("77777777");
+    expect(JoinCode.shape.code.safeParse("482193").success).toBe(false);
+
+    const { dir, kaveri } = await directory();
+    const { code } = await dir.newJoinCode(kaveri.id, "u-anil");
+    expect(await dir.redeem(PHONE, code.toLowerCase().replace("-", " "))).toMatchObject({ officeId: kaveri.id });
+  });
+
+  it("pauses linking for every number once too many wrong codes arrive from many numbers in an hour", async () => {
+    const { dir, kaveri, mehta, tick } = await directory();
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    // A linked person mistyping does not count towards the platform's limit.
+    await dir.redeem("919000000777", (await dir.newJoinCode(mehta.id, "u-rajesh")).code);
+    for (let i = 0; i < 4; i++) expect(await dir.redeem("919000000777", "ZZZZ-ZZZ2")).toEqual({ error: "badCode" });
+    const { code } = await dir.newJoinCode(kaveri.id, "u-anil");
+    // Each number stays under its own limit; together they reach the platform's.
+    for (let i = 0; i < MAX_FAILURES_ALL - 1; i++) expect(await dir.redeem(`9188000${String(i).padStart(5, "0")}`, "ZZZZ-ZZZ2")).toEqual({ error: "badCode" });
+    expect(await dir.redeem(PHONE, code)).toMatchObject({ officeId: kaveri.id });
+    await dir.unlink("u-anil");
+    expect(log).not.toHaveBeenCalled();
+    expect(await dir.redeem("919111111110", "ZZZZ-ZZZ2")).toEqual({ error: "badCode" });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('"event":"wa.join.paused"'));
+    log.mockRestore();
+    const again = await dir.newJoinCode(kaveri.id, "u-anil");
+    expect(await dir.redeem(PHONE, again.code)).toEqual({ error: "paused" });
+    expect(await dir.redeem("919111111111", "482193")).toEqual({ error: "paused" });
+    expect(await dir.linkByPhone(PHONE)).toBeNull();
+    tick(3600_000);
+    const fresh = await dir.newJoinCode(mehta.id, "u-rajesh");
+    expect(await dir.redeem(PHONE, fresh.code)).toMatchObject({ officeId: mehta.id });
+  });
+
+  it("writes each link to the office's audit trail, with the number it replaced", async () => {
+    const { dir, cp, kaveri } = await directory();
+    await dir.redeem(PHONE, (await dir.newJoinCode(kaveri.id, "u-anil")).code);
+    await dir.redeem("919000000777", (await dir.newJoinCode(kaveri.id, "u-anil")).code);
+    expect((await cp.auditTrail(kaveri.id)).filter((a) => a.action === "whatsapp.linked").map((a) => [a.actor, a.detail])).toEqual([
+      [anil.email, "+91 ••••• ••777, in place of +91 ••••• ••345"],
+      [anil.email, "+91 ••••• ••345"],
+    ]);
   });
 
   it("lets an office's own number redeem only that office's codes", async () => {

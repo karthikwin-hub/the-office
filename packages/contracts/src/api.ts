@@ -665,6 +665,8 @@ export const WhatsAppStatus = z.object({
   linked: z.boolean(),
   /** For example "+91 ••••• ••480". */
   number: z.string().nullable(),
+  /** When this number was linked, so a link the person did not make is noticed. */
+  linkedAt: IsoDateTime.nullable().default(null),
   /** "auto" answers in the language of the person's last message. */
   language: z.union([z.literal("auto"), WaLanguage]),
   digest: z.boolean(),
@@ -675,7 +677,28 @@ export const WhatsAppStatus = z.object({
 });
 export type WhatsAppStatus = z.infer<typeof WhatsAppStatus>;
 export const WhatsAppChange = z.object({ language: z.union([z.literal("auto"), WaLanguage]), digest: z.boolean() }).partial().strict();
-export const JoinCode = z.object({ code: z.string().regex(/^\d{6}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
+/** JOIN codes: eight characters with nothing to misread (no 0 or O, no 1, I or L), shown as two fours, "K7QD-M3XP". */
+export const JOIN_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+export const JOIN_CODE_LENGTH = 8;
+/**
+ * A fresh code from random bytes, each character equally likely. It always has a digit, so "join Thursday"
+ * is never read as a code; that leaves about 780 billion codes.
+ */
+export function makeJoinCode(random: (n: number) => Uint8Array): string {
+  const below = 256 - (256 % JOIN_CODE_ALPHABET.length);
+  for (;;) {
+    let code = "";
+    while (code.length < JOIN_CODE_LENGTH) for (const b of random(JOIN_CODE_LENGTH)) if (b < below && code.length < JOIN_CODE_LENGTH) code += JOIN_CODE_ALPHABET[b % JOIN_CODE_ALPHABET.length];
+    if (/\d/.test(code)) return code;
+  }
+}
+/** "k7qd m3xp", "K7QD-M3XP" and "K7QDM3XP" are the same code, kept as "K7QDM3XP"; null if it cannot be a code. */
+export function readJoinCode(text: string): string | null {
+  const code = text.toUpperCase().replace(/[\s-]/g, "");
+  return code.length === JOIN_CODE_LENGTH && [...code].every((ch) => JOIN_CODE_ALPHABET.includes(ch)) ? code : null;
+}
+export const showJoinCode = (code: string) => `${code.slice(0, 4)}-${code.slice(4)}`;
+export const JoinCode = z.object({ code: z.string().regex(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
 export type JoinCode = z.infer<typeof JoinCode>;
 /** The demo phone on the mock site: a typed message, or one of the sample voice notes. */
 export const WhatsAppDemoMessage = z.object({ text: z.string().max(2000).optional(), voice: z.string().optional() });

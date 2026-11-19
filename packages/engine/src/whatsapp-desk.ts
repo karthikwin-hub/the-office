@@ -55,11 +55,23 @@ const words = (s: string) =>
 const inSet = (w: string, set: string[]) => set.includes(w);
 const actionOf = (w: string): WaAction | null => (inSet(w, WORDS.yes) ? "approve" : inSet(w, WORDS.no) ? "reject" : inSet(w, WORDS.later) ? "later" : null);
 
+/**
+ * The code in `JOIN K7QD-M3XP` (any case, with or without the dash or space), upper-cased without the dash.
+ * Codes always have a digit. Something meant as a code but not one, such as an old six-digit code, is still
+ * a JOIN, answered as a wrong code rather than taken for a question; "join Thursday" is not.
+ */
+export function joinCodeIn(text: string): string | null {
+  const m = /^join(?![a-z])[\s:-]*(.*)$/is.exec(text.trim());
+  if (!m) return null;
+  const code = m[1]!.toUpperCase().replace(/[\s-]/g, "");
+  return /^[0-9A-Z]{6,10}$/.test(code) && /\d/.test(code) ? code : null;
+}
+
 /** What a message asks for. Anything that is not a command is a question for the Office Manager. */
 export function parseCommand(text: string): WaCommand {
   const raw = text.trim();
-  const join = /^join\s*(\d{6})$/i.exec(asciiDigits(raw));
-  if (join) return { kind: "join", code: join[1]! };
+  const join = joinCodeIn(asciiDigits(raw));
+  if (join) return { kind: "join", code: join };
   const sw = /^(switch|badlo|बदलो)(?:\s+(\d{1,2}))?$/i.exec(asciiDigits(raw));
   if (sw) return { kind: "switch", n: sw[2] ? Number(sw[2]) : null };
   const rep = /^reply\s+(\d{1,4})\s+([\s\S]+)$/i.exec(raw);
