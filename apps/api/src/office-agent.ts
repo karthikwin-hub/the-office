@@ -9,7 +9,7 @@ import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
 import type { Env } from "./env";
 import { docKey, fileUrl, mediaKey, mediaUrl } from "./keys";
-import { mailSender } from "./mail";
+import { fromGoogleForwarding, mailSender } from "./mail";
 import { readPrefs, savePrefs } from "./prefs";
 import { meteredAi, QuotaError, take } from "./quota";
 import { readScan, readText } from "./reading";
@@ -24,7 +24,8 @@ import { BooksStore } from "./store";
 import { SqlRoutineLog } from "./routines";
 import { SqlCsStore } from "./customer/store";
 import { type AssistantInbound, draftReply, fetchCalendar, plainAddress, SqlAssistantStore } from "./assistant";
-import { fromPlatform, readSalesFile, salesReply, SqlSalesStore } from "./sales";
+import { forwardedByHand, type MailDocs, ownerOf, postsAlone, salesSender } from "./inbound";
+import { readSalesFile, salesReply, SqlSalesStore } from "./sales";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
 import { ControlPlane, ingestAddress, OFFICE_ID, type RouteKind } from "./tenancy";
@@ -385,12 +386,12 @@ export class Office extends Agent<Env> {
     const path = url.pathname;
     const post = request.method === "POST";
 
-    if (post && path === "/internal/email") return json(await this.receiveEmail((await request.json()) as InboundDocs));
+    if (post && path === "/internal/email") return json(await this.receiveEmail((await request.json()) as MailDocs));
     if (post && path === "/internal/social/meta") return json(await this.receiveMeta(await request.json()));
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
     if (post && path === "/internal/export") return json(this.exportBooks());
     if (post && path === "/internal/support-email") return json(await this.receiveSupport((await request.json()) as SupportMail));
-    if (post && path === "/internal/sales-email") return json(await this.receiveSalesMail((await request.json()) as InboundDocs & { envelope?: string }));
+    if (post && path === "/internal/sales-email") return json(await this.receiveSalesMail((await request.json()) as MailDocs));
     if (post && path === ROUTES.salesUpload) return this.uploadSales(request, caller);
     if (post && path === "/internal/assistant-email") return json(await this.receiveForAssistant((await request.json()) as AssistantInbound));
     if (path === ROUTES.assistantCalendar && (request.method === "PUT" || request.method === "DELETE")) return this.assistantCalendar(request, caller);
@@ -699,15 +700,16 @@ export class Office extends Agent<Env> {
 
   /**
    * Reports mailed to the sales address. Taken from the platforms' own domains and from people in
-   * this office (who forward what the platforms sent them); anything else is dropped unread.
+   * this office (who forward what the platforms sent them), when the sender is proven; anything else
+   * is dropped unread.
    */
-  private async receiveSalesMail(mail: InboundDocs & { envelope?: string }) {
+  private async receiveSalesMail(mail: MailDocs) {
     if (!this.office.hired("marketplace-manager")) return { outcome: "ignored" };
     const members = new Set((await this.plane().members(this.officeId!)).map((u) => u.email.toLowerCase()));
-    const sender = plainAddress(mail.from) ?? plainAddress(mail.envelope ?? null);
-    if (!sender || !(members.has(sender) || fromPlatform(sender))) {
+    const sender = salesSender(members, mail);
+    if (!sender) {
       for (const d of mail.docs) await this.env.DOCS.delete(docKey(this.officeId!, d.id));
-      this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms.");
+      this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.");
       return { outcome: "refused" };
     }
     let read = 0;
@@ -788,30 +790,40 @@ export class Office extends Agent<Env> {
 
   /**
    * Mail to the assistant's address. Only an owner's own mail is taken: forwarded by hand, or by a
-   * Gmail filter (which sends as the owner). A bill goes to the Accountant; anything else gets a draft.
+   * Gmail filter (which sends as the owner), and proven so (see `ownerOf`). A bill goes to the
+   * Accountant; anything else gets a draft. Mail that only claims to be an owner's is not drafted
+   * from: its attachments wait on the desk, and the rest is set aside with a line in the log.
    */
   private async receiveForAssistant(mail: AssistantInbound) {
     if (!this.office.hired("executive-assistant")) return { outcome: "ignored" };
-    const conf = gmailConfirmation(mail.from ?? mail.envelope, mail.subject, mail.text);
+    const conf = fromGoogleForwarding(mail) ? gmailConfirmation(mail.from ?? mail.envelope, mail.subject, mail.text) : null;
     if (conf) {
       this.office.assistant.noteForwarding(conf);
       return { outcome: "forwarding" };
     }
     const owners = (await this.plane().members(this.officeId!)).filter((u) => u.role === "owner");
-    const senders = [plainAddress(mail.envelope), plainAddress(mail.from), plainAddress(mail.forwardedFor)].filter(Boolean);
-    const owner = owners.find((o) => senders.includes(o.email.toLowerCase()));
-    if (!owner) return { outcome: "ignored" };
-    const byHand = plainAddress(mail.from) === owner.email.toLowerCase();
+    const who = ownerOf(owners, mail);
+    if (!who) return { outcome: "ignored" };
+    const owner = who.owner;
+    const byHand = forwardedByHand(owner, mail);
     const fwd = byHand ? readForward(mail.text) : null;
     const original = fwd
       ? { from: fwd.from, fromName: fwd.name, subject: fwd.subject || mail.subject.replace(/^(fwd?|fw):\s*/i, ""), text: fwd.body, messageId: null }
       : byHand
         ? null
         : { from: plainAddress(mail.from) ?? "", fromName: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId };
+    // By hand, the proven owner vouches for what they forward; by a filter, the message speaks for its own sender.
+    const authenticated = who.proven && Boolean(mail.authenticated);
+    if (!who.proven) this.office.log("executive-assistant", `Mail to the assistant's address said it was from ${owner.name} but could not be verified, so no reply was drafted${mail.docs.length && this.office.hired("accountant") ? "; its attachments wait on the desk" : ""}.`);
     if (mail.docs.length && this.office.hired("accountant")) {
-      await this.receiveEmail({ from: original?.from ?? owner.email, subject: original?.subject ?? mail.subject, docs: mail.docs, skipped: mail.skipped });
+      await this.receiveEmail({ from: original?.from ?? owner.email, subject: original?.subject ?? mail.subject, docs: mail.docs, skipped: mail.skipped, authenticated });
+      if (!who.proven) return { outcome: "held" };
       this.office.assistant.receiveMail(owner.email, { from: original?.from ?? owner.email, fromName: original?.fromName ?? null, replyTo: null, subject: original?.subject ?? mail.subject, text: (original?.text ?? mail.text).slice(0, 6000), messageId: original?.messageId ?? null }, null, "to_accountant");
       return { outcome: "to_accountant" };
+    }
+    if (!who.proven) {
+      for (const d of mail.docs) await this.env.DOCS.delete(docKey(this.officeId!, d.id));
+      return { outcome: "unverified" };
     }
     if (!original || !original.from) {
       this.office.assistant.receiveMail(owner.email, { from: owner.email, fromName: owner.name, replyTo: null, subject: mail.subject, text: mail.text.slice(0, 6000), messageId: null }, null, "noted");
@@ -989,7 +1001,7 @@ export class Office extends Agent<Env> {
   private async readStored(id: string, how: "read" | "scan", request: Request): Promise<Response> {
     const doc = this.office.books.documents.find((d) => d.id === id);
     if (!doc) return json({ error: "Document not found" }, 404);
-    const auto = doc.channel !== "email" || this.knownSender(doc.from);
+    const auto = doc.channel !== "email" || this.knownSender(doc.from, doc.id);
     if (how === "scan") {
       const image = await request.arrayBuffer();
       if (!image.byteLength || image.byteLength > MAX_UPLOAD) return json({ error: "Send a picture of the page up to 10 MB." }, 400);
@@ -1001,16 +1013,16 @@ export class Office extends Agent<Env> {
     return json(await this.readItems(id, parsed.data.items, auto));
   }
 
-  /** Only mail from a party already in the books may be posted without the owner. */
-  private knownSender(from: string | null): boolean {
-    const email = from?.toLowerCase();
-    return Boolean(email && this.office.books.parties.some((p) => p.contact.email.toLowerCase() === email));
+  /** Only mail from a party already in the books, proven to be theirs, may be posted without the owner. */
+  private knownSender(from: string | null, docId: string): boolean {
+    return postsAlone(this.office.books.parties, from, this.kv(`mail:verified:${docId}`) === "1");
   }
 
-  private async receiveEmail(mail: InboundDocs) {
-    const auto = this.knownSender(mail.from);
+  private async receiveEmail(mail: MailDocs) {
+    const auto = postsAlone(this.office.books.parties, mail.from, mail.authenticated === true);
     const results = [];
     for (const d of mail.docs) {
+      if (mail.authenticated === true) this.kv(`mail:verified:${d.id}`, "1");
       this.office.receiveDocument({ id: d.id, file: fileUrl(this.officeId!, d.id), channel: "email", from: mail.from, pages: 1 });
       if (d.mimeType.startsWith("image/")) {
         const obj = await this.env.DOCS.get(docKey(this.officeId!, d.id));

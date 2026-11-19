@@ -351,13 +351,37 @@ describe("the sales address", () => {
 });
 
 describe("the assistant's address", () => {
-  it("takes an owner's forwarded mail to that office's assistant, with Gmail's forwarding header", async () => {
+  it("takes an owner's forwarded mail to that office's assistant, with what Cloudflare found of its sender", async () => {
     const { w, cp, A } = await twoOffices();
     await cp.claimRoute(A, "assistant_email", "kaveri.assistant@in.the-office.test");
-    const raw = ["From: Anil <anil@kaverielectricals.in>", "To: kaveri.assistant@in.the-office.test", "Subject: Fwd: Statement please", "Content-Type: text/plain", "", "---------- Forwarded message ---------", "From: Rakesh <rakesh@sharma.test>", "Subject: Statement please", "", "Please send it.", ""].join("\r\n");
-    await receiveEmail({ from: "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in", to: "kaveri.assistant@in.the-office.test", headers: new Headers({ "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test" }), raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    const raw = (top: string[]) => [...top, "From: Anil <anil@kaverielectricals.in>", "To: kaveri.assistant@in.the-office.test", "Subject: Fwd: Statement please", "Content-Type: text/plain", "", "---------- Forwarded message ---------", "From: Rakesh <rakesh@sharma.test>", "Subject: Statement please", "", "Please send it.", ""].join("\r\n");
+    const envelope = "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in";
+    const send = (top: string[], results?: string) =>
+      receiveEmail({ from: envelope, to: "kaveri.assistant@in.the-office.test", headers: new Headers({ "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test", ...(results ? { "authentication-results": results } : {}) }), raw: new Response(raw(top)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    const stamp = "mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass";
+    await send([`Authentication-Results: ${stamp}`], stamp);
     expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/assistant-email"]]);
-    expect(JSON.parse(w.seen[0]!.body)).toMatchObject({ envelope: "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in", from: "anil@kaverielectricals.in", subject: "Fwd: Statement please", forwardedFor: "anil@kaverielectricals.in kaveri.assistant@in.the-office.test" });
+    const proven = JSON.parse(w.seen[0]!.body);
+    expect(proven).toMatchObject({ envelope, from: "anil@kaverielectricals.in", subject: "Fwd: Statement please", authenticated: true, envelopeSigned: true });
+    expect(proven).not.toHaveProperty("forwardedFor");
+    // The same message with a forwarding header naming the owner, but nothing from Cloudflare to back it.
+    await send(["X-Forwarded-For: anil@kaverielectricals.in kaveri.assistant@in.the-office.test", "Authentication-Results: mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass"]);
+    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ authenticated: false, envelopeSigned: false });
+  });
+
+  it("tells the office when a bill's sender could not be verified", async () => {
+    const { w, anil, A } = await twoOffices();
+    const admin = (await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { ingestEmail: string };
+    const raw = (top: string[]) => [...top, "From: Supplier <bills@supplier.test>", `To: ${admin.ingestEmail}`, "Subject: Bill", "Content-Type: text/plain", "", "Attached.", ""].join("\r\n");
+    const send = (results: string[]) => {
+      const headers = new Headers();
+      for (const r of results) headers.append("authentication-results", r);
+      return receiveEmail({ from: "bills@supplier.test", to: admin.ingestEmail, headers, raw: new Response(raw(results.map((r) => `Authentication-Results: ${r}`))).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+    };
+    await send(["mx.cloudflare.net; dmarc=pass header.from=supplier.test"]);
+    await send(["mx.cloudflare.net; dmarc=fail header.from=supplier.test", "mx.cloudflare.net; dmarc=pass"]);
+    const bodies = w.seen.filter((s) => s.path === "/internal/email").map((s) => JSON.parse(s.body) as { authenticated: boolean });
+    expect(bodies.map((b) => b.authenticated)).toEqual([true, false]);
   });
 });
 

@@ -11,8 +11,10 @@ export type AssistantInbound = {
   subject: string;
   text: string;
   messageId: string | null;
-  /** Gmail's `X-Forwarded-For` header, when it set one. */
-  forwardedFor: string | null;
+  /** `From:` is proven (see `mailVerdict`). */
+  authenticated?: boolean;
+  /** The envelope's own domain signed the message, as Gmail does for what its users' filters forward. */
+  envelopeSigned?: boolean;
   docs: { id: string; mimeType: string; filename: string }[];
   skipped: string[];
 };

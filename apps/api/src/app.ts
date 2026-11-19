@@ -31,7 +31,8 @@ import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
-import { parseInbound } from "./mail";
+import type { MailDocs } from "./inbound";
+import { envelopeProven, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
@@ -554,12 +555,15 @@ app.all("/api/o/:office/*", (c) => {
 app.all("/api/*", (c) => c.json(NOT_FOUND, 404));
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
+/** Every Authentication-Results header, as Cloudflare documents reading them; the first is its own. */
+const authResults = (message: ForwardableEmailMessage) => message.headers?.get("authentication-results") ?? null;
+
 /** Mail to `<slug>@INGEST_DOMAIN`: the address alone says which office it is for; any other address is refused. */
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
   const to = message.to.trim().toLowerCase();
   const support = await cp(env).routeFor("support_email", to);
   if (support) {
-    const mail = await parseInbound(message.raw);
+    const mail = await parseInbound(message.raw, { results: authResults(message) });
     const body: SupportMail = { from: mail.from ?? message.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, inReplyTo: mail.inReplyTo };
     const res = await toOffice(env, internal("/internal/support-email", body), system(support));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
@@ -567,28 +571,28 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   }
   const sales = await cp(env).routeFor("sales_email", to);
   if (sales) {
-    const mail = await parseInbound(message.raw, { sheets: true });
+    const mail = await parseInbound(message.raw, { sheets: true, results: authResults(message) });
     const docs: InboundDocs["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
       await env.DOCS.put(docKey(sales, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
-    const body: InboundDocs & { envelope: string } = { from: mail.from ?? message.from, envelope: message.from, subject: mail.subject, docs, skipped: mail.skipped };
+    const body: MailDocs & { envelope: string } = { from: mail.from, envelope: message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
     const res = await toOffice(env, internal("/internal/sales-email", body), system(sales));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
   }
   const assistant = await cp(env).routeFor("assistant_email", to);
   if (assistant) {
-    const mail = await parseInbound(message.raw);
+    const mail = await parseInbound(message.raw, { results: authResults(message) });
     const docs: AssistantInbound["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
       await env.DOCS.put(docKey(assistant, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
-    const body: AssistantInbound = { envelope: message.from, from: mail.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, forwardedFor: message.headers?.get("x-forwarded-for") ?? null, docs, skipped: mail.skipped };
+    const body: AssistantInbound = { envelope: message.from, from: mail.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, authenticated: mail.authenticated, envelopeSigned: envelopeProven(mail, message.from), docs, skipped: mail.skipped };
     const res = await toOffice(env, internal("/internal/assistant-email", body), system(assistant));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
@@ -598,14 +602,14 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     message.setReject("There is no office at this address.");
     return;
   }
-  const mail = await parseInbound(message.raw);
+  const mail = await parseInbound(message.raw, { results: authResults(message) });
   const docs: InboundDocs["docs"] = [];
   for (const a of mail.attachments) {
     const id = newDocId();
     await env.DOCS.put(docKey(officeId, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
     docs.push({ id, mimeType: a.mimeType, filename: a.filename });
   }
-  const body: InboundDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped };
+  const body: MailDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
   const res = await toOffice(env, internal("/internal/email", body), system(officeId));
   if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
 }
