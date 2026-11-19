@@ -30,6 +30,7 @@ import { AccountRecords } from "./account";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
+import { securityHeaders } from "./edge";
 import { parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -64,6 +65,9 @@ export function toOffice(env: Env, req: Request, caller: Caller, path?: string):
 const internal = (path: string, body: unknown) => new Request(`https://office.internal${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
+
+/* ---------- Every response: browser security headers ---------- */
+app.use("*", securityHeaders);
 
 /** Public. The web app reads `appDomain` before anything else, to know whether this host is the product page, the console or an office. */
 app.get("/api/health", (c) => c.json({ ok: true, mode: c.env.DATA_MODE, appDomain: c.env.APP_DOMAIN || null }));
