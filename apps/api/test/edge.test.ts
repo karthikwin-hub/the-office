@@ -98,8 +98,8 @@ describe("security headers", () => {
   });
 
   it("lets the live WebSocket reach this host and the office addresses", () => {
-    expect(appCsp({ APP_DOMAIN: "office.snilld.in" })).toContain("connect-src 'self' wss://office.snilld.in wss://*.office.snilld.in;");
-    expect(appCsp({})).toContain("connect-src 'self';");
+    expect(appCsp({ APP_DOMAIN: "office.snilld.in" })).toContain("connect-src 'self' https://cloudflareinsights.com wss://office.snilld.in wss://*.office.snilld.in;");
+    expect(appCsp({})).toContain("connect-src 'self' https://cloudflareinsights.com;");
   });
 
   it("allows the one inline script in index.html by its hash", () => {

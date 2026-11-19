@@ -9,6 +9,9 @@ import type { Env } from "./env";
 export const SKIN_SCRIPT_HASH = "sha256-tJv0DiI8/AMnmm2th+DWl044vw9xtRxT3PJDERoKg7U=";
 /** Cloudflare Turnstile, for a sign-in challenge: its script and the frame it draws. */
 const TURNSTILE = "https://challenges.cloudflare.com";
+/** Cloudflare Web Analytics: the zone injects its beacon script, which reports page views to cloudflareinsights.com. */
+const INSIGHTS_SCRIPT = "https://static.cloudflareinsights.com";
+const INSIGHTS_REPORT = "https://cloudflareinsights.com";
 
 /**
  * The web app's policy. Scripts only from this origin (plus the skin script by hash); styles allow inline because charts
@@ -20,11 +23,11 @@ export function appCsp(env: Pick<Env, "APP_DOMAIN">): string {
   const sockets = domain ? ` wss://${domain} wss://*.${domain}` : "";
   return [
     "default-src 'self'",
-    `script-src 'self' '${SKIN_SCRIPT_HASH}' ${TURNSTILE}`,
+    `script-src 'self' '${SKIN_SCRIPT_HASH}' ${TURNSTILE} ${INSIGHTS_SCRIPT}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self'${sockets}`,
+    `connect-src 'self' ${INSIGHTS_REPORT}${sockets}`,
     "worker-src 'self'",
     `frame-src ${TURNSTILE}`,
     "object-src 'none'",

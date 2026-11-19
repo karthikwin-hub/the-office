@@ -1,7 +1,7 @@
 # Pages and assets the asset server sends without the Worker (everything but /api/*, /media/* and /w/*).
 # The same values as apps/api/src/edge.ts, for APP_DOMAIN office.snilld.in; apps/api/test/edge.test.ts keeps them equal.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-tJv0DiI8/AMnmm2th+DWl044vw9xtRxT3PJDERoKg7U=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://office.snilld.in wss://*.office.snilld.in; worker-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-tJv0DiI8/AMnmm2th+DWl044vw9xtRxT3PJDERoKg7U=' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://office.snilld.in wss://*.office.snilld.in; worker-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
