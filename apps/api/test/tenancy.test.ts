@@ -601,6 +601,7 @@ describe("the shared WhatsApp number", () => {
     await cp.invite(B, anil.email, "accountant", bina.email).then(({ token }) => call(w, anil, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) }));
     await dir.redeem(PHONE, (await dir.newJoinCode(B, anil.id)).code);
     expect((await call(w, anil, inOffice(B, ROUTES.officeLeave), { method: "POST" })).status).toBe(200);
+    w.seen.length = 0;
     await call(w, null, "/api/hooks/meta", { method: "POST", ...signedMeta(waText(PHONE, "desk")) });
     expect(w.seen.map((s) => s.stub)).toEqual([A]);
   });
@@ -718,6 +719,36 @@ describe("suspending, deleting and purging", () => {
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(423);
     expect((await call(w, bina, inOffice(A, ROUTES.desk))).status).toBe(404);
     expect(w.seen).toEqual([]);
+  });
+});
+
+describe("open screens of someone who leaves", () => {
+  it("are closed by the office when they are removed or leave, and everyone's when it is suspended or deleted", async () => {
+    const { w, anil, A, cp } = await twoOffices();
+    const join = async (name: string, email: string) => {
+      const p = await signUp(w, name, email);
+      const { token } = await cp.invite(A, email, "accountant", anil.email);
+      await call(w, p, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) });
+      return p;
+    };
+    const carol = await join("Carol Rao", "carol@firm.test");
+    const dev = await join("Dev Iyer", "dev@firm.test");
+    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    w.seen.length = 0;
+
+    expect((await call(w, anil, inOffice(A, ROUTES.officeMember(carol.id)), { method: "DELETE" })).status).toBe(200);
+    expect((await call(w, dev, inOffice(A, ROUTES.officeLeave), { method: "POST" })).status).toBe(200);
+    expect((await call(w, puja, PLATFORM_ROUTES.status(A), { method: "PUT", body: JSON.stringify({ status: "suspended" }) })).status).toBe(200);
+    expect((await call(w, puja, PLATFORM_ROUTES.status(A), { method: "PUT", body: JSON.stringify({ status: "active" }) })).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) })).status).toBe(200);
+
+    expect(w.seen.map((s) => [s.stub, s.path, s.caller.userId, JSON.parse(s.body || "{}")])).toEqual([
+      [A, "/internal/disconnect", "system", { userId: carol.id }],
+      [A, "/internal/disconnect", "system", { userId: dev.id }],
+      [A, "/internal/disconnect", "system", {}],
+      [A, "/internal/disconnect", "system", {}],
+    ]);
   });
 });
 

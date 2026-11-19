@@ -49,7 +49,15 @@ const parseJson = (text: string): unknown => {
     return null;
   }
 };
-const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = { facebook: "meta_page", instagram: "ig_account", threads: "threads", linkedin: "linkedin", x: "x", whatsapp: "wa_phone" };
+/** Who the Worker says is asking; a header that does not parse is no one. */
+const callerOf = (request: Request): Caller | null => {
+  const c = parseJson(request.headers.get(CALLER_HEADER) ?? "null") as Caller | null;
+  return c && typeof c === "object" && typeof c.userId === "string" && typeof c.officeId === "string" ? c : null;
+};
+const userTag = (userId: string) => `user:${userId}`;
+/** The office itself (`system()` in caller.ts): only the Worker sends it, for mail, webhooks, export, purge and closing sockets. */
+const SYSTEM_USER = "system";
+const ROUTE_KIND: Partial<Record<Platform, RouteKind>> ={ facebook: "meta_page", instagram: "ig_account", threads: "threads", linkedin: "linkedin", x: "x", whatsapp: "wa_phone" };
 
 /**
  * One Office per business, and the only writer of its books. It knows which office it is
@@ -357,9 +365,13 @@ export class Office extends Agent<Env> {
     return json({ error: "Not found" }, 404);
   }
 
-  /** Open browsers listen here. The Worker checked the membership; this checks the request was meant for this office. */
+  /**
+   * Open browsers listen here. The Worker checked the membership; this checks the request was meant for this office.
+   * Browsers only hear `{"type":"changed"}`: the SDK's own frames (identity, state, MCP servers) are never sent, so
+   * nothing goes out on a socket before this check, and none of them goes out after it.
+   */
   async onConnect(connection: Connection, ctx: ConnectionContext) {
-    const caller = JSON.parse(ctx.request.headers.get(CALLER_HEADER) ?? "null") as Caller | null;
+    const caller = callerOf(ctx.request);
     if (!this.officeId || !caller || caller.officeId !== this.officeId) {
       connection.close(1008, "Not found");
       return;
@@ -367,11 +379,45 @@ export class Office extends Agent<Env> {
     return super.onConnect(connection, ctx);
   }
 
+  shouldSendProtocolMessages(): boolean {
+    return false;
+  }
+
+  shouldConnectionBeReadonly(): boolean {
+    return true;
+  }
+
+  /** Each socket is tagged with whose it is, so a person's sockets can be closed when they leave. */
+  getConnectionTags(_connection: Connection, ctx: ConnectionContext): string[] {
+    const caller = callerOf(ctx.request);
+    return caller ? [userTag(caller.userId)] : [];
+  }
+
+  /** Browsers never speak on this socket. Anything sent, the SDK's state and RPC frames included, closes it unread. */
+  async webSocketMessage(ws: WebSocket) {
+    ws.close(1008, "This connection only listens.");
+  }
+
+  /** Someone left the office (`userId`), or it was suspended or deleted (everyone): their open screens stop hearing it. */
+  private disconnect(userId: string | null): number {
+    let closed = 0;
+    for (const c of [...this.getConnections(userId ? userTag(userId) : undefined)]) {
+      c.close(1008, userId ? "You are no longer in this office." : "This office is closed.");
+      closed++;
+    }
+    return closed;
+  }
+
   async onRequest(request: Request): Promise<Response> {
     const caller = JSON.parse(request.headers.get(CALLER_HEADER) ?? "null") as Caller | null;
     if (!caller) return json({ error: "Sign in to continue." }, 401);
     if (!this.officeId || caller.officeId !== this.officeId) return json({ error: "Not found" }, 404);
     const path = new URL(request.url).pathname;
+    if (request.method === "POST" && path === "/internal/disconnect") {
+      if (caller.userId !== SYSTEM_USER) return json({ error: "Not found" }, 404);
+      const body = (await request.json().catch(() => ({}))) as { userId?: unknown };
+      return json({ closed: this.disconnect(typeof body.userId === "string" && body.userId ? body.userId : null) });
+    }
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/purge") return json(await this.purge());
     this.fresh();

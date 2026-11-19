@@ -65,6 +65,12 @@ export function toOffice(env: Env, req: Request, caller: Caller, path?: string):
 
 const internal = (path: string, body: unknown) => new Request(`https://office.internal${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
+/** Someone left an office (`userId`), or it closed (everyone): its open screens stop hearing it at once. Never fails the change itself. */
+async function closeLive(env: Env, officeId: string, userId?: string) {
+  const res = await toOffice(env, internal("/internal/disconnect", userId ? { userId } : {}), system(officeId)).catch(() => null);
+  if (!res?.ok) console.error(JSON.stringify({ event: "disconnect.failed", office: officeId, status: res?.status ?? null }));
+}
+
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 /* ---------- Every response: browser security headers; every change: from the app's own pages ---------- */
@@ -335,6 +341,7 @@ app.put("/api/platform/businesses/:id/status", async (c) => {
   if (!parsed.success) return c.json({ error: "Choose active or suspended." }, 400);
   if (office.status === "deleting") return c.json({ error: "Its owner is deleting this office. Only they can restore it, within 30 days." }, 409);
   if (office.status !== parsed.data.status) await cp(c.env).setStatus(office.id, parsed.data.status, c.get("user").email);
+  if (parsed.data.status === "suspended") await closeLive(c.env, office.id);
   return c.json({ ok: true });
 });
 
@@ -480,12 +487,14 @@ app.delete("/api/o/:office/office-admin/members/:user", async (c) => {
   const denied = ownerOnly(c);
   if (denied) return denied;
   const err = await cp(c.env).removeMember(c.get("office").id, c.req.param("user"), c.get("caller").email);
+  if (!err) await closeLive(c.env, c.get("office").id, c.req.param("user"));
   return err ? c.json({ error: err }, 409) : c.json({ ok: true });
 });
 
 app.post("/api/o/:office/office-admin/leave", async (c) => {
   const caller = c.get("caller");
   const err = await cp(c.env).removeMember(caller.officeId, caller.userId, caller.email);
+  if (!err) await closeLive(c.env, caller.officeId, caller.userId);
   return err ? c.json({ error: err }, 409) : c.json({ ok: true });
 });
 
@@ -534,6 +543,7 @@ app.delete("/api/o/:office/office-admin", async (c) => {
   const office = c.get("office");
   if (!parsed.success || parsed.data.confirm.trim() !== office.name) return c.json({ error: `Type ${office.name} to delete the office.` }, 400);
   await cp(c.env).setStatus(office.id, "deleting", c.get("caller").email);
+  await closeLive(c.env, office.id);
   return c.json({ ok: true, purgeAt: iso(Date.now() + PURGE_AFTER_MS) });
 });
 
