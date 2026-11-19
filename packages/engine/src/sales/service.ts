@@ -230,7 +230,7 @@ export class SalesService {
     }
     const r = this.report();
     const climbing = r.skus.filter((s) => s.units >= 5 && s.returnsPct >= 10).slice(0, 2);
-    for (const s of climbing) out.push(`Returns on ${s.name} are ${s.returnsPct}% of units sold online in the last 30 days.`);
+    for (const s of climbing) out.push(`Returns on ${s.name} are ${s.returnsPct}% of units sold online, ${r.period.label}.`);
     return out;
   }
 }

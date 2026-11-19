@@ -186,8 +186,8 @@ function Sources({ report }: { report: OnlineSalesReport }) {
         </p>
       ) : null}
       <ul className="ea-steps">
-        <li>Amazon: the tax report (MTR, B2C and B2B) from Reports → Tax Document Library, and settlement reports from Payments.</li>
-        <li>Flipkart: the Sales Report from Reports in Seller Hub. Meesho: the GST reports, sales and returns.</li>
+        <li>Amazon: the tax report (MTR, B2C and B2B) from Reports → Tax Document Library, or the transaction report from Payments → Reports, with its fees and transfers; not both for the same month, or the orders count twice. Settlement reports from Payments too.</li>
+        <li>Flipkart: the Sales Report from Reports in Seller Hub. Meesho: the GST reports, sales and returns. Myntra: the monthly P&amp;L report from the Partner Portal; it gives totals by product, so Myntra shows sales but no order count.</li>
         <li>Blinkit, Zepto, Instamart and others: any sales sheet they send. A new layout is confirmed once; after that it is read on its own.</li>
         <li>If a platform sends only a link to its portal, download the file and forward it.</li>
       </ul>

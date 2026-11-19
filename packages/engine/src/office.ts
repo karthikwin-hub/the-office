@@ -433,7 +433,7 @@ export class OfficeService {
       case "marketplace-manager": {
         const r = this.sales.report();
         return [
-          { label: "Online sales, last 30 days", value: inrShort(r.totals.grossPaise) },
+          { label: r.hasData ? `Online sales, ${r.period.label}` : "Online sales, last 30 days", value: inrShort(r.totals.grossPaise) },
           { label: "Orders", value: r.totals.orders.toLocaleString("en-IN") },
           { label: "Returns", value: `${r.totals.returnsPct}%`, ...(r.totals.returnsPct >= 10 ? { tone: "red" as const } : {}) },
         ];
