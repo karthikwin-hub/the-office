@@ -273,16 +273,18 @@ const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
 app.use(PLATFORM_ROUTES.view, platformOnly);
 app.use("/api/platform/*", platformOnly);
 
+/** The owner's link goes only by email, to the address it is for: the console never sees it, so it cannot open an office's books. */
 const ownerInviteMail = (env: Env, officeName: string, email: string, token: string) => {
   const link = `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/?invite=${encodeURIComponent(token)}`;
-  const sent = sendMail(
+  return sendMail(
     env,
     email,
     `Your office for ${officeName} is ready`,
     [`We have opened ${officeName} on ${BRAND.name}, with you as its owner: you approve the team's work, hire and invite your accountant.`, "", "Open this link to set up your account and step in. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
   );
-  return { link, sent };
 };
+/** The people who run the platform do not own businesses on it from the console: they sign up like anyone else. */
+const NOT_A_PLATFORM_OWNER = { error: "Invite the business's own owner. People who run the platform cannot be made an office's owner from the console." };
 
 app.get(PLATFORM_ROUTES.view, async (c) => {
   const user = c.get("user");
@@ -308,10 +310,11 @@ app.post(PLATFORM_ROUTES.businesses, async (c) => {
   const parsed = PlatformOnboard.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Give the business's name and its owner's email address." }, 400);
   const email = parsed.data.ownerEmail.toLowerCase();
+  if (platformOwners(c.env).has(email)) return c.json(NOT_A_PLATFORM_OWNER, 403);
   const made = await cp(c.env).onboard({ name: parsed.data.name, ownerEmail: email, by: c.get("user").email, ingestDomain: c.env.INGEST_DOMAIN });
   if ("error" in made) return c.json(made, 500);
-  const { link, sent } = ownerInviteMail(c.env, made.office.name, email, made.token);
-  return c.json({ id: made.office.id, name: made.office.name, email, link, emailed: await sent, expiresAt: iso(made.expiresAt) } satisfies PlatformInvited, 201);
+  const emailed = await ownerInviteMail(c.env, made.office.name, email, made.token);
+  return c.json({ id: made.office.id, name: made.office.name, email, emailed, expiresAt: iso(made.expiresAt) } satisfies PlatformInvited, 201);
 });
 
 app.put("/api/platform/businesses/:id/status", async (c) => {
@@ -332,10 +335,11 @@ app.post("/api/platform/businesses/:id/owner-invitation", async (c) => {
   if (!parsed.success) return c.json({ error: "Enter the owner's email address." }, 400);
   if (office.status !== "active") return c.json({ error: "Open the office again before inviting its owner." }, 409);
   const email = parsed.data.email.toLowerCase();
-  if ((await plane.members(office.id)).some((m) => m.email.toLowerCase() === email)) return c.json({ error: `${email} is already in this office.` }, 409);
-  const { token, expiresAt } = await plane.invite(office.id, email, "owner", c.get("user").email);
-  const { link, sent } = ownerInviteMail(c.env, office.name, email, token);
-  return c.json({ id: office.id, name: office.name, email, link, emailed: await sent, expiresAt: iso(expiresAt) } satisfies PlatformInvited);
+  if (platformOwners(c.env).has(email)) return c.json(NOT_A_PLATFORM_OWNER, 403);
+  const made = await plane.inviteFirstOwner(office.id, email, c.get("user").email);
+  if ("error" in made) return c.json(made, 409);
+  const emailed = await ownerInviteMail(c.env, office.name, email, made.token);
+  return c.json({ id: office.id, name: office.name, email, emailed, expiresAt: iso(made.expiresAt) } satisfies PlatformInvited);
 });
 
 /** The platform's sign-in comes back to one address for every office; the signed state says which office started it. */

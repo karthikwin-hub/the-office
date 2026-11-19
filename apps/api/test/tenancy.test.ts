@@ -121,6 +121,10 @@ const allRoutePaths = () =>
   Object.values(ROUTES)
     .map((r) => (typeof r === "function" ? (r as (...a: string[]) => string)("x1", "x2") : r))
     .filter((p): p is string => typeof p === "string" && p.startsWith("/api/"));
+/** The text of a sent email, and the invitation token in its link. */
+const mailText = (m: { raw: string }) => Buffer.from(m.raw.split("\r\n\r\n")[1]!, "base64").toString();
+const inviteIn = (text: string) => decodeURIComponent(/[?#]invite=([^\s&]+)/.exec(text)![1]!);
+
 const inOffice = (office: string, path: string) => path.replace(/^\/api\//, `/api/o/${office}/`);
 
 function signedMeta(body: unknown) {
@@ -666,11 +670,10 @@ describe("the platform owners' console", () => {
     const made = (await res.json()) as PlatformInvited;
     expect(made).toMatchObject({ name: "Mehta Hardware", email: "ravi@mehta.test", emailed: true });
     expect(w.sent.map((m) => m.to)).toEqual(["ravi@mehta.test"]);
-    expect(Buffer.from(w.sent[0]!.raw.split("\r\n\r\n")[1]!, "base64").toString()).toContain(made.link);
+    const token = inviteIn(mailText(w.sent[0]!));
     expect((await view(w, puja)).businesses).toEqual([expect.objectContaining({ id: made.id, people: 0, owners: [], onboardedBy: "puja@snilld.test", ownerInvite: expect.objectContaining({ email: "ravi@mehta.test", expired: false }) })]);
     expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([]);
 
-    const token = new URL(made.link).searchParams.get("invite")!;
     const bina = await signUp(w, "Bina Shah", "bina@shah.test");
     expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
     const ravi = await signUp(w, "Ravi Mehta", "ravi@mehta.test");
@@ -678,6 +681,56 @@ describe("the platform owners' console", () => {
     expect((await call(w, ravi, inOffice(made.id, ROUTES.desk))).status).toBe(200);
     expect((await view(w, puja)).businesses[0]).toMatchObject({ owners: [{ name: "Ravi Mehta", email: "ravi@mehta.test" }], people: 1, ownerInvite: null });
     expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(made.id), { method: "POST", body: JSON.stringify({ email: "ravi@mehta.test" }) })).status).toBe(409);
+  });
+
+  it("never invites an owner into an office that has one, and never hands the console the link", async () => {
+    const { w, A } = await twoOffices();
+    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    const puja = await signUp(w, "Puja", "puja@snilld.test");
+    const cp = new ControlPlane(w.db);
+    const invite = (id: string, email: string) => call(w, puja, PLATFORM_ROUTES.ownerInvite(id), { method: "POST", body: JSON.stringify({ email }) });
+
+    // Kaveri has an owner: the console cannot add another, under any address.
+    const refused = await invite(A, "puja.personal@elsewhere.test");
+    expect(refused.status).toBe(409);
+    expect(((await refused.json()) as { error: string }).error).toMatch(/already has an owner.*Owners invite people themselves/);
+    expect(await cp.invitations(A)).toEqual([]);
+    expect(w.sent).toEqual([]);
+
+    // A waiting office: the console may invite its owner, by email only, and never its own people.
+    const opened = await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "ravi@mehta.test" }) });
+    const made = (await opened.clone().json()) as PlatformInvited & { id: string };
+    expect((await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mine", ownerEmail: "Puja@Snilld.test" }) })).status).toBe(403);
+    expect((await invite(made.id, "puja@snilld.test")).status).toBe(403);
+    const again = await invite(made.id, "ravi.mehta@mehta.test");
+    expect(again.status).toBe(200);
+
+    const responses = [await opened.text(), await again.text(), await (await call(w, puja, PLATFORM_ROUTES.view)).text()];
+    const tokens = w.sent.map((m) => inviteIn(mailText(m)));
+    expect(tokens).toHaveLength(2);
+    for (const body of responses) {
+      expect(body).not.toMatch(/invite=|"link"/);
+      for (const t of tokens) expect(body).not.toContain(t);
+    }
+    expect(Object.keys(JSON.parse(responses[1]!)).sort()).toEqual(["email", "emailed", "expiresAt", "id", "name"]);
+
+    // Even an owner invitation the console left pending (two calls at once, or one sent before this change)
+    // cannot be accepted once the office has an owner.
+    const stray = await cp.invite(A, "alias@elsewhere.test", "owner", "puja@snilld.test");
+    const alias = await signUp(w, "Alias", "alias@elsewhere.test");
+    const late = await call(w, alias, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token: stray.token }) });
+    expect([late.status, ((await late.json()) as { error: string }).error]).toEqual([403, "This office has an owner now. Ask them to invite you from the office's Settings."]);
+    expect(await cp.membership(A, alias.id)).toBeNull();
+
+    // The corrected address replaces the first: one way in, not two.
+    expect((await cp.invitations(made.id)).map((i) => i.email)).toEqual(["ravi.mehta@mehta.test"]);
+    expect(await cp.peekInvite(tokens[0]!)).toBeNull();
+    const trail = await cp.auditTrail(made.id);
+    expect(trail.filter((t) => t.actor === "puja@snilld.test").map((t) => [t.action, t.detail])).toEqual([
+      ["platform.owner_invited", "ravi.mehta@mehta.test as owner"],
+      ["platform.owner_invited", "ravi@mehta.test as owner"],
+      ["office.onboarded", "Mehta Hardware"],
+    ]);
   });
 
   it("suspends and opens an office again, but leaves an owner's deletion to the owner", async () => {

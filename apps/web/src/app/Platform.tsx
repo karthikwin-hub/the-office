@@ -205,28 +205,21 @@ function Onboard() {
   );
 }
 
+/** The link itself never reaches the console: it goes only by email, to the owner's address. */
 function Invited({ r, opened = false }: { r: PlatformInvited; opened?: boolean }) {
-  const [copied, setCopied] = useState(false);
   return (
     <div className="platform-invited" role="status">
       <p>
         {opened ? <>{r.name} is open. </> : null}
         {r.emailed ? (
           <>
-            The invitation went to <strong>{r.email}</strong>.
+            The invitation went to <strong>{r.email}</strong>. It works once, until {day(r.expiresAt)}.
           </>
         ) : (
           <>
-            The email to <strong>{r.email}</strong> did not go out. Send them this link yourself:
+            The email to <strong>{r.email}</strong> did not go out. Send the invitation again in a while; the link goes only by email.
           </>
-        )}{" "}
-        It works once, until {day(r.expiresAt)}.
-      </p>
-      <p className="platform-link">
-        <code>{r.link}</code>{" "}
-        <button type="button" className="btn btn-quiet" onClick={() => void navigator.clipboard.writeText(r.link).then(() => setCopied(true))}>
-          {copied ? "Copied" : "Copy the link"}
-        </button>
+        )}
       </p>
     </div>
   );

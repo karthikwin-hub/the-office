@@ -285,6 +285,8 @@ const ACTIONS: Record<string, string> = {
   "office.exported": "downloaded everything",
   "office.subdomain": "set the office's own address:",
   "invitation.sent": "invited",
+  "office.onboarded": "opened the office from the platform console:",
+  "platform.owner_invited": "invited the owner from the platform console:",
   "invitation.revoked": "revoked the invitation for",
   "invitation.accepted": "joined",
   "member.role": "changed a role:",

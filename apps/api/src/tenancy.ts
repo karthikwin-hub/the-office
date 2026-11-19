@@ -108,7 +108,20 @@ export class ControlPlane {
   async onboard(input: { name: string; ownerEmail: string; by: string; ingestDomain: string; locale?: OfficeLocale }): Promise<{ office: OfficeRow; token: string; expiresAt: number } | { error: string }> {
     const made = await this.insertOffice(input.name, null, input.locale ?? INDIA, input.ingestDomain, (id) => [this.auditStmt(id, input.by, "office.onboarded", input.name.trim().slice(0, 80))]);
     if ("error" in made) return made;
-    return { office: made, ...(await this.invite(made.id, input.ownerEmail, "owner", input.by)) };
+    return { office: made, ...(await this.invite(made.id, input.ownerEmail, "owner", input.by, "platform.owner_invited")) };
+  }
+
+  /**
+   * The console may invite an owner only while no one owns the office: a business onboarded whose
+   * owner has not stepped in yet. The new invitation replaces any earlier owner invitation not yet
+   * accepted, so a corrected address leaves no second way in. Once there is an owner, owners invite people.
+   */
+  async inviteFirstOwner(officeId: string, email: string, by: string): Promise<{ token: string; expiresAt: number } | { error: string }> {
+    const members = await this.members(officeId);
+    if (members.some((m) => m.role === "owner")) return { error: "This office already has an owner. Owners invite people themselves, from the office's Settings." };
+    if (members.some((m) => emailKey(m.email) === emailKey(email))) return { error: `${emailKey(email)} is already in this office.` };
+    await this.db.prepare("DELETE FROM invitation WHERE office_id = ? AND role = 'owner' AND accepted_at IS NULL AND email != ?").bind(officeId, emailKey(email)).run();
+    return this.invite(officeId, email, "owner", by, "platform.owner_invited");
   }
 
   private async insertOffice(rawName: string, createdBy: string | null, locale: OfficeLocale, ingestDomain: string, more: (id: string) => D1PreparedStatement[]): Promise<OfficeRow | { error: string }> {
@@ -239,7 +252,7 @@ export class ControlPlane {
   }
 
   /** A new token replaces any earlier invitation for the same address. Only its hash is kept. */
-  async invite(officeId: string, email: string, role: Role, by: string): Promise<{ token: string; expiresAt: number }> {
+  async invite(officeId: string, email: string, role: Role, by: string, action: "invitation.sent" | "platform.owner_invited" = "invitation.sent"): Promise<{ token: string; expiresAt: number }> {
     const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
     const at = this.now();
     const expiresAt = at + INVITE_TTL_MS;
@@ -249,7 +262,7 @@ export class ControlPlane {
           "INSERT INTO invitation (office_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (office_id, email) DO UPDATE SET role = excluded.role, token_hash = excluded.token_hash, invited_by = excluded.invited_by, created_at = excluded.created_at, expires_at = excluded.expires_at, accepted_at = NULL",
         )
         .bind(officeId, emailKey(email), role, await hashToken(token), by, at, expiresAt),
-      this.auditStmt(officeId, by, "invitation.sent", `${emailKey(email)} as ${role}`),
+      this.auditStmt(officeId, by, action, `${emailKey(email)} as ${role}`),
     ]);
     return { token, expiresAt };
   }
@@ -272,10 +285,18 @@ export class ControlPlane {
   /** The token proves the link was received; the verified address proves it was received by the person it was sent to. */
   async acceptInvite(token: string, user: UserRef): Promise<{ officeId: string; role: Role } | { error: string }> {
     const r = await this.db
-      .prepare("SELECT i.office_id, i.email, i.role, o.status FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.expires_at > ?")
+      .prepare(
+        `SELECT i.office_id, i.email, i.role, o.status,
+          EXISTS (SELECT 1 FROM membership m WHERE m.office_id = i.office_id AND m.role = 'owner') AS has_owner,
+          EXISTS (SELECT 1 FROM membership m JOIN \`user\` u ON u.id = m.user_id WHERE m.office_id = i.office_id AND lower(u.email) = lower(i.invited_by)) AS by_member
+        FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.expires_at > ?`,
+      )
       .bind(await hashToken(token), this.now())
-      .first<{ office_id: string; email: string; role: Role; status: OfficeStatus }>();
+      .first<{ office_id: string; email: string; role: Role; status: OfficeStatus; has_owner: number; by_member: number }>();
     if (!r || r.status !== "active") return { error: "This invitation has expired or was already used. Ask for a new one." };
+    // An owner invitation from outside the office (the platform console, the admin tool) is only for an office no one owns yet.
+    // Once it has an owner, only its people can bring in another, so a second console invitation cannot open the books.
+    if (r.role === "owner" && r.has_owner && !r.by_member) return { error: "This office has an owner now. Ask them to invite you from the office's Settings." };
     if (emailKey(user.email) !== r.email) return { error: `This invitation is for ${r.email}. Sign in with that address to accept it.` };
     if (!user.emailVerified) return { error: "Confirm your email address first, then open the invitation again." };
     const at = this.now();

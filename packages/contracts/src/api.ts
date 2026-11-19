@@ -766,8 +766,8 @@ export const PlatformView = z.object({ you: z.object({ name: z.string(), email: 
 export type PlatformView = z.infer<typeof PlatformView>;
 export const PlatformOnboard = z.object({ name: z.string().trim().min(2).max(80), ownerEmail: z.string().trim().email().max(200) });
 export const PlatformStatusChange = z.object({ status: z.enum(["active", "suspended"]) });
-/** The owner's link works once, for 14 days; it is shown in case the email does not arrive. */
-export const PlatformInvited = z.object({ id: z.string(), name: z.string(), email: z.string(), link: z.string(), emailed: z.boolean(), expiresAt: IsoDateTime });
+/** The owner's link works once, for 14 days. It goes only by email to that address: the console never sees it. */
+export const PlatformInvited = z.object({ id: z.string(), name: z.string(), email: z.string(), emailed: z.boolean(), expiresAt: IsoDateTime });
 export type PlatformInvited = z.infer<typeof PlatformInvited>;
 
 export const PLATFORM_ROUTES = {

@@ -15,7 +15,7 @@ let businesses: PlatformBusiness[] = [
   { id: "off_q4nf7tzc3wk8bhja", name: "Lakshmi Stores", status: "deleting", opened: ago(120), onboardedBy: null, address: null, ingestEmail: "lakshmi-stores-8ycv@in.office.snilld.in", owners: [{ name: "Lakshmi Iyer", email: "lakshmi@lakshmistores.in" }], people: 1, ownerInvite: null, lastEvent: ago(3) },
 ];
 
-const invited = (b: PlatformBusiness, email: string): PlatformInvited => ({ id: b.id, name: b.name, email, link: `${location.origin}/?invite=mock-${b.id}`, emailed: true, expiresAt: ahead(14) });
+const invited = (b: PlatformBusiness, email: string): PlatformInvited => ({ id: b.id, name: b.name, email, emailed: true, expiresAt: ahead(14) });
 
 export async function mockPlatform(request: Request, path: string): Promise<Response | null> {
   if (path === "/api/platform" && request.method === "GET") return HttpResponse.json({ you: { name: "Puja", email: "puja@snilldai.com" }, businesses });
@@ -40,6 +40,7 @@ export async function mockPlatform(request: Request, path: string): Promise<Resp
     b.lastEvent = ago(0);
     return HttpResponse.json({ ok: true });
   }
+  if (b.owners.length) return HttpResponse.json({ error: "This office already has an owner. Owners invite people themselves, from the office's Settings." }, { status: 409 });
   const email = ((await request.json().catch(() => null)) as { email?: string } | null)?.email ?? "";
   b.ownerInvite = { email, expiresAt: ahead(14), expired: false };
   b.lastEvent = ago(0);

@@ -77,17 +77,6 @@
 .platform-invited p {
   margin: 0;
 }
-.platform-link {
-  margin-top: var(--s-2) !important;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  align-items: center;
-}
-.platform-link code {
-  word-break: break-all;
-  font-size: var(--step--1);
-}
 
 .platform-search {
   max-width: 280px;
