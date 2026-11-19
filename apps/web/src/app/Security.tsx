@@ -1,8 +1,8 @@
 import { BRAND, type Me } from "@office/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { encode } from "uqr";
-import { account, isLive, twoFactor } from "../api/client";
+import { account, isLive, onStepUp, twoFactor } from "../api/client";
 import { q } from "../api/queries";
 import { Section } from "../screens/common";
 import { BrandPlate, LegalFooter } from "./Legal";
@@ -190,5 +190,81 @@ export function TwoFactorSettings() {
         </>
       ) : null}
     </Section>
+  );
+}
+
+/**
+ * Asks for the authenticator's code (or, without two-factor, the password) when an export, invitation, role change or deletion
+ * is refused for want of a recent sign-in. The request is then sent once more; cancelling leaves it refused.
+ */
+export function StepUpDialog() {
+  const me = useQuery({ ...q.me(), enabled: isLive });
+  const hasCode = Boolean(me.data?.twoFactor.enabled);
+  const ref = useRef<HTMLDialogElement>(null);
+  const waiting = useRef<{ promise: Promise<boolean>; resolve: (ok: boolean) => void } | null>(null);
+  const [open, setOpen] = useState(false);
+  // With two-factor on, only the code confirms; the password alone is for those without it.
+  const withCode = hasCode;
+  const [value, setValue] = useState("");
+  const confirm = useMutation({ mutationFn: () => account.stepUp(withCode ? { code: value.replace(/\s+/g, "") } : { password: value }), onSuccess: () => finish(true) });
+
+  useEffect(
+    () =>
+      onStepUp(() => {
+        // Two refused requests at once share one question.
+        if (waiting.current) return waiting.current.promise;
+        let resolve!: (ok: boolean) => void;
+        const promise = new Promise<boolean>((r) => (resolve = r));
+        waiting.current = { promise, resolve };
+        setValue("");
+        setOpen(true);
+        return promise;
+      }),
+    [hasCode],
+  );
+  useEffect(() => {
+    const d = ref.current;
+    if (open && d && !d.open) d.showModal();
+    if (!open && d?.open) d.close();
+  }, [open]);
+
+  function finish(ok: boolean) {
+    waiting.current?.resolve(ok);
+    waiting.current = null;
+    setOpen(false);
+    setValue("");
+    confirm.reset();
+  }
+  const submit = (e: FormEvent) => (e.preventDefault(), confirm.mutate());
+
+  return (
+    <dialog ref={ref} aria-labelledby="step-up-title" onCancel={(e) => (e.preventDefault(), finish(false))}>
+      <form onSubmit={submit} className="signin-form">
+        <h2 id="step-up-title">Confirm it is you</h2>
+        <p className="muted">Exporting, inviting, changing who is an owner and deleting need a sign-in from the last 15 minutes. {withCode ? "Type the code your authenticator app shows." : "Type your password."}</p>
+        <div className="field">
+          <label htmlFor="step-up-value">{withCode ? "Code from your app" : "Password"}</label>
+          {withCode ? (
+            <input id="step-up-value" className="input" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 ]{6,7}" required autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+          ) : (
+            <input id="step-up-value" className="input" type="password" autoComplete="current-password" required autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+          )}
+          {hasCode ? <span className="muted">Lost your phone? Sign out, then sign in with a backup code.</span> : null}
+        </div>
+        {confirm.error ? (
+          <p className="form-error" role="alert">
+            {confirm.error.message}
+          </p>
+        ) : null}
+        <div className="approval-actions">
+          <button type="submit" className="btn btn-primary" disabled={confirm.isPending}>
+            {confirm.isPending ? "One moment" : "Confirm"}
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={() => finish(false)}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
   );
 }

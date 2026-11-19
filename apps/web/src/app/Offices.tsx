@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { account, ApiError, isLive, setActiveOffice } from "../api/client";
 import { q } from "../api/queries";
 import { BrandPlate, ConsentGate, LegalFooter } from "./Legal";
-import { TwoFactorGate } from "./Security";
+import { StepUpDialog, TwoFactorGate } from "./Security";
 import { SignIn } from "./SignIn";
 import { appUrl, hasAppDomain, officeUrl, place } from "./site";
 
@@ -121,7 +121,12 @@ export function OfficeGate({ children }: { children: ReactNode }) {
     if (!mine) return <NotYourOffice address={location.host} />;
     if (mine.status === "suspended") return <Suspended name={mine.name} others={me.data.offices.some((o) => o.id !== mine.id && o.status === "active")} />;
     setActiveOffice(mine.id);
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <StepUpDialog />
+      </>
+    );
   }
   const active = chooseOffice(me.data.offices);
   if (!active) return me.data.offices.length ? <OfficePicker me={me.data} /> : <OpenOffice me={me.data} />;
@@ -131,7 +136,12 @@ export function OfficeGate({ children }: { children: ReactNode }) {
     return null;
   }
   setActiveOffice(active.id);
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <StepUpDialog />
+    </>
+  );
 }
 
 function Suspended({ name, others }: { name: string; others: boolean }) {

@@ -86,9 +86,29 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** The server's reason, when it gives one: `two_factor_required`, `step_up_required`. */
+    readonly code?: string,
   ) {
     super(message);
   }
+}
+
+/**
+ * Exporting, inviting, changing roles and deleting want a sign-in from the last 15 minutes. When one is
+ * refused for that, whoever registered here (the step-up dialog) asks for the password or a code, and
+ * the request is sent once more if they gave it.
+ */
+let confirmIdentity: (() => Promise<boolean>) | null = null;
+export function onStepUp(ask: () => Promise<boolean>): () => void {
+  confirmIdentity = ask;
+  return () => {
+    if (confirmIdentity === ask) confirmIdentity = null;
+  };
+}
+async function confirmedAgain(res: Response): Promise<boolean> {
+  if (res.status !== 403 || !confirmIdentity) return false;
+  const body = (await res.clone().json().catch(() => ({}))) as { code?: string };
+  return body.code === "step_up_required" && confirmIdentity();
 }
 
 export const isLive = import.meta.env.VITE_DATA !== "mock" && import.meta.env.VITE_DATA !== "hybrid";
@@ -123,15 +143,18 @@ export function viewingAs(): "owner" | "accountant" {
 async function call<T>(path: string, init?: { method?: string; body?: unknown; query?: Record<string, string | undefined> }): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(init?.query ?? {})) if (v) qs.set(k, v);
-  const res = await fetch(qs.size ? `${officePath(path)}?${qs}` : officePath(path), {
-    method: init?.method ?? "GET",
-    headers: { "content-type": "application/json", "x-office-as": viewingAs() },
-    body: init?.body === undefined ? undefined : JSON.stringify(init.body),
-    credentials: "include",
-  });
+  const send = () =>
+    fetch(qs.size ? `${officePath(path)}?${qs}` : officePath(path), {
+      method: init?.method ?? "GET",
+      headers: { "content-type": "application/json", "x-office-as": viewingAs() },
+      body: init?.body === undefined ? undefined : JSON.stringify(init.body),
+      credentials: "include",
+    });
+  let res = await send();
+  if (await confirmedAgain(res)) res = await send();
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, err.error ?? res.statusText);
+    const err = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new ApiError(res.status, err.error ?? res.statusText, err.code);
   }
   return res.json() as Promise<T>;
 }
@@ -156,6 +179,8 @@ export const account = {
   /** The link in the email comes back here with `?reset-password=1&token=…`, or `&error=INVALID_TOKEN` once it has expired. */
   requestPasswordReset: (email: string) => auth("request-password-reset", { email, redirectTo: `${location.origin}/?reset-password=1` }),
   resetPassword: (newPassword: string, token: string) => auth("reset-password", { newPassword, token }),
+  /** Confirms it is still you, for the next 15 minutes: the password, or the authenticator's code. */
+  stepUp: (proof: { password: string } | { code: string }) => auth("step-up", proof),
   openOffice: (name: string) => call<OfficeSummary>(ACCOUNT_ROUTES.offices, { method: "POST", body: { name } }),
   peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: { token } }),
   restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),
@@ -367,10 +392,12 @@ export function savePaper(p: Paper) {
  * skip the role header, and in mockups the service worker never sees navigations.
  */
 export async function download(path: string, fallbackName: string): Promise<void> {
-  const res = await fetch(officePath(path), { headers: { "x-office-as": viewingAs() }, credentials: "include" });
+  const send = () => fetch(officePath(path), { headers: { "x-office-as": viewingAs() }, credentials: "include" });
+  let res = await send();
+  if (await confirmedAgain(res)) res = await send();
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, err.error ?? res.statusText);
+    const err = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new ApiError(res.status, err.error ?? res.statusText, err.code);
   }
   const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? fallbackName;
   const url = URL.createObjectURL(await res.blob());

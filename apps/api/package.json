@@ -13,6 +13,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@better-auth/utils": "0.5.1",
     "@office/contracts": "workspace:*",
     "@office/engine": "workspace:*",
     "@office/fixtures": "workspace:*",

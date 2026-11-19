@@ -19,3 +19,6 @@ CREATE TABLE `two_factor` (
   `locked_until` integer
 );
 CREATE UNIQUE INDEX `two_factor_user_unique` ON `two_factor` (`user_id`);
+
+-- Step-up: when the password or a two-factor code was last typed again in a session.
+ALTER TABLE `session` ADD `step_up_at` integer;

@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "./env";
 import { mailSender } from "./mail";
 import * as schema from "./schema";
+import { stepUp } from "./step-up";
 
 /**
  * Scrypt, Better Auth's default, takes longer than the free plan's 10 ms of CPU.
@@ -74,8 +75,20 @@ export function authScope(env: Pick<Env, "BETTER_AUTH_URL" | "APP_DOMAIN">, host
  * own, or joins one through an invitation link. Which offices it is in lives in `membership`.
  */
 export function makeAuth(env: Env, host?: string) {
+  const scope = authScope(env, host);
+  // Building Better Auth with its plugins costs about a millisecond of CPU, on every request; an isolate keeps one per setting.
+  const key = JSON.stringify([env.BETTER_AUTH_URL, env.APP_DOMAIN ?? null, env.DATA_MODE, env.EMAIL_VERIFICATION ?? null, scope.cookieDomain]);
+  let mine = built.get(env);
+  if (!mine) built.set(env, (mine = new Map()));
+  let auth = mine.get(key);
+  if (!auth) mine.set(key, (auth = buildAuth(env, scope)));
+  return auth;
+}
+
+const built = new WeakMap<Env, Map<string, ReturnType<typeof buildAuth>>>();
+
+function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authScope>) {
   const db = drizzle(env.DB, { schema });
-  const { origins, cookieDomain } = authScope(env, host);
   return betterAuth({
     appName: BRAND.name,
     secret: env.BETTER_AUTH_SECRET,
@@ -117,10 +130,11 @@ export function makeAuth(env: Env, host?: string) {
     },
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
     // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
-    session: { cookieCache: { enabled: false } },
+    // A session ends after 12 hours without use; while in use it is renewed at most once an hour. A sign-in counts as fresh for 15 minutes.
+    session: { cookieCache: { enabled: false }, expiresIn: 12 * 60 * 60, updateAge: 60 * 60, freshAge: 15 * 60 },
     // A second step at sign-in: an authenticator app's code, or one of ten backup codes. Owners must have it; see step-up.ts.
     // Devices are never trusted for later sign-ins.
-    plugins: [twoFactor({ issuer: BRAND.name, trustDeviceMaxAge: 0 })],
+    plugins: [twoFactor({ issuer: BRAND.name, trustDeviceMaxAge: 0 }), stepUp((to, subject, lines) => sendMail(env, to, subject, lines.join("\n")))],
     // Counts live in D1, so every isolate and every restart sees the same attempts.
     rateLimit: { enabled: env.DATA_MODE === "live", storage: "database", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
   });

@@ -13,7 +13,7 @@ import { newState } from "../src/social/oauth";
 import { ControlPlane, OFFICE_ID, PURGE_AFTER_MS } from "../src/tenancy";
 import { WaDirectory } from "../src/whatsapp/links";
 import { d1 } from "./d1";
-import { enrolTwoFactor } from "./two-factor";
+import { enrolTwoFactor, totp } from "./two-factor";
 
 const BASE = "http://localhost:8787";
 const SECRET = "tenancy-test-secret-not-a-real-one";
@@ -94,7 +94,7 @@ function makeEnv() {
 }
 
 type World = ReturnType<typeof makeEnv>;
-type Person = { cookie: string; id: string; email: string; name: string };
+type Person = { cookie: string; id: string; email: string; name: string; uri?: string };
 
 const call = (w: World, who: Person | null, path: string, init: RequestInit = {}) =>
   app.request(`${BASE}${path}`, { ...init, headers: { origin: BASE, ...(init.body && typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}), ...(init.headers as Record<string, string>) } }, w.env);
@@ -111,7 +111,8 @@ async function signUp(w: World, name: string, email: string): Promise<Person> {
 
 /** Owners need two-factor sign-in before anything owner-only; this turns it on and keeps the new session. */
 async function twoStep(w: World, who: Person): Promise<Person> {
-  who.cookie = (await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), who.cookie, "a-long-password-1")).cookie;
+  const enrolled = await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), who.cookie, "a-long-password-1");
+  Object.assign(who, { cookie: enrolled.cookie, uri: enrolled.uri });
   return who;
 }
 
@@ -252,7 +253,8 @@ describe("one office cannot reach another", () => {
         expect(await res.json()).toEqual({ error: "Not found" });
       }
     expect(w.seen).toEqual([]);
-  });
+    // About 500 requests, each signed in through Better Auth.
+  }, 20_000);
 
   it("sends each owner's requests only to their own office, whatever the request claims", async () => {
     const { w, anil, bina, A, B } = await twoOffices();
@@ -657,6 +659,93 @@ describe("two-factor sign-in for owners", () => {
   });
 });
 
+describe("a fresh sign-in for the riskier owner actions", () => {
+  /** Moves this person's sessions, and any step-up in them, an hour into the past (D1 keeps seconds). */
+  const anHourAgo = (w: World, who: Person) => w.db.sqlite.prepare("UPDATE session SET created_at = created_at - 3600, step_up_at = step_up_at - 3600 WHERE user_id = ?").run(who.id);
+
+  it("asks again for the password or a code before export, inviting, changing roles, handing over and deleting", async () => {
+    const { w, anil, A } = await twoOffices();
+    const carol = await signUp(w, "Carol Rao", "carol@firm.test");
+    const { token } = await new ControlPlane(w.db).invite(A, carol.email, "accountant", anil.email);
+    await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) });
+    anHourAgo(w, anil);
+    const risky: [string, RequestInit][] = [
+      [ROUTES.officeExport, {}],
+      [ROUTES.officeInvitations, { method: "POST", body: JSON.stringify({ email: "dev@firm.test", role: "accountant" }) }],
+      [ROUTES.officeMember(carol.id), { method: "PUT", body: JSON.stringify({ role: "owner" }) }],
+      [ROUTES.officeTransfer, { method: "POST", body: JSON.stringify({ userId: carol.id }) }],
+      [ROUTES.officeAdmin, { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) }],
+      [ROUTES.officeMember(carol.id), { method: "DELETE" }],
+      [ROUTES.officeInvitation("dev@firm.test"), { method: "DELETE" }],
+    ];
+    for (const [path, init] of risky) {
+      const res = await call(w, anil, inOffice(A, path), init);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "step_up_required" });
+    }
+    // Everything else still works on an older session.
+    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin))).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(200);
+
+    // With two-factor on, the password alone does not confirm: a leaked password and a stolen cookie are not enough.
+    expect((await call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(400);
+    expect((await call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: "000000" }) })).status).toBe(401);
+    expect((await call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: totp(anil.uri!) }) })).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeExport))).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeInvitations), risky[1]![1])).status).toBe(200);
+
+    // The confirmation itself goes stale.
+    anHourAgo(w, anil);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeExport))).status).toBe(403);
+  });
+
+  it("takes the authenticator's code as the confirmation, and refuses it from someone without two-factor", async () => {
+    const w = makeEnv();
+    const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
+    const A = ((await (await call(w, anil, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Kaveri Electricals" }) })).json()) as { id: string }).id;
+    const enrolled = await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), anil.cookie, "a-long-password-1");
+    anil.cookie = enrolled.cookie;
+    anHourAgo(w, anil);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeExport))).status).toBe(403);
+    expect((await call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: "000000" }) })).status).toBe(401);
+    expect((await call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: totp(enrolled.uri) }) })).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeExport))).status).toBe(200);
+
+    const bina = await signUp(w, "Bina Shah", "bina@shah.test");
+    expect((await call(w, bina, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: totp(enrolled.uri) }) })).status).toBe(401);
+    expect((await call(w, bina, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(200);
+    expect((await call(w, null, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(401);
+  });
+
+  it("will not check codes for someone already signed in with two-factor on, and emails when it is turned on", async () => {
+    const { w, anil } = await twoOffices();
+    // Signed in, there is nothing left to verify: such a check would only let a stolen cookie guess codes.
+    for (const path of ["/api/auth/two-factor/verify-totp", "/api/auth/two-factor/verify-backup-code"]) expect((await call(w, anil, path, { method: "POST", body: JSON.stringify({ code: "000000" }) })).status).toBe(403);
+    const subjects = w.sent.filter((m) => m.to === anil.email).map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString());
+    expect(subjects).toContain("Two-step sign-in is now on for your account");
+    // An accountant may turn it off again, and is told.
+    const carol = await twoStep(w, await signUp(w, "Carol Rao", "carol@firm.test"));
+    expect((await call(w, carol, "/api/auth/two-factor/disable", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(200);
+    expect(w.sent.filter((m) => m.to === carol.email).map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString())).toEqual(["Two-step sign-in is now on for your account", "Two-step sign-in was turned off for your account"]);
+  });
+
+  it("stops listening after ten wrong tries for one account, from whatever address", async () => {
+    const { w, anil } = await twoOffices();
+    const stepUp = (code: string, ip: string) => call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code }), headers: { "cf-connecting-ip": ip } });
+    // Sent all at once, as a guesser would: each still takes its own try.
+    const wrong = await Promise.all(Array.from({ length: 10 }, (_, i) => stepUp("000000", `203.0.113.${i + 1}`)));
+    expect(wrong.map((r) => r.status)).toEqual(Array(10).fill(401));
+    expect((await stepUp(totp(anil.uri!), "198.51.100.1")).status).toBe(429);
+  });
+
+  it("ends a session after 12 hours", async () => {
+    const w = makeEnv();
+    const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
+    const row = w.db.sqlite.prepare("SELECT created_at, expires_at FROM session WHERE user_id = ?").get(anil.id) as { created_at: number; expires_at: number };
+    expect(row.expires_at - row.created_at).toBe(12 * 60 * 60);
+  });
+});
+
 describe("people in an office", () => {
   it("invites by link for one address, once, and the accountant sees the office but not its administration", async () => {
     const { w, anil, bina, A } = await twoOffices();
@@ -834,8 +923,9 @@ describe("the platform owners' console", () => {
     expect(res.status).toBe(201);
     const made = (await res.json()) as PlatformInvited;
     expect(made).toMatchObject({ name: "Mehta Hardware", email: "ravi@mehta.test", emailed: true });
-    expect(w.sent.map((m) => m.to)).toEqual(["ravi@mehta.test"]);
-    const token = inviteIn(mailText(w.sent[0]!));
+    const invites = w.sent.filter((m) => m.to !== puja.email); // puja was told two-step sign-in is on
+    expect(invites.map((m) => m.to)).toEqual(["ravi@mehta.test"]);
+    const token = inviteIn(mailText(invites[0]!));
     expect((await view(w, puja)).businesses).toEqual([expect.objectContaining({ id: made.id, people: 0, owners: [], onboardedBy: "puja@snilld.test", ownerInvite: expect.objectContaining({ email: "ravi@mehta.test", expired: false }) })]);
     expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([]);
 
@@ -906,6 +996,12 @@ describe("the platform owners' console", () => {
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     const status = (id: string, s: string) => call(w, puja, PLATFORM_ROUTES.status(id), { method: "PUT", body: JSON.stringify({ status: s }) });
+    // A platform owner's old session reads the console but changes nothing.
+    w.db.sqlite.prepare("UPDATE session SET created_at = created_at - 3600 WHERE user_id = ?").run(puja.id);
+    expect((await call(w, puja, PLATFORM_ROUTES.view)).status).toBe(200);
+    expect(await (await status(A, "suspended")).json()).toMatchObject({ code: "step_up_required" });
+    expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(A), { method: "POST", body: JSON.stringify({ email: "someone@else.test" }) })).status).toBe(403);
+    expect((await call(w, puja, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: totp(puja.uri!) }) })).status).toBe(200);
     expect((await status(A, "suspended")).status).toBe(200);
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(423);
     expect((await call(w, bina, inOffice(B, ROUTES.desk))).status).toBe(200);

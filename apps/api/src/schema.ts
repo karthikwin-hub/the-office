@@ -21,6 +21,8 @@ export const session = sqliteTable("session", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  /** When the password or a two-factor code was last typed again in this session, for the riskier actions. */
+  stepUpAt: integer("step_up_at", { mode: "timestamp" }),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),

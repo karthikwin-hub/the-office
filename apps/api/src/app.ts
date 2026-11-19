@@ -37,7 +37,7 @@ import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
-import { TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
+import { isFresh, STEP_UP_NEEDED, TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
 import { metaChallenge, verifyMetaSignature } from "./social/webhooks";
 import { ControlPlane, ingestAddress, OFFICE_ID, type OfficeRow, PURGE_AFTER_MS } from "./tenancy";
 import { sendText } from "./whatsapp/cloud";
@@ -46,7 +46,7 @@ import { weatherFor, type Where } from "./weather";
 import { zip, type ZipEntry } from "./zip";
 
 type User = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled: boolean };
-type Vars = { user: User; caller: Caller; office: OfficeRow };
+type Vars = { user: User; caller: Caller; office: OfficeRow; session: { createdAt: Date; stepUpAt: Date | null } };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 /** Not "forbidden": someone outside an office cannot tell whether it exists. */
@@ -213,6 +213,7 @@ app.use("/api/*", async (c, next) => {
   if (!session) return c.json({ error: "Sign in to continue." }, 401);
   const u = session.user;
   c.set("user", { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified), twoFactorEnabled: Boolean(u.twoFactorEnabled) });
+  c.set("session", { createdAt: session.session.createdAt, stepUpAt: session.session.stepUpAt ?? null });
   await next();
 });
 
@@ -292,6 +293,8 @@ const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
   if (!platformOwners(c.env).has(user.email.toLowerCase())) return c.json({ error: "This console is for the people who run the platform. Businesses sign in at their own address." }, 403);
   if (verificationRequired(c.env) && !user.emailVerified) return c.json({ error: "Confirm your email address first, then come back." }, 403);
   if (twoFactorMissing(user)) return c.json(TWO_FACTOR_NEEDED, 403);
+  // Onboarding, owner invitations and suspending act on every business: a stale session only reads.
+  if (c.req.method !== "GET" && !isFresh(c.get("session"))) return c.json(STEP_UP_NEEDED, 403);
   await next();
 };
 app.use(PLATFORM_ROUTES.view, platformOnly);
@@ -395,6 +398,8 @@ app.use("/api/o/:office/*", async (c, next) => {
 });
 
 const ownerOnly = (c: Ctx) => (c.get("caller").role === "owner" ? null : c.json({ error: "Only the owner can do that." }, 403));
+/** For exporting, inviting, changing or removing people and deleting: a sign-in in the last 15 minutes, or the password or a code typed again. */
+const freshOnly = (c: Ctx) => (isFresh(c.get("session")) ? null : c.json(STEP_UP_NEEDED, 403));
 
 /** For the Lived-in office's small talk: the weather near the person looking, never stored with them. */
 app.get(`/api/o/:office${ROUTES.weather.slice(4)}`, async (c) => {
@@ -453,7 +458,7 @@ app.patch("/api/o/:office/office-admin", async (c) => {
 });
 
 app.post("/api/o/:office/office-admin/invitations", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const parsed = InviteRequest.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Enter the email address to invite." }, 400);
@@ -476,14 +481,14 @@ app.post("/api/o/:office/office-admin/invitations", async (c) => {
 });
 
 app.delete("/api/o/:office/office-admin/invitations/:email", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const done = await cp(c.env).revokeInvite(c.get("office").id, decodeURIComponent(c.req.param("email")), c.get("caller").email);
   return done ? c.json({ ok: true }) : c.json({ error: "No such invitation." }, 404);
 });
 
 app.put("/api/o/:office/office-admin/members/:user", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const parsed = RoleChange.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Choose owner or accountant." }, 400);
@@ -492,7 +497,7 @@ app.put("/api/o/:office/office-admin/members/:user", async (c) => {
 });
 
 app.delete("/api/o/:office/office-admin/members/:user", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const err = await cp(c.env).removeMember(c.get("office").id, c.req.param("user"), c.get("caller").email);
   if (!err) await closeLive(c.env, c.get("office").id, c.req.param("user"));
@@ -507,7 +512,7 @@ app.post("/api/o/:office/office-admin/leave", async (c) => {
 });
 
 app.post("/api/o/:office/office-admin/transfer", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const parsed = TransferRequest.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Choose who will own the office." }, 400);
@@ -518,7 +523,7 @@ app.post("/api/o/:office/office-admin/transfer", async (c) => {
 
 /** Everything the office holds, in one archive: the books as JSON and every stored file. */
 app.get("/api/o/:office/office-admin/export", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const caller = c.get("caller");
   const res = await toOffice(c.env, internal("/internal/export", {}), system(caller.officeId));
@@ -545,7 +550,7 @@ app.get("/api/o/:office/office-admin/export", async (c) => {
 
 /** Deleting hides the office from everyone at once; its books and files stay 30 days in case it was a mistake. */
 app.delete("/api/o/:office/office-admin", async (c) => {
-  const denied = ownerOnly(c);
+  const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const parsed = DeleteOffice.safeParse(await c.req.json().catch(() => null));
   const office = c.get("office");

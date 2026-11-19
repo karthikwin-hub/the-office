@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 import { account, ApiError, platform } from "../api/client";
 import { BrandPlate, LegalFooter } from "./Legal";
+import { StepUpDialog } from "./Security";
 import { SignIn } from "./SignIn";
 import { appUrl } from "./site";
 import "./platform.css";
@@ -40,7 +41,13 @@ export function PlatformConsole() {
       </main>
     );
   if (!view.data) return null;
-  return <Console you={view.data.you} businesses={view.data.businesses} />;
+  // Onboarding, owner invitations and suspending need a recent sign-in: the dialog asks for the code, then the change is sent again.
+  return (
+    <>
+      <Console you={view.data.you} businesses={view.data.businesses} />
+      <StepUpDialog />
+    </>
+  );
 }
 
 function SignOut() {
