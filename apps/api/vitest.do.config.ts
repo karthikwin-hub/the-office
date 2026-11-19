@@ -28,6 +28,8 @@ export default defineWorkersConfig(async () => {
               BETTER_AUTH_URL: "http://localhost:8787",
               BETTER_AUTH_SECRET: "office-do-test-secret-not-a-real-one",
               SOCIAL_TOKEN_KEY: "office-do-test-secret-not-a-real-one",
+              X_CLIENT_ID: "x-client-for-tests",
+              X_CLIENT_SECRET: "x-secret-for-tests",
             },
           },
         },

@@ -9,9 +9,9 @@ import { afterFailure, SocialHost } from "../src/social/host";
 import { linkedin, linkedinVersion } from "../src/social/linkedin";
 import { signedMedia, signMedia, verifyMedia } from "../src/social/media";
 import { facebook, instagram, threads, whatsapp } from "../src/social/meta";
-import { challengeFor, newState, readState } from "../src/social/oauth";
+import { challengeFor, newState, readState, SpentStates } from "../src/social/oauth";
 import { open, seal, subkey, TokenVault } from "../src/social/tokens";
-import { metaChallenge, parseMetaDelivery, verifyMetaSignature } from "../src/social/webhooks";
+import { metaChallenge, parseMetaDelivery, sameSecret, verifyMetaSignature } from "../src/social/webhooks";
 import { x } from "../src/social/x";
 
 const SECRET = "test-secret-that-is-only-for-tests";
@@ -122,6 +122,29 @@ describe("Meta webhooks", () => {
     expect(metaChallenge(u, "tok")).toBe("42");
     expect(metaChallenge(u, "other")).toBeNull();
     expect(metaChallenge(u, undefined)).toBeNull();
+    for (const token of ["to", "tokk", "tok ", "TOK", ""]) expect(metaChallenge(u, token), token).toBeNull();
+  });
+
+  it("compares the verify token without stopping at the first wrong character", () => {
+    expect(sameSecret("verify-token-1", "verify-token-1")).toBe(true);
+    for (const guess of ["verify-token-", "verify-token-12", "Verify-token-1", "", "x"]) expect(sameSecret(guess, "verify-token-1"), guess).toBe(false);
+    expect(sameSecret("", "")).toBe(false);
+    // Every byte of the guess is read whether or not an early one is wrong: a counting secret sees the same reads for both.
+    const reads = (guess: string) => {
+      let n = 0;
+      const secret = new Proxy(new TextEncoder().encode("verify-token-1"), { get: (t, k) => (typeof k === "string" && /^\d+$/.test(k) && n++, Reflect.get(t, k)) });
+      const enc = TextEncoder.prototype.encode;
+      TextEncoder.prototype.encode = function (this: TextEncoder, v?: string) {
+        return v === "verify-token-1" ? (secret as unknown as Uint8Array) : enc.call(this, v);
+      };
+      try {
+        sameSecret(guess, "verify-token-1");
+      } finally {
+        TextEncoder.prototype.encode = enc;
+      }
+      return n;
+    };
+    expect(reads("xerify-token-1")).toBe(reads("verify-token-x"));
   });
 
   it("reads Instagram comments, Page comments and WhatsApp messages, and drops our own", () => {
@@ -143,7 +166,7 @@ describe("sign-in state", () => {
   it("round-trips for its platform and gives the same PKCE verifier back", async () => {
     const { state, verifier } = await newState(SECRET, "x", "anil@kaveri.in", "off_a");
     const back = await readState(SECRET, "x", state);
-    expect(back).toEqual({ by: "anil@kaveri.in", verifier, officeId: "off_a" });
+    expect(back).toEqual({ by: "anil@kaveri.in", verifier, officeId: "off_a", nonce: expect.stringMatching(/^[\w-]{22}$/), expiresAt: expect.any(Number) });
     expect(verifier).toMatch(/^[\w-]{43}$/);
     expect(await challengeFor(verifier)).toMatch(/^[\w-]{43}$/);
   });
@@ -155,6 +178,20 @@ describe("sign-in state", () => {
     expect(await readState(SECRET, "facebook", ok)).toBeNull();
     expect(await readState(SECRET, "instagram", `${ok}x`)).toBeNull();
     expect(await readState("other-secret-value", "instagram", ok)).toBeNull();
+  });
+
+  it("is taken once, and remembered only until it would have expired", async () => {
+    const sql = sqlStorage();
+    const spent = new SpentStates(sql);
+    const now = Date.now();
+    const a = (await readState(SECRET, "x", (await newState(SECRET, "x", "anil@kaveri.in", "off_a", now)).state, now))!;
+    const b = (await readState(SECRET, "x", (await newState(SECRET, "x", "anil@kaveri.in", "off_a", now)).state, now))!;
+    expect(spent.spend(a, now)).toBe(true);
+    expect(spent.spend(a, now)).toBe(false);
+    expect(new SpentStates(sql).spend(a, now + 60_000)).toBe(false);
+    expect(spent.spend(b, now)).toBe(true);
+    spent.spend({ nonce: "later", expiresAt: now + 20 * 60_000 }, a.expiresAt + 1);
+    expect(sql.exec("SELECT nonce FROM oauth_state_spent ORDER BY nonce").toArray()).toEqual([{ nonce: "later" }]);
   });
 });
 

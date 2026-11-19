@@ -15,7 +15,16 @@ export async function verifyMetaSignature(appSecret: string, rawBody: ArrayBuffe
 export function metaChallenge(url: URL, verifyToken: string | undefined): string | null {
   if (!verifyToken) return null;
   const p = url.searchParams;
-  return p.get("hub.mode") === "subscribe" && p.get("hub.verify_token") === verifyToken ? p.get("hub.challenge") : null;
+  return p.get("hub.mode") === "subscribe" && sameSecret(p.get("hub.verify_token") ?? "", verifyToken) ? p.get("hub.challenge") : null;
+}
+
+/** Compares a guess with a secret in time that depends only on the guess, so the secret cannot be found a character at a time. */
+export function sameSecret(guess: string, secret: string): boolean {
+  const g = enc.encode(guess);
+  const s = enc.encode(secret);
+  let diff = g.length ^ s.length;
+  for (let i = 0; i < g.length; i++) diff |= g[i]! ^ (s[i % s.length] ?? 0);
+  return diff === 0 && s.length > 0;
 }
 
 type Change = { field?: string; value?: Record<string, unknown> };

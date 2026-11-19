@@ -18,7 +18,7 @@ import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
 import { MEDIA_ID } from "./social/media";
-import { callbackUrl, newState, readState } from "./social/oauth";
+import { callbackUrl, newState, readState, SpentStates } from "./social/oauth";
 import { TokenVault } from "./social/tokens";
 import { parseMetaDelivery, parseWhatsAppMessages } from "./social/webhooks";
 import { BooksStore } from "./store";
@@ -76,6 +76,7 @@ export class Office extends Agent<Env> {
   private salesStore!: SqlSalesStore;
   private office!: OfficeService;
   private vault!: TokenVault;
+  private spentStates!: SpentStates;
   private day = "";
   /** Null until the office knows who it is; an office that does not know does nothing. */
   private officeId: string | null = null;
@@ -133,6 +134,7 @@ export class Office extends Agent<Env> {
     this.assistantStore = new SqlAssistantStore(sql);
     this.salesStore = new SqlSalesStore(sql);
     this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
+    this.spentStates = new SpentStates(sql);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
       // Offices opened before new offices started empty were given the sample business; start them over.
@@ -628,7 +630,7 @@ export class Office extends Agent<Env> {
     const code = url.searchParams.get("code");
     const adapter = adaptersFor(this.env)[platform];
     const ch = this.office.books.channels.find((c) => c.platform === platform);
-    if (!state || state.officeId !== this.officeId || state.by !== caller.email || !code || !adapter || !ch) return this.back({ connect_error: "The sign-in expired or did not come from this office. Try again." });
+    if (!state || state.officeId !== this.officeId || state.by !== caller.email || !code || !adapter || !ch || !this.spentStates.spend(state)) return this.back({ connect_error: "The sign-in expired or did not come from this office. Try again." });
     try {
       const got = await adapter.exchange({ code, verifier: state.verifier, redirect: callbackUrl(this.env.BETTER_AUTH_URL, platform) });
       const claimed = await this.claimIds(platform, [got.tokens.account, ...Object.values(got.tokens.extra)]);
