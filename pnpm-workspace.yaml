@@ -7,4 +7,3 @@ onlyBuiltDependencies:
   - workerd
   - msw
   - sharp
-storeDir: /home/puja/.local/share/pnpm/store
