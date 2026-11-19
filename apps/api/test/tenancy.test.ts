@@ -180,11 +180,15 @@ describe("accounts and offices", () => {
 
   it("asks for a confirmed address before opening an office, outside local tests", async () => {
     const w = makeEnv();
-    (w.env as { EMAIL_VERIFICATION?: string }).EMAIL_VERIFICATION = undefined;
+    // Signed in before confirming (as sign-ups were before confirmation was required to sign in).
     const p = await signUp(w, "New Person", "new@person.test");
+    (w.env as { EMAIL_VERIFICATION?: string }).EMAIL_VERIFICATION = undefined;
     const res = await call(w, p, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Anything" }) });
     expect(res.status).toBe(403);
-    expect(w.sent.some((m) => m.to === "new@person.test")).toBe(true);
+    // Making an account now signs no one in; the link in the email does.
+    const made = await call(w, null, "/api/auth/sign-up/email", { method: "POST", body: JSON.stringify({ name: "Other Person", email: "other@person.test", password: "a-long-password-1" }) });
+    expect(await made.json()).toMatchObject({ token: null });
+    expect(w.sent.some((m) => m.to === "other@person.test")).toBe(true);
   });
 
   it("limits how many offices one person opens in a day", async () => {

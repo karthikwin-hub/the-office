@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { BRAND } from "@office/contracts";
-import { account, twoFactor } from "../api/client";
+import { account, type ApiError, twoFactor } from "../api/client";
 import { BrandPlate, currentDocuments, LegalFooter } from "./Legal";
 
 type Mode = "sign-in" | "sign-up" | "forgot" | "reset" | "two-factor";
@@ -57,7 +57,7 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
   }, [peek.data]);
 
   const submit = useMutation({
-    mutationFn: async (): Promise<"signed-in" | "link-sent" | "changed" | "second-step"> => {
+    mutationFn: async (): Promise<"signed-in" | "link-sent" | "changed" | "second-step" | "check-email"> => {
       if (mode === "two-factor") {
         await (backup ? twoFactor.verifyBackupCode(code) : twoFactor.verifyCode(code)).catch((e: Error) => {
           throw new Error(
@@ -84,15 +84,24 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
         return "changed";
       }
       if (mode === "sign-in") {
-        if ((await account.signIn(email, password)).twoFactorRedirect) return "second-step";
+        const signedIn = await account.signIn(email, password).catch((e: ApiError) => {
+          throw e.status === 403 && /verif/i.test(e.message) ? new Error(`Confirm your email address first: open the link we sent to ${email}. We have just sent it again.`) : e;
+        });
+        if (signedIn.twoFactorRedirect) return "second-step";
       } else {
-        await account.signUp(name, email, password);
+        // Where addresses are confirmed, no one is signed in yet: the link in the email does that.
+        if (!(await account.signUp(name, email, password)).token) return "check-email";
         // If this fails the gate asks again after sign-in; the account exists either way.
         await account.consent(currentDocuments()).catch(() => undefined);
       }
       return "signed-in";
     },
     onSuccess: (done) => {
+      if (done === "check-email") {
+        setPassword("");
+        setModeState("sign-in");
+        return setNotice(`We sent a link to ${email}. Open it to confirm your address; it signs you in${invited ? " and brings you back to the invitation" : ""}. If you already had an account with this address, the email says so instead.`);
+      }
       if (done === "second-step") {
         setPassword("");
         setCode("");

@@ -144,6 +144,17 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
       resetPasswordTokenExpiresIn: 60 * 60,
       // Whoever knew the old password is signed out everywhere once it changes.
       revokeSessionsOnPasswordReset: true,
+      // Making an account answers the same whether or not the address already has one, so it says nothing about who
+      // uses us: no one is signed in until they open the link we email, and the address's owner hears of the attempt.
+      requireEmailVerification: verificationRequired(env),
+      onExistingUserSignUp: async ({ user }) => {
+        await sendMail(
+          env,
+          user.email,
+          `Someone tried to make an account with your address on ${BRAND.name}`,
+          [`Hello ${user.name},`, "", `Someone just tried to make a new ${BRAND.name} account with this email address. You already have one, so nothing changed.`, "", "If it was you, sign in with your password, or choose \"Forgotten your password?\" to set a new one.", "If it was not you, you need do nothing."].join("\n"),
+        );
+      },
       sendResetPassword: async ({ user, url }) => {
         await sendMail(
           env,
@@ -155,6 +166,8 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
     },
     emailVerification: {
       sendOnSignUp: verificationRequired(env),
+      // Signing in before confirming sends the link again.
+      sendOnSignIn: verificationRequired(env),
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
         await sendMail(env, user.email, `Confirm your email for ${BRAND.name}`, [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join("\n"));

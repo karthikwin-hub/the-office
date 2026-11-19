@@ -173,7 +173,8 @@ export const account = {
   me: () => call<Me>(ACCOUNT_ROUTES.me),
   /** With two-factor sign-in on, the password alone signs no one in: the answer asks for the second step. */
   signIn: (email: string, password: string) => auth<{ twoFactorRedirect?: boolean }>("sign-in/email", { email, password, rememberMe: true }),
-  signUp: (name: string, email: string, password: string) => auth("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
+  /** Where addresses are confirmed, this signs no one in (`token` is null) and answers the same for an address that has an account: the emailed link signs in. */
+  signUp: (name: string, email: string, password: string) => auth<{ token: string | null }>("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
   signOut: () => auth("sign-out"),
   resendVerification: (email: string) => auth("send-verification-email", { email, callbackURL: location.pathname + location.search }),
   /** The link in the email comes back here with `?reset-password=1&token=…`, or `&error=INVALID_TOKEN` once it has expired. */

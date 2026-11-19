@@ -154,3 +154,48 @@ describe("password hashes", () => {
     expect((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD })).status).toBe(200);
   });
 });
+
+describe("making an account", () => {
+  /** Verification on, as in production, with mail kept in memory. */
+  function verifyingEnv() {
+    const { env, db } = liveEnv("test");
+    const sent: { to: string; raw: string }[] = [];
+    Object.assign(env, { EMAIL_VERIFICATION: undefined, MAILER: { send: async (m: { to: string; raw: string }) => void sent.push(m) } });
+    const bodyOf = (raw: string) => Buffer.from(raw.split("\r\n\r\n").slice(1).join("").replace(/\s+/g, ""), "base64").toString("utf8");
+    const subjectOf = (raw: string) => (/^Subject: (.*)$/m.exec(raw)?.[1] ?? "").replace(/=\?UTF-8\?B\?([^?]*)\?=\s*/gi, (_, b: string) => Buffer.from(b, "base64").toString("utf8"));
+    return { env, db, sent, bodyOf, subjectOf };
+  }
+  const signUpAs = (env: Env, email: string, password = PASSWORD) => post(env, "/api/auth/sign-up/email", { name: "Someone", email, password });
+  const shape = async (res: Response) => {
+    const body = (await res.json()) as { token: unknown; user: Record<string, unknown> };
+    return { status: res.status, cookies: (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().length, token: body.token, keys: Object.keys(body.user).sort(), email: body.user.email, emailVerified: body.user.emailVerified };
+  };
+
+  it("answers the same whether or not the address already has an account", async () => {
+    const { env, sent, subjectOf } = verifyingEnv();
+    expect((await signUpAs(env, "anil@kaveri.test")).status).toBe(200);
+    sent.length = 0;
+    const again = await shape(await signUpAs(env, "anil@kaveri.test", "another-long-password"));
+    const fresh = await shape(await signUpAs(env, "nobody@nowhere.test", "another-long-password"));
+    expect(again).toEqual({ ...fresh, email: "anil@kaveri.test" });
+    expect(fresh).toMatchObject({ status: 200, cookies: 0, token: null, emailVerified: false });
+    // Each address gets one message: the owner of the existing account hears of the attempt.
+    expect(sent.map((m) => m.to).sort()).toEqual(["anil@kaveri.test", "nobody@nowhere.test"]);
+    expect(subjectOf(sent.find((m) => m.to === "anil@kaveri.test")!.raw)).toMatch(/tried to make an account/);
+    expect(subjectOf(sent.find((m) => m.to === "nobody@nowhere.test")!.raw)).toMatch(/Confirm your email/);
+  });
+
+  it("signs in through the emailed link, and sends it again to someone signing in before opening it", async () => {
+    const { env, sent, bodyOf } = verifyingEnv();
+    await signUpAs(env, "anil@kaveri.test");
+    const early = await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: PASSWORD });
+    expect(early.status).toBe(403);
+    expect(sent).toHaveLength(2);
+    const link = /https?:\/\/\S+verify-email\S+/.exec(bodyOf(sent.at(-1)!.raw))![0];
+    const opened = await app.request(link, { headers: { origin: BASE } }, env);
+    expect(opened.status).toBeLessThan(400);
+    const me = await get(env, "/api/me", withCookies("", opened));
+    expect(me.status).toBe(200);
+    expect(((await me.json()) as { user: { emailVerified: boolean } }).user.emailVerified).toBe(true);
+  });
+});
