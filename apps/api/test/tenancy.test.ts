@@ -559,8 +559,8 @@ describe("people in an office", () => {
     const { w, anil, bina, A } = await twoOffices();
     const inv = (await (await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })).json()) as { link: string; emailed: boolean };
     expect(inv.emailed).toBe(true);
-    const token = new URL(inv.link).searchParams.get("invite")!;
-    expect(await (await call(w, bina, ACCOUNT_ROUTES.invitation(token))).json()).toEqual({ officeName: "Kaveri Electricals", email: "carol@firm.test", role: "accountant" });
+    const token = inviteIn(inv.link);
+    expect((await call(w, bina, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(200);
     expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
     const carol = await signUp(w, "Carol Rao", "carol@firm.test");
     expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: A, role: "accountant" });
@@ -571,6 +571,32 @@ describe("people in an office", () => {
     expect((await call(w, carol, inOffice(A, ROUTES.officeAdmin), { method: "PATCH", body: JSON.stringify({ name: "Mine now" }) })).status).toBe(403);
     expect((await call(w, carol, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "x@y.test" }) })).status).toBe(403);
     expect((await call(w, carol, inOffice(A, ROUTES.officeExport))).status).toBe(403);
+  });
+
+  it("keeps invitation tokens out of every URL a server sees: after # in the link, in the body to look up and accept", async () => {
+    const { w, anil, bina, A } = await twoOffices();
+    const inv = (await (await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })).json()) as { link: string };
+    const link = new URL(inv.link);
+    expect([link.origin, link.pathname, link.search]).toEqual([BASE, "/", ""]);
+    expect(link.hash).toMatch(/^#invite=[\w-]{40,}$/);
+    expect(mailText(w.sent.at(-1)!)).toContain(inv.link);
+    const token = inviteIn(inv.link);
+
+    const peek = (body: unknown) => call(w, bina, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify(body) });
+    expect(ACCOUNT_ROUTES.peekInvitation).not.toContain(token);
+    expect(await (await peek({ token })).json()).toEqual({ officeName: "Kaveri Electricals", email: "carol@firm.test", role: "accountant" });
+    expect((await peek({ token: "x".repeat(43) })).status).toBe(404);
+    expect((await peek({})).status).toBe(404);
+    // The sign-in page asks before anyone has signed in.
+    expect(await (await call(w, null, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toMatchObject({ email: "carol@firm.test" });
+    // The old lookup, with the token in the path, is gone.
+    const old = await call(w, bina, `/api/invitations/${token}`);
+    expect(old.status).toBe(404);
+    expect(await old.text()).not.toContain("carol@firm.test");
+
+    const carol = await signUp(w, "Carol Rao", "carol@firm.test");
+    expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: A, role: "accountant" });
+    expect((await peek({ token })).status).toBe(404);
   });
 
   it("keeps an owner, hands the office over, and removes people", async () => {

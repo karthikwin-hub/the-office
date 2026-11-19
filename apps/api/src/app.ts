@@ -180,6 +180,21 @@ app.post("/api/chat/:key", async (c) => {
   return c.body(body, res.status as 200, { ...CHAT_CORS, "content-type": "application/json" });
 });
 
+/* ---------- An invitation, looked up before anyone signs in ---------- */
+
+/**
+ * An invitation link carries its token after `#`, which browsers never send: the page reads it and posts it
+ * here, so no request line, and no log of one, holds a token or tells whom it was for.
+ */
+export const inviteLink = (env: Pick<Env, "BETTER_AUTH_URL">, token: string) => `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/#invite=${encodeURIComponent(token)}`;
+
+/** The sign-in page names the office and address an invitation is for, so the person makes the right account. Only the token's holder can ask. */
+app.post(ACCOUNT_ROUTES.peekInvitation, async (c) => {
+  const parsed = AcceptInvitation.safeParse(await c.req.json().catch(() => null));
+  const peek = parsed.success ? await cp(c.env).peekInvite(parsed.data.token) : null;
+  return peek ? c.json(peek) : c.json({ error: "This invitation has expired or was already used. Ask for a new one." }, 404);
+});
+
 /* ---------- Everything else needs someone signed in ---------- */
 
 app.use("/api/*", async (c, next) => {
@@ -242,12 +257,7 @@ app.post("/api/offices", async (c) => {
   return c.json({ id: made.id, name: made.name, role: "owner", status: made.status }, 201);
 });
 
-app.get("/api/invitations/:token", async (c) => {
-  const peek = await cp(c.env).peekInvite(c.req.param("token"));
-  return peek ? c.json(peek) : c.json({ error: "This invitation has expired or was already used. Ask for a new one." }, 404);
-});
-
-app.post("/api/invitations/accept", async (c) => {
+app.post(ACCOUNT_ROUTES.acceptInvitation, async (c) => {
   const parsed = AcceptInvitation.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "That link is not complete. Open it again from the email." }, 400);
   const r = await cp(c.env).acceptInvite(parsed.data.token, { ...c.get("user"), emailVerified: c.get("user").emailVerified || !verificationRequired(c.env) });
@@ -275,7 +285,7 @@ app.use("/api/platform/*", platformOnly);
 
 /** The owner's link goes only by email, to the address it is for: the console never sees it, so it cannot open an office's books. */
 const ownerInviteMail = (env: Env, officeName: string, email: string, token: string) => {
-  const link = `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/?invite=${encodeURIComponent(token)}`;
+  const link = inviteLink(env, token);
   return sendMail(
     env,
     email,
@@ -437,7 +447,7 @@ app.post("/api/o/:office/office-admin/invitations", async (c) => {
   const email = parsed.data.email.toLowerCase();
   if ((await plane.members(office.id)).some((m) => m.email.toLowerCase() === email)) return c.json({ error: `${email} is already in this office.` }, 409);
   const { token, expiresAt } = await plane.invite(office.id, email, parsed.data.role, caller.email);
-  const link = `${c.env.BETTER_AUTH_URL.replace(/\/$/, "")}/?invite=${encodeURIComponent(token)}`;
+  const link = inviteLink(c.env, token);
   const what = parsed.data.role === "owner" ? "as an owner" : "to read the books, download returns and answer the Auditor";
   const emailed = await sendMail(
     c.env,

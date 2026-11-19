@@ -142,7 +142,7 @@ switch (command) {
       ON CONFLICT (office_id, email) DO UPDATE SET role = 'owner', token_hash = excluded.token_hash, invited_by = 'admin', created_at = excluded.created_at, expires_at = excluded.expires_at, accepted_at = NULL;
       ${audit(o.id, "invitation.sent", `${email} as owner`)}`);
     const base = local ? "http://localhost:8787" : configVar("BETTER_AUTH_URL");
-    console.log(`Owner invitation for ${email} to ${o.name}, good for 14 days. Send them this link:\n${base}/?invite=${token}`);
+    console.log(`Owner invitation for ${email} to ${o.name}, good for 14 days. Send them this link:\n${base}/#invite=${token}`);
     break;
   }
   case "route": {

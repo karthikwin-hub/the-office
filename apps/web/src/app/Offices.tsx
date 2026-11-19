@@ -26,20 +26,62 @@ function onOwnAddress(subdomain: string): string {
   return officeUrl(subdomain, `${location.pathname}${query ? `?${query}` : ""}${location.hash}`);
 }
 
-/** The invitation token from the link, kept while the person signs in or makes an account. */
+/**
+ * The invitation token, kept in this browser for a day while the person signs in or makes an account, so the
+ * page their confirmation email opens (often a new tab) still offers to join. It never goes in a URL a server sees.
+ */
+const INVITE_KEPT_MS = 24 * 3600_000;
+const keptInvite = {
+  get(): string | null {
+    try {
+      const v = JSON.parse(localStorage.getItem(INVITE_KEY) ?? "null") as { token?: unknown; until?: unknown } | null;
+      if (v && typeof v.token === "string" && typeof v.until === "number" && v.until > Date.now()) return v.token;
+    } catch {
+      // Unreadable or blocked storage: as if nothing was kept.
+    }
+    keptInvite.drop();
+    return null;
+  },
+  set(token: string) {
+    try {
+      localStorage.setItem(INVITE_KEY, JSON.stringify({ token, until: Date.now() + INVITE_KEPT_MS }));
+    } catch {
+      // Storage blocked: the link still works if opened again.
+    }
+  },
+  drop() {
+    try {
+      localStorage.removeItem(INVITE_KEY);
+      sessionStorage.removeItem(INVITE_KEY);
+    } catch {
+      // Nothing to drop.
+    }
+  },
+};
+
+/**
+ * The invitation token from the link, or the one kept from it. Links carry it after `#`, which never reaches
+ * a server; links sent before that carry `?invite=`. Either way it leaves the address bar at once, so it is
+ * not in the history or passed on to another page.
+ */
 function inviteToken(): string | null {
-  const fromUrl = params().get("invite");
-  if (fromUrl) sessionStorage.setItem(INVITE_KEY, fromUrl);
-  return sessionStorage.getItem(INVITE_KEY);
+  const u = new URL(location.href);
+  const hash = new URLSearchParams(u.hash.slice(1));
+  const fromUrl = hash.get("invite") ?? u.searchParams.get("invite");
+  if (fromUrl) {
+    keptInvite.set(fromUrl);
+    hash.delete("invite");
+    u.searchParams.delete("invite");
+    const rest = hash.toString();
+    history.replaceState(history.state, "", u.pathname + u.search + (rest ? `#${rest}` : ""));
+    return fromUrl;
+  }
+  return keptInvite.get();
 }
 
-/** A used or expired invitation: dropped from this tab and from the address, so signing in goes straight to the person's offices. */
+/** A used or expired invitation: dropped from this browser, so signing in goes straight to the person's offices. */
 function forgetSpentInvite() {
-  sessionStorage.removeItem(INVITE_KEY);
-  const u = new URL(location.href);
-  if (!u.searchParams.has("invite")) return;
-  u.searchParams.delete("invite");
-  history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+  keptInvite.drop();
 }
 
 /** `?office=` first, then the office last opened on this device, then the only one; never an office the person is not in. */
@@ -135,7 +177,8 @@ function Door({ title, lede, children }: { title: string; lede?: ReactNode; chil
 }
 
 function SignOutLink() {
-  const out = useMutation({ mutationFn: account.signOut, onSettled: () => location.assign("/") });
+  // Signing out on the way in leaves no invitation behind for the next person on this browser.
+  const out = useMutation({ mutationFn: account.signOut, onSettled: () => (keptInvite.drop(), location.assign("/")) });
   return (
     <p className="signin-switch">
       <button type="button" className="link-button" onClick={() => out.mutate()} disabled={out.isPending}>
@@ -169,12 +212,12 @@ function AcceptInvitation({ token, me }: { token: string; me: Me }) {
   const accept = useMutation({
     mutationFn: () => account.acceptInvitation(token),
     onSuccess: (r) => {
-      sessionStorage.removeItem(INVITE_KEY);
+      keptInvite.drop();
       goToOffice(r.officeId);
     },
   });
   const forget = () => {
-    sessionStorage.removeItem(INVITE_KEY);
+    keptInvite.drop();
     location.assign("/");
   };
   if (peek.error)
@@ -218,10 +261,10 @@ function AcceptInvitation({ token, me }: { token: string; me: Me }) {
 function SwitchAccount({ token, invited, signedInAs, officeName, onLater }: { token: string; invited: string; signedInAs: string; officeName: string; onLater: () => void }) {
   const out = useMutation({
     mutationFn: account.signOut,
-    // The link stays in this tab, so the sign-in page opens on making an account for the invited address.
+    // The token is kept, so the sign-in page opens on making an account for the invited address.
     onSettled: () => {
-      sessionStorage.setItem(INVITE_KEY, token);
-      location.assign(`/?invite=${encodeURIComponent(token)}`);
+      keptInvite.set(token);
+      location.assign("/");
     },
   });
   return (

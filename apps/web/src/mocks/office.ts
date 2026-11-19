@@ -71,7 +71,7 @@ export async function mockOfficeAdmin(request: Request, path: string, role: Role
     const expiresAt = new Date(Date.now() + 14 * day).toISOString();
     s.invitations = [{ email, role: r, invitedBy: by, expiresAt }, ...s.invitations.filter((i) => i.email !== email)];
     log("invitation.sent", `${email} as ${r}`);
-    return HttpResponse.json({ email, link: `${location.origin}/?invite=sample-invitation-for-the-mockup`, emailed: false, expiresAt });
+    return HttpResponse.json({ email, link: `${location.origin}/#invite=sample-invitation-for-the-mockup`, emailed: false, expiresAt });
   }
   const inv = /^\/api\/office-admin\/invitations\/(.+)$/.exec(path);
   if (inv && request.method === "DELETE") {

@@ -712,6 +712,7 @@ export type Me = z.infer<typeof Me>;
 export const OpenOffice = z.object({ name: z.string().trim().min(2).max(80) });
 export const InvitationPeek = z.object({ officeName: z.string(), email: z.string(), role: Role });
 export type InvitationPeek = z.infer<typeof InvitationPeek>;
+/** The token from an invitation link, posted to look it up or accept it. */
 export const AcceptInvitation = z.object({ token: z.string().min(20).max(100) });
 
 /** The owner's view of the office as an account: its people, invitations, address and history. */
@@ -732,7 +733,7 @@ export const OfficeAdmin = z.object({
 export type OfficeAdmin = z.infer<typeof OfficeAdmin>;
 export const OfficeRename = z.object({ name: z.string().trim().min(2).max(80) });
 export const InviteRequest = z.object({ email: z.string().trim().email().max(200), role: Role.default("accountant") });
-/** The link works once, for 14 days; the owner can pass it on themselves if the email does not arrive. */
+/** The link works once, for 14 days; the owner can pass it on themselves if the email does not arrive. Its token is after `#`, so it never reaches a server log. */
 export const InviteResult = z.object({ email: z.string(), link: z.string(), emailed: z.boolean(), expiresAt: IsoDateTime });
 export type InviteResult = z.infer<typeof InviteResult>;
 export const RoleChange = z.object({ role: Role });
@@ -780,7 +781,8 @@ export const PLATFORM_ROUTES = {
 export const ACCOUNT_ROUTES = {
   me: "/api/me",
   offices: "/api/offices",
-  invitation: (token: string) => `/api/invitations/${encodeURIComponent(token)}`,
+  /** POST `{ token }`: the token travels in the body, never in a URL. */
+  peekInvitation: "/api/invitations/peek",
   acceptInvitation: "/api/invitations/accept",
   consent: "/api/account/consent",
   accountExport: "/api/account/export",

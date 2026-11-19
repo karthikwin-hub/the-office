@@ -155,7 +155,7 @@ export const account = {
   requestPasswordReset: (email: string) => auth("request-password-reset", { email, redirectTo: `${location.origin}/?reset-password=1` }),
   resetPassword: (newPassword: string, token: string) => auth("reset-password", { newPassword, token }),
   openOffice: (name: string) => call<OfficeSummary>(ACCOUNT_ROUTES.offices, { method: "POST", body: { name } }),
-  peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.invitation(token)),
+  peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: { token } }),
   restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),
   acceptInvitation: (token: string) => call<{ officeId: string; role: Session["role"] }>(ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: { token } }),
   consent: (documents: { document: "terms" | "privacy"; version: string }[]) => call<{ ok: true }>(ACCOUNT_ROUTES.consent, { method: "POST", body: { documents } }),
