@@ -35,6 +35,7 @@ import {
 import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedCopy } from "./backup";
 import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
+import { fileRoute, OfficeFiles } from "./files";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
@@ -129,6 +130,8 @@ export class Office extends Agent<Env> {
   private salesStore!: SqlSalesStore;
   private office!: OfficeService;
   private vault!: TokenVault;
+  /** The office's stored files in R2, sealed with its own key (`files.ts`). */
+  private files!: OfficeFiles;
   private spentStates!: SpentStates;
   /** Exports being written, part by part, for the Worker (export.ts). */
   private exports: OfficeExports | null = null;
@@ -193,6 +196,7 @@ export class Office extends Agent<Env> {
     this.assistantStore = new SqlAssistantStore(sql);
     this.salesStore = new SqlSalesStore(sql);
     this.vault = new TokenVault(sql, rootKeys(this.env), id);
+    this.files = new OfficeFiles(this.env.DOCS, rootKeys(this.env), id);
     this.spentStates = new SpentStates(sql);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
@@ -553,6 +557,9 @@ export class Office extends Agent<Env> {
         return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);
       return json(await this.purge());
     }
+    // Stored files only read or add a file: they skip the books and the save that follows every other request.
+    const file = await this.fileRequest(request, path);
+    if (file) return file;
     this.fresh();
     // The export only reads: its plan and parts skip the save that follows every other request.
     if (request.method === "POST" && path.startsWith("/internal/export/")) return this.exportRequest(path, request);
@@ -699,9 +706,19 @@ export class Office extends Agent<Env> {
     return { office: this.officeId, exportedAt: new Date().toISOString(), books: this.office.books, settings };
   }
 
+  /** The file routes (`files.ts`), or null for any other request. A file that cannot be opened is logged, never shown. */
+  private async fileRequest(request: Request, path: string): Promise<Response | null> {
+    try {
+      return await fileRoute(this.files, request, path);
+    } catch (e) {
+      log("error", "files.failed", { officeId: this.officeId, route: routeOf(path), method: request.method }, e);
+      return json({ error: "The file could not be opened. Try again." }, 500);
+    }
+  }
+
   /** `/internal/export/plan` lists what goes in the archive; `/internal/export/part` streams one part of it. */
   private async exportRequest(path: string, request: Request): Promise<Response> {
-    this.exports ??= new OfficeExports(this.env.DOCS);
+    this.exports ??= new OfficeExports(this.env.DOCS, this.files);
     try {
       if (path === "/internal/export/plan") return json(await this.exports.plan(this.officeId!, this.exportBooks()));
       if (path === "/internal/export/part") {
@@ -858,10 +875,7 @@ export class Office extends Agent<Env> {
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `media-u${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`;
     if (!MEDIA_ID.test(id)) return json({ error: "Could not name the picture." }, 500);
-    await this.env.DOCS.put(mediaKey(this.officeId!, id), await file.arrayBuffer(), {
-      httpMetadata: { contentType: file.type },
-      customMetadata: { by: caller.email },
-    });
+    await this.files.put(mediaKey(this.officeId!, id), await file.arrayBuffer(), file.type, { by: caller.email });
     const skuId = String(form.get("skuId") ?? "");
     const asset = this.office.addMedia({
       id,
@@ -972,9 +986,9 @@ export class Office extends Agent<Env> {
     }
     let read = 0;
     for (const d of mail.docs) {
-      const obj = await this.env.DOCS.get(docKey(this.officeId!, d.id));
-      if (!obj) continue;
-      const r = await readSalesFile(this.office, { name: d.filename, bytes: await obj.arrayBuffer(), via: "email", sender });
+      const bytes = await this.files.bytes(docKey(this.officeId!, d.id));
+      if (!bytes) continue;
+      const r = await readSalesFile(this.office, { name: d.filename, bytes, via: "email", sender });
       read += r.filter((i) => i.status === "read" || i.status === "payout").length;
     }
     if (!mail.docs.length)
@@ -996,7 +1010,7 @@ export class Office extends Agent<Env> {
     if (bytes.byteLength > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
     take(this.kv.bind(this), istDate(), "upload", bytes.byteLength);
     const id = newDocId();
-    await this.env.DOCS.put(docKey(this.officeId!, id), bytes, { customMetadata: { filename: parsed.data.file, by: caller.email } });
+    await this.files.put(docKey(this.officeId!, id), bytes, undefined, { filename: parsed.data.file, by: caller.email });
     const imports = await readSalesFile(this.office, { name: parsed.data.file, bytes: bytes.buffer as ArrayBuffer, via: "upload", sender: caller.email });
     return json({ imports, message: salesReply(imports), report: this.office.sales.report() });
   }
@@ -1206,7 +1220,7 @@ export class Office extends Agent<Env> {
       newDocId,
       store: async (key, bytes, contentType, meta) => {
         take(this.kv.bind(this), istDate(), "upload", typeof bytes === "string" ? bytes.length : bytes.byteLength);
-        await this.env.DOCS.put(key, bytes, { httpMetadata: { contentType }, customMetadata: meta });
+        await this.files.put(key, bytes, contentType, meta);
       },
       readImage: (id, image, auto) => this.readImage(id, image, auto),
       ...(this.office.hired("marketplace-manager")
@@ -1286,9 +1300,9 @@ export class Office extends Agent<Env> {
     take(this.kv.bind(this), istDate(), "upload", file.size);
 
     const id = newDocId();
-    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), {
-      httpMetadata: { contentType: isPdf ? "application/pdf" : file.type },
-      customMetadata: { filename: file.name, by: caller.email },
+    await this.files.put(docKey(this.officeId!, id), await file.arrayBuffer(), isPdf ? "application/pdf" : file.type, {
+      filename: file.name,
+      by: caller.email,
     });
     this.office.receiveDocument({ id, file: fileUrl(this.officeId!, id), channel: "upload", from: null, pages: Number(form.get("pages") ?? 1) || 1 });
     const image = form.get("image") as File | string | null;
@@ -1313,10 +1327,7 @@ export class Office extends Agent<Env> {
     const files = await Promise.all(
       parsed.data.files.map(async (f) => {
         const id = newDocId();
-        await this.env.DOCS.put(docKey(this.officeId!, id), f.csv, {
-          httpMetadata: { contentType: "text/csv; charset=utf-8" },
-          customMetadata: { filename: f.name, by: caller.email },
-        });
+        await this.files.put(docKey(this.officeId!, id), f.csv, "text/csv; charset=utf-8", { filename: f.name, by: caller.email });
         return { ...f, file: fileUrl(this.officeId!, id) };
       }),
     );
@@ -1428,8 +1439,8 @@ export class Office extends Agent<Env> {
       if (mail.authenticated === true) this.kv(`mail:verified:${d.id}`, "1");
       this.office.receiveDocument({ id: d.id, file: fileUrl(this.officeId!, d.id), channel: "email", from: mail.from, pages: 1 });
       if (d.mimeType.startsWith("image/")) {
-        const obj = await this.env.DOCS.get(docKey(this.officeId!, d.id));
-        if (obj) results.push(await this.readImage(d.id, await obj.arrayBuffer(), auto));
+        const bytes = await this.files.bytes(docKey(this.officeId!, d.id));
+        if (bytes) results.push(await this.readImage(d.id, bytes, auto));
       }
     }
     if (mail.skipped.length)
@@ -1541,9 +1552,9 @@ export class Office extends Agent<Env> {
     if (!isPdf && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PDF or a picture (PNG, JPEG or WebP)." }, 415);
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `proof-${crypto.randomUUID()}`;
-    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), {
-      httpMetadata: { contentType: isPdf ? "application/pdf" : file.type },
-      customMetadata: { filename: file.name, by: caller.email },
+    await this.files.put(docKey(this.officeId!, id), await file.arrayBuffer(), isPdf ? "application/pdf" : file.type, {
+      filename: file.name,
+      by: caller.email,
     });
     return json({ file: fileUrl(this.officeId!, id), name: file.name.slice(0, 200) });
   }

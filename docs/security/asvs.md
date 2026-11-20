@@ -199,7 +199,7 @@ Not applicable: 5.3.7 (LDAP), 5.4.1–5.4.3 (memory-safe runtime).
 
 | Req | Requirement (short) | Status | Evidence |
 | --- | --- | --- | --- |
-| 6.1.1 | Regulated private data encrypted at rest | Partly | Copies sealed per office (`envelope.ts`); live books and files under the provider's encryption |
+| 6.1.1 | Regulated private data encrypted at rest | Partly | Copies of the books and stored files sealed per office (`envelope.ts`, `files.ts`); live books in the Durable Object, and files stored before 20 November 2026, under the provider's encryption |
 | 6.1.3 | Regulated financial data encrypted at rest | Partly | As 6.1.1 |
 | 6.2.1 | Cryptography fails securely | Met | Authenticated encryption; opening fails on change (`envelope.ts`, `social/tokens.ts`) |
 | 6.2.2 | Vetted algorithms and libraries | Met | WebCrypto: AES-256-GCM, HKDF-SHA256, HMAC-SHA256, PBKDF2 |

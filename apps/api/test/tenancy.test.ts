@@ -7,6 +7,7 @@ import { CALLER_HEADER, type Caller } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
 import type { Env } from "../src/env";
 import { OfficeExports } from "../src/export";
+import { fileRoute, OfficeFiles } from "../src/files";
 import { rootKeys } from "../src/keyring";
 import { docKey, mediaKey } from "../src/keys";
 import { meteredAi, QUOTA, QuotaError, take } from "../src/quota";
@@ -108,7 +109,7 @@ function indiaStore() {
 type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string; sealed: boolean };
 /**
  * Durable Objects that only record what reached them, and answer with whose they are. They take mail unless `mail.admit`
- * says not, and write exports with the office's own export code.
+ * says not, and serve files and write exports with the office's own code.
  */
 function officesNs(docs: ReturnType<typeof r2>) {
   const seen: Seen[] = [];
@@ -121,9 +122,14 @@ function officesNs(docs: ReturnType<typeof r2>) {
         const path = new URL(req.url).pathname;
         const caller = JSON.parse(req.headers.get(CALLER_HEADER) ?? "null") as Caller;
         const sealed = await callerSealed(SECRET, req.headers.get(CALLER_HEADER) ?? "", req.headers.get(CALLER_SEAL_HEADER));
+        const copy = req.clone();
         seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text(), sealed });
+        // Stored files and exports run the office's own code, over this bucket and the test's root key.
+        const files = new OfficeFiles(docs as unknown as R2Bucket, rootKeys({ SOCIAL_TOKEN_KEY: SECRET }), id.name);
+        const filed = await fileRoute(files, copy, path);
+        if (filed) return filed;
         if (path === "/internal/export/plan") {
-          if (!exports.has(id.name)) exports.set(id.name, new OfficeExports(docs as unknown as R2Bucket));
+          if (!exports.has(id.name)) exports.set(id.name, new OfficeExports(docs as unknown as R2Bucket, files));
           return Response.json(await exports.get(id.name)!.plan(id.name, { office: id.name, books: { business: { name: id.name } } }));
         }
         if (path === "/internal/export/part") {
@@ -519,10 +525,18 @@ describe("one office cannot reach another", () => {
     await receiveEmail(good, w.env);
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
     expect(w.docs.map.size).toBe(1);
+    const [key, stored] = [...w.docs.map][0]!;
     expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
       [A, "/internal/mail-admit"],
+      [A, `/internal/files/${key.split("/").at(-1)}`],
       [A, "/internal/email"],
     ]);
+    // The office sealed the attachment with its own key: R2 holds neither the bill, its name nor its sender.
+    expect(stored.customMetadata).toEqual({ sealed: "OFB1" });
+    expect(new TextDecoder("latin1").decode(stored.bytes)).not.toMatch(/PDF-1\.4|bill\.pdf|supplier/);
+    const opened = await new OfficeFiles(w.docs as unknown as R2Bucket, rootKeys({ SOCIAL_TOKEN_KEY: SECRET }), A).get(key);
+    expect(opened).toMatchObject({ contentType: "application/pdf", meta: { filename: "bill.pdf", by: "bills@supplier.test" }, sealed: true });
+    expect(new TextDecoder().decode(opened!.body as Uint8Array)).toBe("%PDF-1.4 a bill");
     const stray = mail("someone-else@in.the-office.test");
     await receiveEmail(stray, w.env);
     expect(stray.setReject).toHaveBeenCalled();
@@ -603,11 +617,12 @@ describe("the sales address", () => {
       } as unknown as ForwardableEmailMessage,
       w.env,
     );
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+    expect(w.seen.map((s) => [s.stub, s.path.replace(/doc-[\w-]+$/, "<id>")])).toEqual([
       [A, "/internal/mail-admit"],
+      [A, "/internal/files/<id>"],
       [A, "/internal/sales-email"],
     ]);
-    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
+    expect(JSON.parse(w.seen[2]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
   });
 });

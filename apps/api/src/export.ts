@@ -1,3 +1,4 @@
+import type { OfficeFiles } from "./files";
 import { officePrefix } from "./keys";
 import { log } from "./log";
 import { streamOf, ZipWriter } from "./zip";
@@ -35,7 +36,11 @@ type Pending = { at: number; prefix: string; books: string; keys: string[]; next
 export class OfficeExports {
   private readonly pending = new Map<string, Pending>();
 
-  constructor(private readonly docs: R2Bucket) {}
+  /** `files` opens what it reads, so the archive holds each file as it was given, never sealed. */
+  constructor(
+    private readonly docs: R2Bucket,
+    private readonly files: Pick<OfficeFiles, "get">,
+  ) {}
 
   /** Lists the office's own files (only keys under `o/<officeId>/`) and keeps the books as they are now. */
   async plan(officeId: string, books: unknown): Promise<ExportPlan> {
@@ -73,16 +78,16 @@ export class OfficeExports {
     p.busy = true;
     const parts = Math.max(1, Math.ceil(p.keys.length / EXPORT_PART_FILES));
     const last = part === parts - 1;
-    const docs = this.docs;
+    const files = this.files;
     const pending = this.pending;
     async function* chunks(): AsyncGenerator<Uint8Array> {
       let done = false;
       try {
         if (part === 0) yield* p!.zip.entry("books.json", p!.books);
         for (const key of p!.keys.slice(part * EXPORT_PART_FILES, (part + 1) * EXPORT_PART_FILES)) {
-          const obj = await docs.get(key);
-          if (!obj) continue; // deleted since the listing
-          yield* p!.zip.entry(`files/${key.slice(p!.prefix.length)}`, obj.body);
+          const f = await files.get(key);
+          if (!f) continue; // deleted since the listing
+          yield* p!.zip.entry(`files/${key.slice(p!.prefix.length)}`, f.body);
         }
         if (last) yield p!.zip.finish();
         done = true;

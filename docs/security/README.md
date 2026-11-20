@@ -184,7 +184,7 @@ In priority order. The private review's tracker holds the detail.
 | A Cloudflare rate-limit rule on `/api/auth/*` (optional; the free plan allows one) | A layer in front of the Worker's own limits |
 | Give the India bucket's key list and delete permission (not only put) before setting `INDIA_BACKUP_*` | A purged office's copies in India cannot be deleted without it |
 | Bring the privacy notice in line with self-serve deletion and the eight-year retained copy; publish it as a new version | It still says deletion is completed within 30 days, and that books are erased 30 days after an office is deleted |
-| Encrypt the office's live files in R2 with the office's key | R2 encrypts at rest, but with Cloudflare's key: anyone with the bucket can read them |
+| Seal in place the files stored before 20 November 2026 (a backfill in each office's Durable Object) | New files are sealed with the office's key (`files.ts`); older ones are still encrypted only by R2, under Cloudflare's key |
 | A command to load an opened backup into a new office | Restoring books is an engineering step today |
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
 | Branch protection on `main` requiring the CI checks; then the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |

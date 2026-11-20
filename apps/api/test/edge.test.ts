@@ -8,6 +8,7 @@ import { app } from "../src/app";
 import { API_CSP, appCsp, BASE_HEADERS, FILE_CSP, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
 import { newDocId } from "../src/caller";
 import type { Env } from "../src/env";
+import { fileRoute, OfficeFiles } from "../src/files";
 import { docKey, mediaKey } from "../src/keys";
 import { signMedia } from "../src/social/media";
 import { d1 } from "./d1";
@@ -25,7 +26,7 @@ function r2() {
   const m = new Map<string, { bytes: Uint8Array; httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> }>();
   return {
     put: async (key: string, data: string | Uint8Array, o: { httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> } = {}) =>
-      void m.set(key, { bytes: typeof data === "string" ? enc.encode(data) : data, ...o }),
+      void m.set(key, { bytes: typeof data === "string" ? enc.encode(data) : new Uint8Array(data), ...o }),
     get: async (key: string) => {
       const v = m.get(key);
       return v
@@ -37,6 +38,7 @@ function r2() {
             get body() {
               return new Blob([v.bytes]).stream();
             },
+            arrayBuffer: async () => v.bytes.slice().buffer,
           }
         : null;
     },
@@ -54,7 +56,15 @@ function makeEnv(
     DOCS: docs,
     Office: {
       idFromName: (name: string) => ({ name }),
-      get: () => ({ fetch: async (req: Request) => (seen.push(`${req.method} ${new URL(req.url).pathname}`), Response.json({ ok: true })) }),
+      // Offices answer file requests with their own code, over this bucket.
+      get: (id: { name: string }) => ({
+        fetch: async (req: Request) => {
+          const path = new URL(req.url).pathname;
+          seen.push(`${req.method} ${path}`);
+          const filed = await fileRoute(new OfficeFiles(docs as unknown as R2Bucket, rootKeys(env), id.name), req, path);
+          return filed ?? Response.json({ ok: true });
+        },
+      }),
     },
     DATA_MODE: "test",
     MAIL_FROM: "office@the-office.test",

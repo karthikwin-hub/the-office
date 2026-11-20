@@ -57,6 +57,7 @@ export async function openBackup(secrets, bytes) {
   const len = 8 + new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint32(4);
   const header = JSON.parse(dec.decode(buf.subarray(8, len)));
   if (header.v !== 1) throw new Error(`Unknown version ${header.v}.`);
+  if (header.kek !== "SOCIAL_TOKEN_KEY/hkdf-sha256/backup") throw new Error("This is an office's stored file, not a copy of its books.");
   // Copies made before root keys had ids name none: every key given is tried on them.
   let tried = roots;
   if (header.kid) {

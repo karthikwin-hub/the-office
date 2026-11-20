@@ -32,14 +32,15 @@ import { backupTarget, deleteObjects, listObjects, officeBackupPrefix, retainedK
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { rootKeys } from "./keyring";
-import { docKey, mediaKey, officePrefix } from "./keys";
-import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
+import { officePrefix } from "./keys";
+import { sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
 import { exportArchive, type ExportPlan } from "./export";
+import { attachmentRequest } from "./files";
 import { currentRequestId, inOffice, log, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
-import { MEDIA_ID, verifyMedia } from "./social/media";
+import { verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
 import { isFresh, STEP_UP_NEEDED, TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
 import { metaChallenge, verifyMetaSignature } from "./social/webhooks";
@@ -140,9 +141,12 @@ app.get("/media/:office/:id", async (c) => {
   const keys = rootKeys(c.env);
   if (!OFFICE_ID.test(office) || !keys || !(await verifyMedia(keys, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null)))
     return c.text("Not found", 404);
-  const obj = await c.env.DOCS.get(mediaKey(office, id));
-  if (!obj) return c.text("Not found", 404);
-  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, null), "cache-control": "public, max-age=600" } });
+  // The office opens the picture (it may be sealed with its key); a public link may be cached for a while.
+  const res = await toOffice(c.env, new Request(`https://office.internal/internal/media/${id}`), system(office));
+  if (!res.ok) return c.text("Not found", 404);
+  const out = new Response(res.body, res);
+  out.headers.set("cache-control", "public, max-age=600");
+  return out;
 });
 
 /* ---------- The website chat: public, on the business's own site; the key decides the office ---------- */
@@ -475,23 +479,8 @@ app.get(`/api/o/:office${ROUTES.weather.slice(4)}`, async (c) => {
   return c.json({ weather }, 200, { "cache-control": "private, max-age=900" });
 });
 
-app.get("/api/o/:office/files/:id", async (c) => {
-  const id = c.req.param("id");
-  if (!/^(doc|proof)-[\w-]+(\.txt)?$/.test(id)) return c.json({ error: "File not found" }, 404);
-  const obj = await c.env.DOCS.get(docKey(c.get("caller").officeId, id));
-  if (!obj) return c.json({ error: "File not found" }, 404);
-  return new Response(obj.body, {
-    headers: { ...fileHeaders(obj.httpMetadata?.contentType, obj.customMetadata?.filename ?? id), "cache-control": "private, max-age=3600" },
-  });
-});
-
-app.get("/api/o/:office/social/media/:id", async (c) => {
-  const id = c.req.param("id");
-  if (!MEDIA_ID.test(id)) return c.json({ error: "Picture not found" }, 404);
-  const obj = await c.env.DOCS.get(mediaKey(c.get("caller").officeId, id));
-  if (!obj) return c.json({ error: "Picture not found" }, 404);
-  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, null), "cache-control": "private, max-age=3600" } });
-});
+// Stored files (`/api/o/:office/files/:id`, `/api/o/:office/social/media/:id`) go to the office with the rest below: they
+// may be sealed with its key, which only the office opens (`files.ts`).
 
 /* ---------- The office as an account: people, invitations, export, deletion ---------- */
 
@@ -680,6 +669,12 @@ async function admitted(env: Env, officeId: string, kind: MailKind, mail: Inboun
   return ((await res.json()) as { admit?: boolean }).admit === true;
 }
 
+/** An attachment goes to its office, which seals it with its own key and stores it (`files.ts`): no crypto in the Worker. */
+async function storeAttachment(env: Env, officeId: string, id: string, a: Inbound["attachments"][number], by: string) {
+  const res = await toOffice(env, attachmentRequest(id, a, by), system(officeId));
+  if (!res.ok) throw new Error(`The office could not store an attachment (${res.status}).`);
+}
+
 /** Mail to `<slug>@INGEST_DOMAIN`: the address alone says which office it is for; any other address is refused. */
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
   const to = message.to.trim().toLowerCase();
@@ -706,10 +701,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     const docs: InboundDocs["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
-      await env.DOCS.put(docKey(sales, id), a.content, {
-        httpMetadata: { contentType: a.mimeType },
-        customMetadata: { filename: a.filename, by: mail.from ?? message.from },
-      });
+      await storeAttachment(env, sales, id, a, mail.from ?? message.from);
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
     const body: MailDocs & { envelope: string } = {
@@ -731,10 +723,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     const docs: AssistantInbound["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
-      await env.DOCS.put(docKey(assistant, id), a.content, {
-        httpMetadata: { contentType: a.mimeType },
-        customMetadata: { filename: a.filename, by: mail.from ?? message.from },
-      });
+      await storeAttachment(env, assistant, id, a, mail.from ?? message.from);
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
     const body: AssistantInbound = {
@@ -763,10 +752,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   const docs: InboundDocs["docs"] = [];
   for (const a of mail.attachments) {
     const id = newDocId();
-    await env.DOCS.put(docKey(officeId, id), a.content, {
-      httpMetadata: { contentType: a.mimeType },
-      customMetadata: { filename: a.filename, by: mail.from ?? message.from },
-    });
+    await storeAttachment(env, officeId, id, a, mail.from ?? message.from);
     docs.push({ id, mimeType: a.mimeType, filename: a.filename });
   }
   const body: MailDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
