@@ -64,3 +64,11 @@ infisical run --env=prod --silent -- sh tools/admin/deploy.sh demo
 Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`. `sh tools/admin/set-secrets.sh live` (or `staging`) creates the two required ones in that Infisical environment if missing and puts them on that Worker, without printing values; run it yourself. See `docs/handbook/05-configuration.md`, section 3.
 
 The handbook for the team and consultants is `docs/handbook/the-office-handbook.html` (open it in a browser, or print to PDF).
+
+## Contributing
+
+Read `AGENTS.md` first (Claude Code loads it through `CLAUDE.md`): the layout, the commands, and the rules every change
+follows here. In short: secrets only through Infisical, one commit per item with a test that fails before and passes
+after, `pnpm typecheck`, `pnpm lint` and `pnpm test` green, and `/security-review` and `/code-review` on any change to
+`apps/api`. Pull requests go against `main`; nobody merges their own or deploys by hand. The decisions behind the design
+are in `docs/adr/`; the threat model and the ASVS checklist are in `docs/security/`.
