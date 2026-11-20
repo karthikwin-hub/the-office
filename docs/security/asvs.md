@@ -341,7 +341,7 @@ Not applicable: 13.3 (SOAP), 13.4 (GraphQL).
 | 14.1.4 | Automated, reproducible deployment | Partly | `deploy.yml` and `tools/admin/deploy.sh` ready; GitHub environments are an owner step |
 | 14.1.5 | Integrity of security configuration checked | Met | Tests pin the CSP hash and `_headers` (`edge.test.ts`) and the deploy targets (`release.test.ts`) |
 | 14.2.1 | Components up to date | Met | Renovate, blocking audit |
-| 14.2.2 | Unneeded features removed | Partly | `mockServiceWorker.js` still in the live build (`apps/web/public`); removal in progress |
+| 14.2.2 | Unneeded features removed | Met | `mockServiceWorker.js` ships only in the demo builds (`mockWorkerOnlyInDemo` in `apps/web/vite.config.ts`; test `apps/web/src/build.test.ts`) |
 | 14.2.3 | SRI on external assets | Partly | See 10.3.2 |
 | 14.2.4 | Components from trusted sources | Met | npm registry, lockfile |
 | 14.2.5 | Inventory of third-party libraries | Partly | `pnpm-lock.yaml` lists every package and version; no published SBOM |

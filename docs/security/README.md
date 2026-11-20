@@ -192,7 +192,6 @@ In priority order. The private review's tracker holds the detail.
 | Withdraw an invitation by its id, not the invitee's email in the URL path | Cloudflare's own request logs keep paths for 3 days |
 | Alerts on the structured logs: a Workers Issues automation and monitors for error rate, 5xx, failed exports, backups to India and nightly runs, and the CPU limit | The logs, with request and office ids, are in place (`docs/handbook/04-deployment.md`, section 9); the alerts are set up in the Cloudflare dashboard by an owner |
 | Split `OfficeService` and the Durable Object's router | Large files slow review |
-| Drop `mockServiceWorker.js` from the live build | Remaining low finding |
 | Seal again, under the current root key, what an old root key sealed (copies of the books) | After a leaked root key, what it sealed stays readable to its holder; rotation (handbook 05, section 3a) protects what is sealed afterwards |
 | An external penetration test and a DPDP Act gap review | Before the first enterprise customer |
 
