@@ -564,6 +564,13 @@ describe("a person's own rights", () => {
     const written = JSON.stringify([record, w.db.sqlite.prepare("SELECT * FROM audit WHERE at >= (SELECT MAX(at) FROM audit) - 1").all()]);
     expect(written).not.toMatch(/bina|shah\.test/i);
 
+    // An office the platform suspended stays suspended: deleting the account does not delete it.
+    const dev = await signUp(w, "Dev Rao", "dev@rao.test");
+    const D = await openOffice(w, dev, "Rao Traders");
+    await cp.setStatus(D, "suspended", "platform@snilld.test");
+    expect((await remove(dev)).status).toBe(200);
+    expect(await cp.office(D)).toMatchObject({ status: "suspended" });
+
     // Carol leaves Kaveri with her account, which Anil keeps.
     expect((await remove(carol)).status).toBe(200);
     expect(await cp.membership(A, carol.id)).toBeNull();
@@ -960,6 +967,14 @@ describe("suspending, deleting and purging", () => {
     expect(w.db.sqlite.prepare("SELECT * FROM backup_erasure").all()).toEqual([]);
     expect(await cp.auditTrail(A)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "system", action: "office.backups-erased", detail: "1203 copies in India deleted" })]));
     expect(await eraseBackups(w.env)).toBe(0);
+  });
+
+  it("puts erasures the store keeps refusing behind the others, so they cannot hold them back", async () => {
+    const { cp, w } = await twoOffices();
+    await cp.queueBackupErasure("off_aaaaaaaaaaaaaaaa");
+    await cp.queueBackupErasure("off_bbbbbbbbbbbbbbbb");
+    w.db.sqlite.prepare("UPDATE backup_erasure SET tries = 5, since = 0 WHERE office_id = 'off_aaaaaaaaaaaaaaaa'").run();
+    expect((await cp.backupErasures(1)).map((e) => e.officeId)).toEqual(["off_bbbbbbbbbbbbbbbb"]);
   });
 
   it("deletes a purged office's retained books once their eight years are over, and says so in its audit", async () => {

@@ -200,9 +200,9 @@ export class ControlPlane {
     await this.db.prepare("INSERT INTO backup_erasure (office_id, since) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(officeId, this.now()).run();
   }
 
-  /** The oldest erasures still to do. */
+  /** The erasures still to do, those that have failed least first, so one the store keeps refusing does not hold back the rest. */
   async backupErasures(limit: number): Promise<{ officeId: string; erased: number }[]> {
-    const { results } = await this.db.prepare("SELECT office_id, erased FROM backup_erasure ORDER BY since LIMIT ?").bind(limit).all<{ office_id: string; erased: number }>();
+    const { results } = await this.db.prepare("SELECT office_id, erased FROM backup_erasure ORDER BY tries, since LIMIT ?").bind(limit).all<{ office_id: string; erased: number }>();
     return results.map((r) => ({ officeId: r.office_id, erased: r.erased }));
   }
 

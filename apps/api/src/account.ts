@@ -44,7 +44,7 @@ export class AccountRecords {
   /**
    * Deletes the account at once: its sessions, sign-ins, two-factor secret, memberships, WhatsApp link, consent
    * records and invitations, then the account itself. Refused while this person is the only owner of an office
-   * that still has other people in it. An office they are alone in is deleted with them, and purged after 30 days
+   * that still has other people in it. An active office they are alone in is deleted with them, and purged after 30 days
    * as any deleted office is. Each office's audit trail, and a done request with no name or address, record it.
    * Their name stays where the books record what they did, as the privacy notice says.
    */
@@ -60,12 +60,13 @@ export class AccountRecords {
       const one = sole.length === 1;
       return { error: `You are the only owner of ${sole.map((o) => o.name).join(", ")}, and others work in ${one ? "it" : "them"}. Make one of them an owner, or delete ${one ? "the office" : "those offices"}, first.` };
     }
-    const closed = offices.filter((o) => o.people === 1 && o.status !== "deleting").map((o) => o.office_id);
+    // A suspended office stays as it is: the platform suspended it, and only the platform decides what happens to it next.
+    const closed = offices.filter((o) => o.people === 1 && o.status === "active").map((o) => o.office_id);
     const at = this.now();
     const email = user.email.toLowerCase();
     const by = (q: string, ...v: unknown[]) => this.db.prepare(q).bind(...v);
     await this.db.batch([
-      ...closed.flatMap((id) => [by("UPDATE office SET status = 'deleting', deleted_at = ? WHERE id = ? AND status != 'deleting'", at, id), by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'office.deleting', 'its only member deleted their account', ?)", id, DELETED_ACCOUNT, at)]),
+      ...closed.flatMap((id) => [by("UPDATE office SET status = 'deleting', deleted_at = ? WHERE id = ? AND status = 'active'", at, id), by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'office.deleting', 'its only member deleted their account', ?)", id, DELETED_ACCOUNT, at)]),
       ...offices.map((o) => by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'member.account-deleted', NULL, ?)", o.office_id, DELETED_ACCOUNT, at)),
       by("DELETE FROM wa_code WHERE user_id = ?", user.id),
       by("DELETE FROM wa_link WHERE user_id = ?", user.id),
