@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, PLATFORM_ROUTES, type PlatformInvited, type PlatformView, ROUTES, subdomainProblem } from "@office/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { app, purgeDeleted, receiveEmail } from "../src/app";
+import { app, purgeDeleted, receiveEmail, sweepRetained } from "../src/app";
 import { authScope } from "../src/auth";
 import { CALLER_HEADER, type Caller } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
@@ -857,6 +857,27 @@ describe("suspending, deleting and purging", () => {
     expect(await cp.office(A)).toBeNull();
     expect(await cp.membership(A, carol.id)).toBeNull();
     expect((await call(w, bina, inOffice(B, ROUTES.desk))).status).toBe(200);
+  });
+
+  it("deletes a purged office's retained books once their eight years are over, and says so in its audit", async () => {
+    const { w, cp } = await twoOffices();
+    const put = (key: string, keepUntil?: string) => w.docs.put(key, "books", { customMetadata: keepUntil ? { keepUntil } : {} });
+    await put("retained/off_aaaaaaaaaaaaaaaa/2018-02-01T21-30-00-000Z.json", "2027-03-31");
+    // A later date in the metadata wins over the key's.
+    await put("retained/off_eeeeeeeeeeeeeeee/2017-06-01T21-30-00-000Z.json", "2040-03-31");
+    await put("retained/off_bbbbbbbbbbbbbbbb/2026-11-04T21-30-00-000Z.json", "2035-03-31");
+    // Without metadata (a listing may not carry it): the purge year in the key decides it.
+    await put("retained/off_cccccccccccccccc/2017-06-01T21-30-00-000Z.json");
+    await put("retained/off_dddddddddddddddd/undated.json");
+    await w.docs.put(docKey("off_aaaaaaaaaaaaaaaa", "doc-1"), "not a retained copy");
+
+    expect(await sweepRetained(w.env, new Date("2027-03-31T12:00:00Z"))).toBe(1);
+    expect(await sweepRetained(w.env, new Date("2027-04-01T12:00:00Z"))).toBe(1);
+    expect([...w.docs.map.keys()].filter((k) => k.startsWith("retained/")).sort()).toEqual(["retained/off_bbbbbbbbbbbbbbbb/2026-11-04T21-30-00-000Z.json", "retained/off_dddddddddddddddd/undated.json", "retained/off_eeeeeeeeeeeeeeee/2017-06-01T21-30-00-000Z.json"]);
+    expect(w.docs.map.has(docKey("off_aaaaaaaaaaaaaaaa", "doc-1"))).toBe(true);
+    expect(await cp.auditTrail("off_aaaaaaaaaaaaaaaa")).toEqual([expect.objectContaining({ actor: "system", action: "office.retained-deleted" })]);
+    expect(await cp.auditTrail("off_cccccccccccccccc")).toEqual([expect.objectContaining({ action: "office.retained-deleted" })]);
+    expect(await cp.auditTrail("off_bbbbbbbbbbbbbbbb")).toEqual([]);
   });
 
   it("closes a suspended office to its own people without saying so to anyone else", async () => {

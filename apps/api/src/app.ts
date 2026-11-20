@@ -28,6 +28,7 @@ import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "
 import { CALLER_SEAL_HEADER, sealCaller } from "./caller-seal";
 import type { Env } from "./env";
 import { AccountRecords } from "./account";
+import { retainedKeepUntil, retainedOffice } from "./backup";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
@@ -673,4 +674,41 @@ export async function purgeDeleted(env: Env): Promise<number> {
     console.log(JSON.stringify({ event: "office.purged", office: o.id }));
   }
   return due.length;
+}
+
+/** How many pages of retained copies one night looks at, so the run stays small; the rest wait for the next night. */
+const SWEEP_PAGES = 10;
+
+/**
+ * Each night: a purged office's retained copy of its books and edit log (`retained/`) is deleted once the
+ * keep-until date it was written with has passed, and that office's audit trail says so. A copy whose date
+ * cannot be read is kept.
+ */
+export async function sweepRetained(env: Env, now = new Date()): Promise<number> {
+  const today = now.toISOString().slice(0, 10);
+  const plane = cp(env);
+  let cursor: string | undefined;
+  let deleted = 0;
+  for (let page = 0; page < SWEEP_PAGES; page++) {
+    const listed = await env.DOCS.list({ prefix: "retained/", cursor });
+    const due = listed.objects.filter((o) => {
+      const until = retainedKeepUntil(o);
+      return until !== null && until < today;
+    });
+    if (due.length) {
+      await env.DOCS.delete(due.map((o) => o.key));
+      deleted += due.length;
+      for (const officeId of new Set(due.map((o) => retainedOffice(o.key)).filter((id): id is string => id !== null))) await plane.audit(officeId, "system", "office.retained-deleted", "the retention period of its books ended");
+      console.log(JSON.stringify({ event: "retained.deleted", count: due.length }));
+    }
+    if (!listed.truncated) break;
+    cursor = listed.cursor;
+  }
+  return deleted;
+}
+
+/** The nightly cron: deleted offices purged after 30 days, then retained copies past their date. */
+export async function nightly(env: Env): Promise<void> {
+  await purgeDeleted(env);
+  await sweepRetained(env);
 }

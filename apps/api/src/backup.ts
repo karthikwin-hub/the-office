@@ -1,3 +1,4 @@
+import { RETENTION_YEARS } from "@office/engine";
 import type { Env } from "./env";
 
 /**
@@ -53,3 +54,24 @@ export async function putObject(t: BackupTarget, key: string, body: ArrayBuffer,
 export const backupKey = (officeId: string, day: string) => `${officeId}/${day}.json.gz`;
 /** A deleted office's books and edit log, kept outside its prefix for the retention period. */
 export const retainedKey = (officeId: string, at: string) => `retained/${officeId}/${at.replace(/[:.]/g, "-")}.json`;
+
+/**
+ * The last day a deleted office's retained copy is kept: eight years after the end of the financial year
+ * (31 March) that follows the purge, the period the copy promises in its own metadata.
+ */
+export const retainedUntil = (at: Date) => `${at.getUTCFullYear() + RETENTION_YEARS + 1}-03-31`;
+
+/**
+ * A retained copy's keep-until date: from the purge time in its key, or from its metadata when a listing
+ * carries it, whichever is later. Null when neither says, and such a copy is never deleted.
+ */
+export function retainedKeepUntil(o: { key: string; customMetadata?: Record<string, string> }): string | null {
+  const m = /^retained\/[^/]+\/(\d{4})-\d{2}-\d{2}T/.exec(o.key);
+  const fromKey = m ? retainedUntil(new Date(Date.UTC(Number(m[1]), 5, 1))) : null;
+  const said = o.customMetadata?.keepUntil;
+  const fromMeta = said && /^\d{4}-\d{2}-\d{2}$/.test(said) ? said : null;
+  return [fromKey, fromMeta].filter((d): d is string => d !== null).sort().at(-1) ?? null;
+}
+
+/** The office a retained copy belongs to. */
+export const retainedOffice = (key: string) => /^retained\/([^/]+)\//.exec(key)?.[1] ?? null;

@@ -1,8 +1,8 @@
 import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
 import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
 import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
-import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RETENTION_YEARS, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
-import { backupKey, backupTarget, gzip, putObject, retainedKey } from "./backup";
+import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
+import { backupKey, backupTarget, gzip, putObject, retainedKey, retainedUntil } from "./backup";
 import { SqlEditLog } from "./edits";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -586,7 +586,7 @@ export class Office extends Agent<Env> {
   private async purge() {
     if (this.office) {
       const at = new Date().toISOString();
-      const keepUntil = `${new Date().getUTCFullYear() + RETENTION_YEARS + 1}-03-31`;
+      const keepUntil = retainedUntil(new Date());
       await this.env.DOCS.put(retainedKey(this.officeId!, at), JSON.stringify({ office: this.officeId, purgedAt: at, keepUntil, books: this.office.books, edits: this.edits.all() }), {
         httpMetadata: { contentType: "application/json" },
         customMetadata: { keepUntil, reason: "Companies Act s.128(5): books and their edit log are kept for eight years" },
