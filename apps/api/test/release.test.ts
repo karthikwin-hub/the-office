@@ -370,3 +370,61 @@ describe("smoke.sh", () => {
     expect((await smoke("http://example.com")).code).toBe(2);
   });
 });
+
+/**
+ * Runs set-secrets.sh with a stand-in `infisical` that adds the given names to the command it runs, as `infisical run`
+ * adds an environment's secrets, and a stand-in `wrangler` that logs the name of each secret it is asked to put. The
+ * stand-ins hold no values and nothing reaches Infisical or Cloudflare.
+ */
+function secrets(inProd: string[], inShell: string[] = []) {
+  const dir = mkdtempSync(join(tmpdir(), "office-secrets-"));
+  sandboxes.push(dir);
+  const log = join(dir, "calls.log");
+  const put = (path: string, text: string) => {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), text);
+    chmodSync(join(dir, path), 0o755);
+  };
+  put("tools/admin/set-secrets.sh", readFileSync(join(ROOT, "tools/admin/set-secrets.sh"), "utf8"));
+  put(
+    "bin/infisical",
+    `#!/bin/sh
+echo "infisical $1" >> "${log}"
+[ "$1" = run ] || exit 0
+while [ $# -gt 0 ] && [ "$1" != -- ]; do shift; done
+shift
+for name in ${inProd.join(" ")}; do export "$name=set"; done
+exec "$@"
+`,
+  );
+  put(
+    "apps/api/node_modules/.bin/wrangler",
+    `#!/bin/sh\n[ "$2" = put ] && echo "put $3" >> "${log}"\n[ "$2" = list ] && echo '"name": "SOCIAL_TOKEN_KEY"'\nexit 0\n`,
+  );
+  const r = spawnSync("sh", [join(dir, "tools/admin/set-secrets.sh"), "live"], {
+    encoding: "utf8",
+    env: { PATH: `${join(dir, "bin")}:/usr/bin:/bin`, HOME: dir, ...Object.fromEntries(inShell.map((n) => [n, "set"])) },
+  });
+  const calls = existsSync(log) ? readFileSync(log, "utf8").split("\n").filter(Boolean) : [];
+  return { status: r.status, stderr: r.stderr, calls };
+}
+
+const IN_PROD = ["CLOUDFLARE_API_TOKEN_SNILLD_OFFICE", "BETTER_AUTH_SECRET", "SOCIAL_TOKEN_KEY", "PLATFORM_OWNER_EMAILS"];
+
+describe("set-secrets.sh", () => {
+  it("puts what Infisical's prod holds on the live Worker", () => {
+    const r = secrets(IN_PROD);
+    expect(r.status).toBe(0);
+    expect(r.calls.filter((c) => c.startsWith("put "))).toEqual(["put BETTER_AUTH_SECRET", "put SOCIAL_TOKEN_KEY", "put PLATFORM_OWNER_EMAILS"]);
+  });
+
+  it("refuses to run inside `infisical run`, whose secrets would stand in for ones missing from prod", () => {
+    const missingKeys = IN_PROD.filter((n) => n !== "BETTER_AUTH_SECRET" && n !== "SOCIAL_TOKEN_KEY");
+    for (const name of ["BETTER_AUTH_SECRET", "SOCIAL_TOKEN_KEY", "CLOUDFLARE_API_TOKEN_SNILLD_OFFICE", "RESEND_API_KEY"]) {
+      const r = secrets(missingKeys, [name]);
+      expect(r.status, name).toBe(2);
+      expect(r.stderr).toMatch(/without `infisical run`/);
+      expect(r.calls, name).toEqual([]);
+    }
+  });
+});

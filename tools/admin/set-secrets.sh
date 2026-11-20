@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Creates a Worker's required secrets in Infisical (if they are missing) and puts them on the Worker.
-# Values are generated here and never printed. Run it yourself, from the repository root:
+# Values are generated here and never printed. Run it yourself, from the repository root, and not inside
+# `infisical run` (it reads each target's Infisical environment itself, and refuses to start inside one):
 #
 #   sh tools/admin/set-secrets.sh live            Infisical environment prod, the live Worker
 #   sh tools/admin/set-secrets.sh live --rotate   the same, and makes new values for a required secret missing from prod
@@ -17,6 +18,18 @@ case "${1:-}" in
   *) echo "Usage: sh tools/admin/set-secrets.sh live|staging" >&2; exit 2 ;;
 esac
 NAMES="BETTER_AUTH_SECRET SOCIAL_TOKEN_KEY"
+
+# Run on its own, never inside `infisical run`: every value must come from the target's Infisical environment. Inside
+# `infisical run --env=dev`, a dev value would stand in for one missing from prod and be put on live without a word.
+for name in $NAMES SOCIAL_TOKEN_KEYS_OLD PLATFORM_OWNER_EMAILS RESEND_API_KEY TURNSTILE_SECRET \
+  CLOUDFLARE_API_TOKEN_SNILLD_OFFICE CLOUDFLARE_API_TOKEN_OFFICE_STAGING; do
+  if eval "[ -n \"\${$name+set}\" ]"; then
+    echo "$name is already set in this shell. Run this without \`infisical run\`: sh tools/admin/set-secrets.sh $1" >&2
+    echo "(it reads each secret from Infisical ($ENV) itself)." >&2
+    exit 2
+  fi
+done
+
 cd "$(dirname "$0")/../../apps/api"
 
 for name in $NAMES; do
