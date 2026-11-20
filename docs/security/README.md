@@ -109,7 +109,11 @@ everywhere; zod on every request body; agents that stage every write for approva
   non-blocking `pnpm audit --prod`. Run `/security-review` and `/code-review` in Claude Code on any change to
   `apps/api`, as the house guidelines ask.
 - **Locally:** the real Worker runs with `api-local` in `.claude/launch.json` (see the README for the command).
-- **After every release**, on app, office and console.office.snilld.in:
+- **Every release,** once it is turned on (see open work): the Deploy workflow (`.github/workflows/deploy.yml`)
+  deploys each merge to staging and checks it; live goes out only after a reviewer approves, with the control plane
+  backed up (encrypted) first.
+- **After every release**, on staging and on app, office and console.office.snilld.in, `sh tools/admin/smoke.sh
+  <address>` runs these checks (the Deploy workflow runs it after each deploy):
 
   ```sh
   curl -sI https://app.office.snilld.in/ | grep -iE "content-security|strict-transport|x-frame"
@@ -124,12 +128,12 @@ In priority order. The private review's tracker holds the detail.
 
 | Work | Why |
 | --- | --- |
-| A restricted Infisical `prod` environment, and rotating what has been in `dev` | Live secrets sit in the shared development environment |
+| A restricted Infisical `prod` environment, and rotating what has been in `dev` | Live secrets sit in the shared development environment. The code is ready (each deploy target takes its own token from its own environment); the owners create `staging` and `prod` and move the secrets |
 | Confirm Cloudflare stamps `Authentication-Results` on every inbound message (send one test email) | The inbound-email controls rely on it |
 | Turnstile site key and secret before any office turns on the website chat | Without them the chat is closed on live |
 | A Cloudflare rate-limit rule on `/api/auth/*` (optional; the free plan allows one) | A layer in front of the Worker's own limits |
 | Retention sweep, backups removed on purge, envelope encryption, account deletion that deletes | Data-protection duties (DPDP Act) |
-| Staging, and deploying only from CI with an automatic backup before migrations | Releases still go out from a laptop |
+| Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
 | CI: Biome lint and format, branch protection, the security-review Action, Renovate; make the audit job blocking | The gate covers types and tests only |
 | zod 4 | The one remaining runtime advisory |
 | Durable Object tests for loading books from older schema versions; Playwright and axe end to end | `tools/e2e/live.mjs` predates two-step sign-in |

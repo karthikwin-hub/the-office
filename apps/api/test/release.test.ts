@@ -1,9 +1,11 @@
-import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { unstable_readConfig } from "wrangler";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 /** Releases: the staging Worker shares nothing with live, and tools/admin/deploy.sh deploys only the target it is given. */
 
@@ -71,12 +73,18 @@ describe("the staging environment", () => {
   });
 });
 
+const sandboxes: string[] = [];
+afterAll(() => {
+  for (const dir of sandboxes) rmSync(dir, { recursive: true, force: true });
+});
+
 /**
  * Runs deploy.sh in a copy of the repository's layout, where `wrangler` and `pnpm` are stand-ins that write what they
  * were asked to a log. Nothing reaches Cloudflare.
  */
 function sandbox(opts: { placeholders?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "office-deploy-"));
+  sandboxes.push(dir);
   const bin = join(dir, "bin");
   const log = join(dir, "calls.log");
   const put = (path: string, text: string, exec = false) => {
@@ -94,7 +102,12 @@ function sandbox(opts: { placeholders?: boolean } = {}) {
 echo "${name} $* token=\${CLOUDFLARE_API_TOKEN:-}" >> "${log}"
 if [ "${name}" = wrangler ] && [ "$1 $2" = "d1 export" ]; then
   [ -n "\${FAIL_BACKUP:-}" ] && exit 1
+  [ -n "\${EMPTY_BACKUP:-}" ] && exit 0
   while [ $# -gt 0 ]; do [ "$1" = --output ] && printf 'CREATE TABLE office (id TEXT);' > "$2"; shift; done
+fi
+# How many tables the database has: none before its first migration.
+if [ "${name}" = wrangler ] && [ "$1 $2" = "d1 execute" ]; then
+  if [ -n "\${NO_TABLES:-}" ]; then echo '[{"results":[{"n":0}]}]'; else echo '[{"results":[{"n":7}]}]'; fi
 fi
 exit 0
 `;
@@ -115,7 +128,17 @@ cp "$1" "$out"
     writeFileSync(log, "");
     return { status: r.status, stderr: r.stderr, calls };
   };
-  return { dir, run };
+  /** admin.mjs on its own, with the same stand-in wrangler. */
+  const admin = (args: string[], env: Record<string, string> = {}) => {
+    const r = spawnSync(process.execPath, [join(dir, "tools/admin/admin.mjs"), ...args], {
+      encoding: "utf8",
+      env: { PATH: `${bin}:/usr/bin:/bin`, HOME: dir, ...LIVE, ...env },
+    });
+    const calls = existsSync(log) ? readFileSync(log, "utf8").split("\n").filter(Boolean) : [];
+    writeFileSync(log, "");
+    return { status: r.status, stderr: r.stderr, calls };
+  };
+  return { dir, run, admin };
 }
 
 const STAGING = { CLOUDFLARE_API_TOKEN_OFFICE_STAGING: "staging-token" };
@@ -170,5 +193,143 @@ describe("deploy.sh", () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/REPLACE_WITH_/);
     expect(r.calls).toEqual([]);
+  });
+});
+
+describe("admin.mjs targets", () => {
+  it("works on staging with --env staging, and on live without it", () => {
+    const { admin } = sandbox();
+    // A query may span lines in the log; each call starts with "wrangler" and ends with its environment and token.
+    const staging = admin(["list", "--env", "staging"], STAGING).calls.join("\n");
+    expect(staging).toMatch(/^wrangler d1 execute DB --remote /);
+    expect(staging.match(/^wrangler /gm)?.length).toBe(staging.match(/ --env staging token=staging-token$/gm)?.length);
+    const live = admin(["list"]).calls.join("\n");
+    expect(live).toMatch(/^wrangler d1 execute DB --remote /);
+    expect(live.match(/^wrangler /gm)?.length).toBe(live.match(/ --env {2}token=live-token$/gm)?.length);
+  });
+
+  it("refuses an environment it does not know, a missing one, or the --env=staging form, before touching anything", () => {
+    const { admin } = sandbox();
+    for (const args of [["list", "--env", "stagign"], ["list", "--env"], ["list", "--env=staging"]]) {
+      const r = admin(args, STAGING);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toMatch(/Not an environment/);
+      expect(r.calls).toEqual([]);
+    }
+  });
+});
+
+describe("deploy.sh backs up before it migrates", () => {
+  const steps = (calls: string[]) => calls.map((c) => c.split(" token=")[0]!.replace(/backups\/\S+/, "<file>"));
+
+  for (const [target, env, flag] of [["staging", STAGING, "staging"], ["live", LIVE, ""]] as const) {
+    it(`${target}: build, back up, migrate, deploy, in that order`, () => {
+      const { dir, run } = sandbox();
+      const r = run([target], env);
+      expect(r.status).toBe(0);
+      expect(steps(r.calls)).toEqual([
+        "pnpm build",
+        expect.stringMatching(new RegExp(`^wrangler d1 execute DB --remote --json --command SELECT count\\(\\*\\) .* --env ${flag}$`)),
+        expect.stringMatching(new RegExp(`^wrangler d1 export DB --remote --output /\\S+/<file> --env ${flag}$`)),
+        `wrangler d1 migrations apply DB --remote --env ${flag}`,
+        `wrangler deploy --env ${flag}`,
+      ]);
+      expect(readdirSync(join(dir, "backups"))).toEqual([expect.stringMatching(new RegExp(`^office-${target}-[0-9-]+\\.sql$`))]);
+    });
+  }
+
+  it("deploys a database that has no tables yet (staging's first deploy), with a note in place of the backup", () => {
+    const { dir, run } = sandbox();
+    const r = run(["staging"], { ...STAGING, NO_TABLES: "1" });
+    expect(r.status).toBe(0);
+    expect(r.calls.some((c) => c.startsWith("wrangler d1 export"))).toBe(false);
+    expect(r.calls).toContainEqual(expect.stringMatching(/^wrangler d1 migrations apply DB --remote --env staging /));
+    const [note] = readdirSync(join(dir, "backups"));
+    expect(readFileSync(join(dir, "backups", note!), "utf8")).toMatch(/no tables/);
+  });
+
+  it("migrates nothing when the backup fails", () => {
+    const { run } = sandbox();
+    const r = run(["live"], { ...LIVE, FAIL_BACKUP: "1" });
+    expect(r.status).not.toBe(0);
+    expect(r.calls.some((c) => c.includes("migrations apply") || c.startsWith("wrangler deploy"))).toBe(false);
+  });
+
+  it("migrates nothing when the export wrote nothing", () => {
+    const { run } = sandbox();
+    const r = run(["live"], { ...LIVE, EMPTY_BACKUP: "1" });
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/wrote nothing/);
+    expect(r.calls.some((c) => c.includes("migrations apply") || c.startsWith("wrangler deploy"))).toBe(false);
+  });
+
+  it("encrypts the copy to BACKUP_AGE_RECIPIENT and keeps no plain one", () => {
+    const { dir, run } = sandbox();
+    const r = run(["live"], { ...LIVE, BACKUP_AGE_RECIPIENT: "age1owners" });
+    expect(r.status).toBe(0);
+    expect(r.calls).toContainEqual(expect.stringMatching(/^age -r age1owners -o \S+\.sql\.age \S+\.sql$/));
+    expect(readdirSync(join(dir, "backups"))).toEqual([expect.stringMatching(/^office-live-[0-9-]+\.sql\.age$/)]);
+  });
+
+  it("migrates nothing when the encryption fails", () => {
+    const { run } = sandbox();
+    const r = run(["live"], { ...LIVE, BACKUP_AGE_RECIPIENT: "age1owners", FAIL_AGE: "1" });
+    expect(r.status).not.toBe(0);
+    expect(r.calls.some((c) => c.includes("migrations apply") || c.startsWith("wrangler deploy"))).toBe(false);
+  });
+
+  it("in GitHub Actions, refuses live without a key to encrypt the backup to", () => {
+    const { run } = sandbox();
+    const r = run(["live"], { ...LIVE, GITHUB_ACTIONS: "true" });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/BACKUP_AGE_RECIPIENT/);
+    expect(r.calls).toEqual([]);
+    expect(run(["staging"], { ...STAGING, GITHUB_ACTIONS: "true" }).status).toBe(0);
+  });
+});
+
+describe("smoke.sh", () => {
+  const SMOKE = join(ROOT, "tools/admin/smoke.sh");
+  const HEADERS = { "content-security-policy": "default-src 'none'", "strict-transport-security": "max-age=31536000", "x-frame-options": "DENY", "x-content-type-options": "nosniff" };
+
+  /** A stand-in Worker; `broken` drops a header and lets a cross-origin POST through. */
+  async function serve(broken: boolean) {
+    const server = createServer((req, res) => {
+      const path = (req.url ?? "/").split("?")[0] ?? "/";
+      const headers = broken ? { ...HEADERS, "x-frame-options": undefined } : HEADERS;
+      for (const [k, v] of Object.entries(headers)) if (v) res.setHeader(k, v);
+      const code = path === "/api/health" ? 200 : path === "/api/office" ? 401 : path.startsWith("/media/") ? 404 : req.method === "POST" && path === "/api/offices" ? (broken ? 200 : 403) : 200;
+      res.writeHead(code).end();
+    });
+    await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+    return { server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
+  }
+  const smoke = (url: string) =>
+    new Promise<{ code: number | null; out: string }>((ok) => {
+      const child = spawn("sh", [SMOKE, url], { env: { PATH: process.env.PATH, SMOKE_TRIES: "1" } });
+      let out = "";
+      child.stdout.on("data", (d) => (out += d));
+      child.on("close", (code) => ok({ code, out }));
+    });
+
+  it("passes against a Worker that answers as live should", async () => {
+    const { server, url } = await serve(false);
+    const r = await smoke(url);
+    server.close();
+    expect(r.out).not.toMatch(/FAIL/);
+    expect(r.code).toBe(0);
+  });
+
+  it("fails, naming each check, when one does not hold", async () => {
+    const { server, url } = await serve(true);
+    const r = await smoke(url);
+    server.close();
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/FAIL {2}POST from another origin: expected 403, got 200/);
+    expect(r.out).toMatch(/FAIL {2}header x-frame-options/);
+  });
+
+  it("refuses an address that is not https", async () => {
+    expect((await smoke("http://example.com")).code).toBe(2);
   });
 });

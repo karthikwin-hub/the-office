@@ -91,24 +91,37 @@ Per-office regions are not built yet; every office's live books sit wherever Clo
 
 ## 7. Release process
 
-Both web builds write to `apps/web/dist`, so they are built and deployed one at a time.
+Releases go out from GitHub Actions (`.github/workflows/deploy.yml`), not from a laptop. Both web builds write to `apps/web/dist`, so they are built and deployed one at a time.
 
-1. **Check:** every pull request runs `pnpm typecheck` and `pnpm test` in GitHub Actions and is merged only green; run `/security-review` and `/code-review` on changes to `apps/api`. For a large change, run the real Worker locally (`api-local` in `.claude/launch.json`) and walk the main flows: the browser end-to-end script `tools/e2e/live.mjs` predates two-step sign-in.
-2. **Back up:** `infisical run --env=prod --silent -- node tools/admin/admin.mjs backup` writes the control plane to `backups/` (git-ignored). Delete the file once the release has settled.
-3. **Migrate and deploy, staging first:** `infisical run --env=staging --silent -- sh tools/admin/deploy.sh staging`, then `infisical run --env=prod --silent -- sh tools/admin/deploy.sh live`. Each builds the web app, applies D1 migrations to that target's remote database, then deploys; the target is required, and each needs its own token, so neither can deploy the other. Migrations run before the new code is live, so they only add.
-4. **Deploy demo:** build with `VITE_DATA=mock`, then `wrangler deploy -c ../web/wrangler.mock.jsonc`.
-5. **Smoke check:** health returns 200; office paths without a session return 401; a forged media link returns 404; a POST from another origin returns 403; the security headers are on app, office and console (commands in `docs/security/README.md`); `admin.mjs list` shows the offices.
+1. **Check.** Every pull request runs `pnpm typecheck` and `pnpm test` (`.github/workflows/ci.yml`) and is merged only green; run `/security-review` and `/code-review` on changes to `apps/api`. For a large change, run the real Worker locally (`api-local` in `.claude/launch.json`) and walk the main flows: the browser end-to-end script `tools/e2e/live.mjs` predates two-step sign-in.
+2. **Staging, on every merge.** When CI passes on a push to `main`, the Deploy workflow runs `tools/admin/deploy.sh staging` and then `tools/admin/smoke.sh` against staging. A run for a commit that is no longer the newest on `main` is skipped, so staging never goes backwards.
+3. **Live, by hand.** Actions → Deploy → Run workflow, on `main`. The run checks that CI passed for that commit, deploys and checks staging again, then waits for a reviewer to approve the `live` environment. After approval it runs `deploy.sh live`, keeps the backup, and runs the smoke checks on app, console and the product page.
+4. **What `deploy.sh` does,** for either target: builds the web app; backs up the control plane (`admin.mjs backup`, a D1 export) and stops if the export fails or is empty; applies D1 migrations to that target's database; deploys the Worker. The target is required and each has its own token, so neither can deploy the other.
+5. **The backup.** In CI, live's export is encrypted with `age` to the owners' public key (`BACKUP_AGE_RECIPIENT`, a variable of the `live` environment) and kept as the run's artifact `control-plane-<run id>` for 7 days, even when the migration or deploy fails. The repository is public and anyone signed in to GitHub can download its artifacts, so only the encrypted copy is uploaded and the workflow will not deploy live without the key; the plain file stays on the runner, which is discarded with the job. To read it: download the artifact, then `age -d -i <owners' key file> office-live-<time>.sql.age > office.sql`. D1 Time Travel is the first way back (section 8); the export is for when that is not enough.
+6. **Demo,** when the screens changed: an owner runs `deploy.sh demo` through Infisical's `prod` environment; it has no data or secrets, and rebuilds the live app afterwards so the two builds never mix.
+7. **After the release:** `admin.mjs list` (through `prod`, by an owner) shows the offices.
 
-The Worker runs on Cloudflare's Workers free plan, about 10 ms of CPU per request: nothing may depend on the paid plan's allowance (see the parked item in the roadmap).
+**Migrations only add.** `deploy.sh` migrates before it deploys, so for a moment the previous version serves on the new schema, and a rollback (`wrangler rollback`, section 8) returns to code that has already seen it. Every file in `apps/api/migrations` must therefore work with both the old and the new code:
 
-Every Worker command runs through Infisical so the Cloudflare token never touches a file.
+- Add tables, indexes and columns that are nullable or have a default. Never drop, rename or change the type of a column or table, and never add a `NOT NULL` column without a default.
+- No data rewrite that the previous version would misread; a backfill goes in code that reads both shapes.
+- Removing something takes two releases: first the code stops using it; once that version is the one a rollback would return to, a later migration may drop it. That migration is reviewed as a breaking change, with the backup from its release checked by hand.
+- A merged migration is never edited: `wrangler d1 migrations apply` records each file once and will not run it again.
+
+The Durable Object's own schema steps follow the same rule (section 8).
+
+**By hand, only when CI cannot,** an owner on their own machine (never one a coding agent works on): `deploy.sh staging` through Infisical's `staging` environment, then `deploy.sh live` through `prod`, each as `infisical run --env=<environment> --silent -- sh tools/admin/deploy.sh <target>`. The backup then stays in `backups/` (git-ignored, readable only by you); set `BACKUP_AGE_RECIPIENT` to encrypt it, and delete it once the release has settled. `pnpm run deploy` is `deploy.sh live`. Calling `wrangler deploy` or `wrangler d1 migrations apply` yourself skips the backup.
+
+**Free plan.** The Worker runs on Cloudflare's Workers free plan, about 10 ms of CPU per request: nothing may depend on the paid plan's allowance (see the parked item in the roadmap). The free plan's daily allowances (requests, Durable Object requests, D1 rows read, Workers AI) are per account, so staging in the Snilld account would spend live's; that is why `env.staging` recommends an account of its own. Keep staging's traffic to the smoke checks and hand testing.
+
+Every Worker command runs through Infisical or a GitHub environment secret, so the Cloudflare tokens never touch a file.
 
 ## 8. Backups and rollback
 
 | What | How it is protected | How to roll back |
 | --- | --- | --- |
 | Worker code | Every deploy creates a version | `wrangler rollback` to the previous version |
-| Control plane (D1) | `admin.mjs backup` before every migration; D1 Time Travel keeps 30 days of point-in-time history | D1 Time Travel restore to a timestamp |
+| Control plane (D1) | `deploy.sh` exports it before every migration (kept encrypted for 7 days by the Deploy workflow); D1 Time Travel keeps point-in-time history, 7 days on the free plan (30 on the paid plan) | D1 Time Travel restore to a timestamp (`wrangler d1 time-travel restore DB --timestamp <time>`); otherwise import the export into a new database |
 | Office books (Durable Objects) | Each office's SQLite with Cloudflare's durability; owner export (zip) on demand; deleted offices restorable for 30 days | Restore a deleted office from Settings or the admin tool; point-in-time recovery for Durable Object storage |
 | Files (R2) | Stored under the office prefix; copied into the owner's export | Re-upload from the export |
 

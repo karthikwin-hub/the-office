@@ -1,0 +1,127 @@
+name: Deploy
+
+# Releases (docs/handbook/04-deployment.md, section 7).
+# - Every push to main whose CI run passes is deployed to staging and checked there.
+# - Live goes out only from "Run workflow" on main: staging is deployed and checked again for that same commit in the
+#   same run, then the live job waits for a reviewer to approve the "live" environment.
+# Both run tools/admin/deploy.sh, which backs up the control plane before migrating and stops if the backup fails.
+# Tokens come from each GitHub environment's own secrets; nothing is written to a file.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  staging:
+    name: Staging
+    # A push to main from this repository whose CI passed, and only while it is still the newest commit on main (an
+    # older run finishing late must not put staging back). Or "Run workflow" on main.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_sha == github.sha) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    # Never cancelled halfway: a migration may be running.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - name: CI passed for this commit
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          passed=$(gh run list -R "$REPO" -w ci.yml -c "$SHA" -e push -s success --json databaseId -q length)
+          if [ "$passed" = 0 ]; then echo "::error::CI has not passed for $SHA on a push to main."; exit 1; fi
+      - name: Staging's address is set
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          case "$STAGING_URL" in https://*) ;; *) echo "::error::Set the variable STAGING_URL (https://...) on the staging environment."; exit 1 ;; esac
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      # No pnpm cache in a job that holds a deploy token.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Back up, migrate and deploy staging
+        env:
+          CLOUDFLARE_API_TOKEN_OFFICE_STAGING: ${{ secrets.CLOUDFLARE_API_TOKEN_OFFICE_STAGING }}
+        run: sh tools/admin/deploy.sh staging
+      - name: Smoke checks on staging
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: sh tools/admin/smoke.sh "$STAGING_URL"
+
+  live:
+    name: Live
+    needs: staging
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    # Required reviewers and "main only" are set on this environment in the repository's settings.
+    environment:
+      name: live
+      url: https://app.office.snilld.in
+    concurrency:
+      group: deploy-live
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      # The backup is encrypted to the owners' age key before it is kept; Ubuntu's own package.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+      - name: Back up, migrate and deploy live
+        env:
+          CLOUDFLARE_API_TOKEN_SNILLD_OFFICE: ${{ secrets.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE }}
+          BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: sh tools/admin/deploy.sh live
+      # Kept even when the migration or deploy fails, which is when it is needed. Only the encrypted copy is uploaded:
+      # the artifacts of a public repository can be downloaded by anyone signed in to GitHub.
+      - name: Keep the encrypted backup for 7 days
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: control-plane-${{ github.run_id }}
+          path: backups/*.age
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Smoke checks on live
+        run: |
+          failed=0
+          for url in https://app.office.snilld.in https://console.office.snilld.in https://office.snilld.in; do
+            echo "== $url"
+            sh tools/admin/smoke.sh "$url" || failed=1
+          done
+          exit "$failed"

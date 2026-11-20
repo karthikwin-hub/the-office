@@ -249,8 +249,9 @@ One sign-in covers every address under `office.snilld.in`: the session cookie is
 
 | Environment | Where | Data | Deployed by |
 | --- | --- | --- | --- |
-| Live | The Worker `the-office` in the Snilld Cloudflare account, on the addresses above | Real offices: D1 `office`, R2 `office-docs`, one Durable Object per office | `infisical run --env=dev --silent -- sh tools/admin/deploy.sh` |
-| Demo | The Worker `the-office-mock` on demo.office.snilld.in | Sample books in the visitor's browser | `infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo` |
+| Live | The Worker `the-office` in the Snilld Cloudflare account, on the addresses above | Real offices: D1 `office`, R2 `office-docs`, one Durable Object per office | The Deploy workflow, run by hand and approved (`deploy.sh live`) |
+| Staging | The Worker `the-office-staging` on workers.dev (`env.staging` in `apps/api/wrangler.jsonc`) | Test offices only: D1 `office-staging`, R2 `office-docs-staging`, its own secrets | The Deploy workflow, on every green push to `main` (`deploy.sh staging`) |
+| Demo | The Worker `the-office-mock` on demo.office.snilld.in | Sample books in the visitor's browser | An owner: `infisical run --env=prod --silent -- sh tools/admin/deploy.sh demo` |
 | Local | `wrangler dev` and Vite on a developer's machine (`pnpm dev` for the mock app) | Local state only | Not deployed |
 | Old account | "the-office-agents" Cloudflare account | Emptied on 18 Nov 2026 (backup in `backups/`) | Its API token is still to be revoked |
 
@@ -641,12 +642,12 @@ Only ever run `SELECT` this way. Changes go through the app, the console or the 
 ## 6. Releasing, and rolling back
 
 1. **Check.** `pnpm test` and `pnpm typecheck` (or the per-package commands), and the end-to-end check where possible.
-2. **Back up.** `infisical run --env=dev --silent -- node tools/admin/admin.mjs backup`.
-3. **Deploy live.** `infisical run --env=dev --silent -- sh tools/admin/deploy.sh`. It builds the app, applies any new database migrations, and deploys the Worker. The output ends with the new version id.
-4. **Deploy the demo** when the app's screens changed: `infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo` (it rebuilds the live app afterwards, so the two builds never mix).
-5. **Smoke check.** The sign-in page loads; a made-up sign-in answers "Invalid email or password"; an office path without a session answers 401; `admin.mjs list` shows the offices.
+2. **Staging.** Every push to `main` whose checks pass is deployed to staging by the Deploy workflow in GitHub Actions, and checked there with `tools/admin/smoke.sh`.
+3. **Deploy live.** Actions → Deploy → Run workflow, on `main`; a reviewer approves the `live` environment. The workflow runs `tools/admin/deploy.sh live`: it builds the app, backs up the database (and stops if that fails), applies any new database migrations, and deploys the Worker. Migrations only ever add (handbook, Deployment, section 7).
+4. **Deploy the demo** when the app's screens changed: an owner runs `infisical run --env=prod --silent -- sh tools/admin/deploy.sh demo` (it rebuilds the live app afterwards, so the two builds never mix).
+5. **Smoke check.** The workflow's own checks pass on app, console and the product page; the sign-in page loads; a made-up sign-in answers "Invalid email or password"; `admin.mjs list` shows the offices.
 
-**Rolling back.** Every deploy is a version. Run `wrangler rollback` for the Worker through Infisical with the token, or redeploy the previous commit. The database is not rolled back by this: D1 Time Travel restores it to a point in time within 30 days, and should be needed only after a bad migration.
+**Rolling back.** Every deploy is a version. Run `wrangler rollback` for the Worker through Infisical with the token, or redeploy the previous commit. The database is not rolled back by this: D1 Time Travel restores it to a point in time within 7 days on the free plan (30 on the paid plan), and should be needed only after a bad migration.
 
 ## 7. Backups
 

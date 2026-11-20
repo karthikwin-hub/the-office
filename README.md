@@ -48,16 +48,19 @@ cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLA
 
 ## Deploy
 
-Both builds write to `apps/web/dist`, so build and deploy one at a time.
+Releases go out from GitHub Actions (`.github/workflows/deploy.yml`): every green push to `main` goes to staging and is checked there; live goes out from Actions → Deploy → Run workflow, after a reviewer approves. Each deploy backs up the control plane before migrating. See `docs/handbook/04-deployment.md`, section 7.
+
+When CI cannot, an owner deploys by hand from their own machine (both builds write to `apps/web/dist`, so one at a time):
 
 ```sh
-# Live: build, migrate, deploy
-infisical run --env=dev --silent -- sh tools/admin/deploy.sh
+# Staging, then live: build, back up, migrate, deploy
+infisical run --env=staging --silent -- sh tools/admin/deploy.sh staging
+infisical run --env=prod --silent -- sh tools/admin/deploy.sh live
 
 # Demo (then rebuilds the live app)
-infisical run --env=dev --silent -- sh tools/admin/deploy.sh demo
+infisical run --env=prod --silent -- sh tools/admin/deploy.sh demo
 ```
 
-Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`; see the comment in `apps/api/wrangler.jsonc`. `sh tools/admin/set-secrets.sh` creates the two required ones in Infisical if missing and puts them on the live Worker, without printing values; run it yourself.
+Worker secrets (`BETTER_AUTH_SECRET`, `SOCIAL_TOKEN_KEY`, the optional social and WhatsApp keys) are put with `wrangler secret put`. `sh tools/admin/set-secrets.sh live` (or `staging`) creates the two required ones in that Infisical environment if missing and puts them on that Worker, without printing values; run it yourself. See `docs/handbook/05-configuration.md`, section 3.
 
 The handbook for the team and consultants is `docs/handbook/the-office-handbook.html` (open it in a browser, or print to PDF).

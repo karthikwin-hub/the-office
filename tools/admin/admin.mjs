@@ -9,7 +9,7 @@
 //   invite-owner <office> <email>        a new owner invitation link, for an office that lost its owner
 //   route <office> <kind> <external id>  sends a page, account or WhatsApp number (kind wa_phone) to an office
 //   purge-soon <office>                  a deleted office is purged at the next nightly run instead of after 30 days
-//   backup                               the whole control plane as SQL, into backups/
+//   backup [<file>]                      the whole control plane as SQL, into backups/ (or <file>)
 //   forget-user <email>                  removes a person's account, sessions, memberships, WhatsApp link and consent records (DPDP request)
 //   requests [done <id>]                 lists the open "Delete my account" requests, or completes one
 //   subdomain <office> <label>           gives an office its own address, <label>.APP_DOMAIN, in two runs (see below)
@@ -19,8 +19,8 @@
 // Infisical's staging environment; live's come from prod).
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const api = join(root, "apps/api");
@@ -178,10 +178,20 @@ switch (command) {
     break;
   }
   case "backup": {
+    // deploy.sh names the file itself; by hand it goes into backups/ with the time in its name.
     const dir = join(root, "backups");
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `office-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.sql`);
+    const file = rest[0] ? resolve(rest[0]) : join(dir, `office${target ? `-${target}` : ""}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.sql`);
+    mkdirSync(dirname(file), { recursive: true });
+    // A database that was never migrated (staging's first deploy) has nothing to keep, and an export of it may fail.
+    const [{ n } = { n: 0 }] = sql("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'");
+    if (n === 0) {
+      writeFileSync(file, "-- The database had no tables: nothing to back up.\n");
+      console.log(`The database has no tables yet; wrote a note to ${file} instead of a backup.`);
+      break;
+    }
     wrangler("d1", "export", "DB", local ? "--local" : "--remote", "--output", file);
+    // An export that wrote nothing is not a backup; a deploy must not migrate on the strength of it.
+    if (!existsSync(file) || statSync(file).size === 0) fail(`The export wrote nothing to ${file}.`);
     console.log(`Saved ${file}. It holds account data: keep it out of git and delete it when done.`);
     break;
   }
