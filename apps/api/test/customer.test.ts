@@ -3,7 +3,7 @@ import { type IncomingMessage, OfficeService } from "@office/engine";
 import { loadBooks, sampleCustomerService } from "@office/fixtures";
 import PostalMime from "postal-mime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { freshText, splitCustomerDms, toSupportInbound, turnstileOk, widgetScript } from "../src/customer/channels";
+import { CHAT_POLL, freshText, splitCustomerDms, toSupportInbound, turnstileOk, widgetScript } from "../src/customer/channels";
 import { CustomerDesk } from "../src/customer/desk";
 import { SqlCsStore } from "../src/customer/store";
 import { mailSender } from "../src/mail";
@@ -132,6 +132,146 @@ describe("the website chat script", () => {
     expect(js).toContain("AI assistant");
     expect(js).toContain('"siteKey":null');
     expect(widgetScript("wkaverichat01", "https://office.example", "0x4AAA")).toContain('"siteKey":"0x4AAA"');
+  });
+
+  type Msg = { from: "you" | "us"; text: string };
+  /**
+   * A web page with only what the script touches, and a chat backend that answers from `thread`. Every element the
+   * script makes is kept in `made`, in order: its style, then the bubble, then the panel.
+   */
+  function pageWithBubble(siteKey: string | null, made: Record<string, unknown>[]) {
+    const found = new Map<string, Record<string, unknown>>();
+    const el = (): Record<string, unknown> => {
+      const e: Record<string, unknown> = { style: {}, value: "", setAttribute() {}, appendChild() {}, focus() {} };
+      e.querySelector = (sel: string) => found.get(sel) ?? (found.set(sel, el()), found.get(sel)!);
+      return e;
+    };
+    const listeners: (() => void)[] = [];
+    const doc = {
+      hidden: false,
+      head: el(),
+      body: el(),
+      createElement: () => {
+        const e = el();
+        made.push(e);
+        return e;
+      },
+      addEventListener: (_type: string, fn: () => void) => void listeners.push(fn),
+    };
+    const thread: Msg[] = [];
+    const gets: number[] = [];
+    const posts: { text: string; turnstile: string | null }[] = [];
+    const turnstile = { callback: null as ((t: string) => void) | null, resets: 0, render: (_e: unknown, o: { callback: (t: string) => void }) => void (turnstile.callback = o.callback), reset: () => void turnstile.resets++ };
+    const win: Record<string, unknown> = siteKey ? { turnstile } : {};
+    const fetch = vi.fn(async (_url: string, init?: { method?: string; body?: string }) => {
+      if (init?.method === "POST") {
+        const body = JSON.parse(init.body!) as { text: string; turnstile: string | null };
+        posts.push({ text: body.text, turnstile: body.turnstile });
+        thread.push({ from: "you", text: body.text });
+      } else gets.push(Date.now());
+      return Response.json({ messages: [...thread], business: "Kaveri Electricals" });
+    });
+    const store = new Map<string, string>();
+    const localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+    new Function("window", "document", "localStorage", "fetch", widgetScript("wkaverichat01", "https://office.example", siteKey))(win, doc, localStorage, fetch);
+    return {
+      thread,
+      gets,
+      posts,
+      turnstile,
+      el: (sel: string) => found.get(sel)!,
+      setHidden: (hidden: boolean) => {
+        doc.hidden = hidden;
+        listeners.forEach((l) => l());
+      },
+    };
+  }
+
+  describe("asking for replies", () => {
+    beforeEach(() => void vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] }));
+    afterEach(() => void vi.useRealTimers());
+
+    it("asks every 5 s while the visitor waits for an answer, and backs off to 30 s idle and 60 s out of view", async () => {
+      const made: Record<string, unknown>[] = [];
+      const p = pageWithBubble(null, made);
+      const bubble = made[1]!;
+      (bubble.onclick as () => void)();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.gets.length).toBe(1);
+
+      // Nothing said yet: idle.
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.idle - 1);
+      expect(p.gets.length).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(p.gets.length).toBe(2);
+
+      // The visitor writes; the answer is not there yet, so it asks every 5 s.
+      p.el("#oc-t").value = "Where is my order 1042?";
+      (p.el("#oc-f").onsubmit as (e: unknown) => void)({ preventDefault() {} });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.posts.map((x) => x.text)).toEqual(["Where is my order 1042?"]);
+      const before = p.gets.length;
+      await vi.advanceTimersByTimeAsync(3 * CHAT_POLL.waiting);
+      expect(p.gets.length).toBe(before + 3);
+
+      // The answer comes: back to 30 s.
+      p.thread.push({ from: "us", text: "A code is on its way to your phone. Type it here." });
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.waiting);
+      const answered = p.gets.length;
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.idle - 1);
+      expect(p.gets.length).toBe(answered);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(p.gets.length).toBe(answered + 1);
+
+      // Out of view: once a minute; back in view: at once.
+      p.setHidden(true);
+      const hidden = p.gets.length;
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.hidden - 1);
+      expect(p.gets.length).toBe(hidden);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(p.gets.length).toBe(hidden + 1);
+      p.setHidden(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.gets.length).toBe(hidden + 2);
+
+      // Closed: it stops asking.
+      (bubble.onclick as () => void)();
+      const closed = p.gets.length;
+      await vi.advanceTimersByTimeAsync(10 * CHAT_POLL.hidden);
+      expect(p.gets.length).toBe(closed);
+    });
+
+    it("gives up the quick asking two minutes after the visitor wrote, if no answer came", async () => {
+      const made: Record<string, unknown>[] = [];
+      const p = pageWithBubble(null, made);
+      (made[1]!.onclick as () => void)();
+      p.el("#oc-t").value = "Hello?";
+      (p.el("#oc-f").onsubmit as (e: unknown) => void)({ preventDefault() {} });
+      // One on opening, then one every 5 s up to and including the two-minute mark.
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.waitFor);
+      expect(p.gets.length).toBe(1 + CHAT_POLL.waitFor / CHAT_POLL.waiting);
+      await vi.advanceTimersByTimeAsync(CHAT_POLL.idle - 1);
+      expect(p.gets.length).toBe(1 + CHAT_POLL.waitFor / CHAT_POLL.waiting);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(p.gets.length).toBe(2 + CHAT_POLL.waitFor / CHAT_POLL.waiting);
+    });
+
+    it("keeps the Turnstile flow: each message carries a fresh token, and the box is reset after sending", async () => {
+      const made: Record<string, unknown>[] = [];
+      const p = pageWithBubble("0x4AAA", made);
+      (made[1]!.onclick as () => void)();
+      p.turnstile.callback!("token-1");
+      p.el("#oc-t").value = "My order";
+      (p.el("#oc-f").onsubmit as (e: unknown) => void)({ preventDefault() {} });
+      p.el("#oc-t").value = "123456";
+      (p.el("#oc-f").onsubmit as (e: unknown) => void)({ preventDefault() {} });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(p.posts).toEqual([
+        { text: "My order", turnstile: "token-1" },
+        { text: "123456", turnstile: null },
+      ]);
+      expect(p.turnstile.resets).toBe(2);
+    });
   });
 });
 
