@@ -4,6 +4,8 @@ import { loadPdfJs } from "@office/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { api, isLive, officePath } from "../api/client";
+import { liveOpen, onLive } from "../app/live";
+import { watchUnread } from "./watch";
 
 /**
  * The browser reads each PDF's text layer before anything is sent, so the
@@ -80,15 +82,19 @@ export function useReadStored() {
 
 /**
  * In the live office, emailed documents wait for an open browser to read them.
- * Whoever has the office open does that quietly, one document at a time.
+ * Whoever has the office open does that quietly, one document at a time. It looks
+ * when the office says one arrived and when the tab comes back into view, rather
+ * than asking every minute (watch.ts).
  */
 export function useBackgroundReader(enabled: boolean) {
   const qc = useQueryClient();
   const busy = useRef(false);
+  const again = useRef(false);
   useEffect(() => {
     if (!enabled) return;
     const tick = async () => {
-      if (busy.current || document.hidden) return;
+      // Already reading: look once more when done, as the office may have said more arrived.
+      if (busy.current) return void (again.current = true);
       busy.current = true;
       try {
         const unread = await api.unread();
@@ -96,10 +102,39 @@ export function useBackgroundReader(enabled: boolean) {
         if (unread.length) await qc.invalidateQueries({ predicate: (x) => touchesBooks(x.queryKey) });
       } finally {
         busy.current = false;
+        if (again.current) {
+          again.current = false;
+          void tick();
+        }
       }
     };
-    void tick();
-    const t = setInterval(() => void tick(), 60_000);
-    return () => clearInterval(t);
+    return watchUnread({
+      look: () => {
+        if (document.hidden) return false;
+        void tick();
+        return true;
+      },
+      live: { open: liveOpen, on: onLive },
+      onReturn: (back) => {
+        const visible = () => {
+          if (!document.hidden) back();
+        };
+        document.addEventListener("visibilitychange", visible);
+        window.addEventListener("focus", back);
+        return () => {
+          document.removeEventListener("visibilitychange", visible);
+          window.removeEventListener("focus", back);
+        };
+      },
+      every: (fn, ms) => {
+        const t = setInterval(fn, ms);
+        return () => clearInterval(t);
+      },
+      delay: () => (document.hasFocus() ? 0 : 5_000 + Math.random() * 15_000),
+      after: (fn, ms) => {
+        const t = setTimeout(fn, ms);
+        return () => clearTimeout(t);
+      },
+    });
   }, [enabled, qc]);
 }

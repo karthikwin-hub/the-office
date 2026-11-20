@@ -80,6 +80,8 @@ export class Office extends Agent<Env> {
   private spentStates!: SpentStates;
   /** Exports being written, part by part, for the Worker (export.ts). */
   private exports: OfficeExports | null = null;
+  /** The unread documents open browsers were last told of; a new one among them makes them read. */
+  private toldUnread = new Set<string>();
   private day = "";
   /** Requests inside `route()` now; a failed one reopens the books only when it is alone. */
   private routing = 0;
@@ -270,7 +272,15 @@ export class Office extends Agent<Env> {
     const before = this.kv("settings");
     const after = JSON.stringify(settings);
     if (before !== after) this.kv("settings", after);
-    if (changed || before !== after) this.broadcast(JSON.stringify({ type: "changed", at: Date.now() }));
+    if (changed || before !== after) this.broadcast(JSON.stringify({ type: "changed", at: Date.now(), ...(this.newUnread() ? { unread: true } : {}) }));
+  }
+
+  /** True when a document arrived unread since browsers were last told: they read emailed PDFs, so they should look. */
+  private newUnread(): boolean {
+    const now = new Set(this.office.unread().map((d) => d.id));
+    const fresh = [...now].some((id) => !this.toldUnread.has(id));
+    this.toldUnread = now;
+    return fresh;
   }
 
   private async scheduleDigest() {
@@ -388,7 +398,7 @@ export class Office extends Agent<Env> {
 
   /**
    * Open browsers listen here. The Worker checked the membership; this checks the request was meant for this office.
-   * Browsers only hear `{"type":"changed"}`: the SDK's own frames (identity, state, MCP servers) are never sent, so
+   * Browsers only hear `{"type":"changed"}`, with `"unread":true` when a document arrived for them to read: the SDK's own frames (identity, state, MCP servers) are never sent, so
    * nothing goes out on a socket before this check, and none of them goes out after it.
    */
   async onConnect(connection: Connection, ctx: ConnectionContext) {

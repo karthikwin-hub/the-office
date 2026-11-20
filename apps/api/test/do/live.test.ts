@@ -71,4 +71,24 @@ describe("the live connection", () => {
     await settle();
     expect(anil.closed?.code).toBe(1008);
   });
+  it("says when a document arrives unread, so open screens read it without asking every minute", async () => {
+    const { id, owner, stub } = await openOffice();
+    const heard = await live(stub, callerFor(id, owner));
+    const email = (docId: string) => asSystem(id, "/internal/email", { from: "bills@supplier.test", subject: "Bill", docs: [{ id: docId, mimeType: "application/pdf", filename: "bill.pdf" }], skipped: [] });
+    const said = () => heard.messages.map((m) => (JSON.parse(m) as { type: string; unread?: boolean }).unread === true);
+
+    expect((await stub.fetch(await email("doc-unread-1"))).status).toBe(200);
+    await settle();
+    expect(said()).toEqual([true]);
+
+    // The books change, but no new document waits: nothing to read.
+    expect((await changeSettings(stub, callerFor(id, owner), "09:15")).status).toBe(200);
+    await settle();
+    expect(said()).toEqual([true, false]);
+
+    // Another arrives while the first still waits: only the new one is news.
+    expect((await stub.fetch(await email("doc-unread-2"))).status).toBe(200);
+    await settle();
+    expect(said()).toEqual([true, false, true]);
+  });
 });
