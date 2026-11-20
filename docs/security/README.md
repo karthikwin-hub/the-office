@@ -132,8 +132,9 @@ everywhere; zod on every request body; agents that stage every write for approva
 
 ## How it is checked
 
-- **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test`, `pnpm lint`, and
-  `pnpm audit --prod --audit-level high` (`.github/workflows/ci.yml`); each fails the check. Run `/security-review`
+- **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test`, `pnpm lint`,
+  `pnpm audit --prod --audit-level high`, and the end-to-end suite with axe (`pnpm e2e`, job "End to end")
+  (`.github/workflows/ci.yml`); each fails the check. Run `/security-review`
   and `/code-review` in Claude Code on any change to `apps/api`, as the house guidelines ask.
 - **Dependency audit:** a high or critical advisory in a production dependency fails CI. Two are ignored, by GHSA id
   under `auditConfig` in `pnpm-workspace.yaml`: the critical tinypool advisories (GHSA-5gmw-xhrv-c9v3,
