@@ -70,29 +70,32 @@ describe("rotating SOCIAL_TOKEN_KEY", () => {
     expect(sql.exec<{ key_id: string }>("SELECT key_id FROM social_tokens").toArray()[0]!.key_id).toBe(await keyId(NEW));
   });
 
-  it("keeps media links working until they expire, signs new ones with the new key, and refuses a removed key", async () => {
+  it("vouches for media links and sign-ins only with the current key: an old key that stays configured cannot forge them", async () => {
     const exp = Math.floor(Date.now() / 1000) + 600;
     const old = await signMedia(before, "off_a", "media-u1", exp);
     expect(old.startsWith(`${await keyId(OLD)}.`)).toBe(true);
-    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), old)).toBe(true);
-    expect(await verifyMedia(removed, "off_a", "media-u1", String(exp), old)).toBe(false);
+    expect(await verifyMedia(before, "off_a", "media-u1", String(exp), old)).toBe(true);
+    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), old)).toBe(false);
     const fresh = await signMedia(after, "off_a", "media-u1", exp);
     expect(fresh.startsWith(`${await keyId(NEW)}.`)).toBe(true);
-    expect(await verifyMedia(removed, "off_a", "media-u1", String(exp), fresh)).toBe(true);
-    // A link signed before links named their key is checked against every key.
+    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), fresh)).toBe(true);
+    // Naming the current key does not help a signature made with the old one, nor does naming none.
+    const mac = old.split(".")[1]!;
+    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), `${await keyId(NEW)}.${mac}`)).toBe(false);
+    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), mac)).toBe(false);
+    // A link signed before links named their key verifies with the key that is still current.
     const legacy = b64url(await crypto.subtle.sign("HMAC", await subkey(OLD, "media", "HMAC"), enc.encode(`off_a/media-u1.${exp}`)));
-    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), legacy)).toBe(true);
-    expect(await verifyMedia(removed, "off_a", "media-u1", String(exp), legacy)).toBe(false);
-    // Naming another key does not help a signature made with this one.
-    expect(await verifyMedia(after, "off_a", "media-u1", String(exp), `${await keyId(NEW)}.${old.split(".")[1]}`)).toBe(false);
-  });
+    expect(await verifyMedia(before, "off_a", "media-u1", String(exp), legacy)).toBe(true);
+    // Whoever holds a key cannot make a link that lasts longer than an hour.
+    const far = exp + 30 * 86_400;
+    expect(await verifyMedia(after, "off_a", "media-u1", String(far), await signMedia(after, "off_a", "media-u1", far))).toBe(false);
 
-  it("finishes a platform sign-in started before the rotation", async () => {
     const { state, verifier } = await newState(before, "x", "anil@kaveri.in", "off_a");
-    expect((await readState(after, "x", state))?.verifier).toBe(verifier);
-    expect(await readState(removed, "x", state)).toBeNull();
-    const fresh = await newState(after, "x", "anil@kaveri.in", "off_a");
-    expect((await readState(removed, "x", fresh.state))?.verifier).toBe(fresh.verifier);
+    expect((await readState(before, "x", state))?.verifier).toBe(verifier);
+    expect(await readState(after, "x", state)).toBeNull();
+    const started = await newState(after, "x", "anil@kaveri.in", "off_a");
+    expect((await readState(removed, "x", started.state))?.verifier).toBe(started.verifier);
+    expect(await readState(after, "x", (await newState(after, "x", "a", "off_a", Date.now() + 86_400_000)).state)).toBeNull();
   });
 
   it("keeps sealed backups and retained copies open with the old key, seals new ones with the new key, and says which key is missing", async () => {

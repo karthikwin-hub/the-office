@@ -1,5 +1,5 @@
 import type { Platform } from "@office/contracts";
-import { everyKey, keyById, keyId, type RootKeys } from "../keyring";
+import { keyId, type RootKeys } from "../keyring";
 import { b64url, fromB64url, subkey } from "./tokens";
 
 const enc = new TextEncoder();
@@ -52,20 +52,14 @@ export async function readState(
     return null;
   }
   if (!claimed || typeof claimed !== "object") return null;
-  // The key id is read before the signature is checked only to choose the key; nothing else is trusted until it verifies.
-  const named = typeof claimed.k === "string" ? await keyById(keys, claimed.k) : null;
-  if (claimed.k !== undefined && !named) return null;
-  let key: CryptoKey | null = null;
-  for (const root of named ? [named] : everyKey(keys)) {
-    const k = await subkey(root, "state", "HMAC");
-    if (await crypto.subtle.verify("HMAC", k, mac, enc.encode(payload))) {
-      key = k;
-      break;
-    }
-  }
+  // Only the current root key vouches for a state: old keys stay configured to open what they sealed, never to sign.
+  // A sign-in started just before a rotation (at most ten minutes old) is simply started again.
+  if (claimed.k !== undefined && claimed.k !== (await keyId(keys.current))) return null;
+  const k = await subkey(keys.current, "state", "HMAC");
+  const key = (await crypto.subtle.verify("HMAC", k, mac, enc.encode(payload))) ? k : null;
   if (!key) return null;
   const body = claimed;
-  if (body.p !== platform || body.exp < now || typeof body.o !== "string" || typeof body.n !== "string") return null;
+  if (body.p !== platform || body.exp < now || body.exp > now + STATE_TTL_MS + 60_000 || typeof body.o !== "string" || typeof body.n !== "string") return null;
   return { by: body.by, verifier: await verifierFor(key, body.n), officeId: body.o, nonce: body.n, expiresAt: body.exp };
 }
 

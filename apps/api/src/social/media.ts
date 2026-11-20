@@ -1,5 +1,5 @@
 import type { MediaAsset } from "@office/contracts";
-import { everyKey, KEY_ID, keyById, keyId, type RootKeys } from "../keyring";
+import { keyId, type RootKeys } from "../keyring";
 import type { SignedMedia } from "./adapter";
 import { b64url, fromB64url, subkey } from "./tokens";
 
@@ -17,27 +17,25 @@ export async function signMedia(keys: RootKeys, officeId: string, id: string, ex
   return `${await keyId(keys.current)}.${b64url(await crypto.subtle.sign("HMAC", key, enc.encode(`${officeId}/${id}.${exp}`)))}`;
 }
 
-/** True only for an unexpired link signed for this office and picture, by a root key still configured. */
+/**
+ * True only for an unexpired link signed for this office and picture by the current root key, expiring within the link
+ * lifetime. Old root keys stay configured to open what they sealed, so they never vouch for a link: after a rotation a
+ * link signed with the old key stops working (a post that fails is tried again with a fresh link).
+ */
 export async function verifyMedia(keys: RootKeys, officeId: string, id: string, exp: string | null, sig: string | null, now = Date.now()): Promise<boolean> {
   if (!MEDIA_ID.test(id) || !officeId || !exp || !sig || !/^\d{1,12}$/.test(exp)) return false;
-  if (Number(exp) * 1000 < now) return false;
+  // Not expired, and not dated further ahead than a link this office signs (a minute's grace for clocks).
+  if (Number(exp) * 1000 < now || Number(exp) * 1000 > now + (MEDIA_TTL_SECONDS + 60) * 1000) return false;
   const dot = sig.indexOf(".");
-  let roots: string[];
-  if (dot >= 0) {
-    const kid = sig.slice(0, dot);
-    const root = KEY_ID.test(kid) ? await keyById(keys, kid) : null;
-    if (!root) return false;
-    roots = [root];
-  } else roots = everyKey(keys); // signed before links named their key: at most an hour old
+  // Links signed before they named their key carry none; the current key must have signed them all the same.
+  if (dot >= 0 && sig.slice(0, dot) !== (await keyId(keys.current))) return false;
   let bytes: Uint8Array;
   try {
     bytes = fromB64url(sig.slice(dot + 1));
   } catch {
     return false;
   }
-  for (const root of roots)
-    if (await crypto.subtle.verify("HMAC", await subkey(root, "media", "HMAC"), bytes, enc.encode(`${officeId}/${id}.${exp}`))) return true;
-  return false;
+  return crypto.subtle.verify("HMAC", await subkey(keys.current, "media", "HMAC"), bytes, enc.encode(`${officeId}/${id}.${exp}`));
 }
 
 const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", svg: "image/svg+xml", mp4: "video/mp4" };
