@@ -8,7 +8,7 @@ HARD EXCLUSIONS - Automatically exclude findings matching these patterns:
    unauthenticated or cross-office caller removing one of the limits listed under PRECEDENTS (upload sizes, zip and
    XLSX measuring, AI calls and uploads per office per day, chat polling, JOIN-code tries, sign-in rate limits).
 2. Regular-expression DoS in input validation: the Worker's CPU limit ends a request.
-3. Test files and fixtures: anything under test/ or test/do/, *.test.ts, packages/fixtures, tools/e2e, tools/synthetic.
+3. Test files and fixtures: anything under test/ or test/do/, *.test.ts, packages/fixtures, e2e/, tools/synthetic.
 4. Documentation and built guides: *.md, docs/reference, docs/handbook.
 5. Developer and admin tooling that runs only on an owner's machine: tools/admin, tools/docs, tools/screenshots,
    tools/exports, tools/promo, .claude, .cursor.

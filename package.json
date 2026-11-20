@@ -16,7 +16,7 @@
     "screenshots": "node tools/screenshots/capture.mjs",
     "deploy:mock": "pnpm build:mock && pnpm --filter @office/api exec wrangler deploy -c ../web/wrangler.mock.jsonc",
     "deploy": "sh tools/admin/deploy.sh live",
-    "e2e:live": "node tools/e2e/live.mjs",
+    "e2e": "pnpm build && pnpm --filter @office/e2e e2e",
     "docs": "node tools/docs/build.mjs",
     "docs:reference": "node tools/docs/reference.mjs",
     "verify:exports": "rm -rf tools/exports/out && mkdir -p tools/exports/out/tmp && EXPORT_DIR=$PWD/tools/exports/out pnpm --filter @office/engine exec vitest run test/excel.test.ts && TMPDIR=$PWD/tools/exports/out/tmp .venv/bin/python tools/exports/verify.py tools/exports/out",

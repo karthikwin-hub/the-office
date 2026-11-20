@@ -187,7 +187,7 @@ In priority order. The private review's tracker holds the detail.
 | A command to load an opened backup into a new office | Restoring books is an engineering step today |
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
 | Branch protection on `main` requiring the CI checks; then the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |
-| Durable Object tests for loading books from older schema versions; Playwright and axe end to end | `tools/e2e/live.mjs` predates two-step sign-in |
+| The three accessibility problems the end-to-end run lists as known (`e2e/support/axe.ts`: room links on the floor, chart marks in the Boardroom, contrast of inactive routines) | Serious under WCAG 2.1 AA; the run fails on any new one |
 | Withdraw an invitation by its id, not the invitee's email in the URL path | Cloudflare's own request logs keep paths for 3 days |
 | Alerts on the structured logs: a Workers Issues automation and monitors for error rate, 5xx, failed exports, backups to India and nightly runs, and the CPU limit | The logs, with request and office ids, are in place (`docs/handbook/04-deployment.md`, section 9); the alerts are set up in the Cloudflare dashboard by an owner |
 | Split `OfficeService` and the Durable Object's router | Large files slow review |

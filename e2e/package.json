@@ -1,0 +1,16 @@
+{
+  "name": "@office/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.57.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3"
+  }
+}
