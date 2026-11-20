@@ -132,8 +132,9 @@ everywhere; zod on every request body; agents that stage every write for approva
   pushed to this repository (the Action is not hardened against prompt injection) and skips Renovate's bumps. What
   it should not report is in `docs/security/false-positive-filtering.txt`, which replaces the Action's defaults:
   update it when a control here changes. It needs the `ANTHROPIC_API_KEY` repository secret.
-- **Lint:** `pnpm lint` runs Biome's recommended rules (`biome.json`; the formatter is off until a format pass of
-  its own). Errors fail CI. Some recommended rules are lowered to warnings because fixing them changes how the app
+- **Lint and format:** `pnpm lint` runs `biome check`: Biome's recommended rules and its formatter (`biome.json`: two
+  spaces, double quotes, 160 characters; markdown and `wrangler.jsonc` are left as written). `pnpm format` rewrites
+  files to match. Errors, and any file not formatted, fail CI. Some recommended rules are lowered to warnings because fixing them changes how the app
   behaves, so each fix needs its own review: React keys and hook dependencies (`noArrayIndexKey`,
   `useExhaustiveDependencies`), the accessibility rules that fire today, and two idioms the code uses on purpose
   (`noAssignInExpressions` for `??=` and `while ((m = re.exec(s)))`, `useIterableCallbackReturn` for
@@ -171,7 +172,7 @@ In priority order. The private review's tracker holds the detail.
 | Encrypt the office's live files in R2 with the office's key | R2 encrypts at rest, but with Cloudflare's key: anyone with the bucket can read them |
 | A command to load an opened backup into a new office | Restoring books is an engineering step today |
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
-| Branch protection on `main` requiring the CI checks; then the Biome format pass, and the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |
+| Branch protection on `main` requiring the CI checks; then the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |
 | Durable Object tests for loading books from older schema versions; Playwright and axe end to end | `tools/e2e/live.mjs` predates two-step sign-in |
 | Structured logs with office and request ids; error-rate alerts | Too little to run a service on |
 | Split `OfficeService` and the Durable Object's router | Large files slow review |
