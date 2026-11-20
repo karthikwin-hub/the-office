@@ -129,7 +129,7 @@ export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
       (await toOffice(env, internal("/internal/whatsapp", { body: o.body, person: o.person, joined: o.joined, heading: o.heading }), system(o.officeId))).ok &&
       ok;
   const keys = env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID ? { token: env.WHATSAPP_TOKEN, phoneId: env.WHATSAPP_PHONE_NUMBER_ID, template: null } : null;
-  if (keys) for (const r of plan.replies) await sendText(keys, r.to, r.text).catch((e) => log("error", "whatsapp.reply-failed", {}, e));
+  if (keys) for (const r of plan.replies) await sendText(keys, r.to, r.text).catch(() => log("error", "whatsapp.reply-failed"));
   return ok;
 }
 

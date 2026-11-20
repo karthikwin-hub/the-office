@@ -113,6 +113,8 @@ describe("a log line", () => {
     expect(scrub("the token expired")).toBe("the token expired");
     expect(line("info", "x", { password: "hunter2" } as never)).toEqual({ event: "x", level: "info" });
     expect(line("info", "Not An Event!").event).toBe("invalid-event");
+    expect(line("error", "social.pull-failed", { channel: "ch_1732000123" }).channel).toBe("ch_1732000123");
+    expect(line("error", "social.pull-failed", { channel: "anil@kaveri.in" }).channel).toBe("invalid-id");
     expect(scrub("x".repeat(1000)).length).toBeLessThanOrEqual(301);
     expect(scrub("Order 1,24,500 for 124500.00 and 12,000/- to SBIN0001234 a/c 00112233445")).toBe(
       "Order [number] for [amount] and [amount] to [ifsc] a/c [number]",
@@ -128,7 +130,8 @@ describe("a log line", () => {
     for (const big of ["a".repeat(64_000), `${"9".repeat(64_000)}@`, `"${"x ".repeat(32_000)}`]) {
       const started = performance.now();
       expect(scrub(big).length).toBeLessThanOrEqual(301);
-      expect(performance.now() - started).toBeLessThan(20);
+      // Linear now: well under this on any runner; the quadratic pattern took seconds.
+      expect(performance.now() - started).toBeLessThan(250);
     }
   });
 

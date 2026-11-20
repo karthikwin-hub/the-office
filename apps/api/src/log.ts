@@ -56,6 +56,8 @@ const scope = new AsyncLocalStorage<Scope>();
 /** Ids we put on a line come from Cloudflare or from us; anything else in the header is not taken. */
 const ID = /^[\w-]{1,64}$/;
 const EVENT = /^[a-z][\w.-]{0,63}$/;
+/** Fields that are ids or names from the code: checked for shape instead of scrubbed, so they stay readable. */
+const IDS = new Set<string>(["step", "channel"]);
 
 export const newRequestId = () => crypto.randomUUID();
 
@@ -130,7 +132,7 @@ export function line(level: Level, event: string, fields: Fields = {}, error?: u
     const v = fields[k];
     if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
     // A route is a pattern written in the code (or made by routeOf); everything else is scrubbed.
-    else if (typeof v === "string") out[k] = k === "route" ? v.slice(0, 120) : scrub(v);
+    else if (typeof v === "string") out[k] = k === "route" ? v.slice(0, 120) : IDS.has(k) ? (ID.test(v) ? v : "invalid-id") : scrub(v);
   }
   if (error !== undefined) {
     out.errorName = error instanceof Error ? scrub(error.name) : typeof error;
