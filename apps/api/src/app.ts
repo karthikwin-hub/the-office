@@ -34,6 +34,7 @@ import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./custom
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
+import { exportArchive, type ExportPlan } from "./export";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -44,7 +45,6 @@ import { ControlPlane, ingestAddress, OFFICE_ID, type OfficeRow, PURGE_AFTER_MS 
 import { sendText } from "./whatsapp/cloud";
 import { WaDirectory } from "./whatsapp/links";
 import { weatherFor, type Where } from "./weather";
-import { zip, type ZipEntry } from "./zip";
 
 type User = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled: boolean };
 type Vars = { user: User; caller: Caller; office: OfficeRow; session: { createdAt: Date; stepUpAt: Date | null } };
@@ -526,31 +526,26 @@ app.post("/api/o/:office/office-admin/transfer", async (c) => {
   return err ? c.json({ error: err }, 409) : c.json({ ok: true });
 });
 
-/** Everything the office holds, in one archive: the books as JSON and every stored file. */
+/**
+ * Everything the office holds, in one archive: the books as JSON and every stored file. The office's Durable Object
+ * reads the files and writes the archive in parts (export.ts); the Worker only joins the parts into the download.
+ */
 app.get("/api/o/:office/office-admin/export", async (c) => {
   const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;
   const caller = c.get("caller");
-  const res = await toOffice(c.env, internal("/internal/export", {}), system(caller.officeId));
+  const res = await toOffice(c.env, internal("/internal/export/plan", {}), system(caller.officeId));
   if (!res.ok) return c.json({ error: "The office could not be read. Try again." }, 500);
-  const entries: ZipEntry[] = [{ name: "books.json", data: await res.text() }];
-  const prefix = officePrefix(caller.officeId);
-  let total = 0;
-  let cursor: string | undefined;
-  do {
-    const page = await c.env.DOCS.list({ prefix, cursor });
-    for (const o of page.objects) {
-      if (total + o.size > 200 * 1024 * 1024) break;
-      const obj = await c.env.DOCS.get(o.key);
-      if (!obj) continue;
-      total += o.size;
-      entries.push({ name: `files/${o.key.slice(prefix.length)}`, data: new Uint8Array(await obj.arrayBuffer()) });
-    }
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
-  await cp(c.env).audit(caller.officeId, caller.email, "office.exported", `${entries.length} files`);
+  const plan = (await res.json()) as ExportPlan;
+  await cp(c.env).audit(caller.officeId, caller.email, "office.exported", `${plan.entries} files`);
+  const { body, done } = exportArchive(plan, (part) => toOffice(c.env, internal("/internal/export/part", { id: plan.id, part }), system(caller.officeId)));
+  try {
+    c.executionCtx.waitUntil(done);
+  } catch {
+    // No execution context (tests): the download's own stream keeps the parts coming.
+  }
   const name = c.get("office").name.replace(/[^\w-]+/g, "-").slice(0, 40) || "office";
-  return new Response(zip(entries), { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="${name}-export.zip"` } });
+  return new Response(body, { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="${name}-export.zip"` } });
 });
 
 /** Deleting hides the office from everyone at once; its books and files stay 30 days in case it was a mistake. */

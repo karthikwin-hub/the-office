@@ -6,6 +6,7 @@ import { authScope } from "../src/auth";
 import { CALLER_HEADER, type Caller } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
 import type { Env } from "../src/env";
+import { OfficeExports } from "../src/export";
 import { docKey, mediaKey } from "../src/keys";
 import { meteredAi, QUOTA, QuotaError, take } from "../src/quota";
 import { signMedia } from "../src/social/media";
@@ -81,10 +82,14 @@ function indiaStore() {
 }
 
 type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string; sealed: boolean };
-/** Durable Objects that only record what reached them, and answer with whose they are. They take mail unless `mail.admit` says not. */
-function officesNs(docs: { map: Map<string, unknown> }) {
+/**
+ * Durable Objects that only record what reached them, and answer with whose they are. They take mail unless `mail.admit`
+ * says not, and write exports with the office's own export code.
+ */
+function officesNs(docs: ReturnType<typeof r2>) {
   const seen: Seen[] = [];
   const mail = { admit: true, storedBeforeAsked: [] as number[] };
+  const exports = new Map<string, OfficeExports>();
   const ns = {
     idFromName: (name: string) => ({ name }),
     get: (id: { name: string }) => ({
@@ -93,7 +98,14 @@ function officesNs(docs: { map: Map<string, unknown> }) {
         const caller = JSON.parse(req.headers.get(CALLER_HEADER) ?? "null") as Caller;
         const sealed = await callerSealed(SECRET, req.headers.get(CALLER_HEADER) ?? "", req.headers.get(CALLER_SEAL_HEADER));
         seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text(), sealed });
-        if (path === "/internal/export") return Response.json({ office: id.name, books: { business: { name: id.name } } });
+        if (path === "/internal/export/plan") {
+          if (!exports.has(id.name)) exports.set(id.name, new OfficeExports(docs as unknown as R2Bucket));
+          return Response.json(await exports.get(id.name)!.plan(id.name, { office: id.name, books: { business: { name: id.name } } }));
+        }
+        if (path === "/internal/export/part") {
+          const { id: exportId, part } = JSON.parse(seen.at(-1)!.body) as { id: string; part: number };
+          return exports.get(id.name)?.part(exportId, part) ?? Response.json({ error: "No such export." }, { status: 410 });
+        }
         if (path === "/internal/mail-admit") {
           mail.storedBeforeAsked.push(docs.map.size);
           return Response.json({ admit: mail.admit });
@@ -312,10 +324,11 @@ describe("one office cannot reach another", () => {
     const { w, anil, A } = await twoOffices();
     const forged = JSON.stringify({ userId: "system", name: "x", email: "x@x", role: "owner", officeId: A });
     await call(w, anil, `${inOffice(A, ROUTES.desk)}`, { headers: { [CALLER_HEADER]: forged, [CALLER_SEAL_HEADER]: "forged-seal-forged-seal-forged-seal-forged" } });
-    await call(w, anil, inOffice(A, ROUTES.officeExport));
+    await (await call(w, anil, inOffice(A, ROUTES.officeExport))).arrayBuffer();
     expect(w.seen.map((s) => [s.path, s.caller.userId, s.sealed])).toEqual([
       ["/api/desk", anil.id, true],
-      ["/internal/export", "system", true],
+      ["/internal/export/plan", "system", true],
+      ["/internal/export/part", "system", true],
     ]);
   });
 
@@ -895,7 +908,7 @@ describe("people in an office", () => {
   });
 
   it("exports only the office's own books and files", async () => {
-    const { w, anil, A, B } = await twoOffices();
+    const { w, anil, A, B, cp } = await twoOffices();
     await w.docs.put(docKey(A, "doc-u1"), "A's bill");
     await w.docs.put(docKey(B, "doc-u2"), "B's bill");
     const res = await call(w, anil, inOffice(A, ROUTES.officeExport));
@@ -905,7 +918,11 @@ describe("people in an office", () => {
     expect(bytes).toContain("files/docs/doc-u1");
     expect(bytes).toContain("A's bill");
     expect(bytes).not.toContain("B's bill");
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/export"]]);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+      [A, "/internal/export/plan"],
+      [A, "/internal/export/part"],
+    ]);
+    expect((await cp.auditTrail(A)).find((a) => a.action === "office.exported")).toMatchObject({ actor: anil.email, detail: "2 files" });
   });
 });
 

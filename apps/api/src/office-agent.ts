@@ -4,6 +4,7 @@ import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
 import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedCopy } from "./backup";
 import { SqlEditLog } from "./edits";
+import { OfficeExports } from "./export";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
@@ -77,6 +78,8 @@ export class Office extends Agent<Env> {
   private office!: OfficeService;
   private vault!: TokenVault;
   private spentStates!: SpentStates;
+  /** Exports being written, part by part, for the Worker (export.ts). */
+  private exports: OfficeExports | null = null;
   private day = "";
   /** Requests inside `route()` now; a failed one reopens the books only when it is alone. */
   private routing = 0;
@@ -452,6 +455,8 @@ export class Office extends Agent<Env> {
       return json(await this.purge());
     }
     this.fresh();
+    // The export only reads: its plan and parts skip the save that follows every other request.
+    if (request.method === "POST" && path.startsWith("/internal/export/")) return this.exportRequest(path, request);
     this.routing++;
     try {
       const res = await this.route(request, caller)
@@ -484,7 +489,6 @@ export class Office extends Agent<Env> {
     if (post && path === "/internal/email") return json(await this.receiveEmail((await request.json()) as MailDocs));
     if (post && path === "/internal/social/meta") return json(await this.receiveMeta(await request.json()));
     if (post && path === "/internal/whatsapp") return json(await this.receiveShared((await request.json()) as SharedMessage));
-    if (post && path === "/internal/export") return json(this.exportBooks());
     if (post && path === "/internal/support-email") return json(await this.receiveSupport((await request.json()) as SupportMail));
     if (post && path === "/internal/sales-email") return json(await this.receiveSalesMail((await request.json()) as MailDocs));
     if (post && path === ROUTES.salesUpload) return this.uploadSales(request, caller);
@@ -585,6 +589,23 @@ export class Office extends Agent<Env> {
   private exportBooks() {
     const { users: _u, ...settings } = this.office.settings();
     return { office: this.officeId, exportedAt: new Date().toISOString(), books: this.office.books, settings };
+  }
+
+  /** `/internal/export/plan` lists what goes in the archive; `/internal/export/part` streams one part of it. */
+  private async exportRequest(path: string, request: Request): Promise<Response> {
+    this.exports ??= new OfficeExports(this.env.DOCS);
+    try {
+      if (path === "/internal/export/plan") return json(await this.exports.plan(this.officeId!, this.exportBooks()));
+      if (path === "/internal/export/part") {
+        const body = (await request.json().catch(() => ({}))) as { id?: unknown; part?: unknown };
+        const res = typeof body.id === "string" && Number.isInteger(body.part) ? this.exports.part(body.id, body.part as number) : null;
+        return res ?? json({ error: "No such export. Start it again." }, 410);
+      }
+      return json({ error: "Not found" }, 404);
+    } catch (e) {
+      this.log("export failed", e);
+      return json({ error: "The office could not be read. Try again." }, 500);
+    }
   }
 
   /** The end of a deleted office: its books and edit log are sealed and kept, then its storage and alarms go. The Worker removes its files and rows. */
