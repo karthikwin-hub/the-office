@@ -188,6 +188,15 @@ export const waAttemptAll = sqliteTable("wa_attempt_all", {
   failures: integer("failures").notNull(),
 });
 
+/** Purged offices whose daily copies in India are still to be deleted (migration 0008). */
+export const backupErasure = sqliteTable("backup_erasure", {
+  officeId: text("office_id").primaryKey(),
+  since: integer("since").notNull(),
+  erased: integer("erased").notNull().default(0),
+  tries: integer("tries").notNull().default(0),
+  lastError: text("last_error"),
+});
+
 export const audit = sqliteTable(
   "audit",
   {

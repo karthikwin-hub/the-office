@@ -19,22 +19,33 @@ export async function gzip(text: string): Promise<ArrayBuffer> {
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (data: ArrayBuffer | string) => hex(await crypto.subtle.digest("SHA-256", typeof data === "string" ? enc.encode(data) : data));
+const sha256 = async (data: ArrayBuffer | Uint8Array | string) => hex(await crypto.subtle.digest("SHA-256", typeof data === "string" ? enc.encode(data) : data));
 async function hmac(key: ArrayBuffer | string, data: string): Promise<ArrayBuffer> {
   const k = await crypto.subtle.importKey("raw", typeof key === "string" ? enc.encode(key) : key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return crypto.subtle.sign("HMAC", k, enc.encode(data));
 }
 const encodeKey = (key: string) => key.split("/").map((p) => encodeURIComponent(p)).join("/");
+/** RFC 3986, as Signature Version 4 wants query parameters: everything but letters, digits and `-._~` escaped. */
+const encodeQuery = (v: string) => encodeURIComponent(v).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 
-/** PUT one object, path-style (`<endpoint>/<bucket>/<key>`), which every S3-compatible store accepts. */
-export async function putObject(t: BackupTarget, key: string, body: ArrayBuffer, contentType: string, now = new Date()): Promise<void> {
-  const url = new URL(`${t.endpoint}/${t.bucket}/${encodeKey(key)}`);
+type Bytes = ArrayBuffer | Uint8Array;
+
+/**
+ * One request to the store, path-style (`<endpoint>/<bucket>/<key>`), which every S3-compatible store accepts,
+ * signed with AWS Signature Version 4. Throws with the store's answer unless it is a success.
+ */
+async function signed(t: BackupTarget, method: "GET" | "PUT" | "POST", key: string, query: Record<string, string>, body: Bytes | null, extra: Record<string, string>, now: Date): Promise<Response> {
+  const qs = Object.keys(query)
+    .sort()
+    .map((k) => `${encodeQuery(k)}=${encodeQuery(query[k]!)}`)
+    .join("&");
+  const url = new URL(`${t.endpoint}/${t.bucket}${key ? `/${encodeKey(key)}` : ""}${qs ? `?${qs}` : ""}`);
   const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const day = amzDate.slice(0, 8);
-  const payloadHash = await sha256(body);
-  const headers: Record<string, string> = { host: url.host, "content-type": contentType, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
-  const signed = Object.keys(headers).sort();
-  const canonical = ["PUT", url.pathname, "", ...signed.map((h) => `${h}:${headers[h]}`), "", signed.join(";"), payloadHash].join("\n");
+  const payloadHash = await sha256(body ?? "");
+  const headers: Record<string, string> = { host: url.host, ...extra, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
+  const names = Object.keys(headers).sort();
+  const canonical = [method, url.pathname, qs, ...names.map((h) => `${h}:${headers[h]}`), "", names.join(";"), payloadHash].join("\n");
   const scope = `${day}/${t.region}/s3/aws4_request`;
   const toSign = ["AWS4-HMAC-SHA256", amzDate, scope, await sha256(canonical)].join("\n");
   let key2 = await hmac(`AWS4${t.secretAccessKey}`, day);
@@ -43,15 +54,49 @@ export async function putObject(t: BackupTarget, key: string, body: ArrayBuffer,
   key2 = await hmac(key2, "aws4_request");
   const signature = hex(await hmac(key2, toSign));
   const res = await fetch(url, {
-    method: "PUT",
-    headers: { ...headers, authorization: `AWS4-HMAC-SHA256 Credential=${t.accessKeyId}/${scope}, SignedHeaders=${signed.join(";")}, Signature=${signature}` },
-    body,
+    method,
+    headers: { ...headers, authorization: `AWS4-HMAC-SHA256 Credential=${t.accessKeyId}/${scope}, SignedHeaders=${names.join(";")}, Signature=${signature}` },
+    ...(body ? { body } : {}),
   });
   if (!res.ok) throw new Error(`The backup store answered ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return res;
 }
 
+/** PUT one object. */
+export async function putObject(t: BackupTarget, key: string, body: Bytes, contentType: string, now = new Date()): Promise<void> {
+  await signed(t, "PUT", key, {}, body, { "content-type": contentType }, now);
+}
+
+const unescapeXml = (s: string) => s.replace(/&(lt|gt|quot|apos|amp);/g, (_, e: string) => ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" })[e]!);
+/** The raw text inside each `<name>` element; `text()` unescapes a leaf. */
+const tags = (xml: string, name: string) => [...xml.matchAll(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "g"))].map((m) => m[1]!);
+const text = (xml: string, name: string) => tags(xml, name).map(unescapeXml);
+
+/** One page (up to 1,000) of the keys under `prefix`, with the token for the next page, if there is one (ListObjectsV2). */
+export async function listObjects(t: BackupTarget, prefix: string, after?: string, now = new Date()): Promise<{ keys: string[]; next: string | null }> {
+  const xml = await (await signed(t, "GET", "", { "list-type": "2", prefix, ...(after ? { "continuation-token": after } : {}) }, null, {}, now)).text();
+  const keys = tags(xml, "Contents").flatMap((c) => text(c, "Key"));
+  return { keys, next: text(xml, "IsTruncated")[0] === "true" ? (text(xml, "NextContinuationToken")[0] ?? null) : null };
+}
+
+/** Deletes up to 1,000 keys in one request (DeleteObjects). Throws if the store kept any of them. */
+export async function deleteObjects(t: BackupTarget, keys: string[], now = new Date()): Promise<void> {
+  if (!keys.length) return;
+  if (keys.length > 1000) throw new Error("At most 1,000 keys go in one delete.");
+  const esc = (k: string) => k.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const body = enc.encode(`<?xml version="1.0" encoding="UTF-8"?><Delete><Quiet>true</Quiet>${keys.map((k) => `<Object><Key>${esc(k)}</Key></Object>`).join("")}</Delete>`);
+  // The S3 API asks for the body's MD5 on this request; it is a checksum here, not a protection.
+  const md5 = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("MD5", body))));
+  const xml = await (await signed(t, "POST", "", { delete: "" }, body, { "content-md5": md5, "content-type": "application/xml" }, now)).text();
+  const errors = tags(xml, "Error");
+  if (errors.length) throw new Error(`The backup store kept ${errors.length} of ${keys.length}: ${text(errors[0]!, "Code")[0] ?? "unknown error"}`);
+}
+
+/** Every copy of one office in the store: its daily copies all sit under `<officeId>/`. */
+export const officeBackupPrefix = (officeId: string) => `${officeId}/`;
+
 /** Where a day's copy goes: one object per office per day, so a month of copies sits side by side. */
-export const backupKey = (officeId: string, day: string) => `${officeId}/${day}.json.gz`;
+export const backupKey = (officeId: string, day: string) => `${officeBackupPrefix(officeId)}${day}.json.gz`;
 /** A deleted office's books and edit log, kept outside its prefix for the retention period. */
 export const retainedKey = (officeId: string, at: string) => `retained/${officeId}/${at.replace(/[:.]/g, "-")}.json`;
 

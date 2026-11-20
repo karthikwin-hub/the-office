@@ -1,7 +1,7 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { ACCOUNT_ROUTES, LEGAL_DOCUMENTS, PLATFORM_ROUTES, type PlatformInvited, type PlatformView, ROUTES, subdomainProblem } from "@office/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { app, purgeDeleted, receiveEmail, sweepRetained } from "../src/app";
+import { app, eraseBackups, purgeDeleted, receiveEmail, sweepRetained } from "../src/app";
 import { authScope } from "../src/auth";
 import { CALLER_HEADER, type Caller } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
@@ -40,6 +40,44 @@ function r2() {
     list: async ({ prefix = "" }: { prefix?: string } = {}) => ({ objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => obj(k)!), truncated: false }),
   };
   return bucket;
+}
+
+/**
+ * An S3-compatible bucket in India, in memory: ListObjectsV2 in pages of 1,000 and DeleteObjects. `refuse`
+ * answers 403, as a key without delete permission would. Node has no MD5 in WebCrypto, which Workers do; the
+ * request's Content-MD5 is checked here with Node's.
+ */
+function indiaStore() {
+  const keys = new Set<string>();
+  const deletes: number[] = [];
+  const state = { keys, deletes, refuse: false, fetch: async (_u: URL | string, _i?: RequestInit) => new Response() };
+  const digest = crypto.subtle.digest.bind(crypto.subtle);
+  vi.spyOn(crypto.subtle, "digest").mockImplementation(async (alg, data) =>
+    alg === "MD5" ? new Uint8Array(createHash("md5").update(new Uint8Array(data as ArrayBuffer)).digest()).buffer : digest(alg, data),
+  );
+  state.fetch = async (u: URL | string, init?: RequestInit) => {
+    const url = new URL(String(u));
+    if (state.refuse) return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+    const h = init?.headers as Record<string, string>;
+    if (!h.authorization?.startsWith("AWS4-HMAC-SHA256 ")) return new Response("unsigned", { status: 403 });
+    if (init?.method === "GET" && url.searchParams.get("list-type") === "2") {
+      const prefix = url.searchParams.get("prefix") ?? "";
+      const all = [...keys].filter((k) => k.startsWith(prefix)).sort();
+      const page = all.slice(0, 1000);
+      const more = all.length > 1000;
+      return new Response(`<ListBucketResult><IsTruncated>${more}</IsTruncated>${page.map((k) => `<Contents><Key>${k}</Key></Contents>`).join("")}${more ? "<NextContinuationToken>t</NextContinuationToken>" : ""}</ListBucketResult>`);
+    }
+    if (init?.method === "POST" && url.searchParams.has("delete")) {
+      const body = new Uint8Array(init.body as ArrayBuffer);
+      if (h["content-md5"] !== createHash("md5").update(body).digest("base64")) return new Response("<Error><Code>BadDigest</Code></Error>", { status: 400 });
+      const asked = [...new TextDecoder().decode(body).matchAll(/<Key>(.*?)<\/Key>/g)].map((m) => m[1]!);
+      deletes.push(asked.length);
+      for (const k of asked) keys.delete(k);
+      return new Response("<DeleteResult></DeleteResult>");
+    }
+    return new Response("not here", { status: 404 });
+  };
+  return state;
 }
 
 type Seen = { stub: string; room: string | null; path: string; caller: Caller; body: string; sealed: boolean };
@@ -159,7 +197,7 @@ beforeEach(() => {
   graph = vi.fn(async () => Response.json({ messages: [{ id: "wamid.out" }] }));
   vi.stubGlobal("fetch", graph);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => (vi.unstubAllGlobals(), vi.restoreAllMocks()));
 const repliesTo = (phone: string) => graph.mock.calls.filter(([, init]) => String((init as RequestInit | undefined)?.body ?? "").includes(phone)).map(([, init]) => JSON.parse(String((init as RequestInit).body)).text?.body as string);
 
 describe("accounts and offices", () => {
@@ -857,6 +895,34 @@ describe("suspending, deleting and purging", () => {
     expect(await cp.office(A)).toBeNull();
     expect(await cp.membership(A, carol.id)).toBeNull();
     expect((await call(w, bina, inOffice(B, ROUTES.desk))).status).toBe(200);
+  });
+
+  it("deletes a purged office's copies in India, a page at a time, and tries again the next night if the store refuses", async () => {
+    const { w, anil, A, B, cp } = await twoOffices();
+    Object.assign(w.env, { INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.example", INDIA_BACKUP_BUCKET: "books-in", INDIA_BACKUP_REGION: "ap-south-1", INDIA_BACKUP_ACCESS_KEY_ID: "AKID", INDIA_BACKUP_SECRET_ACCESS_KEY: "secret" });
+    const store = indiaStore();
+    for (let d = 0; d < 1203; d++) store.keys.add(`${A}/day-${String(d).padStart(4, "0")}.json.gz.enc`);
+    store.keys.add(`${B}/2026-11-04.json.gz.enc`);
+    store.keys.add(`${A}x/2026-11-04.json.gz.enc`);
+    vi.stubGlobal("fetch", store.fetch);
+
+    await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) });
+    w.db.sqlite.prepare("UPDATE office SET deleted_at = ? WHERE id = ?").run(Date.now() - PURGE_AFTER_MS - 1, A);
+    expect(await purgeDeleted(w.env)).toBe(1);
+    expect(w.db.sqlite.prepare("SELECT office_id FROM backup_erasure").all()).toEqual([{ office_id: A }]);
+
+    store.refuse = true;
+    expect(await eraseBackups(w.env)).toBe(0);
+    expect(w.db.sqlite.prepare("SELECT tries, last_error FROM backup_erasure WHERE office_id = ?").get(A)).toEqual({ tries: 1, last_error: expect.stringContaining("403") });
+    expect(store.keys.size).toBe(1205);
+
+    store.refuse = false;
+    expect(await eraseBackups(w.env)).toBe(1);
+    expect([...store.keys].sort()).toEqual([`${B}/2026-11-04.json.gz.enc`, `${A}x/2026-11-04.json.gz.enc`].sort());
+    expect(store.deletes.every((n) => n <= 1000)).toBe(true);
+    expect(w.db.sqlite.prepare("SELECT * FROM backup_erasure").all()).toEqual([]);
+    expect(await cp.auditTrail(A)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "system", action: "office.backups-erased", detail: "1203 copies in India deleted" })]));
+    expect(await eraseBackups(w.env)).toBe(0);
   });
 
   it("deletes a purged office's retained books once their eight years are over, and says so in its audit", async () => {

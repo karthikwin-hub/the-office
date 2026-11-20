@@ -4,7 +4,7 @@ import { dispatch, OfficeService, verifyChain } from "@office/engine";
 import { ROUTES } from "@office/contracts";
 import { loadBooks } from "@office/fixtures";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { backupKey, backupTarget, gzip, putObject, retainedKey } from "../src/backup";
+import { backupKey, backupTarget, deleteObjects, gzip, listObjects, putObject, retainedKey } from "../src/backup";
 import { SqlEditLog } from "../src/edits";
 import type { Env } from "../src/env";
 
@@ -52,7 +52,7 @@ describe("the edit log in the office's SQLite", () => {
 
 describe("the daily copy in India", () => {
   const env = (over: Partial<Env> = {}) => ({ INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.amazonaws.com/", INDIA_BACKUP_BUCKET: "office-books-in", INDIA_BACKUP_REGION: "ap-south-1", INDIA_BACKUP_ACCESS_KEY_ID: "AKIDEXAMPLE", INDIA_BACKUP_SECRET_ACCESS_KEY: "test-secret-key", ...over }) as Env;
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => (vi.unstubAllGlobals(), vi.restoreAllMocks()));
 
   it("is skipped until all five settings are there", () => {
     expect(backupTarget(env())).toMatchObject({ endpoint: "https://s3.ap-south-1.amazonaws.com", region: "ap-south-1" });
@@ -93,6 +93,45 @@ describe("the daily copy in India", () => {
     const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>((key, part) => createHmac("sha256", key).update(part).digest(), Buffer.from("AWS4test-secret-key"));
     const signature = createHmac("sha256", k).update(toSign).digest("hex");
     expect(h.authorization).toBe(`AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/${scope}, SignedHeaders=${signed}, Signature=${signature}`);
+  });
+
+  it("signs the listing's query string the way Signature Version 4 wants it, and reads every page", async () => {
+    const seen: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal("fetch", async (url: URL, init: RequestInit) => {
+      seen.push({ url: String(url), init });
+      return new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/2026-11-04.json.gz</Key></Contents><Contents><Key>kaveri/a&amp;b</Key></Contents><NextContinuationToken>1/x=</NextContinuationToken></ListBucketResult>");
+    });
+    const page = await listObjects(backupTarget(env())!, "kaveri/", "0/y=", new Date("2026-11-04T21:30:00Z"));
+    expect(page).toEqual({ keys: ["kaveri/2026-11-04.json.gz", "kaveri/a&b"], next: "1/x=" });
+    const { url, init } = seen[0]!;
+    const qs = "continuation-token=0%2Fy%3D&list-type=2&prefix=kaveri%2F";
+    expect(url).toBe(`https://s3.ap-south-1.amazonaws.com/office-books-in?${qs}`);
+    const h = init.headers as Record<string, string>;
+    const empty = createHash("sha256").update("").digest("hex");
+    const canonical = ["GET", "/office-books-in", qs, "host:s3.ap-south-1.amazonaws.com", `x-amz-content-sha256:${empty}`, "x-amz-date:20261104T213000Z", "", "host;x-amz-content-sha256;x-amz-date", empty].join("\n");
+    const scope = "20261104/ap-south-1/s3/aws4_request";
+    const toSign = ["AWS4-HMAC-SHA256", "20261104T213000Z", scope, createHash("sha256").update(canonical).digest("hex")].join("\n");
+    const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>((key, part) => createHmac("sha256", key).update(part).digest(), Buffer.from("AWS4test-secret-key"));
+    expect(h.authorization).toContain(`Signature=${createHmac("sha256", k).update(toSign).digest("hex")}`);
+  });
+
+  it("deletes in one request with the body's MD5, and fails when the store keeps any key", async () => {
+    // Workers have MD5 in WebCrypto for this; Node does not, so the test lends it Node's.
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, "digest").mockImplementation(async (alg, data) => (alg === "MD5" ? new Uint8Array(createHash("md5").update(new Uint8Array(data as ArrayBuffer)).digest()).buffer : digest(alg, data)));
+    const seen: { url: string; init: RequestInit }[] = [];
+    let answer = "<DeleteResult></DeleteResult>";
+    vi.stubGlobal("fetch", async (url: URL, init: RequestInit) => (seen.push({ url: String(url), init }), new Response(answer)));
+    await deleteObjects(backupTarget(env())!, ["kaveri/1.json.gz", "kaveri/<2>"]);
+    const { url, init } = seen[0]!;
+    expect(url).toBe("https://s3.ap-south-1.amazonaws.com/office-books-in?delete=");
+    expect(init.method).toBe("POST");
+    const body = new Uint8Array(init.body as ArrayBuffer);
+    expect(new TextDecoder().decode(body)).toContain("<Quiet>true</Quiet><Object><Key>kaveri/1.json.gz</Key></Object><Object><Key>kaveri/&lt;2&gt;</Key></Object>");
+    expect((init.headers as Record<string, string>)["content-md5"]).toBe(createHash("md5").update(body).digest("base64"));
+    answer = "<DeleteResult><Error><Key>kaveri/1.json.gz</Key><Code>AccessDenied</Code></Error></DeleteResult>";
+    await expect(deleteObjects(backupTarget(env())!, ["kaveri/1.json.gz"])).rejects.toThrow(/AccessDenied/);
+    await expect(deleteObjects(backupTarget(env())!, Array.from({ length: 1001 }, (_, i) => `k${i}`))).rejects.toThrow(/1,000/);
   });
 
   it("says why when the store refuses", async () => {

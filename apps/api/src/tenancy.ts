@@ -195,6 +195,28 @@ export class ControlPlane {
     ]);
   }
 
+  /** A purged office's copies in India are to be deleted; asking twice keeps the first date. */
+  async queueBackupErasure(officeId: string): Promise<void> {
+    await this.db.prepare("INSERT INTO backup_erasure (office_id, since) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(officeId, this.now()).run();
+  }
+
+  /** The oldest erasures still to do. */
+  async backupErasures(limit: number): Promise<{ officeId: string; erased: number }[]> {
+    const { results } = await this.db.prepare("SELECT office_id, erased FROM backup_erasure ORDER BY since LIMIT ?").bind(limit).all<{ office_id: string; erased: number }>();
+    return results.map((r) => ({ officeId: r.office_id, erased: r.erased }));
+  }
+
+  /** Some copies went (`done` false: more are left for the next night), or the last of them did, which the audit trail records. */
+  async backupErasureProgress(officeId: string, erased: number, done: boolean, error: string | null = null): Promise<void> {
+    if (done) {
+      const row = await this.db.prepare("SELECT erased FROM backup_erasure WHERE office_id = ?").bind(officeId).first<{ erased: number }>();
+      const total = (row?.erased ?? 0) + erased;
+      await this.db.batch([this.db.prepare("DELETE FROM backup_erasure WHERE office_id = ?").bind(officeId), this.auditStmt(officeId, "system", "office.backups-erased", `${total} ${total === 1 ? "copy" : "copies"} in India deleted`)]);
+      return;
+    }
+    await this.db.prepare("UPDATE backup_erasure SET erased = erased + ?, tries = tries + 1, last_error = ? WHERE office_id = ?").bind(erased, error, officeId).run();
+  }
+
   async members(officeId: string): Promise<Member[]> {
     const { results } = await this.db
       .prepare("SELECT u.id AS user_id, u.name, u.email, m.role, m.created_at FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.office_id = ? ORDER BY m.role DESC, u.name")

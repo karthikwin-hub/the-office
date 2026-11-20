@@ -28,7 +28,7 @@ import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "
 import { CALLER_SEAL_HEADER, sealCaller } from "./caller-seal";
 import type { Env } from "./env";
 import { AccountRecords } from "./account";
-import { retainedKeepUntil, retainedOffice } from "./backup";
+import { backupTarget, deleteObjects, listObjects, officeBackupPrefix, retainedKeepUntil, retainedOffice } from "./backup";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { docKey, mediaKey, officePrefix } from "./keys";
@@ -654,7 +654,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
 }
 
-/** Each night: offices deleted more than 30 days ago lose their books, files and links. */
+/** Each night: offices deleted more than 30 days ago lose their books, files and links; their copies in India are queued for deletion. */
 export async function purgeDeleted(env: Env): Promise<number> {
   const plane = cp(env);
   const due = await plane.purgeDue();
@@ -670,10 +670,60 @@ export async function purgeDeleted(env: Env): Promise<number> {
       if (page.objects.length) await env.DOCS.delete(page.objects.map((x) => x.key));
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor);
+    if (backupTarget(env)) await plane.queueBackupErasure(o.id);
     await plane.forget(o.id);
     console.log(JSON.stringify({ event: "office.purged", office: o.id }));
   }
   return due.length;
+}
+
+/**
+ * Requests to the store in India one night may make. The Workers free plan allows 50 outside requests for each
+ * run of the cron, and nothing else in the run makes any. An erasure that does not finish goes on the next night.
+ */
+const ERASE_REQUESTS = 40;
+
+/**
+ * Each night: the daily copies in India of offices purged since are deleted, a page of up to 1,000 at a time.
+ * A failure is kept with the office's row and tried again the next night; the audit trail records the end.
+ */
+export async function eraseBackups(env: Env): Promise<number> {
+  const target = backupTarget(env);
+  if (!target) return 0;
+  const plane = cp(env);
+  let budget = ERASE_REQUESTS;
+  let finished = 0;
+  for (const job of await plane.backupErasures(10)) {
+    if (budget < 2) break;
+    let erased = 0;
+    try {
+      let done = false;
+      while (budget >= 2) {
+        budget--;
+        // Always the first page: what was deleted is gone from the listing.
+        const page = await listObjects(target, officeBackupPrefix(job.officeId));
+        if (page.keys.length) {
+          budget--;
+          await deleteObjects(target, page.keys);
+          erased += page.keys.length;
+        }
+        if (!page.next) {
+          done = true;
+          break;
+        }
+      }
+      await plane.backupErasureProgress(job.officeId, erased, done);
+      if (done) {
+        finished++;
+        console.log(JSON.stringify({ event: "office.backups-erased", office: job.officeId, count: job.erased + erased }));
+      }
+    } catch (e) {
+      const why = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+      await plane.backupErasureProgress(job.officeId, erased, false, why);
+      console.error(JSON.stringify({ event: "backups-erase.failed", office: job.officeId, error: why }));
+    }
+  }
+  return finished;
 }
 
 /** How many pages of retained copies one night looks at, so the run stays small; the rest wait for the next night. */
@@ -707,8 +757,9 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
   return deleted;
 }
 
-/** The nightly cron: deleted offices purged after 30 days, then retained copies past their date. */
+/** The nightly cron: deleted offices purged after 30 days, their copies in India deleted, then retained copies past their date. */
 export async function nightly(env: Env): Promise<void> {
   await purgeDeleted(env);
+  await eraseBackups(env);
   await sweepRetained(env);
 }
