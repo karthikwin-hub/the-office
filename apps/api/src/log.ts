@@ -26,13 +26,28 @@ export type Fields = {
   status?: number | null;
   ms?: number;
   count?: number;
+  offices?: number;
+  closed?: number;
   step?: string;
+  channel?: string;
   until?: string;
   /** Fixed text, written in the code: never built from a person's or a document's data. */
   message?: string;
 };
 
-const FIELDS = ["route", "method", "status", "ms", "count", "step", "until", "message"] as const satisfies readonly (keyof Fields)[];
+const FIELDS = [
+  "route",
+  "method",
+  "status",
+  "ms",
+  "count",
+  "offices",
+  "closed",
+  "step",
+  "channel",
+  "until",
+  "message",
+] as const satisfies readonly (keyof Fields)[];
 
 /** The request (or cron run, or email) being handled, so every line in it says which one without passing it around. */
 type Scope = { requestId: string; officeId: string | null; started: number; logged: boolean };

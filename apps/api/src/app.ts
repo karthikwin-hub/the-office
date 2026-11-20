@@ -35,7 +35,7 @@ import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
 import { exportArchive, type ExportPlan } from "./export";
-import { currentRequestId, inOffice, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
+import { currentRequestId, inOffice, log, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -77,7 +77,7 @@ const internal = (path: string, body: unknown) =>
 /** Someone left an office (`userId`), or it closed (everyone): its open screens stop hearing it at once. Never fails the change itself. */
 async function closeLive(env: Env, officeId: string, userId?: string) {
   const res = await toOffice(env, internal("/internal/disconnect", userId ? { userId } : {}), system(officeId)).catch(() => null);
-  if (!res?.ok) console.error(JSON.stringify({ event: "disconnect.failed", office: officeId, status: res?.status ?? null }));
+  if (!res?.ok) log("error", "disconnect.failed", { officeId, status: res?.status ?? null });
 }
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -121,7 +121,7 @@ app.post("/api/hooks/meta", async (c) => {
 /** Hands each office only its own part of a delivery. Returns false if an office could not take its part. */
 export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
   const plan = await planMeta(cp(env), new WaDirectory(env.DB), body, env.WHATSAPP_PHONE_NUMBER_ID);
-  if (plan.unrouted) console.log(JSON.stringify({ event: "meta.unrouted", entries: plan.unrouted }));
+  if (plan.unrouted) log("info", "meta.unrouted", { count: plan.unrouted });
   let ok = true;
   for (const d of plan.deliveries) ok = (await toOffice(env, internal("/internal/social/meta", d.body), system(d.officeId))).ok && ok;
   for (const o of plan.office)
@@ -129,7 +129,7 @@ export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
       (await toOffice(env, internal("/internal/whatsapp", { body: o.body, person: o.person, joined: o.joined, heading: o.heading }), system(o.officeId))).ok &&
       ok;
   const keys = env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID ? { token: env.WHATSAPP_TOKEN, phoneId: env.WHATSAPP_PHONE_NUMBER_ID, template: null } : null;
-  if (keys) for (const r of plan.replies) await sendText(keys, r.to, r.text).catch(() => console.error("whatsapp reply failed"));
+  if (keys) for (const r of plan.replies) await sendText(keys, r.to, r.text).catch((e) => log("error", "whatsapp.reply-failed", {}, e));
   return ok;
 }
 
@@ -292,7 +292,7 @@ app.delete(ACCOUNT_ROUTES.account, async (c) => {
   if ("error" in r) return c.json(r, 409);
   const user = c.get("user").id;
   for (const office of r.left) await closeLive(c.env, office, r.closed.includes(office) ? undefined : user);
-  console.log(JSON.stringify({ event: "account.deleted", offices: r.left.length, closed: r.closed.length }));
+  log("info", "account.deleted", { offices: r.left.length, closed: r.closed.length });
   return c.json({ ok: true, closed: r.closed.length } satisfies AccountDeleted);
 });
 
@@ -770,7 +770,7 @@ export async function purgeDeleted(env: Env): Promise<number> {
   for (const o of due) {
     const res = await toOffice(env, internal("/internal/purge", {}), system(o.id));
     if (!res.ok) {
-      console.error(JSON.stringify({ event: "purge.failed", office: o.id, status: res.status }));
+      log("error", "purge.failed", { officeId: o.id, status: res.status });
       continue;
     }
     let cursor: string | undefined;
@@ -781,7 +781,7 @@ export async function purgeDeleted(env: Env): Promise<number> {
     } while (cursor);
     if (backupTarget(env)) await plane.queueBackupErasure(o.id);
     await plane.forget(o.id);
-    console.log(JSON.stringify({ event: "office.purged", office: o.id }));
+    log("info", "office.purged", { officeId: o.id });
   }
   return due.length;
 }
@@ -824,12 +824,12 @@ export async function eraseBackups(env: Env): Promise<number> {
       await plane.backupErasureProgress(job.officeId, erased, done ? job.erased + erased : null);
       if (done) {
         finished++;
-        console.log(JSON.stringify({ event: "office.backups-erased", office: job.officeId, count: job.erased + erased }));
+        log("info", "office.backups-erased", { officeId: job.officeId, count: job.erased + erased });
       }
     } catch (e) {
       const why = (e instanceof Error ? e.message : String(e)).slice(0, 300);
       await plane.backupErasureProgress(job.officeId, erased, null, why);
-      console.error(JSON.stringify({ event: "backups-erase.failed", office: job.officeId, error: why }));
+      log("error", "backups-erase.failed", { officeId: job.officeId }, e);
     }
   }
   return finished;
@@ -865,7 +865,7 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
           detail: "the retention period of its books ended",
         })),
       );
-      console.log(JSON.stringify({ event: "retained.deleted", count: due.length }));
+      log("info", "retained.deleted", { count: due.length });
     }
     if (!listed.truncated) break;
     cursor = listed.cursor;
@@ -884,7 +884,7 @@ export async function nightly(env: Env): Promise<void> {
     try {
       await step(env);
     } catch (e) {
-      console.error(JSON.stringify({ event: "nightly.failed", step: name, error: e instanceof Error ? e.message : String(e) }));
+      log("error", "nightly.failed", { step: name }, e);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { makeJoinCode, readJoinCode, type Role, showJoinCode, type WaLanguage } from "@office/contracts";
 import { newSession, type WaSession } from "@office/engine";
+import { log } from "../log";
 
 /** The Office's key-value table; numbers live only here and in D1, never in logs. */
 export type Kv = (k: string, v?: string) => string | null;
@@ -129,8 +130,7 @@ export class WaDirectory {
             ]
           : []),
       ]);
-      if (stranger && (all?.failures ?? 0) + 1 === MAX_FAILURES_ALL)
-        console.log(JSON.stringify({ event: "wa.join.paused", until: new Date(hour + FAILURE_WINDOW_MS).toISOString() }));
+      if (stranger && (all?.failures ?? 0) + 1 === MAX_FAILURES_ALL) log("warn", "wa.join.paused", { until: new Date(hour + FAILURE_WINDOW_MS).toISOString() });
       return { error: "badCode" };
     }
     const previous = await this.linkOfUser(c.user_id);

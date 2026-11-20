@@ -1,9 +1,16 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { app, toOffice } from "../src/app";
 import { CALLER_HEADER, system } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
 import type { Env } from "../src/env";
+import { exportArchive } from "../src/export";
+import worker from "../src/index";
+
+// The Worker's entry point exports the Office, whose SDK needs workerd; the cron and mail handlers do not.
+vi.mock("../src/office-agent", () => ({ Office: class {} }));
 import { GENERIC_ERROR, inOffice, type Line, line, log, REQUEST_ID_HEADER, requestFailed, requestLog, routeOf, scrub, withRequest } from "../src/log";
 
 /** What a careless caller might hand the logger: everything a request to the office can carry. */
@@ -206,5 +213,55 @@ describe("a request that fails", () => {
     await small.request("/o/off_abcdefgh23456789/gone");
     expect(out).toHaveBeenCalledTimes(1);
     expect(quiet).not.toHaveBeenCalled();
+  });
+});
+
+describe("the service's own lines", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("all go through the logger", () => {
+    const src = join(import.meta.dirname, "..", "src");
+    const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".ts") && f !== "log.ts");
+    const raw = files.flatMap((f) =>
+      readFileSync(join(src, f), "utf8")
+        .split("\n")
+        .map((text, i) => ({ at: `${f}:${i + 1}`, text }))
+        .filter(({ text }) => /\bconsole\.(log|info|warn|error|debug)\s*\(/.test(text)),
+    );
+    expect(raw.map((r) => r.at)).toEqual([]);
+  });
+
+  it("from the nightly cron name the step that failed, all under the run's own id", async () => {
+    const out = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // No database and no bucket: the purge and the retention sweep both fail; with no store in India, there is nothing to erase.
+    await worker.scheduled({} as ScheduledController, env());
+    const failed = lines(out);
+    expect(failed.map((l) => [l.event, l.step])).toEqual([
+      ["nightly.failed", "purge"],
+      ["nightly.failed", "sweep-retained"],
+    ]);
+    expect(failed[0]!.requestId).toMatch(UUID);
+    expect(failed[1]!.requestId).toBe(failed[0]!.requestId);
+    expect(failed[0]!.errorName).toBe("TypeError");
+  });
+
+  it("from a failed export name the office and the request", async () => {
+    const out = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await withRequest(RAY, async () => {
+      inOffice("off_abcdefgh23456789");
+      const { body, done } = exportArchive({ id: "x", parts: 1, entries: 1 }, async () => new Response("no", { status: 500 }));
+      body.pipeTo(new WritableStream()).catch(() => undefined);
+      await done;
+    });
+    expect(lines(out)).toEqual([
+      {
+        event: "export.failed",
+        level: "error",
+        requestId: RAY,
+        officeId: "off_abcdefgh23456789",
+        errorName: "Error",
+        error: "The office could not write part 1 of the export (500).",
+      },
+    ]);
   });
 });

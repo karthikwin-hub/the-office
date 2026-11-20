@@ -5,6 +5,7 @@ import { createAuthMiddleware, isAPIError } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "./env";
+import { log } from "./log";
 import { mailSender } from "./mail";
 import * as schema from "./schema";
 import { stepUp } from "./step-up";
@@ -95,7 +96,7 @@ export async function sendMail(
     await send({ fromName, to, subject, body });
     return true;
   } catch (e) {
-    console.error("mail not sent", e instanceof Error ? e.message : "unknown error");
+    log("error", "mail.failed", { message: "mail not sent" }, e);
     return false;
   }
 }

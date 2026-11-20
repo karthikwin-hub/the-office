@@ -1,4 +1,5 @@
 import { officePrefix } from "./keys";
+import { log } from "./log";
 import { streamOf, ZipWriter } from "./zip";
 
 /**
@@ -122,7 +123,7 @@ export function exportArchive(plan: ExportPlan, fetchPart: (part: number) => Pro
       }
       await writable.close();
     } catch (e) {
-      console.error(JSON.stringify({ event: "export.failed", error: e instanceof Error ? e.message : String(e) }));
+      log("error", "export.failed", {}, e);
       await writable.abort(e).catch(() => undefined);
     }
   })();

@@ -2,6 +2,7 @@ import type { Channel, Platform } from "@office/contracts";
 import { PLATFORM_NAMES } from "@office/contracts";
 import type { OfficeService, SocialEffect } from "@office/engine";
 import { type ChannelAdapter, PlatformError, type Tokens } from "./adapter";
+import { log } from "../log";
 import { signedMedia } from "./media";
 import type { TokenVault } from "./tokens";
 
@@ -237,7 +238,7 @@ export class SocialHost {
         if (ch.status === "rate_limited") Object.assign(ch, { status: "connected", lastError: null });
       } catch (e) {
         if (e instanceof PlatformError && (e.kind === "expired" || e.kind === "rate_limited")) this.office.channelProblem(ch.id, e.kind, e.message);
-        else console.error(`social pull failed for ${ch.id}`, e);
+        else log("error", "social.pull-failed", { channel: ch.id, message: "social pull failed" }, e);
       }
     }
     return { messages, metrics };

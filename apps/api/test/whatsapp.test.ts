@@ -167,7 +167,7 @@ describe("linking a number", () => {
 
   it("pauses linking for every number once too many wrong codes arrive from many numbers in an hour", async () => {
     const { dir, kaveri, mehta, tick } = await directory();
-    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const log = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     // A linked person mistyping does not count towards the platform's limit.
     await dir.redeem("919000000777", (await dir.newJoinCode(mehta.id, "u-rajesh")).code);
     for (let i = 0; i < 4; i++) expect(await dir.redeem("919000000777", "ZZZZ-ZZZ2")).toEqual({ error: "badCode" });
@@ -178,7 +178,7 @@ describe("linking a number", () => {
     await dir.unlink("u-anil");
     expect(log).not.toHaveBeenCalled();
     expect(await dir.redeem("919111111110", "ZZZZ-ZZZ2")).toEqual({ error: "badCode" });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('"event":"wa.join.paused"'));
+    expect(log).toHaveBeenCalledWith(expect.objectContaining({ event: "wa.join.paused", level: "warn" }));
     log.mockRestore();
     const again = await dir.newJoinCode(kaveri.id, "u-anil");
     expect(await dir.redeem(PHONE, again.code)).toEqual({ error: "paused" });
