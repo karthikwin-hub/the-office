@@ -109,7 +109,7 @@ The control plane adds two tables for each person's own rights (migration `0003_
 | Audit | Office events (invitations, role changes, handover, deletion, restore) in the `audit` table; agent work in each office's team log |
 | Operator access | The admin tool works on the control plane only; it has no command to read an office's books |
 
-The security review of November 2026, what it fixed and what is still open: `docs/security/README.md`.
+The security review of November 2026, what it fixed and what is still open: [`docs/security/README.md`](../security/README.md). The [threat model](../security/threat-model.md) sets out each flow's threats and the control that answers each; the [ASVS 4.0.3 Level 2 checklist](../security/asvs.md) gives each requirement's status and evidence. The decisions behind this architecture are recorded in [`docs/adr/`](../adr/README.md).
 
 ## 7. Reading documents
 

@@ -7,6 +7,10 @@ The full review, with every finding, its evidence and the tracker, is a private 
 page is the part that belongs next to the code: the controls in place, how they are checked, and the open work. It
 leaves out how to exploit anything still open.
 
+Alongside it: the [threat model](threat-model.md) (assets, actors, trust boundaries, and the threats and controls of
+each main flow, with the residual risks) and the [ASVS 4.0.3 Level 2 checklist](asvs.md) (each relevant requirement,
+its status and its evidence). The decisions behind the design are in [`docs/adr/`](../adr/README.md).
+
 ## Where it stands
 
 A review of the whole product on 19 November 2026 (commit `9efe047`) scored security 2.5 out of 5 and code quality

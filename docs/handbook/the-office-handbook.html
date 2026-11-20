@@ -22,8 +22,13 @@
   --font: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --sidebar: 290px;
 }
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
 body {
   margin: 0;
   font-family: var(--font);
@@ -33,122 +38,483 @@ body {
   background: #fff;
   font-variant-numeric: tabular-nums;
 }
-a { color: var(--carbon); text-underline-offset: 2px; }
-code { font-size: 0.88em; background: var(--paper); border: 1px solid var(--rule-soft); border-radius: 3px; padding: 0.05em 0.35em; }
-pre { background: var(--paper); border: 1px solid var(--rule-soft); border-radius: 4px; padding: 14px 16px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
-pre code { background: none; border: 0; padding: 0; }
+a {
+  color: var(--carbon);
+  text-underline-offset: 2px;
+}
+code {
+  font-size: 0.88em;
+  background: var(--paper);
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+}
+pre {
+  background: var(--paper);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+}
 
 /* Sidebar */
 .sidebar {
-  position: fixed; inset: 0 auto 0 0; width: var(--sidebar);
-  background: var(--paper); border-right: 1px solid var(--plan-line);
-  padding: 28px 22px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar);
+  background: var(--paper);
+  border-right: 1px solid var(--plan-line);
+  padding: 28px 22px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
-.brand { font-weight: 700; font-size: 1.15rem; color: var(--graphite); text-decoration: none; letter-spacing: 0.01em; }
-.brand span { display: block; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
-.sidebar nav ol { list-style: none; margin: 0; padding: 0; }
-.sidebar nav > ol > li { margin-bottom: 10px; }
-.sidebar nav a { text-decoration: none; color: var(--graphite); display: block; border-radius: 3px; }
-.sidebar .nav-doc { font-weight: 600; font-size: 0.93rem; padding: 3px 6px; }
-.sidebar .nav-doc:hover, .sidebar nav ol ol a:hover, .sidebar a.here { background: var(--carbon-soft); color: var(--carbon); }
-.nav-num { display: inline-block; width: 1.5em; color: var(--carbon); font-weight: 700; }
-.sidebar nav ol ol { margin: 2px 0 0 1.5em; }
-.sidebar nav ol ol a { font-size: 0.82rem; color: var(--muted); padding: 2px 6px; line-height: 1.35; }
-.sidebar-foot { margin-top: auto; font-size: 0.78rem; color: var(--muted); }
+.brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--graphite);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.brand span {
+  display: block;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.sidebar nav ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar nav > ol > li {
+  margin-bottom: 10px;
+}
+.sidebar nav a {
+  text-decoration: none;
+  color: var(--graphite);
+  display: block;
+  border-radius: 3px;
+}
+.sidebar .nav-doc {
+  font-weight: 600;
+  font-size: 0.93rem;
+  padding: 3px 6px;
+}
+.sidebar .nav-doc:hover,
+.sidebar nav ol ol a:hover,
+.sidebar a.here {
+  background: var(--carbon-soft);
+  color: var(--carbon);
+}
+.nav-num {
+  display: inline-block;
+  width: 1.5em;
+  color: var(--carbon);
+  font-weight: 700;
+}
+.sidebar nav ol ol {
+  margin: 2px 0 0 1.5em;
+}
+.sidebar nav ol ol a {
+  font-size: 0.82rem;
+  color: var(--muted);
+  padding: 2px 6px;
+  line-height: 1.35;
+}
+.sidebar-foot {
+  margin-top: auto;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
 
 /* Main column */
-main { margin-left: var(--sidebar); padding: 0 56px 64px; max-width: calc(var(--sidebar) + 1000px); }
-main > * { max-width: 940px; }
+main {
+  margin-left: var(--sidebar);
+  padding: 0 56px 64px;
+  max-width: calc(var(--sidebar) + 1000px);
+}
+main > * {
+  max-width: 940px;
+}
 
 /* Cover */
-.cover { min-height: 92vh; display: flex; flex-direction: column; justify-content: center; padding: 64px 0 48px; border-bottom: 1px solid var(--plan-line); }
-.cover-mark { display: inline-block; align-self: flex-start; margin: 0 0 28px; padding: 4px 10px; border: 1.5px solid var(--carbon); color: var(--carbon); font-weight: 700; letter-spacing: 0.08em; font-size: 0.8rem; text-transform: uppercase; border-radius: 3px; }
-.cover-title { font-size: 2.9rem; line-height: 1.12; margin: 0 0 18px; font-weight: 700; letter-spacing: -0.01em; }
-.cover-lede { font-size: 1.25rem; color: var(--muted); max-width: 42ch; margin: 0 0 36px; }
-.cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 32px; margin: 0 0 36px; max-width: 720px; }
-.cover-meta div { border-top: 1px solid var(--plan-line); padding-top: 8px; }
-.cover-meta dt { font-size: 0.78rem; color: var(--muted); }
-.cover-meta dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
-.cover-contents { list-style: none; padding: 0; margin: 0 0 28px; columns: 2; column-gap: 32px; max-width: 720px; }
-.cover-contents li { break-inside: avoid; padding: 6px 0; border-bottom: 1px solid var(--rule-soft); }
-.cover-contents a { text-decoration: none; color: var(--graphite); font-weight: 600; }
-.cover-note { color: var(--muted); font-size: 0.92rem; margin: 0; }
+.cover {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 0 48px;
+  border-bottom: 1px solid var(--plan-line);
+}
+.cover-mark {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0 0 28px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--carbon);
+  color: var(--carbon);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+.cover-title {
+  font-size: 2.9rem;
+  line-height: 1.12;
+  margin: 0 0 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.cover-lede {
+  font-size: 1.25rem;
+  color: var(--muted);
+  max-width: 42ch;
+  margin: 0 0 36px;
+}
+.cover-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 32px;
+  margin: 0 0 36px;
+  max-width: 720px;
+}
+.cover-meta div {
+  border-top: 1px solid var(--plan-line);
+  padding-top: 8px;
+}
+.cover-meta dt {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.cover-meta dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.cover-contents {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  columns: 2;
+  column-gap: 32px;
+  max-width: 720px;
+}
+.cover-contents li {
+  break-inside: avoid;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.cover-contents a {
+  text-decoration: none;
+  color: var(--graphite);
+  font-weight: 600;
+}
+.cover-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0;
+}
 
 /* Parts */
-.doc { padding-top: 56px; border-bottom: 1px solid var(--plan-line); padding-bottom: 32px; }
-.doc-head { margin-bottom: 8px; }
-.doc-num { margin: 0; color: var(--carbon); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.04em; }
-h1 { font-size: 2.15rem; line-height: 1.2; margin: 4px 0 20px; }
-h2 { font-size: 1.5rem; line-height: 1.25; margin: 44px 0 12px; padding-top: 12px; border-top: 1px solid var(--rule-soft); }
-h3 { font-size: 1.18rem; margin: 30px 0 8px; }
-h4 { font-size: 1rem; margin: 22px 0 6px; }
-p, li { max-width: 78ch; }
-ul, ol { padding-left: 1.4em; }
-li { margin: 4px 0; }
-li > ul, li > ol { margin: 4px 0; }
+.doc {
+  padding-top: 56px;
+  border-bottom: 1px solid var(--plan-line);
+  padding-bottom: 32px;
+}
+.doc-head {
+  margin-bottom: 8px;
+}
+.doc-num {
+  margin: 0;
+  color: var(--carbon);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+h1 {
+  font-size: 2.15rem;
+  line-height: 1.2;
+  margin: 4px 0 20px;
+}
+h2 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin: 44px 0 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule-soft);
+}
+h3 {
+  font-size: 1.18rem;
+  margin: 30px 0 8px;
+}
+h4 {
+  font-size: 1rem;
+  margin: 22px 0 6px;
+}
+p,
+li {
+  max-width: 78ch;
+}
+ul,
+ol {
+  padding-left: 1.4em;
+}
+li {
+  margin: 4px 0;
+}
+li > ul,
+li > ol {
+  margin: 4px 0;
+}
 
 /* Callouts */
-.callout { margin: 20px 0 28px; padding: 16px 20px; border-radius: 4px; border-left: 4px solid var(--carbon); background: var(--carbon-soft); }
-.callout p { margin: 0; max-width: none; }
-.callout-label { display: block; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--carbon); margin-bottom: 4px; }
-.callout.summary { font-size: 1.06rem; }
-.callout.decision { border-left-color: var(--cleared-green); background: #eaf2ec; }
-.callout.decision .callout-label { color: var(--cleared-green); }
-.callout.note { border-left-color: var(--graphite); background: var(--paper); }
-.callout.note .callout-label { color: var(--graphite); }
-strong.open { color: var(--stamp-red); }
-.tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--plan-line); background: #fff; white-space: nowrap; }
-.tag-done, .tag-built { color: var(--cleared-green); border-color: #9cc3a6; background: #eaf2ec; }
-.tag-next { color: #fff; background: var(--carbon); border-color: var(--carbon); }
-.tag-planned, .tag-preview-on-the-books { color: var(--carbon); background: var(--carbon-soft); border-color: #b9c4e4; }
-.tag-not-started-by-design { color: var(--muted); border-style: dashed; }
+.callout {
+  margin: 20px 0 28px;
+  padding: 16px 20px;
+  border-radius: 4px;
+  border-left: 4px solid var(--carbon);
+  background: var(--carbon-soft);
+}
+.callout p {
+  margin: 0;
+  max-width: none;
+}
+.callout-label {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--carbon);
+  margin-bottom: 4px;
+}
+.callout.summary {
+  font-size: 1.06rem;
+}
+.callout.decision {
+  border-left-color: var(--cleared-green);
+  background: #eaf2ec;
+}
+.callout.decision .callout-label {
+  color: var(--cleared-green);
+}
+.callout.note {
+  border-left-color: var(--graphite);
+  background: var(--paper);
+}
+.callout.note .callout-label {
+  color: var(--graphite);
+}
+strong.open {
+  color: var(--stamp-red);
+}
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--plan-line);
+  background: #fff;
+  white-space: nowrap;
+}
+.tag-done,
+.tag-built {
+  color: var(--cleared-green);
+  border-color: #9cc3a6;
+  background: #eaf2ec;
+}
+.tag-next {
+  color: #fff;
+  background: var(--carbon);
+  border-color: var(--carbon);
+}
+.tag-planned,
+.tag-preview-on-the-books {
+  color: var(--carbon);
+  background: var(--carbon-soft);
+  border-color: #b9c4e4;
+}
+.tag-not-started-by-design {
+  color: var(--muted);
+  border-style: dashed;
+}
 
 /* Tables */
-.table-wrap { overflow-x: auto; margin: 16px 0 24px; border: 1px solid var(--plan-line); border-radius: 4px; }
-table { border-collapse: collapse; width: 100%; font-size: 0.88rem; line-height: 1.45; }
-th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); }
-th { background: var(--paper); font-weight: 700; border-bottom: 1px solid var(--plan-line); white-space: nowrap; }
-tr:last-child td { border-bottom: 0; }
-tbody tr:nth-child(even) td { background: #fafbfc; }
-td code { white-space: nowrap; }
+.table-wrap {
+  overflow-x: auto;
+  margin: 16px 0 24px;
+  border: 1px solid var(--plan-line);
+  border-radius: 4px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+th {
+  background: var(--paper);
+  font-weight: 700;
+  border-bottom: 1px solid var(--plan-line);
+  white-space: nowrap;
+}
+tr:last-child td {
+  border-bottom: 0;
+}
+tbody tr:nth-child(even) td {
+  background: #fafbfc;
+}
+td code {
+  white-space: nowrap;
+}
 
 /* Figures */
-figure { margin: 24px 0 28px; }
-figure svg, figure img { display: block; width: 100%; height: auto; border: 1px solid var(--plan-line); border-radius: 4px; background: #fff; }
-figure.diagram svg { background: #fcfcfd; padding: 8px; font-family: var(--font); }
-figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+figure {
+  margin: 24px 0 28px;
+}
+figure svg,
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--plan-line);
+  border-radius: 4px;
+  background: #fff;
+}
+figure.diagram svg {
+  background: #fcfcfd;
+  padding: 8px;
+  font-family: var(--font);
+}
+figcaption {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
 /* On a phone a diagram keeps a readable size and scrolls sideways within its figure; the page itself does not. */
-@media (max-width: 720px) { figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; } figure.diagram svg { min-width: 760px; } }
+@media (max-width: 720px) {
+  figure.diagram {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  figure.diagram svg {
+    min-width: 760px;
+  }
+}
 
-.foot { padding: 28px 0; color: var(--muted); font-size: 0.85rem; }
+.foot {
+  padding: 28px 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 
 /* Narrow screens */
 @media (max-width: 960px) {
-  .sidebar { position: static; width: auto; border-right: 0; border-bottom: 1px solid var(--plan-line); }
-  .sidebar nav ol ol { display: none; }
-  main { margin-left: 0; padding: 0 20px 48px; }
-  .cover { min-height: auto; }
-  .cover-title { font-size: 2.1rem; }
-  .cover-meta, .cover-contents { grid-template-columns: 1fr; columns: 1; }
+  .sidebar {
+    position: static;
+    width: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--plan-line);
+  }
+  .sidebar nav ol ol {
+    display: none;
+  }
+  main {
+    margin-left: 0;
+    padding: 0 20px 48px;
+  }
+  .cover {
+    min-height: auto;
+  }
+  .cover-title {
+    font-size: 2.1rem;
+  }
+  .cover-meta,
+  .cover-contents {
+    grid-template-columns: 1fr;
+    columns: 1;
+  }
 }
 
 /* Print and PDF */
-@page { size: A4; margin: 18mm 16mm 20mm; }
+@page {
+  size: A4;
+  margin: 18mm 16mm 20mm;
+}
 @media print {
-  body { font-size: 10.5pt; line-height: 1.5; }
-  .sidebar { display: none; }
-  main { margin: 0; padding: 0; max-width: none; }
-  main > * { max-width: none; }
-  .cover { min-height: auto; height: 250mm; border-bottom: 0; break-after: page; }
-  .doc { break-before: page; padding-top: 0; border-bottom: 0; }
-  h2 { break-after: avoid; }
-  h3, h4 { break-after: avoid; }
-  .table-wrap { overflow: visible; border: 0; }
-  table { font-size: 8.5pt; border: 1px solid var(--plan-line); }
-  tr, figure, .callout { break-inside: avoid; }
-  a { color: var(--graphite); text-decoration: none; }
-  .foot { display: none; }
-  tbody tr:nth-child(even) td { background: none; }
+  body {
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+  .sidebar {
+    display: none;
+  }
+  main {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+  }
+  main > * {
+    max-width: none;
+  }
+  .cover {
+    min-height: auto;
+    height: 250mm;
+    border-bottom: 0;
+    break-after: page;
+  }
+  .doc {
+    break-before: page;
+    padding-top: 0;
+    border-bottom: 0;
+  }
+  h2 {
+    break-after: avoid;
+  }
+  h3,
+  h4 {
+    break-after: avoid;
+  }
+  .table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+  table {
+    font-size: 8.5pt;
+    border: 1px solid var(--plan-line);
+  }
+  tr,
+  figure,
+  .callout {
+    break-inside: avoid;
+  }
+  a {
+    color: var(--graphite);
+    text-decoration: none;
+  }
+  .foot {
+    display: none;
+  }
+  tbody tr:nth-child(even) td {
+    background: none;
+  }
 }
 </style>
 </head>
@@ -156,7 +522,7 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
 <aside class="sidebar" aria-label="Contents">
   <a class="brand" href="#top">Agentic Office <span>Handbook</span></a>
   <nav><ol><li><a class="nav-doc" href="#s1-business-requirements"><span class="nav-num">1</span>Business requirements</a><ol><li><a href="#s1-1-the-problem">The problem</a></li><li><a href="#s1-2-the-product-in-business-terms">The product in business terms</a></li><li><a href="#s1-3-markets">Markets</a></li><li><a href="#s1-4-objectives">Objectives</a></li><li><a href="#s1-5-stakeholders">Stakeholders</a></li><li><a href="#s1-6-scope">Scope</a></li><li><a href="#s1-7-business-rules">Business rules</a></li><li><a href="#s1-8-constraints">Constraints</a></li><li><a href="#s1-9-success-measures-for-the-pilot">Success measures for the pilot</a></li><li><a href="#s1-10-risks">Risks</a></li></ol></li><li><a class="nav-doc" href="#s2-product-requirements"><span class="nav-num">2</span>Product requirements</a><ol><li><a href="#s2-1-personas">Personas</a></li><li><a href="#s2-2-the-three-spaces">The three spaces</a></li><li><a href="#s2-3-the-team">The team</a></li><li><a href="#s2-4-trust-levels">Trust levels</a></li><li><a href="#s2-5-offices-people-and-roles">Offices, people and roles</a></li><li><a href="#s2-6-functional-requirements">Functional requirements</a></li><li><a href="#s2-7-non-functional-requirements">Non-functional requirements</a></li><li><a href="#s2-8-settings">Settings</a></li><li><a href="#s2-9-compliance">Compliance</a></li><li><a href="#s2-10-what-would-change-for-another-market">What would change for another market</a></li></ol></li><li><a class="nav-doc" href="#s3-technical-architecture"><span class="nav-num">3</span>Technical architecture</a><ol><li><a href="#s3-1-codebase">Codebase</a></li><li><a href="#s3-2-runtime">Runtime</a></li><li><a href="#s3-3-how-a-request-finds-its-office">How a request finds its office</a></li><li><a href="#s3-4-inbound-routing">Inbound routing</a></li><li><a href="#s3-5-where-data-lives">Where data lives</a></li><li><a href="#s3-6-security-model">Security model</a></li><li><a href="#s3-7-reading-documents">Reading documents</a></li><li><a href="#s3-8-the-engine">The engine</a></li><li><a href="#s3-9-the-demo-mock-mode">The demo (mock mode)</a></li><li><a href="#s3-10-operations">Operations</a></li><li><a href="#s3-11-international-readiness-design-only">International readiness (design only)</a></li></ol></li><li><a class="nav-doc" href="#s4-deployment-options"><span class="nav-num">4</span>Deployment options</a><ol><li><a href="#s4-1-environments">Environments</a></li><li><a href="#s4-2-the-options">The options</a></li><li><a href="#s4-3-cost-comparison">Cost comparison</a></li><li><a href="#s4-4-comparison">Comparison</a></li><li><a href="#s4-5-recommendation">Recommendation</a></li><li><a href="#s4-6-data-residency-by-region-design">Data residency by region (design)</a></li><li><a href="#s4-7-release-process">Release process</a></li><li><a href="#s4-8-backups-and-rollback">Backups and rollback</a></li></ol></li><li><a class="nav-doc" href="#s5-configuration"><span class="nav-num">5</span>Configuration</a><ol><li><a href="#s5-1-bindings">Bindings</a></li><li><a href="#s5-2-plain-settings-vars-in-wrangler-jsonc">Plain settings (<code>vars</code> in <code>wrangler.jsonc</code>)</a></li><li><a href="#s5-3-secrets">Secrets</a></li><li><a href="#s5-4-email">Email</a></li><li><a href="#s5-4a-website-chat-and-route-kinds">a. Website chat and route kinds</a></li><li><a href="#s5-4b-weather-for-the-lived-in-skin">b. Weather for the Lived-in skin</a></li><li><a href="#s5-4c-bringing-in-existing-books">c. Bringing in existing books</a></li><li><a href="#s5-4d-compliance">d. Compliance</a></li><li><a href="#s5-5-social-channels-and-whatsapp">Social channels and WhatsApp</a></li><li><a href="#s5-6-domain-and-schedule">Domain and schedule</a></li><li><a href="#s5-7-platform-console-and-admin-tool">Platform console and admin tool</a></li><li><a href="#s5-8-go-live-checklist">Go-live checklist</a></li><li><a href="#s5-9-legal-checklist">Legal checklist</a></li><li><a href="#s5-10-security-incidents">Security incidents</a></li></ol></li><li><a class="nav-doc" href="#s6-roadmap"><span class="nav-num">6</span>Roadmap</a><ol><li><a href="#s6-overview">Overview</a></li><li><a href="#s6-completed">Completed</a></li><li><a href="#s6-next-and-planned">Next and planned</a></li><li><a href="#s6-ideas-adopted-from-the-paperclip-review">Ideas adopted from the Paperclip review</a></li></ol></li><li><a class="nav-doc" href="#s7-review-paperclip"><span class="nav-num">7</span>Review: Paperclip</a><ol><li><a href="#s7-1-what-it-is">What it is</a></li><li><a href="#s7-2-how-it-is-built">How it is built</a></li><li><a href="#s7-3-overlap-with-the-office">Overlap with The Office</a></li><li><a href="#s7-4-where-the-office-is-stronger">Where The Office is stronger</a></li><li><a href="#s7-5-where-paperclip-is-stronger">Where Paperclip is stronger</a></li><li><a href="#s7-6-ideas-to-add-to-our-roadmap">Ideas to add to our roadmap</a></li><li><a href="#s7-7-paid-or-free">Paid or free?</a></li><li><a href="#s7-8-summary-for-decision-makers">Summary for decision-makers</a></li></ol></li><li><a class="nav-doc" href="#s8-the-customer-service-agent"><span class="nav-num">8</span>The Customer Service agent</a><ol><li><a href="#s8-1-what-the-research-says">What the research says</a></li><li><a href="#s8-2-who-else-does-this">Who else does this</a></li><li><a href="#s8-3-what-it-does">What it does</a></li><li><a href="#s8-4-channels-and-what-they-cost-us">Channels and what they cost us</a></li><li><a href="#s8-5-how-we-will-know-it-works">How we will know it works</a></li><li><a href="#s8-6-phases">Phases</a></li><li><a href="#s8-7-not-in-this-version">Not in this version</a></li></ol></li></ol></nav>
-  <p class="sidebar-foot">Version 5c5d528 · 20 November 2026</p>
+  <p class="sidebar-foot">Version edca41e · 20 November 2026</p>
 </aside>
 <main>
 <section class="cover" id="top">
@@ -164,7 +530,7 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
   <h1 class="cover-title">Product and technical handbook</h1>
   <p class="cover-lede">AI agents that keep a small business's books, show their work and change nothing without the owner's approval. India first; built to travel.</p>
   <dl class="cover-meta">
-    <div><dt>Version</dt><dd>5c5d528</dd></div>
+    <div><dt>Version</dt><dd>edca41e</dd></div>
     <div><dt>Date</dt><dd>20 November 2026</dd></div>
     <div><dt>Live</dt><dd><a href="https://office.snilld.in">office.snilld.in</a></dd></div>
     <div><dt>Demo</dt><dd><a href="https://demo.office.snilld.in">demo.office.snilld.in</a></dd></div>
@@ -1437,7 +1803,7 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
 <td>The admin tool works on the control plane only; it has no command to read an office&#39;s books</td>
 </tr>
 </tbody></table></div>
-<p>The security review of November 2026, what it fixed and what is still open: <code>docs/security/README.md</code>.</p>
+<p>The security review of November 2026, what it fixed and what is still open: <a href="https://github.com/karthikwin-hub/the-office/blob/main/docs/security/README.md"><code>docs/security/README.md</code></a>. The <a href="https://github.com/karthikwin-hub/the-office/blob/main/docs/security/threat-model.md">threat model</a> sets out each flow&#39;s threats and the control that answers each; the <a href="https://github.com/karthikwin-hub/the-office/blob/main/docs/security/asvs.md">ASVS 4.0.3 Level 2 checklist</a> gives each requirement&#39;s status and evidence. The decisions behind this architecture are recorded in <a href="https://github.com/karthikwin-hub/the-office/blob/main/docs/adr/README.md"><code>docs/adr/</code></a>.</p>
 <h2 id="s3-7-reading-documents">7. Reading documents</h2><ol>
 <li><strong>Text layer first, in the browser.</strong> Uploaded PDFs are opened with pdf.js and their text layer is extracted on the person&#39;s device. This keeps CPU off the Worker.</li>
 <li><strong>Model reads the text.</strong> The Worker asks the text model to extract header, lines and tax into a strict JSON shape.</li>
@@ -3326,7 +3692,7 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
 <li>Live email sending, which waits on the Phase 6 email provider.</li>
 </ul>
 </section>
-<footer class="foot">Built from <code>docs/handbook</code> with <code>pnpm docs</code>. Version 5c5d528.</footer>
+<footer class="foot">Built from <code>docs/handbook</code> with <code>pnpm docs</code>. Version edca41e.</footer>
 </main>
 <script>
   const links = new Map([...document.querySelectorAll(".sidebar a[href^='#']")].map((a) => [a.getAttribute("href").slice(1), a]));
