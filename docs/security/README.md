@@ -128,6 +128,9 @@ everywhere; zod on every request body; agents that stage every write for approva
   (`noAssignInExpressions` for `??=` and `while ((m = re.exec(s)))`, `useIterableCallbackReturn` for
   `forEach((x) => set.add(x))`). `apps/web/index.html` is exempt from `noInnerDeclarations` because its inline
   script is pinned by hash in the security policy. Other findings are suppressed one line at a time, with the reason.
+- **Dependencies:** Renovate (`renovate.json`) opens one pull request of minor and patch updates each Monday
+  morning, India time; 0.x packages and majors come on their own. Security updates open at once. Nothing merges
+  automatically.
 - **Locally:** the real Worker runs with `api-local` in `.claude/launch.json` (see the README for the command).
 - **Every release,** once it is turned on (see open work): the Deploy workflow (`.github/workflows/deploy.yml`)
   deploys each merge to staging and checks it; live goes out only after a reviewer approves, with the control plane
