@@ -12,7 +12,8 @@ export function AccountSettings() {
   const [confirming, setConfirming] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ["me"] });
   const download = useMutation({ mutationFn: account.exportMine });
-  const remove = useMutation({ mutationFn: () => account.requestDeletion(), onSuccess: () => (setConfirming(false), refresh()) });
+  // The account is gone, and with it this session: back to the sign-in page.
+  const remove = useMutation({ mutationFn: () => account.deleteAccount(), onSuccess: () => location.assign("/") });
   const withdraw = useMutation({ mutationFn: (id: string) => account.withdrawRequest(id), onSuccess: refresh });
   if (!isLive) return null;
   const open = requests.data?.requests.find((r) => r.kind === "delete" && r.status === "open");
@@ -35,11 +36,11 @@ export function AccountSettings() {
       {confirming && !open ? (
         <div className="promotion" role="alertdialog" aria-label="Delete my account">
           <p>
-            <strong>Delete your account?</strong> You leave every office you are in and can no longer sign in. Your name stays in the books where you approved or recorded something, because the business must keep those records. We complete the request within 30 days.
+            <strong>Delete your account now?</strong> You leave every office you are in and can no longer sign in; this cannot be undone. An office only you are in is deleted with it, and nobody can restore it. If you are the only owner of an office others work in, make one of them an owner first. Your name stays in the books where you approved or recorded something, because the business must keep those records.
           </p>
           <div className="approval-actions">
             <button type="button" className="btn btn-primary" onClick={() => remove.mutate()} disabled={remove.isPending}>
-              Ask to delete my account
+              Delete my account
             </button>
             <button type="button" className="btn btn-quiet" onClick={() => setConfirming(false)}>
               Keep it

@@ -1,10 +1,10 @@
 import {
   AcceptInvitation,
+  type AccountDeleted,
   ACCOUNT_ROUTES,
   BRAND,
   ChatPost,
   ConsentRequest,
-  RightsRequest,
   DeleteOffice,
   InviteRequest,
   type InviteResult,
@@ -250,11 +250,15 @@ app.get(ACCOUNT_ROUTES.accountExport, async (c) => {
 
 app.get(ACCOUNT_ROUTES.accountRequests, async (c) => c.json({ requests: await new AccountRecords(c.env.DB).requests(c.get("user").id) }));
 
-app.post(ACCOUNT_ROUTES.accountRequests, async (c) => {
-  const parsed = RightsRequest.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: "Invalid request" }, 400);
-  const r = await new AccountRecords(c.env.DB).requestDeletion(c.get("user"), parsed.data.note ?? null);
-  return "error" in r ? c.json(r, 409) : c.json(r, 201);
+/** Deleting one's own account, at once: only with a sign-in or step-up in the last 15 minutes, as for an office's riskier actions. */
+app.delete(ACCOUNT_ROUTES.account, async (c) => {
+  if (!isFresh(c.get("session"))) return c.json(STEP_UP_NEEDED, 403);
+  const r = await new AccountRecords(c.env.DB).deleteAccount(c.get("user"));
+  if ("error" in r) return c.json(r, 409);
+  const user = c.get("user").id;
+  for (const office of r.left) await closeLive(c.env, office, r.closed.includes(office) ? undefined : user);
+  console.log(JSON.stringify({ event: "account.deleted", offices: r.left.length, closed: r.closed.length }));
+  return c.json({ ok: true, closed: r.closed.length } satisfies AccountDeleted);
 });
 
 app.delete(`${ACCOUNT_ROUTES.accountRequests}/:id`, async (c) => {

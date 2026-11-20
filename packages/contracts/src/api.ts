@@ -812,7 +812,12 @@ export const ACCOUNT_ROUTES = {
   consent: "/api/account/consent",
   accountExport: "/api/account/export",
   accountRequests: "/api/account/requests",
+  /** DELETE: the signed-in person's own account, at once (after a step-up). */
+  account: "/api/account",
 } as const;
+
+/** What deleting an account answers: how many offices went with it, because no one else was in them. */
+export type AccountDeleted = { ok: true; closed: number };
 
 /** Every route below is inside one office: the app sends it as `/api/o/<office id>/...`. */
 export const ROUTES = {

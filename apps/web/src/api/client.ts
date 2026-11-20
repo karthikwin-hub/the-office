@@ -64,6 +64,7 @@ import {
   type OrdersImportResult,
   type TryResult,
   type RightsRequestView,
+  type AccountDeleted,
   PLATFORM_ROUTES,
   type PlatformInvited,
   type PlatformView,
@@ -189,7 +190,8 @@ export const account = {
   consent: (documents: { document: "terms" | "privacy"; version: string }[]) => call<{ ok: true }>(ACCOUNT_ROUTES.consent, { method: "POST", body: { documents } }),
   exportMine: () => download(ACCOUNT_ROUTES.accountExport, "my-account.json"),
   requests: () => call<{ requests: RightsRequestView[] }>(ACCOUNT_ROUTES.accountRequests),
-  requestDeletion: (note?: string) => call<RightsRequestView>(ACCOUNT_ROUTES.accountRequests, { method: "POST", body: { kind: "delete", note } }),
+  /** Deletes the account at once; a stale sign-in is asked for the password or a code first. */
+  deleteAccount: () => call<AccountDeleted>(ACCOUNT_ROUTES.account, { method: "DELETE" }),
   withdrawRequest: (id: string) => call<{ ok: true }>(`${ACCOUNT_ROUTES.accountRequests}/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 

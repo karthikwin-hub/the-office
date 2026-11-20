@@ -522,25 +522,62 @@ describe("a person's own rights", () => {
     expect(text).not.toMatch(/password"\s*:|token|bina/i);
   });
 
-  it("records a deletion request in every office's audit, refuses the only owner, and lets the request be withdrawn", async () => {
-    const { w, anil, bina, A, cp } = await twoOffices();
-    const ask = (p: Person) => call(w, p, ACCOUNT_ROUTES.accountRequests, { method: "POST", body: JSON.stringify({ kind: "delete" }) });
-    const sole = await ask(anil);
-    expect(sole.status).toBe(409);
-    expect(((await sole.json()) as { error: string }).error).toContain("Kaveri Electricals");
+  it("deletes an account at once after a step-up, refuses the only owner of an office others are in, and keeps no name in the record", async () => {
+    const { w, anil, bina, A, B, cp } = await twoOffices();
+    const remove = (p: Person) => call(w, p, ACCOUNT_ROUTES.account, { method: "DELETE" });
     const { token } = await cp.invite(A, "carol@ca.test", "accountant", anil.email);
     const carol = await signUp(w, "Carol", "carol@ca.test");
     expect((await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(200);
-    const made = await ask(carol);
-    expect(made.status).toBe(201);
-    const r = (await made.json()) as { id: string; status: string };
-    expect(r.status).toBe("open");
-    expect((await ask(carol)).status).toBe(201);
-    expect((await me(w, carol)).deletionRequested).toBe(true);
-    expect((await cp.auditTrail(A)).some((a) => a.action === "member.deletion-requested" && a.actor === "carol@ca.test")).toBe(true);
-    expect((await call(w, bina, `${ACCOUNT_ROUTES.accountRequests}/${r.id}`, { method: "DELETE" })).status).toBe(404);
-    expect((await call(w, carol, `${ACCOUNT_ROUTES.accountRequests}/${r.id}`, { method: "DELETE" })).status).toBe(200);
-    expect((await me(w, carol)).deletionRequested).toBe(false);
+    // The old way, a request for someone to act on, is gone.
+    expect((await call(w, carol, ACCOUNT_ROUTES.accountRequests, { method: "POST", body: JSON.stringify({ kind: "delete" }) })).status).toBe(404);
+
+    const sole = await remove(anil);
+    expect(sole.status).toBe(409);
+    expect(((await sole.json()) as { error: string }).error).toContain("Kaveri Electricals");
+    expect(w.db.sqlite.prepare("SELECT COUNT(*) AS n FROM user WHERE id = ?").get(anil.id)).toEqual({ n: 1 });
+
+    // Bina is alone in her office, with two-factor on and an invitation out. A session older than 15 minutes needs her code first.
+    await cp.invite(B, "dev@shah.test", "accountant", bina.email);
+    await call(w, bina, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: current }) });
+    w.db.sqlite.prepare("UPDATE session SET created_at = created_at - 3600 WHERE user_id = ?").run(bina.id);
+    const stale = await remove(bina);
+    expect(stale.status).toBe(403);
+    expect(await stale.json()).toMatchObject({ code: "step_up_required" });
+    expect((await call(w, bina, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code: totp(bina.uri!) }) })).status).toBe(200);
+    w.seen.length = 0;
+    const done = await remove(bina);
+    expect(done.status).toBe(200);
+    expect(await done.json()).toEqual({ ok: true, closed: 1 });
+    expect(w.seen.map((x) => [x.stub, x.path, x.body])).toEqual([[B, "/internal/disconnect", "{}"]]);
+
+    const count = (table: string, where: string, v: string) => (w.db.sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).get(v) as { n: number }).n;
+    for (const t of ["session", "account", "two_factor", "membership", "consent"]) expect(count(t, "user_id = ?", bina.id), t).toBe(0);
+    expect(count("user", "id = ?", bina.id)).toBe(0);
+    expect(count("invitation", "lower(invited_by) = ?", bina.email)).toBe(0);
+    expect((await call(w, bina, ACCOUNT_ROUTES.me)).status).toBe(401);
+    // Her office is deleted with her, and purged after 30 days like any other.
+    expect(await cp.office(B)).toMatchObject({ status: "deleting" });
+    expect(await cp.auditTrail(B)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "a deleted account", action: "member.account-deleted", detail: null }), expect.objectContaining({ action: "office.deleting" })]));
+    const record = w.db.sqlite.prepare("SELECT * FROM rights_request WHERE kind = 'delete' AND status = 'done'").all() as Record<string, unknown>[];
+    expect(record).toHaveLength(1);
+    expect(record[0]).toMatchObject({ user_id: "", email: "", note: null, done_by: "self" });
+    const written = JSON.stringify([record, w.db.sqlite.prepare("SELECT * FROM audit WHERE at >= (SELECT MAX(at) FROM audit) - 1").all()]);
+    expect(written).not.toMatch(/bina|shah\.test/i);
+
+    // Carol leaves Kaveri with her account, which Anil keeps.
+    expect((await remove(carol)).status).toBe(200);
+    expect(await cp.membership(A, carol.id)).toBeNull();
+    expect(await cp.office(A)).toMatchObject({ status: "active" });
+    expect(await cp.auditTrail(A)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "a deleted account", action: "member.account-deleted" })]));
+  });
+
+  it("still lets a request made before deletion was self-serve be withdrawn", async () => {
+    const { w, anil, bina } = await twoOffices();
+    w.db.sqlite.prepare("INSERT INTO rights_request (id, user_id, email, kind, status, created_at) VALUES ('req_old', ?, ?, 'delete', 'open', ?)").run(anil.id, anil.email, Date.now());
+    expect((await me(w, anil)).deletionRequested).toBe(true);
+    expect((await call(w, bina, `${ACCOUNT_ROUTES.accountRequests}/req_old`, { method: "DELETE" })).status).toBe(404);
+    expect((await call(w, anil, `${ACCOUNT_ROUTES.accountRequests}/req_old`, { method: "DELETE" })).status).toBe(200);
+    expect((await me(w, anil)).deletionRequested).toBe(false);
   });
 });
 

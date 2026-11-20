@@ -3,9 +3,13 @@ import { LEGAL_DOCUMENTS, type LegalDocument, type RightsRequestView } from "@of
 type RequestDb = { id: string; kind: "delete"; status: "open" | "done" | "withdrawn"; created_at: number };
 const toView = (r: RequestDb): RightsRequestView => ({ id: r.id, kind: r.kind, status: r.status, createdAt: new Date(r.created_at).toISOString() });
 
+/** Who did something, in an office's audit trail, once their account is gone. */
+export const DELETED_ACCOUNT = "a deleted account";
+
 /**
  * A person's own record, apart from any office: what they accepted, a copy of their account data,
- * and their request to be deleted. The admin tool completes deletions; nothing here deletes an account.
+ * and deleting their account. Requests made before deletion was self-serve are listed, can be
+ * withdrawn, and are completed with the admin tool.
  */
 export class AccountRecords {
   constructor(
@@ -37,25 +41,50 @@ export class AccountRecords {
     return Boolean(await this.db.prepare("SELECT 1 AS x FROM rights_request WHERE user_id = ? AND kind = 'delete' AND status = 'open'").bind(userId).first());
   }
 
-  /** Recorded, and in the audit of every office they are in. The only owner of an office must hand it over or delete it first. */
-  async requestDeletion(user: { id: string; email: string }, note: string | null): Promise<RightsRequestView | { error: string }> {
-    const sole = await this.db
+  /**
+   * Deletes the account at once: its sessions, sign-ins, two-factor secret, memberships, WhatsApp link, consent
+   * records and invitations, then the account itself. Refused while this person is the only owner of an office
+   * that still has other people in it. An office they are alone in is deleted with them, and purged after 30 days
+   * as any deleted office is. Each office's audit trail, and a done request with no name or address, record it.
+   * Their name stays where the books record what they did, as the privacy notice says.
+   */
+  async deleteAccount(user: { id: string; email: string }): Promise<{ error: string } | { left: string[]; closed: string[] }> {
+    const { results: offices } = await this.db
       .prepare(
-        "SELECT o.name FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ? AND m.role = 'owner' AND o.status != 'deleting' AND (SELECT COUNT(*) FROM membership x WHERE x.office_id = m.office_id AND x.role = 'owner') = 1",
+        "SELECT m.office_id, m.role, o.name, o.status, (SELECT COUNT(*) FROM membership x WHERE x.office_id = m.office_id AND x.role = 'owner') AS owners, (SELECT COUNT(*) FROM membership x WHERE x.office_id = m.office_id) AS people FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ?",
       )
       .bind(user.id)
-      .all<{ name: string }>();
-    if (sole.results.length) return { error: `You are the only owner of ${sole.results.map((r) => r.name).join(", ")}. Hand ${sole.results.length === 1 ? "it" : "them"} to another owner, or delete ${sole.results.length === 1 ? "it" : "them"}, first.` };
-    const open = await this.db.prepare("SELECT id, kind, status, created_at FROM rights_request WHERE user_id = ? AND kind = 'delete' AND status = 'open'").bind(user.id).first<RequestDb>();
-    if (open) return toView(open);
-    const id = `req_${crypto.randomUUID()}`;
+      .all<{ office_id: string; role: string; name: string; status: string; owners: number; people: number }>();
+    const sole = offices.filter((o) => o.role === "owner" && o.owners === 1 && o.people > 1 && o.status !== "deleting");
+    if (sole.length) {
+      const one = sole.length === 1;
+      return { error: `You are the only owner of ${sole.map((o) => o.name).join(", ")}, and others work in ${one ? "it" : "them"}. Make one of them an owner, or delete ${one ? "the office" : "those offices"}, first.` };
+    }
+    const closed = offices.filter((o) => o.people === 1 && o.status !== "deleting").map((o) => o.office_id);
     const at = this.now();
-    const offices = await this.db.prepare("SELECT office_id FROM membership WHERE user_id = ?").bind(user.id).all<{ office_id: string }>();
+    const email = user.email.toLowerCase();
+    const by = (q: string, ...v: unknown[]) => this.db.prepare(q).bind(...v);
     await this.db.batch([
-      this.db.prepare("INSERT INTO rights_request (id, user_id, email, kind, status, note, created_at) VALUES (?, ?, ?, 'delete', 'open', ?, ?)").bind(id, user.id, user.email.toLowerCase(), note, at),
-      ...offices.results.map((o) => this.db.prepare("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'member.deletion-requested', NULL, ?)").bind(o.office_id, user.email, at)),
+      ...closed.flatMap((id) => [by("UPDATE office SET status = 'deleting', deleted_at = ? WHERE id = ? AND status != 'deleting'", at, id), by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'office.deleting', 'its only member deleted their account', ?)", id, DELETED_ACCOUNT, at)]),
+      ...offices.map((o) => by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'member.account-deleted', NULL, ?)", o.office_id, DELETED_ACCOUNT, at)),
+      by("DELETE FROM wa_code WHERE user_id = ?", user.id),
+      by("DELETE FROM wa_link WHERE user_id = ?", user.id),
+      by("DELETE FROM membership WHERE user_id = ?", user.id),
+      by("DELETE FROM invitation WHERE email = ?", email),
+      by("UPDATE invitation SET invited_by = ? WHERE lower(invited_by) = ?", DELETED_ACCOUNT, email),
+      by("UPDATE office SET created_by = NULL WHERE created_by = ?", user.id),
+      by("DELETE FROM consent WHERE user_id = ?", user.id),
+      by("DELETE FROM two_factor WHERE user_id = ?", user.id),
+      by("DELETE FROM session WHERE user_id = ?", user.id),
+      by("DELETE FROM account WHERE user_id = ?", user.id),
+      by("DELETE FROM verification WHERE value = ? OR lower(identifier) = ?", user.id, email),
+      by("DELETE FROM rate_limit WHERE key = ?", `step-up:${user.id}`),
+      // Earlier requests lose the name and address too; one done request, with neither, is the record that it was done.
+      by("UPDATE rights_request SET user_id = '', email = '', note = NULL, status = CASE WHEN status = 'open' THEN 'done' ELSE status END, done_at = COALESCE(done_at, ?), done_by = COALESCE(done_by, 'self') WHERE user_id = ?", at, user.id),
+      by("INSERT INTO rights_request (id, user_id, email, kind, status, note, created_at, done_at, done_by) VALUES (?, '', '', 'delete', 'done', NULL, ?, ?, 'self')", `req_${crypto.randomUUID()}`, at, at),
+      by("DELETE FROM user WHERE id = ?", user.id),
     ]);
-    return { id, kind: "delete", status: "open", createdAt: new Date(at).toISOString() };
+    return { left: offices.map((o) => o.office_id), closed };
   }
 
   async withdraw(userId: string, id: string): Promise<boolean> {
