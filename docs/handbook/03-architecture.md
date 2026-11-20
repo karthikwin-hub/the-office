@@ -20,7 +20,7 @@ A pnpm monorepo in TypeScript.
 
 **One contract.** The web app, the demo's mock handlers, the Worker and the engine import the same zod types, so the demo cannot drift from the real product. Switching between them is a build flag (`VITE_DATA=mock` or `live`).
 
-**Tests.** 426 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines, imports), 202 Worker tests (including a two-office isolation suite, sign-in and two-step sign-in, inbound mail, security headers, the website chat and account rights), 11 tests that run the office Durable Object inside workerd (`apps/api/test/do/`), and Storybook stories for every component state. GitHub Actions runs the type check and every test on each pull request. The browser end-to-end script (`tools/e2e/live.mjs`) predates two-step sign-in and needs updating.
+**Tests.** 426 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines, imports), 208 Worker tests (including a two-office isolation suite, sign-in and two-step sign-in, inbound mail, security headers, the website chat, the export archive and account rights), 14 tests that run the office Durable Object inside workerd (`apps/api/test/do/`, among them a 57 MB export), 5 web app tests, and Storybook stories for every component state. GitHub Actions runs the type check and every test on each pull request. The browser end-to-end script (`tools/e2e/live.mjs`) predates two-step sign-in and needs updating.
 
 ## 2. Runtime
 
@@ -32,6 +32,12 @@ A pnpm monorepo in TypeScript.
 | R2 | Original documents and social media images under `o/<officeId>/` | S3-compatible, no egress fees |
 | Workers AI | Reading documents (Llama 3.3 70B for text layers, Llama 3.2 11B Vision for scans), Whisper for voice notes, translation for WhatsApp | Open-weight models, no API key, a free daily allowance |
 | Email | Email Routing delivers inbound mail to the Worker; the `send_email` binding sends reminders, invitations and digests | No third-party mail service |
+
+**On the Workers free plan.** The product runs on Cloudflare's free plan: about 10 ms of CPU and 128 MB of memory for each Worker request, 100,000 Worker requests and 100,000 Durable Object requests a day, and 30 s of CPU for each request to a Durable Object. So the Worker does no heavy work itself, and nothing asks the backend on a timer when it can be told instead:
+
+- **Export.** The office's Durable Object writes the archive (`apps/api/src/export.ts`, `zip.ts`). It lists only the office's own keys under `o/<officeId>/`, keeps the books as they are, and streams a stored (uncompressed) ZIP: each file's bytes go out as R2 hands them over, its CRC-32 worked out on the way, then a data descriptor, so neither side holds a whole file or the archive. One request to the office reads at most 250 files, to stay inside what one invocation may ask of R2, so a big export comes in parts; the Worker pipes the parts into one download without running code for each chunk. Writing 200 MB (the cap, as before) costs the Durable Object about 0.6 s of CPU. The archive holds `books.json` and `files/...`, as before.
+- **Live updates.** Every open tab keeps one WebSocket to its office, which hibernates while quiet. The office says `{"type":"changed"}` after every saved change, and adds `"unread":true` when an emailed document arrived for a browser to read. A tab asks for unread documents when told so, when the socket opens again and when the person comes back to the tab; only while its socket is down does it ask on its own, every 10 minutes, and refetch its screens once a minute.
+- **Website chat.** The widget asks for replies every 5 s while the visitor waits for an answer (up to two minutes after they wrote), every 30 s otherwise and every minute while the page is out of view.
 
 ## 3. How a request finds its office
 
@@ -90,7 +96,7 @@ The control plane adds two tables for each person's own rights (migration `0003_
 | Browser | Strict Content-Security-Policy, HSTS, no framing, Referrer-Policy and Permissions-Policy on every response; every non-GET `/api` request must come from the app's own origin |
 | Stored files | Shown in the browser only as PDF or image, sandboxed; anything else downloads. Ids are random UUIDs. Types come from the file's name and bytes, never the sender |
 | Inbound email | A sender is trusted only on Cloudflare's own `Authentication-Results` (DMARC, or aligned DKIM); unproven mail waits on the desk; limits and the upload allowance are checked before anything is stored |
-| Live connection | The WebSocket says nothing before the caller check, takes no messages from browsers, and closes when someone is removed or the office is suspended |
+| Live connection | The WebSocket says nothing before the caller check, takes no messages from browsers (it carries only `changed`, with `unread` when a document arrived), and closes when someone is removed or the office is suspended |
 | Failed requests | A request that fails partway reopens the books as last saved |
 | Invitations | Single-use token, only its hash stored, bound to the invited address, expires after 14 days; the token travels after `#` and in request bodies, never in a logged URL. The console invites an owner only into an office with no owner and never sees the link |
 | Social and WhatsApp tokens | Encrypted at rest with a key derived per office (HKDF from `SOCIAL_TOKEN_KEY` and the office id), with a key version for rotation |
