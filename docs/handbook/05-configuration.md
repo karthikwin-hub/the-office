@@ -38,13 +38,17 @@ The web build reads one flag: `VITE_DATA=mock` builds the demo; anything else bu
 
 ## 3. Secrets
 
-Put with `wrangler secret put <NAME>` through Infisical, for example:
+Secrets are kept in Infisical, one environment per place the code runs, and put on each Worker from there with `wrangler secret put`. `sh tools/admin/set-secrets.sh live` (or `staging`) does this for the two required secrets, and puts `RESEND_API_KEY` and `TURNSTILE_SECRET` on the Worker if they are there. On staging it creates a missing required secret; on live it stops instead, because a new `BETTER_AUTH_SECRET` signs everyone out and makes enrolled authenticators unreadable, and a new `SOCIAL_TOKEN_KEY` makes sealed platform tokens unreadable: copy live's values into `prod` first, or pass `--rotate` to make new ones on purpose. Run it yourself, not through an agent.
 
-```sh
-infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
-```
+| Infisical environment | Holds | Who may read it | Used by |
+| --- | --- | --- | --- |
+| `dev` | Local development only: no value that works on staging or live | Everyone on the project, coding agents included | `wrangler dev`, `api-local` in `.claude/launch.json`, tests |
+| `staging` | The staging Worker's secrets (its own `BETTER_AUTH_SECRET` and `SOCIAL_TOKEN_KEY`, and a sending-only `RESEND_API_KEY` so sign-up mail arrives; never live's) and `CLOUDFLARE_API_TOKEN_OFFICE_STAGING` | Engineers; no agent | `set-secrets.sh staging`; `deploy.sh staging` by hand when CI cannot |
+| `prod` | The live Worker's secrets and `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` | The owners only (restrict it in the project's access control; if the plan has no per-environment roles, keep live in an Infisical project of its own) | `set-secrets.sh live`; `deploy.sh live` by hand when CI cannot |
 
-`sh tools/admin/set-secrets.sh` does this for the two required secrets, creating them in Infisical first if they are missing, and puts `RESEND_API_KEY` and `TURNSTILE_SECRET` on the Worker if they are in Infisical. Run it yourself, not through an agent.
+Releases normally go out from GitHub Actions (`.github/workflows/deploy.yml`), which reads only its own GitHub environment's secrets: `CLOUDFLARE_API_TOKEN_OFFICE_STAGING` in the `staging` environment and `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` in `live`. A deploy needs nothing else: the Worker's own secrets stay on the Worker. Keep each token in exactly two places, its Infisical environment and its GitHub environment, and rotate both together.
+
+Each deploy token is made from Cloudflare's "Edit Cloudflare Workers" template with D1 edit added, limited to one account (and, on live, to the `snilld.in` zone for the custom domains). Staging's token belongs to the staging account when staging has one of its own (`account_id` in `env.staging`), so it cannot reach live at all.
 
 | Name | Required | Purpose |
 | --- | --- | --- |
@@ -63,9 +67,9 @@ infisical run --env=dev -- sh -c 'printf %s "$NAME" | wrangler secret put NAME'
 | `TURNSTILE_SECRET` | Required on live, for the website chat; set together with `TURNSTILE_SITE_KEY` | Verifies the Turnstile token on each chat message. Without it the website chat answers 503 on live; locally and in the mockups it accepts messages within the rate limit |
 | `INDIA_BACKUP_ACCESS_KEY_ID`, `INDIA_BACKUP_SECRET_ACCESS_KEY` | For companies' books (rule 3(5)) | A key that may only put objects into the India bucket; signs each upload with AWS Signature Version 4 |
 
-In Infisical (environment `dev`), the Cloudflare deploy token for the Snilld account is held as `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE` and passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
+The deploy tokens are passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time by `tools/admin/deploy.sh`. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
 
-> **Rule:** no `.env` or `.dev.vars` files. Commands that need secrets run as `infisical run --env=dev -- <command>`.
+> **Rule:** no `.env` or `.dev.vars` files. Commands that need secrets run as `infisical run --env=<environment> -- <command>`, and a machine a coding agent works on uses only `dev`.
 
 ## 4. Email
 
@@ -126,7 +130,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 
 **The platform console**, `console.office.snilld.in`, is for the addresses in `PLATFORM_OWNERS`. It lists every business on the platform: name, owners, people, status, when and how it opened (signed up, or onboarded by whom), its email-in and web address, a pending owner invitation, and the date of its last account change. From it a platform owner onboards a business (an empty office and a 14-day owner invitation emailed from `MAIL_FROM`), sends the invitation again, and suspends or opens an office. It reads only the control plane (D1): no office's books, files or conversations are shown or reachable, and every action is written to that office's audit trail under the platform owner's address. The API is `/api/platform` (`PLATFORM_ROUTES` in `packages/contracts`), refused with 403 to anyone else.
 
-**The admin tool** covers the rest. Run through Infisical: `infisical run --env=dev --silent -- node tools/admin/admin.mjs <command>`. Add `--local` to work on the local development database.
+**The admin tool** covers the rest. Run through Infisical's `prod` environment for live: `infisical run --env=prod --silent -- node tools/admin/admin.mjs <command>`. Add `--env staging` (through Infisical's `staging` environment) to work on the staging Worker's database, or `--local` for the local development database.
 
 | Command | What it does |
 | --- | --- |

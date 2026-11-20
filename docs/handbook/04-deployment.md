@@ -7,6 +7,7 @@
 | Environment | URL | Data | Purpose |
 | --- | --- | --- | --- |
 | Live | https://office.snilld.in (product page), https://app.office.snilld.in (businesses sign in), https://console.office.snilld.in (platform console, ours), `https://<customer>.office.snilld.in` (each office given its own address) | Real offices (D1 `office`, R2 `office-docs`) in the Snilld Cloudflare account | Pilots |
+| Staging | `https://the-office-staging.<subdomain>.workers.dev` (one host; the console at `/?platform`) | Test offices only (D1 `office-staging`, R2 `office-docs-staging`), its own secrets, in a staging Cloudflare account or the Snilld one (`env.staging` in `apps/api/wrangler.jsonc`) | Every merge to `main` is deployed here and checked before it can go live |
 | Demo | https://demo.office.snilld.in | Sample books in the browser, no backend | Sales conversations, reviews |
 | Local | `wrangler dev` on a developer machine | Local D1, R2 and Durable Object state | Development and end-to-end checks |
 
@@ -93,8 +94,8 @@ Per-office regions are not built yet; every office's live books sit wherever Clo
 Both web builds write to `apps/web/dist`, so they are built and deployed one at a time.
 
 1. **Check:** every pull request runs `pnpm typecheck` and `pnpm test` in GitHub Actions and is merged only green; run `/security-review` and `/code-review` on changes to `apps/api`. For a large change, run the real Worker locally (`api-local` in `.claude/launch.json`) and walk the main flows: the browser end-to-end script `tools/e2e/live.mjs` predates two-step sign-in.
-2. **Back up:** `infisical run --env=dev --silent -- node tools/admin/admin.mjs backup` writes the control plane to `backups/` (git-ignored). Delete the file once the release has settled.
-3. **Migrate and deploy live:** `infisical run --env=dev --silent -- sh tools/admin/deploy.sh` builds the web app, applies D1 migrations to the remote database, then deploys. Migrations run before the new code is live, so they only add.
+2. **Back up:** `infisical run --env=prod --silent -- node tools/admin/admin.mjs backup` writes the control plane to `backups/` (git-ignored). Delete the file once the release has settled.
+3. **Migrate and deploy, staging first:** `infisical run --env=staging --silent -- sh tools/admin/deploy.sh staging`, then `infisical run --env=prod --silent -- sh tools/admin/deploy.sh live`. Each builds the web app, applies D1 migrations to that target's remote database, then deploys; the target is required, and each needs its own token, so neither can deploy the other. Migrations run before the new code is live, so they only add.
 4. **Deploy demo:** build with `VITE_DATA=mock`, then `wrangler deploy -c ../web/wrangler.mock.jsonc`.
 5. **Smoke check:** health returns 200; office paths without a session return 401; a forged media link returns 404; a POST from another origin returns 403; the security headers are on app, office and console (commands in `docs/security/README.md`); `admin.mjs list` shows the offices.
 

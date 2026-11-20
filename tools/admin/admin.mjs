@@ -15,7 +15,8 @@
 //   subdomain <office> <label>           gives an office its own address, <label>.APP_DOMAIN, in two runs (see below)
 //   subdomain <office> --remove          takes it away again; the office opens on the app
 //
-// Add --local to work on `wrangler dev`'s database instead.
+// Add --local to work on `wrangler dev`'s database instead, or --env staging for the staging Worker's (secrets from
+// Infisical's staging environment; live's come from prod).
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -25,23 +26,37 @@ const root = resolve(import.meta.dirname, "../..");
 const api = join(root, "apps/api");
 const args = process.argv.slice(2);
 const local = args.includes("--local");
-const [command, ...rest] = args.filter((a) => a !== "--local");
+// "staging", or none for live ("--env ''" is live too, as deploy.sh passes it). Checked here so a typo, a missing value
+// or the --env=staging form never falls through to live.
+const envAt = args.indexOf("--env");
+const target = envAt >= 0 ? args[envAt + 1] : "";
+if ((target !== "" && target !== "staging") || args.some((a) => a.startsWith("--env="))) {
+  console.error(`Not an environment: ${target ?? "(missing)"}. Use --env staging (with a space), or leave it out for live.`);
+  process.exit(1);
+}
+const [command, ...rest] = args.filter((a, i) => a !== "--local" && (envAt < 0 || (i !== envAt && i !== envAt + 1)));
 const OFFICE = /^(off_[a-z2-9]{16}|kaveri-electricals)$/;
 const KINDS = new Set(["email", "wa_phone", "meta_page", "ig_account", "threads", "linkedin", "x", "support_email", "widget"]);
-const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE };
+const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? (target ? process.env.CLOUDFLARE_API_TOKEN_OFFICE_STAGING : process.env.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE) };
 const lit = (v) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 const CONFIG = join(api, "wrangler.jsonc");
-const configVar = (name) => new RegExp(`"${name}":\\s*"([^"]+)"`).exec(readFileSync(CONFIG, "utf8"))?.[1] ?? null;
+// Live's vars come first in the file; staging's are in its own block under "env".
+const configVar = (name) => {
+  const text = readFileSync(CONFIG, "utf8");
+  return new RegExp(`"${name}":\\s*"([^"]+)"`).exec(target ? text.slice(text.indexOf(`"${target}": {`)) : text)?.[1] ?? null;
+};
 // The same rules as `subdomainProblem` in packages/contracts/src/api.ts.
 const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
 const RESERVED = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
 const END_OF_CUSTOMERS = "// customers end";
 
+// Always names the environment (empty is live). DB is the binding, looked up in that environment's own block: a
+// database name not in the block would be looked up across the whole account, and could find live's.
 function wrangler(...a) {
-  return execFileSync(join(api, "node_modules/.bin/wrangler"), a, { cwd: api, env, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  return execFileSync(join(api, "node_modules/.bin/wrangler"), [...a, "--env", target], { cwd: api, env, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
 }
 function sql(query) {
-  const out = JSON.parse(wrangler("d1", "execute", "office", local ? "--local" : "--remote", "--json", "--command", query));
+  const out = JSON.parse(wrangler("d1", "execute", "DB", local ? "--local" : "--remote", "--json", "--command", query));
   return out.flatMap((r) => r.results ?? []);
 }
 function office(id) {
@@ -166,7 +181,7 @@ switch (command) {
     const dir = join(root, "backups");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `office-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.sql`);
-    wrangler("d1", "export", "office", local ? "--local" : "--remote", "--output", file);
+    wrangler("d1", "export", "DB", local ? "--local" : "--remote", "--output", file);
     console.log(`Saved ${file}. It holds account data: keep it out of git and delete it when done.`);
     break;
   }

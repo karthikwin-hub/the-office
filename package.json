@@ -14,7 +14,7 @@
     "data": "python3 tools/synthetic/generate.py",
     "screenshots": "node tools/screenshots/capture.mjs",
     "deploy:mock": "pnpm build:mock && pnpm --filter @office/api exec wrangler deploy -c ../web/wrangler.mock.jsonc",
-    "deploy": "pnpm build && pnpm --filter @office/api run db:migrate && pnpm --filter @office/api run deploy",
+    "deploy": "sh tools/admin/deploy.sh live",
     "e2e:live": "node tools/e2e/live.mjs",
     "docs": "node tools/docs/build.mjs",
     "docs:reference": "node tools/docs/reference.mjs",
