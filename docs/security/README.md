@@ -16,7 +16,7 @@ at the edges: sign-in, browser defences, inbound email, the platform console and
 | | 19 November | 20 November |
 | --- | --- | --- |
 | High findings open | 7 | 0 |
-| Medium findings open | 10 | 2 (production secrets environment, retention and deletion) |
+| Medium findings open | 10 | 1 (production secrets environment); retention and deletion in review |
 | Dependency advisories (`pnpm audit --prod`) | 24, 2 critical | 9: one (zod 3) in code that runs; the critical two are test tooling never shipped in the Worker |
 | Automated tests | 547 | 643, including 11 that run the office Durable Object inside workerd |
 | Checks before merge | None | GitHub Actions: type check and every test on each pull request |
@@ -97,6 +97,19 @@ Each fix shipped with a test that fails before it and passes after. The fixes we
   the order.
 - Per office per day: 400 AI calls (150 for customer service) and 250 MB of uploads.
 
+### Retention and deletion (`apps/api/src/backup.ts`, `apps/api/src/envelope.ts`, `apps/api/src/account.ts`)
+
+- The copies of an office's books that leave its Durable Object, the daily copy in India and the copy retained after
+  a purge, are encrypted with a fresh AES-256-GCM data key per copy, wrapped by the office's own key (HKDF of
+  `SOCIAL_TOKEN_KEY` and the office id). `tools/admin/open-backup.mjs` opens one; the handbook (configuration, §4d)
+  says how to restore.
+- The nightly cron purges offices deleted 30 days ago, then deletes their daily copies in India (queued in
+  `backup_erasure` and retried each night until done), then deletes retained copies whose eight years are over.
+  Each step is written to the office's audit trail.
+- "Delete my account" deletes at once after a step-up: sessions, sign-ins, two-factor secret, memberships, WhatsApp
+  link, consent records and invitations. It is refused while the person is the only owner of an office others work
+  in; an office they are alone in is deleted with them. The audit trail and the done request keep no name or address.
+
 ### Unchanged and still sound
 
 Invitations stored only as a hash, single use, bound to one address, 14 days; platform tokens encrypted with AES-GCM
@@ -132,7 +145,10 @@ In priority order. The private review's tracker holds the detail.
 | Confirm Cloudflare stamps `Authentication-Results` on every inbound message (send one test email) | The inbound-email controls rely on it |
 | Turnstile site key and secret before any office turns on the website chat | Without them the chat is closed on live |
 | A Cloudflare rate-limit rule on `/api/auth/*` (optional; the free plan allows one) | A layer in front of the Worker's own limits |
-| Retention sweep, backups removed on purge, envelope encryption, account deletion that deletes | Data-protection duties (DPDP Act) |
+| Give the India bucket's key list and delete permission (not only put) before setting `INDIA_BACKUP_*` | A purged office's copies in India cannot be deleted without it |
+| Bring the privacy notice in line with self-serve deletion and the eight-year retained copy; publish it as a new version | It still says deletion is completed within 30 days, and that books are erased 30 days after an office is deleted |
+| Encrypt the office's live files in R2 with the office's key | R2 encrypts at rest, but with Cloudflare's key: anyone with the bucket can read them |
+| A command to load an opened backup into a new office | Restoring books is an engineering step today |
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
 | CI: Biome lint and format, branch protection, the security-review Action, Renovate; make the audit job blocking | The gate covers types and tests only |
 | zod 4 | The one remaining runtime advisory |

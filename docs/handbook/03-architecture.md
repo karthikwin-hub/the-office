@@ -76,7 +76,7 @@ Besides the books, each office's SQLite database has a few tables of its own:
 | `cs_thread` | One row per customer conversation: channel, the customer's key on it (phone, email address or visitor id), name, the matched party and whether identity was confirmed, status, hand-offs, time to first reply | The office's retention period (12 months by default), then deleted with its messages |
 | `cs_message` | Each message in and out: who wrote it (customer, agent or a named person), the intent and what grounded the reply, sending status, the platform's message id for de-duplication | As its conversation |
 
-The control plane adds two tables for each person's own rights (migration `0003_legal.sql`): `consent` (which version of which document a person accepted, when, and from which country) and `rights_request` (deletion requests from Settings, with who completed them and when). Neither holds books.
+The control plane adds two tables for each person's own rights (migration `0003_legal.sql`): `consent` (which version of which document a person accepted, when, and from which country) and `rights_request` (account deletions: since November 2026 one done row per deletion with no name or address; older rows are requests an operator completed). Neither holds books. Migration `0008_backup_erasure.sql` adds `backup_erasure`: purged offices whose daily copies in India are still to be deleted.
 
 ## 6. Security model
 
@@ -133,8 +133,8 @@ The same production web app is built with `VITE_DATA=mock`. Mock Service Worker 
 ## 10. Operations
 
 - **Schema changes.** D1 uses numbered SQL migrations. Each Durable Object keeps a `schema_version` and runs its own steps once on start (for example, moving files to the per-office prefix).
-- **Nightly job.** A cron at 21:30 UTC purges offices deleted more than 30 days ago (Durable Object storage, R2 prefix, control-plane rows).
-- **Admin tool.** `tools/admin/admin.mjs`: list offices with activity, suspend and resume, send an owner invitation, add a route, purge a deleted office early, back up the control plane, remove a person on request.
+- **Nightly job.** A cron at 21:30 UTC purges offices deleted more than 30 days ago (Durable Object storage, R2 prefix, control-plane rows; the books and edit log are first sealed into `retained/`), deletes their daily copies in India, and deletes retained copies whose eight years are over. Each step is in the office's audit trail.
+- **Admin tool.** `tools/admin/admin.mjs`: list offices with activity, suspend and resume, send an owner invitation, add a route, purge a deleted office early, back up the control plane, remove a person on request. `tools/admin/open-backup.mjs` opens a sealed copy of an office's books.
 - **Logs.** Every office log line is prefixed with the office id; Workers observability is on.
 
 ## 11. International readiness (design only)

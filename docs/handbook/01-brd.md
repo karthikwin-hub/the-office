@@ -118,7 +118,7 @@ Rules are split into a **core** that applies in every market and a **jurisdictio
 - GST place of supply, CGST and SGST for intra-state supply, IGST for inter-state, HSN summaries; GSTR-1 in the offline-tool JSON format; GSTR-3B summary in Excel.
 - TDS under sections 194C, 194J, 194Q and 194H, deposit due dates and the quarterly 26Q.
 - Amounts in rupees and paise with Indian digit grouping (12,34,567).
-- Personal data handled under the Digital Personal Data Protection Act 2023: purpose-limited, deletable on request (the admin tool's `forget-user`).
+- Personal data handled under the Digital Personal Data Protection Act 2023: purpose-limited, and an account is deleted at once from Settings.
 
 ### 7.3 Later packs (named only)
 

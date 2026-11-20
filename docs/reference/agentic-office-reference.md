@@ -166,7 +166,7 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 | --- | --- | --- |
 | D1 `office` (control plane) | Accounts, sessions, offices, memberships, invitations (only a hash of each link), routes for inbound mail and webhooks, WhatsApp links, consent records, audit | Any business's books |
 | One Durable Object per office (SQLite) | That office's books, staged changes, team log, routines history, customer conversations, the field-level edit log, persona names; and, apart from the books, each owner's assistant record (calendar events for two weeks, tasks, the last 50 forwarded emails, drafted replies) and their calendar address, encrypted; and online sales lines read from marketplace reports (order, product, quantity, amounts, the customer's state and city; no names or addresses), with the original files in R2 | Another office's data. The assistant records are not in the books, the backups or the eight-year retention, and are deleted when the owner leaves |
-| R2 `office-docs` | Original documents and images under `o/<officeId>/`; books kept eight years after deletion under `retained/<officeId>/` | Files outside the office's folder |
+| R2 `office-docs` | Original documents and images under `o/<officeId>/`; books kept eight years after deletion under `retained/<officeId>/`, sealed with the office's key, then deleted by the nightly cron | Files outside the office's folder |
 
 ## 6. Inbound traffic
 
@@ -604,7 +604,7 @@ infisical run --env=dev --silent -- node tools/admin/admin.mjs <command>
 | `purge-soon <office>` | A deleted office is purged at the next nightly run instead of after 30 days |
 | `backup` | Writes the control plane as SQL into `backups/` (git-ignored; holds account data) |
 | `forget-user <email>` | Removes a person's account, sessions, memberships, WhatsApp link and consent records; refuses if they are the only owner of an office |
-| `requests` / `requests done <id>` | Lists open account deletion requests, or completes one (check weekly; complete within 30 days) |
+| `requests` / `requests done <id>` | Lists deletion requests left open from before people could delete their own accounts in Settings, or completes one (check weekly; complete within 30 days) |
 | `subdomain <office> <label>` | Gives an office its own address in two runs: the first adds it to `wrangler.jsonc` (commit and deploy), the second switches the office over |
 | `subdomain <office> --remove` | Takes the address away (commit and deploy afterwards) |
 

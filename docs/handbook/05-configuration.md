@@ -125,7 +125,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 ## 6. Domain and schedule
 
 - **Custom domain:** the platforms' redirect URIs use the app, `https://app.office.snilld.in/api/channels/<platform>/callback`, for every office; after connecting, the owner is sent back to their own office's address.
-- **Cron:** `30 21 * * *` (21:30 UTC, 03:00 in India) purges offices deleted more than 30 days ago.
+- **Cron:** `30 21 * * *` (21:30 UTC, 03:00 in India) purges offices deleted more than 30 days ago, deletes their daily copies in India (at most 40 requests to the bucket a night, the rest the next night), and deletes retained copies past their keep-until date.
 - **Per-office alarms:** each office schedules its own daily digest (default 08:45 office time) and social publishing.
 
 ## 7. Platform console and admin tool
@@ -143,7 +143,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 | `purge-soon <office>` | A deleted office is purged at the next nightly run instead of after 30 days |
 | `backup` | Exports the control plane as SQL into `backups/` (git-ignored; holds account data) |
 | `forget-user <email>` | Removes a person's account, sessions, memberships, WhatsApp link and consent records; refuses if they are the only owner of an office |
-| `requests` | Lists open account deletion requests made from Settings, oldest first |
+| `requests` | Lists account deletion requests still open from before deletion became self-serve, oldest first |
 | `requests done <id>` | Completes a deletion request: runs `forget-user` for that person and marks the request done |
 | `subdomain <office> <label>` | Gives an office its own address, `<label>.office.snilld.in`, in two runs: the first adds the custom domain to `wrangler.jsonc` (commit and deploy), the second checks the address answers and switches the office over. Labels are 2 to 32 lower-case letters, digits or hyphens; `app`, `console`, `demo`, `www`, `api`, `mail`, `in` and a few more are refused |
 | `subdomain <office> --remove` | Takes the address away (commit and deploy afterwards); the office opens on the app again |
@@ -174,7 +174,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 | 2 | Bracketed details completed: legal name, registered address, grievance officer, contact address, response times | Open |
 | 3 | When a document changes, raise its version in `LEGAL_DOCUMENTS` (`packages/contracts`) and the date at its top; everyone is asked to accept it once more | Process in place |
 | 4 | Each business using the Customer Service agent puts the customer AI notice (`docs/legal/customer-notice-template.md`) on its website and WhatsApp profile | Per business, at hiring |
-| 5 | Deletion requests checked weekly with `admin.mjs requests` and completed within 30 days | Process in place |
+| 5 | People delete their own accounts in Settings, at once. Requests left open from before are checked with `admin.mjs requests` and completed within 30 days | Process in place |
 | 6 | Subprocessor list kept current when a provider is added (for example an email sending service) | Ongoing |
 
 ## 10. Security incidents
