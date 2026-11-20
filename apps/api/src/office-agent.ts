@@ -2,7 +2,7 @@ import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, t
 import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
 import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
 import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
-import { backupKey, backupTarget, gzip, putObject, retainedKey, retainedUntil } from "./backup";
+import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedCopy } from "./backup";
 import { SqlEditLog } from "./edits";
 import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -445,7 +445,10 @@ export class Office extends Agent<Env> {
       return json({ closed: this.disconnect(typeof body.userId === "string" && body.userId ? body.userId : null) });
     }
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
-    if (request.method === "POST" && path === "/internal/purge") return json(await this.purge());
+    if (request.method === "POST" && path === "/internal/purge") {
+      if (this.office && !this.env.SOCIAL_TOKEN_KEY) return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);
+      return json(await this.purge());
+    }
     this.fresh();
     this.routing++;
     try {
@@ -582,14 +585,15 @@ export class Office extends Agent<Env> {
     return { office: this.officeId, exportedAt: new Date().toISOString(), books: this.office.books, settings };
   }
 
-  /** The end of a deleted office: its storage and alarms go. The Worker removes its files and rows. */
+  /** The end of a deleted office: its books and edit log are sealed and kept, then its storage and alarms go. The Worker removes its files and rows. */
   private async purge() {
     if (this.office) {
       const at = new Date().toISOString();
       const keepUntil = retainedUntil(new Date());
-      await this.env.DOCS.put(retainedKey(this.officeId!, at), JSON.stringify({ office: this.officeId, purgedAt: at, keepUntil, books: this.office.books, edits: this.edits.all() }), {
-        httpMetadata: { contentType: "application/json" },
-        customMetadata: { keepUntil, reason: "Companies Act s.128(5): books and their edit log are kept for eight years" },
+      const sealed = await sealedCopy(this.env.SOCIAL_TOKEN_KEY!, this.officeId!, { office: this.officeId, purgedAt: at, keepUntil, books: this.office.books, edits: this.edits.all() });
+      await this.env.DOCS.put(retainedKey(this.officeId!, at), sealed, {
+        httpMetadata: { contentType: "application/octet-stream" },
+        customMetadata: { keepUntil, sealed: "OFB1", reason: "Companies Act s.128(5): books and their edit log are kept for eight years" },
       });
     }
     await this.ctx.storage.deleteAlarm();
@@ -1219,14 +1223,15 @@ export class Office extends Agent<Env> {
     await this.backupToIndia();
   }
 
-  /** Today's copy of the books and the edit log, on servers in India. A failure is recorded and shown in Settings, and tried again tomorrow. */
+  /** Today's copy of the books and the edit log, sealed, on servers in India. A failure is recorded and shown in Settings, and tried again tomorrow. */
   private async backupToIndia() {
     const target = backupTarget(this.env);
     if (!target) return;
     const at = new Date().toISOString();
     try {
-      const body = await gzip(JSON.stringify({ office: this.officeId, at, books: this.office.books, edits: this.edits.all() }));
-      await putObject(target, backupKey(this.officeId!, istDate()), body, "application/gzip");
+      if (!this.env.SOCIAL_TOKEN_KEY) throw new Error("SOCIAL_TOKEN_KEY is not set, so the copy cannot be encrypted and was not sent.");
+      const body = await sealedCopy(this.env.SOCIAL_TOKEN_KEY, this.officeId!, { office: this.officeId, at, books: this.office.books, edits: this.edits.all() });
+      await putObject(target, backupKey(this.officeId!, istDate()), body, "application/octet-stream");
       this.kv("backup:last", JSON.stringify({ at, error: null }));
     } catch (e) {
       this.log("backup to India failed", e);

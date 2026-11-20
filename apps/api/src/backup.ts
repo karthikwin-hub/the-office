@@ -1,10 +1,11 @@
 import { RETENTION_YEARS } from "@office/engine";
+import { seal } from "./envelope";
 import type { Env } from "./env";
 
 /**
  * Rule 3(5) of the Companies (Accounts) Rules: books kept electronically are backed up every day on
- * servers physically in India. This puts a gzipped copy in an S3-compatible bucket in an Indian region
- * (any provider that speaks the S3 API), signed with AWS Signature Version 4.
+ * servers physically in India. This puts a gzipped, encrypted copy (`envelope.ts`) in an S3-compatible
+ * bucket in an Indian region (any provider that speaks the S3 API), signed with AWS Signature Version 4.
  */
 export type BackupTarget = { endpoint: string; bucket: string; region: string; accessKeyId: string; secretAccessKey: string };
 
@@ -15,6 +16,11 @@ export function backupTarget(env: Env): BackupTarget | null {
 
 export async function gzip(text: string): Promise<ArrayBuffer> {
   return new Response(new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+}
+
+/** A copy of an office's books as it leaves the office: JSON, gzipped, then sealed with the office's backup key. */
+export async function sealedCopy(secret: string, officeId: string, data: unknown): Promise<Uint8Array> {
+  return seal(secret, officeId, await gzip(JSON.stringify(data)));
 }
 
 const enc = new TextEncoder();
@@ -96,9 +102,9 @@ export async function deleteObjects(t: BackupTarget, keys: string[], now = new D
 export const officeBackupPrefix = (officeId: string) => `${officeId}/`;
 
 /** Where a day's copy goes: one object per office per day, so a month of copies sits side by side. */
-export const backupKey = (officeId: string, day: string) => `${officeBackupPrefix(officeId)}${day}.json.gz`;
+export const backupKey = (officeId: string, day: string) => `${officeBackupPrefix(officeId)}${day}.json.gz.enc`;
 /** A deleted office's books and edit log, kept outside its prefix for the retention period. */
-export const retainedKey = (officeId: string, at: string) => `retained/${officeId}/${at.replace(/[:.]/g, "-")}.json`;
+export const retainedKey = (officeId: string, at: string) => `retained/${officeId}/${at.replace(/[:.]/g, "-")}.json.gz.enc`;
 
 /**
  * The last day a deleted office's retained copy is kept: eight years after the end of the financial year

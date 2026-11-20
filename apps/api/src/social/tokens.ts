@@ -15,7 +15,7 @@ export const fromB64url = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+
  * Separate keys for separate jobs, all from the one Worker secret, so a leaked media link
  * signature says nothing about the token key. `scope` gives each office its own token key.
  */
-export async function subkey(secret: string, purpose: "tokens" | "media" | "state", usage: "AES-GCM" | "HMAC", scope?: string): Promise<CryptoKey> {
+export async function subkey(secret: string, purpose: "tokens" | "media" | "state" | "backup", usage: "AES-GCM" | "HMAC", scope?: string): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey("raw", enc.encode(secret), "HKDF", false, ["deriveKey"]);
   const params = { name: "HKDF", hash: "SHA-256", salt: enc.encode("the-office/social"), info: enc.encode(scope ? `${purpose}:${scope}` : purpose) };
   return usage === "AES-GCM"

@@ -4,7 +4,9 @@ import { dispatch, OfficeService, verifyChain } from "@office/engine";
 import { ROUTES } from "@office/contracts";
 import { loadBooks } from "@office/fixtures";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { backupKey, backupTarget, deleteObjects, gzip, listObjects, putObject, retainedKey } from "../src/backup";
+import { openBackup } from "../../../tools/admin/open-backup.mjs";
+import { backupKey, backupTarget, deleteObjects, gzip, listObjects, putObject, retainedKey, sealedCopy } from "../src/backup";
+import { envelopeHeader, open } from "../src/envelope";
 import { SqlEditLog } from "../src/edits";
 import type { Env } from "../src/env";
 
@@ -60,14 +62,38 @@ describe("the daily copy in India", () => {
   });
 
   it("keeps one object per office per day, and deleted offices outside their prefix", () => {
-    expect(backupKey("kaveri", "2026-11-04")).toBe("kaveri/2026-11-04.json.gz");
-    expect(retainedKey("kaveri", "2026-11-04T21:30:00.000Z")).toBe("retained/kaveri/2026-11-04T21-30-00-000Z.json");
+    expect(backupKey("kaveri", "2026-11-04")).toBe("kaveri/2026-11-04.json.gz.enc");
+    expect(retainedKey("kaveri", "2026-11-04T21:30:00.000Z")).toBe("retained/kaveri/2026-11-04T21-30-00-000Z.json.gz.enc");
   });
 
   it("gzips the books", async () => {
     const zipped = await gzip(JSON.stringify({ hello: "books" }));
     const back = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
     expect(JSON.parse(back)).toEqual({ hello: "books" });
+  });
+
+  it("seals each copy with a fresh data key wrapped by the office's own key, and the restore tool opens it", async () => {
+    const secret = "backup-test-root-key-not-a-real-one";
+    const books = { office: "off_kaveri2345678abcd", at: "2026-11-04T21:30:00.000Z", books: { business: { name: "Kaveri Electricals", gstin: "29ABCDE1234F1Z5" } }, edits: [{ seq: 1, by: "Anil" }] };
+    const sealed = await sealedCopy(secret, books.office, books);
+    const text = new TextDecoder("latin1").decode(sealed);
+    expect(text).not.toContain("Kaveri");
+    expect(text).not.toContain("29ABCDE1234F1Z5");
+    expect(envelopeHeader(sealed)).toMatchObject({ v: 1, alg: "A256GCM", office: books.office });
+    // The documented way back: tools/admin/open-backup.mjs, on Node alone.
+    expect(await openBackup(secret, sealed)).toEqual(books);
+    const again = await sealedCopy(secret, books.office, books);
+    expect(envelopeHeader(again)!.dek).not.toBe(envelopeHeader(sealed)!.dek);
+
+    await expect(openBackup("another-root-key", sealed)).rejects.toThrow();
+    await expect(open(secret, sealed, "off_shah234567890abcd")).rejects.toThrow(/belongs to/);
+    const changed = sealed.slice();
+    changed[changed.length - 5]! ^= 1;
+    await expect(openBackup(secret, changed)).rejects.toThrow();
+    // A header moved onto another office's copy fails: it is bound into the ciphertext, and the data key to the office.
+    const other = await sealedCopy(secret, "off_shah234567890abcd", books);
+    const swapped = new Uint8Array([...sealed.subarray(0, 8 + new DataView(sealed.buffer).getUint32(4)), ...other.subarray(8 + new DataView(other.buffer).getUint32(4))]);
+    await expect(openBackup(secret, swapped)).rejects.toThrow();
   });
 
   it("signs the upload with AWS Signature Version 4", async () => {
