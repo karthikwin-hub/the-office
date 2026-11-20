@@ -55,6 +55,7 @@ export function gstinValid(g: string): boolean {
 /** "1,93,070.14", "₹ 25,31,364", "Rs. 12.5", "(0.03)" to paise; null if not an amount. */
 export function parseAmount(s: string): number | null {
   // A rupee sign some PDFs map to another glyph (Tally's "ī169.92") is dropped like ₹.
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: [^\x00-\x7F] matches any non-ASCII character on purpose.
   const t = s.replace(/₹|Rs\.?|INR/gi, "").replace(/^[^\x00-\x7F]{1,2}(?=\s*[\d(-])/, "").replace(/\s/g, "");
   const m = /^(\()?(-)?(\d{1,3}(?:,\d{2,3})*|\d+)(?:\.(\d{1,2}))?(\))?$/.exec(t);
   if (!m) return null;

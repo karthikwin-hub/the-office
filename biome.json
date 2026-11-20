@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "includes": ["**", "!**/dist", "!.cursor", "!.claude", "!docs/**/*.html", "!**/*.json"] },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "noAriaHiddenOnFocusable": "warn",
+        "noAutofocus": "warn",
+        "noLabelWithoutControl": "warn",
+        "noNoninteractiveTabindex": "warn",
+        "noStaticElementInteractions": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useButtonType": "warn",
+        "useSemanticElements": "warn"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "warn",
+        "noAssignInExpressions": "warn",
+        "useIterableCallbackReturn": "warn"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/index.html"],
+      "linter": { "rules": { "correctness": { "noInnerDeclarations": "off" } } }
+    }
+  ]
+}

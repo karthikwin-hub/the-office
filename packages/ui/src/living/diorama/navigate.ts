@@ -53,7 +53,9 @@ export const SCALE = 0.1;
 export function layoutFrom(plan: Plan): Layout {
   const b = plan.building;
   const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  // biome-ignore lint/correctness/noComponentHookFactories: X and Z are coordinate helpers, not React components.
   const X = (p: number) => (p - cx) * SCALE;
+  // biome-ignore lint/correctness/noComponentHookFactories: as above.
   const Z = (p: number) => (p - cy) * SCALE;
   const building = { x0: X(b.x), x1: X(b.x + b.w), z0: Z(b.y), z1: Z(b.y + b.h) };
   const c = plan.corridor;

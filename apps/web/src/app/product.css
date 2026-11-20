@@ -169,6 +169,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh above is the fallback where dvh is not supported. */
   height: 100dvh;
   overflow: hidden;
   background:
@@ -658,6 +659,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh above is the fallback where dvh is not supported. */
   height: 100dvh;
   display: grid;
   grid-template-columns: minmax(250px, 0.72fr) minmax(0, 2fr);

@@ -26,6 +26,7 @@ const version = (() => {
 const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// biome-ignore lint/suspicious/noShadowRestrictedNames: a local helper; the deprecated global escape is not used here.
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** An SVG's own <style> would leak into the page; its selectors are scoped to the diagram. */

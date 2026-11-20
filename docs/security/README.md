@@ -121,6 +121,13 @@ everywhere; zod on every request body; agents that stage every write for approva
 - **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test` (`.github/workflows/ci.yml`), and a
   non-blocking `pnpm audit --prod`. Run `/security-review` and `/code-review` in Claude Code on any change to
   `apps/api`, as the house guidelines ask.
+- **Lint:** `pnpm lint` runs Biome's recommended rules (`biome.json`; the formatter is off until a format pass of
+  its own). Errors fail CI. Some recommended rules are lowered to warnings because fixing them changes how the app
+  behaves, so each fix needs its own review: React keys and hook dependencies (`noArrayIndexKey`,
+  `useExhaustiveDependencies`), the accessibility rules that fire today, and two idioms the code uses on purpose
+  (`noAssignInExpressions` for `??=` and `while ((m = re.exec(s)))`, `useIterableCallbackReturn` for
+  `forEach((x) => set.add(x))`). `apps/web/index.html` is exempt from `noInnerDeclarations` because its inline
+  script is pinned by hash in the security policy. Other findings are suppressed one line at a time, with the reason.
 - **Locally:** the real Worker runs with `api-local` in `.claude/launch.json` (see the README for the command).
 - **Every release,** once it is turned on (see open work): the Deploy workflow (`.github/workflows/deploy.yml`)
   deploys each merge to staging and checks it; live goes out only after a reviewer approves, with the control plane

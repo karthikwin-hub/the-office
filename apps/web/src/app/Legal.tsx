@@ -20,6 +20,7 @@ export function LegalScreen() {
   return (
     <main className="legal" id="main">
       <BrandPlate home />
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: the pages are our own markdown, rendered at build time by the virtual:legal plugin in vite.config.ts. */}
       {known ? <article dangerouslySetInnerHTML={{ __html: pages[page as LegalPage] }} /> : <h1>There is no page here</h1>}
       <LegalFooter />
     </main>

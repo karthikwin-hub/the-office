@@ -154,6 +154,7 @@ export async function readSheets(name: string, data: ArrayBuffer | Uint8Array): 
     return out;
   }
   const text = new TextDecoder("utf-8").decode(bytes);
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: a NUL byte means the file is binary, not text.
   if (/\u0000/.test(text.slice(0, 2000))) {
     // UTF-16, as some portals save "Unicode text".
     const t16 = new TextDecoder(bytes[0] === 0xfe ? "utf-16be" : "utf-16le").decode(bytes);

@@ -50,6 +50,7 @@ function parseLine(line: string): Prop | null {
   return { name: head[0]!.toUpperCase(), params, value: line.slice(colon + 1) };
 }
 
+// biome-ignore lint/suspicious/noShadowRestrictedNames: a local helper; the deprecated global unescape is not used here.
 const unescape = (v: string) => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
 
 function zoneOf(tzid: string | undefined): string | null {

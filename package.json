@@ -11,6 +11,7 @@
     "storybook": "pnpm --filter @office/ui storybook",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome lint .",
     "data": "python3 tools/synthetic/generate.py",
     "screenshots": "node tools/screenshots/capture.mjs",
     "deploy:mock": "pnpm build:mock && pnpm --filter @office/api exec wrangler deploy -c ../web/wrangler.mock.jsonc",
@@ -21,6 +22,7 @@
     "verify:exports": "rm -rf tools/exports/out && mkdir -p tools/exports/out/tmp && EXPORT_DIR=$PWD/tools/exports/out pnpm --filter @office/engine exec vitest run test/excel.test.ts && TMPDIR=$PWD/tools/exports/out/tmp .venv/bin/python tools/exports/verify.py tools/exports/out"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.4",
     "marked": "^15.0.12",
     "playwright": "~1.57.0",
     "typescript": "^5.7.3"
