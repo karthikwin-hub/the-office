@@ -121,6 +121,11 @@ everywhere; zod on every request body; agents that stage every write for approva
 - **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test` (`.github/workflows/ci.yml`), and a
   non-blocking `pnpm audit --prod`. Run `/security-review` and `/code-review` in Claude Code on any change to
   `apps/api`, as the house guidelines ask.
+- **Security review on every pull request:** `.github/workflows/security-review.yml` runs Anthropic's
+  `claude-code-security-review` Action (pinned by commit) and comments on what it finds. It reviews only branches
+  pushed to this repository (the Action is not hardened against prompt injection) and skips Renovate's bumps. What
+  it should not report is in `docs/security/false-positive-filtering.txt`, which replaces the Action's defaults:
+  update it when a control here changes. It needs the `ANTHROPIC_API_KEY` repository secret.
 - **Lint:** `pnpm lint` runs Biome's recommended rules (`biome.json`; the formatter is off until a format pass of
   its own). Errors fail CI. Some recommended rules are lowered to warnings because fixing them changes how the app
   behaves, so each fix needs its own review: React keys and hook dependencies (`noArrayIndexKey`,

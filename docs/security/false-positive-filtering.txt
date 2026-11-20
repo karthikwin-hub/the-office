@@ -1,0 +1,58 @@
+Agentic Office: false-positive filtering for the Claude security-review Action (.github/workflows/security-review.yml).
+This file replaces the Action's default filtering, so it restates the defaults that apply here. Keep it in step with
+docs/security/README.md ("Controls in place"). Agentic Office is a Cloudflare Worker (Hono, apps/api) with one Durable
+Object per office (the tenant), D1 for accounts and membership, R2 for files, and a React app (apps/web).
+
+HARD EXCLUSIONS - Automatically exclude findings matching these patterns:
+1. Generic denial of service, CPU or memory exhaustion, and missing rate limiting, unless the finding shows an
+   unauthenticated or cross-office caller removing one of the limits listed under PRECEDENTS (upload sizes, zip and
+   XLSX measuring, AI calls and uploads per office per day, chat polling, JOIN-code tries, sign-in rate limits).
+2. Regular-expression DoS in input validation: the Worker's CPU limit ends a request.
+3. Test files and fixtures: anything under test/ or test/do/, *.test.ts, packages/fixtures, tools/e2e, tools/synthetic.
+4. Documentation and built guides: *.md, docs/reference, docs/handbook.
+5. Developer and admin tooling that runs only on an owner's machine: tools/admin, tools/docs, tools/screenshots,
+   tools/exports, tools/promo, .claude, .cursor.
+6. The mock build (apps/web/src/mocks, mockServiceWorker.js, wrangler.mock.jsonc): it serves made-up data only.
+7. Memory-safety issues: everything is TypeScript or JavaScript.
+8. Timing attacks on comparisons that are not secrets (ids, office names, email addresses).
+9. Open redirects to paths on the app's own origin.
+10. Verbose error messages for the signed-in owner of the same office.
+11. Missing CSRF tokens on /api routes: every non-GET /api request must carry the app's own Origin (apps/api/src/edge.ts),
+    and session cookies are SameSite. Only report a route that is newly exempted from that check.
+12. Outdated dependencies: the audit job in CI (pnpm audit --prod) and Renovate cover them.
+
+SIGNAL QUALITY CRITERIA - For remaining findings, assess:
+1. Can someone outside an office read or change that office's books, files, members or messages? This is the most
+   important class of finding.
+2. Can a member act above their role (an accountant doing what only an owner may), or skip the 15-minute step-up on
+   export, invite, role change, hand-over, deletion or console changes?
+3. Can an unauthenticated caller (website chat visitor, inbound email sender, webhook caller) cause a write that is
+   not staged for the owner's approval, or reach another office?
+4. Does it leak a secret, a session, an invitation token or a platform token, or put one in a URL or a log?
+5. Is it reachable in production, with DATA_MODE "live", rather than only in mock mode or tests?
+
+PRECEDENTS -
+1. Tenancy: each office is its own Durable Object with its own SQLite. The Worker checks membership in D1 and sends the
+   caller to the office in a header it seals with an HMAC (apps/api/src/caller-seal.ts). The office accepts only a
+   sealed caller for its own id, and /internal/* only from the system caller. Report a new Worker-to-office call that
+   does not go through toOffice, or office code that trusts an unsealed caller.
+2. An office route that answers 404 to non-members is intended: it hides whether the office exists.
+3. Sign-in is better-auth with PBKDF2 at 100,000 iterations (the Workers free plan's CPU limit; a known, parked
+   decision). Do not report the iteration count.
+4. Rate limits read the client address from cf-connecting-ip, which Cloudflare sets. X-Forwarded-For is ignored.
+5. All SQL is parameterised (D1 prepared statements, Durable Object sql.exec with bindings, drizzle). Only string-built
+   SQL is a finding.
+6. Every request body is parsed with zod schemas from packages/contracts. Validation that is merely loose is not a
+   finding unless it leads to one of the criteria above.
+7. R2 keys are built by the server under o/<officeId>/, never from client paths. Stored files are served only as PDF,
+   PNG, JPEG or WebP under Content-Security-Policy: sandbox; everything else downloads.
+8. The Content-Security-Policy allows one inline script, by hash (SKIN_SCRIPT_HASH in apps/api/src/edge.ts). The legal
+   pages use dangerouslySetInnerHTML with our own markdown rendered at build time (virtual:legal); that is not XSS.
+9. Inbound email is trusted only when Cloudflare's Authentication-Results header shows DMARC or aligned DKIM passed;
+   other mail waits for the owner. Stored attachments are typed from their name and bytes.
+10. Webhooks (/api/hooks/*), the public website chat (/api/chat/*) and sign-in callbacks are exempt from the Origin
+    check by design. Meta webhooks are verified with an HMAC over the raw body; the chat needs Turnstile on live.
+11. Agents never write to the books directly: every change is staged for the owner's approval. Prompt injection that
+    only changes a staged proposal is low impact; one that writes, sends or reveals without approval is a finding.
+12. Secrets come from Infisical and Wrangler secrets. Values in wrangler.jsonc "vars" are not secret.
+13. Invitation tokens travel after # or in request bodies and are stored only as a hash.
