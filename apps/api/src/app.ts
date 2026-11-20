@@ -35,6 +35,7 @@ import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
 import { exportArchive, type ExportPlan } from "./export";
+import { currentRequestId, inOffice, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
 import { MEDIA_ID, verifyMedia } from "./social/media";
@@ -64,6 +65,8 @@ export async function toOffice(env: Env, req: Request, caller: Caller, path?: st
   forwarded.headers.set("x-partykit-room", caller.officeId);
   forwarded.headers.set(CALLER_HEADER, header);
   forwarded.headers.set(CALLER_SEAL_HEADER, await sealCaller(env.BETTER_AUTH_SECRET, header));
+  // Set here, never taken from the person asking: the office's log lines carry the Worker's id for this request.
+  forwarded.headers.set(REQUEST_ID_HEADER, currentRequestId() ?? newRequestId());
   forwarded.headers.delete("x-office-as");
   return env.Office.get(env.Office.idFromName(caller.officeId)).fetch(forwarded);
 }
@@ -78,6 +81,10 @@ async function closeLive(env: Env, officeId: string, userId?: string) {
 }
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
+
+/* ---------- Every request: an id on its log lines and its response; anything thrown is logged once and answered plainly ---------- */
+app.use("*", requestLog);
+app.onError(requestFailed);
 
 /* ---------- Every response: browser security headers; every change: from the app's own pages ---------- */
 app.use("*", securityHeaders);
@@ -431,6 +438,7 @@ app.use("/api/o/:office/*", async (c, next) => {
   const user = c.get("user");
   const m = await cp(c.env).membership(id, user.id);
   if (!m) return c.json(NOT_FOUND, 404);
+  inOffice(id);
   const rest = new URL(c.req.url).pathname.slice(`/api/o/${id}`.length);
   if (
     m.office.status === "deleting" &&

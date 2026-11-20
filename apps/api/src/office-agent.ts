@@ -41,6 +41,7 @@ import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller
 import { CALLER_SEAL_HEADER, callerSealed } from "./caller-seal";
 import type { Env } from "./env";
 import { docKey, fileUrl, mediaKey, mediaUrl } from "./keys";
+import { log, REQUEST_ID_HEADER, requestIdOf, routeOf, withRequest } from "./log";
 import { fromGoogleForwarding, mailSender } from "./mail";
 import { readPrefs, savePrefs } from "./prefs";
 import { meteredAi, QuotaError, take } from "./quota";
@@ -152,9 +153,9 @@ export class Office extends Agent<Env> {
     }
   }
 
-  private log(message: string, e?: unknown) {
-    const why = e instanceof Error ? `: ${e.message}` : "";
-    console.error(`[office ${this.officeId ?? "unknown"}] ${message}${why}`);
+  /** Something in the office went wrong: one log line, with the office, the request it was in (if any) and the error. */
+  private log(message: string, e?: unknown, route?: string) {
+    log("error", "office.failed", { officeId: this.officeId, message, route }, e);
   }
 
   private plane() {
@@ -528,6 +529,11 @@ export class Office extends Agent<Env> {
   }
 
   async onRequest(request: Request): Promise<Response> {
+    // The Worker's id for this request, so the office's log lines join the Worker's.
+    return withRequest(requestIdOf(request.headers, REQUEST_ID_HEADER), () => this.answer(request), this.officeId);
+  }
+
+  private async answer(request: Request): Promise<Response> {
     const caller = await this.callerOf(request);
     if (!caller) return json({ error: "Sign in to continue." }, 401);
     if (!this.officeId || caller.officeId !== this.officeId) return json({ error: "Not found" }, 404);
@@ -567,7 +573,7 @@ export class Office extends Agent<Env> {
       return res;
     } catch (e) {
       if (e instanceof QuotaError) return json({ error: e.message }, 429);
-      this.log("request failed", e);
+      this.log("request failed", e, routeOf(path));
       return json({ error: "Something went wrong in the office. Try again." }, 500);
     }
   }

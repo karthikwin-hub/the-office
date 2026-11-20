@@ -1,5 +1,10 @@
+import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { line, log, routeOf, scrub, withRequest } from "../src/log";
+import { app, toOffice } from "../src/app";
+import { CALLER_HEADER, system } from "../src/caller";
+import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
+import type { Env } from "../src/env";
+import { GENERIC_ERROR, inOffice, type Line, line, log, REQUEST_ID_HEADER, requestFailed, requestLog, routeOf, scrub, withRequest } from "../src/log";
 
 /** What a careless caller might hand the logger: everything a request to the office can carry. */
 const PRIVATE = {
@@ -107,5 +112,99 @@ describe("a log line", () => {
     expect(routeOf("/api/bills/bill_8F2k/approve")).toBe("/api/bills/:id/approve");
     expect(routeOf("/api/team/anil.kumar@kaverielectricals.in")).toBe("/api/team/:id");
     expect(routeOf("/internal/export/part")).toBe("/internal/export/part");
+  });
+});
+
+const RAY = "8f1c2a3b4c5d6e7f-BOM";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const env = (extra: Record<string, unknown> = {}) =>
+  ({ DATA_MODE: "test", APP_DOMAIN: "", BETTER_AUTH_URL: "https://app.the-office.test", BETTER_AUTH_SECRET: "log-test-secret", ...extra }) as unknown as Env;
+const lines = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map((c) => c[0] as Line);
+
+describe("each request's id", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("is Cloudflare's ray id, or a new one, and comes back on the response", async () => {
+    const ray = await app.request("/api/health", { headers: { "cf-ray": RAY } }, env());
+    expect(ray.headers.get(REQUEST_ID_HEADER)).toBe(RAY);
+    const none = await app.request("/api/health", {}, env());
+    expect(none.headers.get(REQUEST_ID_HEADER)).toMatch(UUID);
+    // A header that is not an id is not taken, and the person asking cannot choose the id.
+    const odd = await app.request("/api/health", { headers: { "cf-ray": "a b;c", [REQUEST_ID_HEADER]: "mine" } }, env());
+    expect(odd.headers.get(REQUEST_ID_HEADER)).toMatch(UUID);
+    // Pages from the asset server get it too, alongside the security headers.
+    const page = await app.request(
+      "/",
+      { headers: { "cf-ray": RAY } },
+      env({ ASSETS: { fetch: async () => new Response("<html></html>", { headers: { "content-type": "text/html" } }) } }),
+    );
+    expect(page.headers.get(REQUEST_ID_HEADER)).toBe(RAY);
+    expect(page.headers.get("x-frame-options")).toBe("DENY");
+  });
+
+  it("goes to the office with the sealed caller, set by the Worker, never by the person asking", async () => {
+    const reached: Headers[] = [];
+    const Office = {
+      idFromName: (name: string) => ({ name }),
+      get: () => ({ fetch: async (req: Request) => (reached.push(req.headers), new Response("ok")) }),
+    };
+    const caller = system("off_abcdefgh23456789");
+    const asked = new Request("https://office.internal/api/settings", { headers: { [REQUEST_ID_HEADER]: "chosen-by-the-caller" } });
+    await withRequest(RAY, () => toOffice(env({ Office }), asked, caller));
+    await toOffice(env({ Office }), asked, caller);
+    expect(reached[0]!.get(REQUEST_ID_HEADER)).toBe(RAY);
+    expect(reached[1]!.get(REQUEST_ID_HEADER)).toMatch(UUID);
+    for (const h of reached) {
+      expect(h.get(CALLER_HEADER)).toBe(JSON.stringify(caller));
+      expect(await callerSealed("log-test-secret", h.get(CALLER_HEADER)!, h.get(CALLER_SEAL_HEADER))).toBe(true);
+    }
+  });
+});
+
+describe("a request that fails", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("is logged once, with its route and error, and answered with a generic error", async () => {
+    const out = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // No database: looking up the chat widget's office throws.
+    const res = await app.request("/w/wabcdefgh2345.js", { headers: { "cf-ray": RAY, cookie: PRIVATE.cookie, authorization: PRIVATE.bearer } }, env());
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual(GENERIC_ERROR);
+    expect(res.headers.get(REQUEST_ID_HEADER)).toBe(RAY);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(lines(out)).toHaveLength(1);
+    expect(lines(out)[0]).toMatchObject({ event: "request.failed", level: "error", requestId: RAY, route: "/w/:file", method: "GET", status: 500 });
+    expect(lines(out)[0]!.errorName).toBeTypeOf("string");
+    expectNothingPrivate(JSON.stringify(lines(out)));
+  });
+
+  it("with a 5xx it answered itself gets one line too; other answers get none", async () => {
+    const out = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const quiet = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const small = new Hono();
+    small.use("*", requestLog);
+    small.onError(requestFailed);
+    small.use("/o/:office/*", async (c, next) => (inOffice(c.req.param("office")), next()));
+    small.get("/o/:office/busy", (c) => c.json({ error: "The office is busy." }, 503));
+    small.get("/o/:office/fine", (c) => c.json({ ok: true }));
+    small.get("/o/:office/gone", (c) => c.json({ error: "Not found" }, 404));
+
+    expect((await small.request("/o/off_abcdefgh23456789/busy", { headers: { "cf-ray": RAY } })).status).toBe(503);
+    expect(lines(out)).toEqual([
+      {
+        event: "request.5xx",
+        level: "error",
+        requestId: RAY,
+        officeId: "off_abcdefgh23456789",
+        route: "/o/:office/busy",
+        method: "GET",
+        status: 503,
+        ms: expect.any(Number),
+      },
+    ]);
+    await small.request("/o/off_abcdefgh23456789/fine");
+    await small.request("/o/off_abcdefgh23456789/gone");
+    expect(out).toHaveBeenCalledTimes(1);
+    expect(quiet).not.toHaveBeenCalled();
   });
 });

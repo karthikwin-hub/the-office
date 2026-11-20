@@ -1,4 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { ErrorHandler, MiddlewareHandler } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { routePath } from "hono/route";
 
 /**
  * The service's logs: one structured line per event, which Workers Logs indexes field by field (a line is logged as an
@@ -121,3 +124,39 @@ export function log(level: Level, event: string, fields?: Fields, error?: unknow
   else if (level === "warn") console.warn(l);
   else console.log(l);
 }
+
+/**
+ * First on every request: takes its id, runs everything after it inside that request's scope, and puts the id on the
+ * response. A request that ends in a 5xx gets one line; others none, as Cloudflare's own invocation log (found by the
+ * same ray id) already has them and the free plan's 200,000 log events a day must also hold the office's own lines.
+ */
+export const requestLog: MiddlewareHandler = async (c, next) => {
+  const requestId = requestIdOf(c.req.raw.headers);
+  await withRequest(requestId, async () => {
+    await next();
+    const s = scope.getStore();
+    if (c.res.status >= 500 && s && !s.logged)
+      log("error", "request.5xx", { route: routePath(c), method: c.req.method, status: c.res.status, ms: Date.now() - s.started });
+  });
+  // A WebSocket upgrade cannot be copied, and its headers reach no page.
+  if (c.res.status === 101) return;
+  try {
+    c.res.headers.set(REQUEST_ID_HEADER, requestId);
+  } catch {
+    const res = new Response(c.res.body, c.res);
+    res.headers.set(REQUEST_ID_HEADER, requestId);
+    c.res = undefined;
+    c.res = res;
+  }
+};
+
+export const GENERIC_ERROR = { error: "Something went wrong. Try again." };
+
+/** Anything a route throws: logged once, with its route and error, and answered with words that give nothing away. */
+export const requestFailed: ErrorHandler = (err, c) => {
+  if (err instanceof HTTPException && err.status < 500) return err.getResponse();
+  const s = scope.getStore();
+  if (s) s.logged = true;
+  log("error", "request.failed", { route: routePath(c), method: c.req.method, status: 500, ms: s ? Date.now() - s.started : undefined }, err);
+  return c.json(GENERIC_ERROR, 500);
+};
