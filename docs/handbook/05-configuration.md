@@ -162,7 +162,7 @@ Without a platform's keys, its channel works in **manual** mode: the Social Medi
 | 8 | Privacy notice and terms covering accounting data, AI processing and WhatsApp | Business and legal | **In progress:** drafts in `docs/legal`, published at `/legal/...`; see the legal checklist below |
 | 9 | Workers Paid plan when the first non-pilot office signs up | Business | When needed |
 | 10 | Backups before every migration; rollback rehearsed once | Engineering | Process in place |
-| 11 | Monitoring: Workers observability alerts on error rate | Engineering | Open |
+| 11 | Monitoring: Workers Issues automation and alert monitors on error rate, 5xx, failed exports, backups and nightly runs, CPU limit (`04-deployment.md`, section 9) | Engineering | Open: the logs are in place; an owner sets the alerts up in the dashboard |
 | 12 | Migrations `0003_legal.sql` (consent and deletion requests) and `0004_office_locale.sql` (office locale) applied to the live database | Engineering | Open: `pnpm run deploy` through Infisical applies them before deploying |
 | 13 | A bucket in an Indian region for the daily copy of companies' books (rule 3(5) of the Companies (Accounts) Rules); `INDIA_BACKUP_*` settings and secrets set | Business and engineering | Open: code done; until it is set, Settings tells each company its books have no India copy |
 
@@ -185,5 +185,5 @@ A personal data breach is any loss, leak or unauthorised access to personal data
 2. **Record.** Start a written record at once: what happened, when it was found, which offices and people, what data, what was done. Keep it even if nothing turns out to be notifiable.
 3. **Tell the businesses.** Each affected business is told without undue delay and within 24 hours of confirming it, as the data processing terms promise, so it can meet its own duties to its customers and staff.
 4. **Tell the Data Protection Board and the people affected.** Under the Digital Personal Data Protection Rules, the Board gets a first report without delay and a detailed report within 72 hours of becoming aware; people whose account data is affected are told in plain language what happened, the likely effect and what they can do. Confirm the current timelines with the lawyer, as the rules are new.
-5. **Logs.** The rules expect logs that can show what happened to be kept for a year. Workers observability keeps logs for a short period only, so this is a **gap**: export Worker logs to long-term storage (for example Logpush to R2) before the first pilot.
+5. **Logs.** The rules expect logs that can show what happened to be kept for a year. Workers Logs keeps them 3 days on the free plan, so this is a **gap**: export Worker logs to long-term storage (for example Logpush to R2, which needs the paid plan) before the first pilot. Until then, copy an incident's log lines (found by their request ids) into its written record at once.
 6. **Afterwards.** Write down the cause and the fix, and add a test or check so it cannot happen the same way again.

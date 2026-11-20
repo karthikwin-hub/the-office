@@ -114,6 +114,15 @@ Each fix shipped with a test that fails before it and passes after. The fixes we
   link, consent records and invitations. It is refused while the person is the only owner of an office others work
   in; an office they are alone in is deleted with them. The audit trail and the done request keep no name or address.
 
+### Logs (`apps/api/src/log.ts`)
+
+- One structured line per event, with the request id (Cloudflare's ray id, on every response as `x-request-id` and
+  passed to the office's Durable Object) and the office id. A line takes only named fields, never a request; free text
+  loses anything quoted and anything shaped like an email address, phone number, amount, PAN, GSTIN or token. A test
+  builds lines from a request full of secrets and personal data and finds none of them.
+- `app.onError` logs a thrown error once and answers a generic message. Cloudflare's own request logs leave out query
+  strings (`redact_query_string`), so an OAuth code or a media link's signature is not kept there either.
+
 ### Unchanged and still sound
 
 Invitations stored only as a hash, single use, bound to one address, 14 days; platform tokens encrypted with AES-GCM
@@ -178,7 +187,7 @@ In priority order. The private review's tracker holds the detail.
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
 | Branch protection on `main` requiring the CI checks; then the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |
 | Durable Object tests for loading books from older schema versions; Playwright and axe end to end | `tools/e2e/live.mjs` predates two-step sign-in |
-| Structured logs with office and request ids; error-rate alerts | Too little to run a service on |
+| Alerts on the structured logs: a Workers Issues automation and monitors for error rate, 5xx, failed exports, backups to India and nightly runs, and the CPU limit | The logs, with request and office ids, are in place (`docs/handbook/04-deployment.md`, section 9); the alerts are set up in the Cloudflare dashboard by an owner |
 | Split `OfficeService` and the Durable Object's router | Large files slow review |
 | Rotatable root key for platform tokens; drop `mockServiceWorker.js` from the live build; move `PLATFORM_OWNERS` out of `wrangler.jsonc` | Remaining low findings |
 | An external penetration test and a DPDP Act gap review | Before the first enterprise customer |

@@ -59,7 +59,18 @@
   // The website chat: 20 messages a minute for one visitor's address on one office's chat.
   // On live both TURNSTILE_SECRET (a secret) and TURNSTILE_SITE_KEY (a plain var) are required; without them the website chat answers 503.
   "ratelimits": [{ "name": "CHAT_LIMIT", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }],
-  "observability": { "enabled": true },
+  // Workers Logs, on the free plan: 200,000 log events a day for the account, kept 3 days. Each invocation (of the Worker
+  // or an office) writes one log; the code adds a line only when something fails and for the nightly duties
+  // (apps/api/src/log.ts), so nothing is sampled away. Query strings are left out of the invocation logs: an OAuth
+  // callback's code, a media link's signature and a chat visitor's id are not kept. Issues groups the error lines for
+  // the alerts in docs/handbook/04-deployment.md, section 9. Inherited by env.staging.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": true,
+    "logs": { "enabled": true, "invocation_logs": true },
+    "issues": { "enabled": true }
+  },
   // Staging: `--env staging`, deployed by `tools/admin/deploy.sh staging` and by .github/workflows/deploy.yml on every push
   // to main. A Worker of its own with its own D1, R2, offices (Durable Objects), rate-limit counters and secrets: nothing
   // here may name a live resource. It lives on workers.dev, a different site from office.snilld.in, so the live sign-in

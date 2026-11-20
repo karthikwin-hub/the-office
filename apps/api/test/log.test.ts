@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
+import { unstable_readConfig } from "wrangler";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { app, toOffice } from "../src/app";
 import { CALLER_HEADER, system } from "../src/caller";
@@ -59,7 +60,7 @@ describe("a log line", () => {
       ),
     );
     expect(out).toHaveBeenCalledTimes(1);
-    expect(out.mock.calls[0]![0]).toEqual({
+    expect(out.mock.calls[0]?.[0]).toEqual({
       event: "export.failed",
       level: "error",
       requestId: "8f1c2a3b4c5d6e7f-BOM",
@@ -71,7 +72,7 @@ describe("a log line", () => {
       error: "part 2 failed",
     });
     // Each line is plain data: it serialises to one line of JSON.
-    expect(JSON.stringify(out.mock.calls[0]![0])).not.toContain("\n");
+    expect(JSON.stringify(out.mock.calls[0]?.[0])).not.toContain("\n");
   });
 
   it("built from a request full of secrets and personal data contains none of them", async () => {
@@ -103,7 +104,7 @@ describe("a log line", () => {
     // What it does keep is still useful.
     expect(lines[0]).toMatchObject({ event: "mail.failed", route: "/api/o/:id/bills", message: "could not send to [email] ([number])" });
     expect(lines[1]).toMatchObject({ errorName: "SyntaxError", route: "/api/o/:id/bills" });
-    expect(lines[2]!.error).toBe("422: [quoted] <[email]> is not a valid recipient for [amount], PAN [pan], GSTIN [gstin]");
+    expect(lines[2]?.error).toBe("422: [quoted] <[email]> is not a valid recipient for [amount], PAN [pan], GSTIN [gstin]");
   });
 
   it("keeps fixed messages as written, and only known fields", () => {
@@ -153,17 +154,22 @@ describe("each request's id", () => {
     const reached: Headers[] = [];
     const Office = {
       idFromName: (name: string) => ({ name }),
-      get: () => ({ fetch: async (req: Request) => (reached.push(req.headers), new Response("ok")) }),
+      get: () => ({
+        fetch: async (req: Request) => {
+          reached.push(req.headers);
+          return new Response("ok");
+        },
+      }),
     };
     const caller = system("off_abcdefgh23456789");
     const asked = new Request("https://office.internal/api/settings", { headers: { [REQUEST_ID_HEADER]: "chosen-by-the-caller" } });
     await withRequest(RAY, () => toOffice(env({ Office }), asked, caller));
     await toOffice(env({ Office }), asked, caller);
-    expect(reached[0]!.get(REQUEST_ID_HEADER)).toBe(RAY);
-    expect(reached[1]!.get(REQUEST_ID_HEADER)).toMatch(UUID);
+    expect(reached[0]?.get(REQUEST_ID_HEADER)).toBe(RAY);
+    expect(reached[1]?.get(REQUEST_ID_HEADER)).toMatch(UUID);
     for (const h of reached) {
       expect(h.get(CALLER_HEADER)).toBe(JSON.stringify(caller));
-      expect(await callerSealed("log-test-secret", h.get(CALLER_HEADER)!, h.get(CALLER_SEAL_HEADER))).toBe(true);
+      expect(await callerSealed("log-test-secret", h.get(CALLER_HEADER) ?? "", h.get(CALLER_SEAL_HEADER))).toBe(true);
     }
   });
 });
@@ -181,7 +187,7 @@ describe("a request that fails", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(lines(out)).toHaveLength(1);
     expect(lines(out)[0]).toMatchObject({ event: "request.failed", level: "error", requestId: RAY, route: "/w/:file", method: "GET", status: 500 });
-    expect(lines(out)[0]!.errorName).toBeTypeOf("string");
+    expect(lines(out)[0]?.errorName).toBeTypeOf("string");
     expectNothingPrivate(JSON.stringify(lines(out)));
   });
 
@@ -191,7 +197,10 @@ describe("a request that fails", () => {
     const small = new Hono();
     small.use("*", requestLog);
     small.onError(requestFailed);
-    small.use("/o/:office/*", async (c, next) => (inOffice(c.req.param("office")), next()));
+    small.use("/o/:office/*", async (c, next) => {
+      inOffice(c.req.param("office"));
+      await next();
+    });
     small.get("/o/:office/busy", (c) => c.json({ error: "The office is busy." }, 503));
     small.get("/o/:office/fine", (c) => c.json({ ok: true }));
     small.get("/o/:office/gone", (c) => c.json({ error: "Not found" }, 404));
@@ -240,9 +249,9 @@ describe("the service's own lines", () => {
       ["nightly.failed", "purge"],
       ["nightly.failed", "sweep-retained"],
     ]);
-    expect(failed[0]!.requestId).toMatch(UUID);
-    expect(failed[1]!.requestId).toBe(failed[0]!.requestId);
-    expect(failed[0]!.errorName).toBe("TypeError");
+    expect(failed[0]?.requestId).toMatch(UUID);
+    expect(failed[1]?.requestId).toBe(failed[0]?.requestId);
+    expect(failed[0]?.errorName).toBe("TypeError");
   });
 
   it("from a failed export name the office and the request", async () => {
@@ -263,5 +272,24 @@ describe("the service's own lines", () => {
         error: "The office could not write part 1 of the export (500).",
       },
     ]);
+  });
+});
+
+describe("Workers Logs", () => {
+  const config = (env?: string) =>
+    unstable_readConfig({ config: join(import.meta.dirname, "..", "wrangler.jsonc"), env }, { hideWarnings: true }) as unknown as {
+      observability?: Record<string, unknown>;
+    };
+
+  it("keep every line, live and on staging, without the query strings of Cloudflare's own request logs", () => {
+    for (const env of [undefined, "staging"])
+      expect(config(env).observability, env ?? "live").toEqual({
+        enabled: true,
+        // The free plan's limit is met by logging little, never by sampling: a sampled-away error is an alert that never fires.
+        head_sampling_rate: 1,
+        redact_query_string: true,
+        logs: { enabled: true, invocation_logs: true },
+        issues: { enabled: true },
+      });
   });
 });

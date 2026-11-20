@@ -126,3 +126,58 @@ Every Worker command runs through Infisical or a GitHub environment secret, so t
 | Files (R2) | Stored under the office prefix; copied into the owner's export | Re-upload from the export |
 
 A schema step in a Durable Object runs once, is idempotent (copy, check, then delete the old key), and is versioned, so a failed step is retried on the next start rather than half-applied.
+
+## 9. Logs and alerts
+
+The Worker and every office write structured log lines to Workers Logs (`apps/api/src/log.ts`), which Cloudflare keeps for 3 days on the free plan. Each line is one object: `event`, `level`, `requestId`, `officeId` when known, and as needed `route` (the route's pattern, never the real path), `method`, `status`, `ms`, `step`, `count`, a fixed `message`, and an error's `errorName` and `error` (its message). A line never holds a secret, token, cookie, request or email body, document contents, or a person's name, address, phone number or an amount: it takes only those fields, never a request, and free text loses anything quoted and anything shaped like an email address, phone number, amount, PAN, GSTIN or token. A test (`apps/api/test/log.test.ts`) builds lines from a request full of such things and finds none of them; another keeps any new `console.*` call out of `apps/api/src`.
+
+**Finding one request.** Every response carries `x-request-id`: Cloudflare's ray id (the `cf-ray` header), or a new id when there is none. The Worker sends the same id to the office's Durable Object, so the Worker's lines and the office's share it. Each mail delivery and each nightly run gets an id of its own. Ask a person for the `x-request-id` of a failed request (the browser's network tab shows it), then search for it in the query builder; Cloudflare's own invocation log for the request has the same ray id.
+
+**What is logged.**
+
+| Event | Level | When |
+| --- | --- | --- |
+| `request.failed` | error | A route threw; answered `{"error":"Something went wrong. Try again."}` with 500. Has the route and the error |
+| `request.5xx` | error | A request ended in a 5xx without throwing (an office answered 500, for example) |
+| `office.failed` | error | Something in an office failed; `message` says what: `request failed` (with the route), `backup to India failed`, `export failed`, `vision read failed`, `whatsapp reply failed`, `customer message failed`, `connect <platform> failed`, and others |
+| `export.failed` | error | A download of an office's export stopped part way |
+| `nightly.failed` | error | A step of the nightly cron failed (`step`: `purge`, `erase-backups`, `sweep-retained`); the other steps still ran |
+| `purge.failed`, `backups-erase.failed` | error | One office's purge, or the deletion of its copies in India, failed; tried again the next night |
+| `disconnect.failed`, `mail.failed`, `whatsapp.reply-failed`, `social.pull-failed` | error | An office's open screens were not closed; mail was not sent; a WhatsApp reply or a social platform's pull failed |
+| `wa.join.paused` | warn | Too many wrong WhatsApp linking codes in an hour: linking is paused for every number until `until` |
+| `office.purged`, `office.backups-erased`, `retained.deleted`, `account.deleted`, `meta.unrouted` | info | The nightly duties' results, a deleted account (counts only), webhook entries no office takes |
+
+A request that succeeds, or ends in a 4xx, writes no line of its own: Cloudflare's invocation log already records it (method, URL without its query string, status, CPU time, outcome).
+
+**The free plan's budget.** Workers Logs on the free plan takes 200,000 log events a day for the whole account; each invocation log and each line counts. A request to an office is two invocations (the Worker's and the office's), so at the free plan's 100,000 requests a day the invocation logs alone could reach the limit. Nothing is sampled today (`head_sampling_rate: 1` in `apps/api/wrangler.jsonc`), because a sampled-away error line is an alert that never fires. If the daily total nears the limit (Workers & Pages → the-office → Observability shows it), first set `"invocation_logs": false`, which keeps every line in this table, before lowering the sampling rate.
+
+**Saved queries.** In the Cloudflare dashboard: Workers & Pages → the-office → Observability → Query builder (Workers Logs). Build each one, then Save; saved queries belong to the account and every member sees them. Repeat on `the-office-staging` if it is in another account. Field names are as above; Cloudflare's own fields begin with `$workers` or `$metadata`, and the query builder lists them.
+
+| Name | Filter | Show |
+| --- | --- | --- |
+| Errors by event | `level` = `error` | Count, grouped by `event`, over 24 hours |
+| Server errors by route | `event` is one of `request.failed`, `request.5xx` | Count, grouped by `route` and `status` |
+| Office failures | `event` = `office.failed` | Count, grouped by `message`, then by `officeId` |
+| Exports that failed | `event` = `export.failed` | The lines, with `officeId` and `error` |
+| Backups to India that failed | `event` = `office.failed` and `message` = `backup to India failed` | The lines, with `officeId` and `error` (the morning round runs it once a day per office) |
+| The nightly run | `event` is one of `nightly.failed`, `purge.failed`, `backups-erase.failed`, `office.purged`, `office.backups-erased`, `retained.deleted` | The lines, newest first |
+| CPU limit | Invocation logs whose outcome is `exceededCpu` (the outcome field is `$workers.outcome`; pick it from the field list if the name differs) | Count, grouped by the request's path |
+| One request | `requestId` = the id, or the ray id as free text | Every line, oldest first |
+
+**Alert rules: owner steps.** Nothing is set up in Cloudflare by the code or by a coding agent; an owner sets these up in the dashboard once, for live, and checks they fire on staging with a request that fails on purpose. On the free plan:
+
+1. **Workers Issues** (Workers & Pages → the-office → Observability → Issues; turned on by `"issues": { "enabled": true }`): groups uncaught exceptions, failed invocations, 5xx answers and every line logged at `error`, which is every error event above. Add an automation that sends each new issue to the owners' email or chat (webhook). Cloudflare calls Issues free during its beta.
+2. **Monitors** (Notifications → Monitors), if the account offers the Workers Logs dataset on the free plan (Cloudflare's documentation does not say; check the dataset list when making the first monitor). One monitor each, to the owners' email:
+
+| Monitor | Rule | Every |
+| --- | --- | --- |
+| Error rate | `request.failed` + `request.5xx` above 2% of the Worker's invocations | 15 minutes |
+| 5xx count | 20 or more `request.failed` or `request.5xx` | 10 minutes |
+| Export failed | any `export.failed` | 1 hour |
+| Backup to India failed | any `office.failed` with `message` = `backup to India failed` | 1 day, after the morning round |
+| Nightly failed | any `nightly.failed`, `purge.failed` or `backups-erase.failed` | 1 day, after 21:30 UTC |
+| CPU limit | 5 or more invocations with outcome `exceededCpu` (free plan: 10 ms of CPU a request; the person sees error 1102) | 1 hour |
+
+3. **Without monitors,** the Issues automation covers every error line as it happens; the CPU limit and the error rate are then read each morning from the saved queries "CPU limit" and "Server errors by route", alongside the weekly `admin.mjs list` review.
+
+The rules on incidents expect logs that show what happened to be kept for a year (`05-configuration.md`, section 10): 3 days is not that, and the free plan has no Logpush. That gap stays open until the paid plan.

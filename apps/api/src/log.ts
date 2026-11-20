@@ -104,8 +104,7 @@ export function scrub(text: string): string {
 
 /** A path as a pattern: plain words stay; a segment that could be an id, a name or an address becomes `:id`. */
 export const routeOf = (path: string) =>
-  path
-    .split("?")[0]!
+  (path.split("?")[0] ?? "")
     .split("/")
     .map((s) => (s === "" || /^[a-z][a-z-]{0,30}$/.test(s) ? s : ":id"))
     .join("/")

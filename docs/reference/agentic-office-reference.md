@@ -660,8 +660,8 @@ Only ever run `SELECT` this way. Changes go through the app, the console or the 
 
 ## 8. Monitoring
 
-- **Live logs:** `wrangler tail the-office` through Infisical shows requests and errors as they happen. Every office log line starts with the office id.
-- **History:** Workers observability in the Cloudflare dashboard (Snilld account → Workers → `the-office` → Logs).
+- **Live logs:** `wrangler tail the-office` through Infisical shows requests and errors as they happen. Each line is one structured event with its `requestId` (the `x-request-id` on the response) and, inside an office, its `officeId`.
+- **History:** Workers Logs in the Cloudflare dashboard (Snilld account → Workers → `the-office` → Observability), kept 3 days. The saved queries and the alerts to set up are in the handbook, deployment section 9.
 - **Gap:** logs are kept only briefly. Exporting them to long-term storage (for example Logpush to R2) is an open item before wider pilots; the data protection rules expect a year.
 
 ## 9. Security incidents
