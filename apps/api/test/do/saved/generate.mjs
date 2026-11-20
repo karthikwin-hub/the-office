@@ -34,7 +34,7 @@ const has = (path) => {
 
 const work = mkdtempSync(join(tmpdir(), "saved-office-"));
 try {
-  execFileSync("sh", ["-c", `git archive ${commit} packages apps/api/src | tar -x -C "${work}"`], { cwd: root });
+  execFileSync("tar", ["-x", "-C", work], { input: execFileSync("git", ["archive", commit, "packages", "apps/api/src"], { cwd: root, maxBuffer: 1 << 30 }) });
   const api = createRequire(join(root, "apps/api/package.json"));
   const zod3 = join(dirname(api.resolve("zod/package.json")), "v3/index.js");
   const esbuild = createRequire(api.resolve("wrangler"))("esbuild");

@@ -26,8 +26,7 @@ export default defineConfig({
   webServer: {
     command: "node serve.mjs",
     url: `http://localhost:${PORT}/api/me`,
-    // /api/me answers 401 until someone signs in; any answer means the Worker is up.
-    ignoreHTTPSErrors: true,
+    // /api/me answers 401 until someone signs in, which Playwright counts as up.
     reuseExistingServer: false,
     timeout: 120_000,
     stdout: "ignore",

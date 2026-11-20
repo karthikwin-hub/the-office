@@ -27,8 +27,11 @@ export async function checkA11y(page: Page, screen: string) {
   const known = KNOWN[screen] ?? {};
   const fresh = bad.filter((v) => !(v.id in known));
   for (const id of Object.keys(known))
-    if (!bad.some((v) => v.id === id))
-      test.info().annotations.push({ type: "a11y-fixed", description: `${screen}: ${id} no longer found; remove it from KNOWN` });
+    if (!bad.some((v) => v.id === id)) {
+      const note = `${screen}: ${id} no longer found; remove it from KNOWN`;
+      console.warn(`a11y: ${note}`);
+      test.info().annotations.push({ type: "a11y-fixed", description: note });
+    }
   const describe = (v: (typeof bad)[number]) => `${v.id} (${v.impact}): ${v.help}\n  ${v.nodes.map((n) => n.target.join(" ")).join("\n  ")}`;
   // Soft, so one run lists the problems of every screen it passes.
   expect.soft(fresh.map(describe), `serious or critical accessibility problems on ${screen}`).toEqual([]);

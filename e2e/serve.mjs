@@ -38,7 +38,9 @@ function parseJsonc(text) {
       while (i < text.length && text[i] !== "\n") i++;
       out += "\n";
     } else if (c === "/" && text[i + 1] === "*") {
-      i = text.indexOf("*/", i + 2) + 1;
+      const end = text.indexOf("*/", i + 2);
+      if (end < 0) throw new Error("wrangler.jsonc: a /* comment is not closed");
+      i = end + 1;
     } else out += c;
   }
   return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));

@@ -20,11 +20,16 @@ let page: Page;
 let key = "";
 /** When the last authenticator code was used: the next one must come from a later 30 seconds. */
 let lastCode = 0;
+/** Uncaught errors in the page since the last step: any one fails that step. */
+const pageErrors: string[] = [];
 
 test.beforeAll(async ({ browser }) => {
   context = await browser.newContext({ acceptDownloads: true });
   page = await context.newPage();
-  page.on("pageerror", (e) => console.log(`page error: ${e.message}`));
+  page.on("pageerror", (e) => pageErrors.push(e.message));
+});
+test.afterEach(() => {
+  expect(pageErrors.splice(0), "uncaught errors in the page").toEqual([]);
 });
 test.afterAll(async () => context.close());
 
