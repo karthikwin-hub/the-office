@@ -49,12 +49,11 @@ jobs:
       - run: pnpm lint
 
   audit:
-    name: Dependency audit (non-blocking)
+    name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Expected to fail until the sign-in stream (better-auth, drizzle-orm) and the Office Durable Object
-    # stream (agents, ai, jsondiffpatch) upgrade their dependencies. Make it blocking once it is green.
-    continue-on-error: true
+    # Fails on any high or critical advisory in production dependencies. Advisories in development tooling that
+    # never reaches the Worker are listed, with the reason, under auditConfig in pnpm-workspace.yaml.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -17,9 +17,9 @@ at the edges: sign-in, browser defences, inbound email, the platform console and
 | --- | --- | --- |
 | High findings open | 7 | 0 |
 | Medium findings open | 10 | 1 (production secrets environment); retention and deletion in review |
-| Dependency advisories (`pnpm audit --prod`) | 24, 2 critical | 9: one (zod 3) in code that runs; the critical two are test tooling never shipped in the Worker |
+| Dependency advisories (`pnpm audit --prod`) | 24, 2 critical | 8, none high or critical in code that runs; the critical two are test tooling never shipped in the Worker |
 | Automated tests | 547 | 643, including 11 that run the office Durable Object inside workerd |
-| Checks before merge | None | GitHub Actions: type check and every test on each pull request |
+| Checks before merge | None | GitHub Actions on each pull request: type check, every test, lint, dependency audit, Claude security review |
 
 Each fix shipped with a test that fails before it and passes after. The fixes were pull requests
 [#2](https://github.com/karthikwin-hub/the-office/pull/2) to [#8](https://github.com/karthikwin-hub/the-office/pull/8).
@@ -118,9 +118,15 @@ everywhere; zod on every request body; agents that stage every write for approva
 
 ## How it is checked
 
-- **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test` (`.github/workflows/ci.yml`), and a
-  non-blocking `pnpm audit --prod`. Run `/security-review` and `/code-review` in Claude Code on any change to
-  `apps/api`, as the house guidelines ask.
+- **Every pull request:** GitHub Actions runs `pnpm typecheck` and `pnpm test`, `pnpm lint`, and
+  `pnpm audit --prod --audit-level high` (`.github/workflows/ci.yml`); each fails the check. Run `/security-review`
+  and `/code-review` in Claude Code on any change to `apps/api`, as the house guidelines ask.
+- **Dependency audit:** a high or critical advisory in a production dependency fails CI. Two are ignored, by GHSA id
+  under `auditConfig` in `pnpm-workspace.yaml`: the critical tinypool advisories (GHSA-5gmw-xhrv-c9v3,
+  GHSA-85c8-ppgw-ccpr). pnpm counts them as production only because better-auth declares `vitest` as an optional
+  peer and pnpm links it to our test runner; `wrangler deploy --dry-run` bundles no vitest or tinypool code. The
+  moderate advisories left (esbuild in drizzle-kit, vitest and its mocker in the same test-runner path, uuid in
+  exceljs) do not fail the check. Remove an ignore once the test runner moves to vitest 4.1.12 or later.
 - **Security review on every pull request:** `.github/workflows/security-review.yml` runs Anthropic's
   `claude-code-security-review` Action (pinned by commit) and comments on what it finds. It reviews only branches
   pushed to this repository (the Action is not hardened against prompt injection) and skips Renovate's bumps. What
@@ -165,8 +171,7 @@ In priority order. The private review's tracker holds the detail.
 | Encrypt the office's live files in R2 with the office's key | R2 encrypts at rest, but with Cloudflare's key: anyone with the bucket can read them |
 | A command to load an opened backup into a new office | Restoring books is an engineering step today |
 | Turn on staging and the Deploy workflow: the staging resources, the GitHub `staging` and `live` environments (live with required reviewers) and their secrets | Releases still go out from a laptop. The code is ready: `env.staging`, `.github/workflows/deploy.yml`, and a backup before every migration that stops the deploy if it fails (`docs/handbook/04-deployment.md`, section 7) |
-| CI: Biome lint and format, branch protection, the security-review Action, Renovate; make the audit job blocking | The gate covers types and tests only |
-| zod 4 | The one remaining runtime advisory |
+| Branch protection on `main` requiring the CI checks; then the Biome format pass, and the lint warnings (React keys and hook dependencies, accessibility) | Checks only gate a merge once they are required |
 | Durable Object tests for loading books from older schema versions; Playwright and axe end to end | `tools/e2e/live.mjs` predates two-step sign-in |
 | Structured logs with office and request ids; error-rate alerts | Too little to run a service on |
 | Split `OfficeService` and the Durable Object's router | Large files slow review |

@@ -7,3 +7,12 @@ onlyBuiltDependencies:
   - workerd
   - msw
   - sharp
+
+# `pnpm audit` skips these advisories. Each is in development tooling that is never in the Worker bundle; see
+# docs/security/README.md ("Dependency audit") for why, and remove an entry once the dependency moves past it.
+auditConfig:
+  ignoreGhsas:
+    # tinypool (critical, x2): reached only through better-auth's optional `vitest` peer, which pnpm links to our
+    # test runner. `wrangler deploy --dry-run` bundles no vitest or tinypool code.
+    - GHSA-5gmw-xhrv-c9v3
+    - GHSA-85c8-ppgw-ccpr
