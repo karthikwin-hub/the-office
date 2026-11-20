@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Looking after the offices on the live database. The everyday view, onboarding and suspending are in the console
-// (console.APP_DOMAIN, for the addresses in PLATFORM_OWNERS); this covers the rest. Run it through Infisical so wrangler has the account's token:
+// (console.APP_DOMAIN, for the addresses in PLATFORM_OWNER_EMAILS); this covers the rest. Run it through Infisical so wrangler has the account's token:
 //
 //   infisical run --env=dev --silent -- node tools/admin/admin.mjs <command> [args]
 //

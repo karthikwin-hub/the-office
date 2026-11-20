@@ -45,6 +45,18 @@ if [ "$present" = "yes" ]; then put SOCIAL_TOKEN_KEYS_OLD "$1"; else echo "SOCIA
 
 for name in $NAMES; do put "$name" "$1"; done
 
+# Who may use the platform console: comma-separated addresses, typed into Infisical by an owner, never generated. A secret
+# so the list stays out of the public repository. Without it the console refuses everyone.
+present=$(infisical run --env="$ENV" --silent -- sh -c "[ -n \"\${PLATFORM_OWNER_EMAILS:-}\" ] && echo yes || echo no")
+if [ "$present" = "yes" ]; then
+  put PLATFORM_OWNER_EMAILS "$1"
+else
+  echo "" >&2
+  echo "!! PLATFORM_OWNER_EMAILS is not in Infisical ($ENV): the platform console is LOCKED for everyone on the $1 Worker." >&2
+  echo "!! Add it there (comma-separated addresses) and run this again." >&2
+  echo "" >&2
+fi
+
 # Not generated, put when present in Infisical. RESEND_API_KEY sends all mail through Resend (from MAIL_FROM); staging
 # has a sending-only key of its own, never live's.
 # TURNSTILE_SECRET comes from the Turnstile widget in the Cloudflare dashboard; add TURNSTILE_SITE_KEY to wrangler.jsonc vars with it.

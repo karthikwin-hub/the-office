@@ -24,8 +24,11 @@ export type Env = {
    * `<subdomain>.<APP_DOMAIN>`. One sign-in covers them all.
    */
   APP_DOMAIN?: string;
-  /** Comma-separated email addresses of the platform owners: they alone can use the console's view of every business. */
-  PLATFORM_OWNERS?: string;
+  /**
+   * Secret. Comma-separated email addresses of the platform owners: they alone can use the console's view of every
+   * business. A secret so the addresses stay out of the public repository; unset, no one can use the console.
+   */
+  PLATFORM_OWNER_EMAILS?: string;
   /** Set with `wrangler secret put`, never in a file. */
   BETTER_AUTH_SECRET: string;
   /**

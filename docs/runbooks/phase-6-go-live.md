@@ -14,7 +14,7 @@ The product belongs to Snilld, so it runs in the **Snilld Cloudflare account**, 
 | --- | --- |
 | `office.snilld.in` | The product page: what the product is, with Sign in and Try the demo |
 | `app.office.snilld.in` | Where businesses sign up, sign in, open an office and accept invitations |
-| `console.office.snilld.in` | The platform console, for us only (the addresses in `PLATFORM_OWNERS`): every business on the platform, onboarding a new one, suspending. Part 5c |
+| `console.office.snilld.in` | The platform console, for us only (the addresses in `PLATFORM_OWNER_EMAILS`): every business on the platform, onboarding a new one, suspending. Part 5c |
 | `<customer>.office.snilld.in` | One customer's office, for example `kaveri.office.snilld.in`. Added per customer in Part 5b |
 | `demo.office.snilld.in` | The demo with sample books |
 | `in.office.snilld.in` | Inbound email: each office gets `<office-slug>@in.office.snilld.in` |
@@ -259,14 +259,14 @@ To take an address away: `admin.mjs subdomain off_xxxxxxxxxxxxxxxx --remove`, th
 
 ## Part 5c: The platform console and onboarding a business
 
-`console.office.snilld.in` is ours: it lists every business on the platform (owner, people, status, when it opened, its last account change) and is where we onboard a business and suspend one. It never shows or opens any office's books. Only the addresses in `PLATFORM_OWNERS` (in `apps/api/wrangler.jsonc`, comma-separated; today `puja@snilldai.com` and `appforge.3b@gmail.com`) can use it.
+`console.office.snilld.in` is ours: it lists every business on the platform (owner, people, status, when it opened, its last account change) and is where we onboard a business and suspend one. It never shows or opens any office's books. Only the addresses in `PLATFORM_OWNER_EMAILS` can use it: a Worker secret (comma-separated addresses) kept in Infisical and put with `sh tools/admin/set-secrets.sh live`, so the list is not in the public repository.
 
 1. **Your account.** Make an account at `https://app.office.snilld.in` with an address on that list and confirm it from the email. (An account on its own sees no office.)
 2. **Sign in at `https://console.office.snilld.in`.** The figures at the top count the businesses by state; click one to filter the list. Search finds a business by name, owner or address.
 3. **Onboard a business.** Enter the business name and the owner's email, then **Open the office and invite**. This opens an empty office and emails the owner a link from `support@snilldai.com`, good for 14 days. If the email did not go out, the console shows the link: send it to the owner yourself (it is personal to them; do not post it anywhere public). The owner makes an account with that same address, joins, and runs the setup in their office. The row shows **Waiting for owner** until they do; **Send the invitation again** sends a fresh link.
 4. **Businesses can also sign up themselves** at `app.office.snilld.in`; they appear in the console as "signed up".
 5. **Suspend** (with a second click to confirm) shuts everyone in that office out and refuses its inbound email; its books and files stay. **Open again** reverses it. An office its owner is deleting shows **Being deleted**; only its owner can restore it.
-6. **To add a colleague** to the console, add their address to `PLATFORM_OWNERS`, open a pull request, and deploy once merged.
+6. **To add a colleague** to the console, add their address to `PLATFORM_OWNER_EMAILS` in Infisical and run `sh tools/admin/set-secrets.sh live`. No pull request or deploy is needed.
 
 **Check:** onboard a test business with your personal address as the owner. The email arrives; the link opens the app and, after you make the account, the office. The console row then shows you as the owner. Suspend it: the office shows "is suspended". Open it again. Delete the test office afterwards from its Settings.
 

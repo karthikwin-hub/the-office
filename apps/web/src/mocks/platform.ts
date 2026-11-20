@@ -11,7 +11,7 @@ let businesses: PlatformBusiness[] = [
     name: "Mehta Hardware",
     status: "active",
     opened: ago(2),
-    onboardedBy: "puja@snilldai.com",
+    onboardedBy: "puja@platform.example",
     address: null,
     ingestEmail: "mehta-hardware-4hkq@in.office.snilld.in",
     owners: [],
@@ -37,7 +37,7 @@ let businesses: PlatformBusiness[] = [
     name: "Shah Textiles",
     status: "active",
     opened: ago(41),
-    onboardedBy: "puja@snilldai.com",
+    onboardedBy: "puja@platform.example",
     address: "https://shahtextiles.office.snilld.in",
     ingestEmail: "shah-textiles-9xwp@in.office.snilld.in",
     owners: [{ name: "Bina Shah", email: "bina@shahtextiles.in" }],
@@ -76,7 +76,7 @@ let businesses: PlatformBusiness[] = [
     name: "Sundar Motors",
     status: "active",
     opened: ago(30),
-    onboardedBy: "puja@snilldai.com",
+    onboardedBy: "puja@platform.example",
     address: null,
     ingestEmail: "sundar-motors-5qte@in.office.snilld.in",
     owners: [],
@@ -102,7 +102,7 @@ let businesses: PlatformBusiness[] = [
 const invited = (b: PlatformBusiness, email: string): PlatformInvited => ({ id: b.id, name: b.name, email, emailed: true, expiresAt: ahead(14) });
 
 export async function mockPlatform(request: Request, path: string): Promise<Response | null> {
-  if (path === "/api/platform" && request.method === "GET") return HttpResponse.json({ you: { name: "Puja", email: "puja@snilldai.com" }, businesses });
+  if (path === "/api/platform" && request.method === "GET") return HttpResponse.json({ you: { name: "Puja", email: "puja@platform.example" }, businesses });
   if (path === "/api/platform/businesses" && request.method === "POST") {
     const parsed = PlatformOnboard.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return HttpResponse.json({ error: "Give the business's name and its owner's email address." }, { status: 400 });
@@ -116,7 +116,7 @@ export async function mockPlatform(request: Request, path: string): Promise<Resp
       name: parsed.data.name,
       status: "active",
       opened: ago(0),
-      onboardedBy: "puja@snilldai.com",
+      onboardedBy: "puja@platform.example",
       address: null,
       ingestEmail: `${slug}@in.office.snilld.in`,
       owners: [],

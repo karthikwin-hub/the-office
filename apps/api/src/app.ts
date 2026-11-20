@@ -319,13 +319,25 @@ app.post(ACCOUNT_ROUTES.acceptInvitation, async (c) => {
 
 /* ---------- The platform owners' console: every business's account, never its books ---------- */
 
-export const platformOwners = (env: Pick<Env, "PLATFORM_OWNERS">) =>
-  new Set(
-    (env.PLATFORM_OWNERS ?? "")
+let toldNoOwners = false;
+
+/**
+ * The platform owners, from the Worker secret PLATFORM_OWNER_EMAILS (kept out of the public repository). Unset, there are
+ * none: the console refuses everyone, and the first request of each Worker instance logs that it is locked.
+ */
+export function platformOwners(env: Pick<Env, "PLATFORM_OWNER_EMAILS">): Set<string> {
+  const owners = new Set(
+    (env.PLATFORM_OWNER_EMAILS ?? "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean),
   );
+  if (!owners.size && !toldNoOwners) {
+    toldNoOwners = true;
+    log("warn", "platform.owners-unset", { message: "PLATFORM_OWNER_EMAILS is not set: no one can use the platform console" });
+  }
+  return owners;
+}
 
 const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
   const user = c.get("user");

@@ -1351,7 +1351,7 @@ describe("open screens of someone who leaves", () => {
     };
     const carol = await join("Carol Rao", "carol@firm.test");
     const dev = await join("Dev Iyer", "dev@firm.test");
-    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    w.env.PLATFORM_OWNER_EMAILS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     w.seen.length = 0;
 
@@ -1375,11 +1375,27 @@ describe("open screens of someone who leaves", () => {
 describe("the platform owners' console", () => {
   const view = async (w: World, who: Person) => (await (await call(w, who, PLATFORM_ROUTES.view)).json()) as PlatformView;
 
-  it("is only for the addresses in PLATFORM_OWNERS, and shows every business's account but not its books", async () => {
+  it("has no owners while PLATFORM_OWNER_EMAILS is unset, and logs that the console is locked once per instance", async () => {
+    vi.resetModules();
+    const fresh = await import("../src/app");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      expect(fresh.platformOwners({}).size).toBe(0);
+      expect(fresh.platformOwners({ PLATFORM_OWNER_EMAILS: " " }).size).toBe(0);
+      const told = warn.mock.calls.filter(([l]) => (l as { event?: string }).event === "platform.owners-unset");
+      expect(told).toHaveLength(1);
+      expect(JSON.stringify(told[0])).not.toMatch(/@/);
+      expect(fresh.platformOwners({ PLATFORM_OWNER_EMAILS: " Puja@Snilld.test, ,b@snilld.test" })).toEqual(new Set(["puja@snilld.test", "b@snilld.test"]));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("is only for the addresses in PLATFORM_OWNER_EMAILS, and shows every business's account but not its books", async () => {
     const { w, anil, A, B } = await twoOffices();
     const puja = await signUp(w, "Puja", "Puja@Snilld.test");
     expect((await call(w, puja, PLATFORM_ROUTES.view)).status).toBe(403);
-    w.env.PLATFORM_OWNERS = "someone@snilld.test, puja@snilld.test";
+    w.env.PLATFORM_OWNER_EMAILS = "someone@snilld.test, puja@snilld.test";
     expect((await call(w, anil, PLATFORM_ROUTES.view)).status).toBe(403);
     expect(
       (await call(w, anil, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Sneaky", ownerEmail: "anil@kaveri.test" }) })).status,
@@ -1416,7 +1432,7 @@ describe("the platform owners' console", () => {
 
   it("onboards a business: an empty office, and an owner invitation by email that only that address can accept", async () => {
     const w = makeEnv();
-    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    w.env.PLATFORM_OWNER_EMAILS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     const res = await call(w, puja, PLATFORM_ROUTES.businesses, {
       method: "POST",
@@ -1457,7 +1473,7 @@ describe("the platform owners' console", () => {
 
   it("never invites an owner into an office that has one, and never hands the console the link", async () => {
     const { w, A } = await twoOffices();
-    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    w.env.PLATFORM_OWNER_EMAILS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     w.sent.length = 0; // puja was told two-step sign-in is on
     const cp = new ControlPlane(w.db);
@@ -1516,7 +1532,7 @@ describe("the platform owners' console", () => {
 
   it("suspends and opens an office again, but leaves an owner's deletion to the owner", async () => {
     const { w, anil, bina, A, B } = await twoOffices();
-    w.env.PLATFORM_OWNERS = "puja@snilld.test";
+    w.env.PLATFORM_OWNER_EMAILS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
     const status = (id: string, s: string) => call(w, puja, PLATFORM_ROUTES.status(id), { method: "PUT", body: JSON.stringify({ status: s }) });
     // A platform owner's old session reads the console but changes nothing.

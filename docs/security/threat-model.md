@@ -31,7 +31,7 @@ of privilege.
 | A member of another office | Signed in, but none of this office's data | The app and API, with their own session |
 | Owner | Full control of their office; two-step sign-in required | The app, WhatsApp (linked phone), email (proven sender) |
 | Accountant | Works the books; may decide only some staged kinds | The app, WhatsApp, email |
-| Platform owner | Runs the platform; addresses in `PLATFORM_OWNERS`; two-step sign-in | The console (`/api/platform/*`), the admin tool, the Cloudflare account |
+| Platform owner | Runs the platform; addresses in `PLATFORM_OWNER_EMAILS`; two-step sign-in | The console (`/api/platform/*`), the admin tool, the Cloudflare account |
 | Email sender | Anyone on the internet; trusted only when Cloudflare proves the sender | Email Routing to the Worker's `email` handler |
 | Website visitor | Anonymous; on a business's own site | The chat widget, `/w/*` and `/api/chat/*` |
 | Meta (webhooks) | Trusted only with a valid signature | `/api/hooks/meta` |
@@ -189,7 +189,7 @@ under `apps/api/test/`.
 
 | | Threat | Control |
 | --- | --- | --- |
-| S | Someone reaching the console | Only addresses in `PLATFORM_OWNERS`, with a confirmed address and two-step sign-in; every change needs a fresh sign-in (`platformOnly` in `app.ts`). Test: `tenancy.test.ts` "the platform owners' console" |
+| S | Someone reaching the console | Only addresses in `PLATFORM_OWNER_EMAILS`, with a confirmed address and two-step sign-in; every change needs a fresh sign-in (`platformOnly` in `app.ts`). Test: `tenancy.test.ts` "the platform owners' console" |
 | E | A platform owner taking over a business | The console may invite an owner only into an office that has none and never sees the link; once an office has an owner, outside owner invitations stop working (`tenancy.ts`, `acceptInvite`) |
 | I | The console reading books | The console and the admin tool work on the control plane only; neither has a command to read an office's books (`tools/admin/admin.mjs`) |
 | I | Invitation tokens in logs | Tokens travel after `#` and in request bodies; only their hash is stored; single use, bound to one address, 14 days (`tenancy.ts`, `inviteLink` in `app.ts`) |

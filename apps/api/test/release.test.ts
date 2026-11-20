@@ -64,6 +64,16 @@ describe("the staging environment", () => {
     expect(staging.durable_objects.bindings).toEqual(live.durable_objects.bindings);
   });
 
+  it("keeps who runs the platform out of this public file: the console's owners are a secret", () => {
+    for (const c of [live, staging]) {
+      expect(Object.keys(c.vars)).not.toContain("PLATFORM_OWNERS");
+      expect(Object.keys(c.vars)).not.toContain("PLATFORM_OWNER_EMAILS");
+      // The sender address is the only address a setting may hold.
+      const addresses = Object.entries(c.vars).filter(([k, v]) => k !== "MAIL_FROM" && /@/.test(String(v)));
+      expect(addresses).toEqual([]);
+    }
+  });
+
   it("signs people in on a host the live sign-in cookie never reaches", () => {
     const liveDomain = String(live.vars.APP_DOMAIN);
     const host = new URL(String(staging.vars.BETTER_AUTH_URL)).hostname;

@@ -536,7 +536,7 @@ It keeps your company's filing calendar from its profile and reminds whoever fil
 
 ## 1. Who can use it
 
-Only the addresses in `PLATFORM_OWNERS` (today puja@snilldai.com and appforge.3b@gmail.com), signed in with a confirmed address. Anyone else is refused. To add someone, add their address to `PLATFORM_OWNERS` in `apps/api/wrangler.jsonc` and deploy.
+Only the addresses in the Worker secret `PLATFORM_OWNER_EMAILS`, signed in with a confirmed address and two-step sign-in. Anyone else is refused, and with the secret unset everyone is. The list is a secret so that who runs the platform is not in the public repository. To add someone, add their address to `PLATFORM_OWNER_EMAILS` in Infisical and run `sh tools/admin/set-secrets.sh live`; no deploy is needed.
 
 ## 2. What it shows
 
@@ -701,7 +701,6 @@ Escalate to engineering when sign-in fails for everyone, when a deploy's smoke c
 | `INGEST_DOMAIN` | `in.office.snilld.in` | Each office's inbound address is `<slug>@` this domain |
 | `BETTER_AUTH_URL` | `https://app.office.snilld.in` | Where sign-in, invitation and reset links point |
 | `APP_DOMAIN` | `office.snilld.in` | Product page on the bare domain, `app.` and `console.` below it, and offices' own addresses |
-| `PLATFORM_OWNERS` | `puja@snilldai.com, appforge.3b@gmail.com` | Who may use the console |
 | `INDIA_BACKUP_*` | Not set | The bucket for the daily copy of books in India |
 | Cron | `30 21 * * *` (03:00 India time) | Purges offices deleted more than 30 days ago |
 

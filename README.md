@@ -40,9 +40,9 @@ pnpm docs                # rebuilds docs/handbook/the-office-handbook.html from 
 cd apps/api && infisical run --env=dev -- sh -c 'CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_SNILLD_OFFICE" ./node_modules/.bin/wrangler dev --port 8787 --local-upstream localhost:8787 --var BETTER_AUTH_SECRET:$(openssl rand -hex 32) --var SOCIAL_TOKEN_KEY:$(openssl rand -hex 32) --var BETTER_AUTH_URL:http://localhost:8787 --var EMAIL_VERIFICATION:off --var APP_DOMAIN:'
 
 # The same with one address per office: open http://office.localhost:8787 (product page), http://app.office.localhost:8787
-# (businesses) and http://console.office.localhost:8787 (platform owners, the addresses in PLATFORM_OWNERS);
+# (businesses) and http://console.office.localhost:8787 (platform owners, the addresses in PLATFORM_OWNER_EMAILS);
 # give an office an address with `node tools/admin/admin.mjs subdomain <office> <label> --local`
-#   --var BETTER_AUTH_URL:http://app.office.localhost:8787 --var APP_DOMAIN:office.localhost --var PLATFORM_OWNERS:you@example.com
+#   --var BETTER_AUTH_URL:http://app.office.localhost:8787 --var APP_DOMAIN:office.localhost --var PLATFORM_OWNER_EMAILS:you@example.com
 # The mock demo shows the console at http://localhost:5173/?platform.
 ```
 

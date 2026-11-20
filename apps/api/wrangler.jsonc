@@ -24,9 +24,9 @@
     // Where businesses sign in and choose an office. The bare APP_DOMAIN is the product page, console.APP_DOMAIN is the
     // platform owners' console, and an office with a subdomain opens on <subdomain>.APP_DOMAIN.
     "BETTER_AUTH_URL": "https://app.office.snilld.in",
-    "APP_DOMAIN": "office.snilld.in",
-    // Who may use the console's view of every business: comma-separated, each must sign in with a confirmed address.
-    "PLATFORM_OWNERS": "puja@snilldai.com, appforge.3b@gmail.com"
+    "APP_DOMAIN": "office.snilld.in"
+    // Who may use the platform console is the secret PLATFORM_OWNER_EMAILS (comma-separated addresses), kept out of
+    // this public file: `sh tools/admin/set-secrets.sh live` puts it. Without it no one can use the console.
     // The daily copy of the books on servers in India (Companies (Accounts) Rules, rule 3(5)): add INDIA_BACKUP_ENDPOINT,
     // INDIA_BACKUP_BUCKET and INDIA_BACKUP_REGION here for an S3-compatible bucket in an Indian region, and put
     // INDIA_BACKUP_ACCESS_KEY_ID and INDIA_BACKUP_SECRET_ACCESS_KEY as secrets. Until then the backup is skipped and Settings says so.
@@ -95,8 +95,8 @@
         "INGEST_DOMAIN": "in.staging.office.snilld.in",
         "BETTER_AUTH_URL": "https://the-office-staging.REPLACE_WITH_WORKERS_DEV_SUBDOMAIN.workers.dev",
         // Empty: everything is on one host, the console at /?platform, and the sign-in cookie is for this host only.
-        "APP_DOMAIN": "",
-        "PLATFORM_OWNERS": "puja@snilldai.com, appforge.3b@gmail.com"
+        // The console's owners are the secret PLATFORM_OWNER_EMAILS, as on live.
+        "APP_DOMAIN": ""
       },
       "d1_databases": [
         {
