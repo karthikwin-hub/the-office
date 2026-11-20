@@ -20,7 +20,7 @@ A pnpm monorepo in TypeScript.
 
 **One contract.** The web app, the demo's mock handlers, the Worker and the engine import the same zod types, so the demo cannot drift from the real product. Switching between them is a build flag (`VITE_DATA=mock` or `live`).
 
-**Tests.** 426 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines, imports), 208 Worker tests (including a two-office isolation suite, sign-in and two-step sign-in, inbound mail, security headers, the website chat, the export archive and account rights), 14 tests that run the office Durable Object inside workerd (`apps/api/test/do/`, among them a 57 MB export), 5 web app tests, and Storybook stories for every component state. GitHub Actions runs the type check and every test on each pull request. The browser end-to-end script (`tools/e2e/live.mjs`) predates two-step sign-in and needs updating.
+**Tests.** 426 engine tests (tax, ageing, audit, social, WhatsApp desk, customer service, routines, imports), 208 Worker tests (including a two-office isolation suite, sign-in and two-step sign-in, inbound mail, security headers, the website chat, the export archive and account rights), 20 tests that run the office Durable Object inside workerd (`apps/api/test/do/`, among them a 57 MB export and offices saved by four earlier versions), 5 web app tests, and Storybook stories for every component state. GitHub Actions runs the type check and every test on each pull request. The browser end-to-end script (`tools/e2e/live.mjs`) predates two-step sign-in and needs updating.
 
 ## 2. Runtime
 
@@ -138,7 +138,7 @@ The same production web app is built with `VITE_DATA=mock`. Mock Service Worker 
 
 ## 10. Operations
 
-- **Schema changes.** D1 uses numbered SQL migrations. Each Durable Object keeps a `schema_version` and runs its own steps once on start (for example, moving files to the per-office prefix).
+- **Schema changes.** D1 uses numbered SQL migrations. Each Durable Object keeps a `schema_version` and runs its own steps once on start (for example, moving files to the per-office prefix). A change to what an office stores (a table, an `office_kv` key, the shape of a book record, a schema step) adds a fixture of the version before it to `apps/api/test/do/saved/`, written by that version's own code (`node apps/api/test/do/saved/generate.mjs <commit> <name>`), and `saved.test.ts` opens it with today's code. Committed fixtures are never regenerated.
 - **Nightly job.** A cron at 21:30 UTC purges offices deleted more than 30 days ago (Durable Object storage, R2 prefix, control-plane rows; the books and edit log are first sealed into `retained/`), deletes their daily copies in India, and deletes retained copies whose eight years are over. Each step is in the office's audit trail.
 - **Admin tool.** `tools/admin/admin.mjs`: list offices with activity, suspend and resume, send an owner invitation, add a route, purge a deleted office early, back up the control plane, remove a person on request. `tools/admin/open-backup.mjs` opens a sealed copy of an office's books.
 - **Logs.** One structured line per event (`apps/api/src/log.ts`), with the request id (Cloudflare's ray id, also on every response as `x-request-id` and passed to the office) and the office id; never a secret or a person's data. Workers Logs keeps them 3 days; the queries and alerts are in `04-deployment.md`, section 9.

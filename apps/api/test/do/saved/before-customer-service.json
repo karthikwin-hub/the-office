@@ -1,0 +1,972 @@
+{
+ "commit": "89f9ab6",
+ "subject": "Many businesses, one Office: each office is its own tenant",
+ "date": "2026-11-05T13:26:02+05:30",
+ "office": "off_savedbooksabcdef",
+ "owner": {
+  "name": "Anil Kumar",
+  "email": "owner@saved.office.test"
+ },
+ "tables": {
+  "office_kv": {
+   "create": "CREATE TABLE office_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)",
+   "also": [],
+   "rows": [
+    {
+     "k": "office:id",
+     "v": "off_savedbooksabcdef"
+    },
+    {
+     "k": "schema_version",
+     "v": "2"
+    },
+    {
+     "k": "settings",
+     "v": "{\"business\":{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 80 4000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"},\"ingestEmail\":\"saved@in.the-office.test\",\"digestTime\":\"07:30\",\"reminderPolicy\":{\"firstAfterDays\":4,\"firmAfterDays\":16,\"finalAfterDays\":46,\"sendFrom\":\"accounts@kaverielectricals.in\"}}"
+    },
+    {
+     "k": "prefs:owner@saved.office.test",
+     "v": "{\"skin\":\"loft\",\"wholeFloor\":true}"
+    }
+   ]
+  },
+  "book_rows": {
+   "create": "CREATE TABLE book_rows (coll TEXT NOT NULL, id TEXT NOT NULL, ord INTEGER NOT NULL, json TEXT NOT NULL, PRIMARY KEY (coll, id))",
+   "also": [],
+   "rows": [
+    {
+     "coll": "seed",
+     "id": "_",
+     "ord": 0,
+     "json": "0"
+    },
+    {
+     "coll": "generatedFor",
+     "id": "_",
+     "ord": 0,
+     "json": "\"2026-11-04\""
+    },
+    {
+     "coll": "business",
+     "id": "_",
+     "ord": 0,
+     "json": "{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 80 4000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"}"
+    },
+    {
+     "coll": "states",
+     "id": "_",
+     "ord": 0,
+     "json": "{\"23\":\"Madhya Pradesh\",\"24\":\"Gujarat\",\"27\":\"Maharashtra\",\"29\":\"Karnataka\",\"30\":\"Goa\",\"36\":\"Telangana\",\"07\":\"Delhi\"}"
+    },
+    {
+     "coll": "parties",
+     "id": "C01",
+     "ord": 0,
+     "json": "{\"id\":\"C01\",\"kind\":\"customer\",\"name\":\"Sharma Traders\",\"entity\":\"firm\",\"gstin\":\"27PKXFS1248V1ZW\",\"pan\":\"PKXFS1248V\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Rakesh Sharma\",\"phone\":\"+91 9489305653\",\"email\":\"accounts@sharmatraders.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":400000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C02",
+     "ord": 1,
+     "json": "{\"id\":\"C02\",\"kind\":\"customer\",\"name\":\"Joshi Electricals\",\"entity\":\"firm\",\"gstin\":\"27AUTFJ2695K1ZD\",\"pan\":\"AUTFJ2695K\",\"stateCode\":\"27\",\"city\":\"Nashik\",\"contact\":{\"name\":\"Mandar Joshi\",\"phone\":\"+91 9552358539\",\"email\":\"accounts@joshielectricals.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":150000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C03",
+     "ord": 2,
+     "json": "{\"id\":\"C03\",\"kind\":\"customer\",\"name\":\"Deshmukh Contractors\",\"entity\":\"firm\",\"gstin\":\"27SCPFD6470H1ZG\",\"pan\":\"SCPFD6470H\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Vikas Deshmukh\",\"phone\":\"+91 9851425814\",\"email\":\"accounts@deshmukhcontractor.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":400000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C04",
+     "ord": 3,
+     "json": "{\"id\":\"C04\",\"kind\":\"customer\",\"name\":\"Kulkarni Builders Pvt Ltd\",\"entity\":\"company\",\"gstin\":\"27DWSCK8081U1ZS\",\"pan\":\"DWSCK8081U\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Shruti Kulkarni\",\"phone\":\"+91 9973392139\",\"email\":\"accounts@kulkarnibuilderspv.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":100000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C05",
+     "ord": 4,
+     "json": "{\"id\":\"C05\",\"kind\":\"customer\",\"name\":\"Pawar Electric Works\",\"entity\":\"firm\",\"gstin\":\"27SJHFP9827L1ZH\",\"pan\":\"SJHFP9827L\",\"stateCode\":\"27\",\"city\":\"Satara\",\"contact\":{\"name\":\"Sachin Pawar\",\"phone\":\"+91 9723088277\",\"email\":\"accounts@pawarelectricworks.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":200000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C06",
+     "ord": 5,
+     "json": "{\"id\":\"C06\",\"kind\":\"customer\",\"name\":\"Gaikwad Lighting House\",\"entity\":\"firm\",\"gstin\":\"27ADLFG2098D1Z5\",\"pan\":\"ADLFG2098D\",\"stateCode\":\"27\",\"city\":\"Kolhapur\",\"contact\":{\"name\":\"Neha Gaikwad\",\"phone\":\"+91 9590303008\",\"email\":\"accounts@gaikwadlightinghou.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":600000000,\"buyerType\":\"lighting\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C07",
+     "ord": 6,
+     "json": "{\"id\":\"C07\",\"kind\":\"customer\",\"name\":\"Shinde Infra Projects\",\"entity\":\"company\",\"gstin\":\"27BCNCS2610R1ZN\",\"pan\":\"BCNCS2610R\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Rohit Shinde\",\"phone\":\"+91 9848112785\",\"email\":\"accounts@shindeinfraproject.in\"},\"paymentTermsDays\":60,\"creditLimitPaise\":600000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C08",
+     "ord": 7,
+     "json": "{\"id\":\"C08\",\"kind\":\"customer\",\"name\":\"Apte Hardware\",\"entity\":\"firm\",\"gstin\":\"27XMAFA9397H1ZS\",\"pan\":\"XMAFA9397H\",\"stateCode\":\"27\",\"city\":\"Mumbai\",\"contact\":{\"name\":\"Madhav Apte\",\"phone\":\"+91 9317224855\",\"email\":\"accounts@aptehardware.in\"},\"paymentTermsDays\":15,\"creditLimitPaise\":100000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C09",
+     "ord": 8,
+     "json": "{\"id\":\"C09\",\"kind\":\"customer\",\"name\":\"Bhosale Enterprises\",\"entity\":\"firm\",\"gstin\":\"27NKWFB3126W1ZH\",\"pan\":\"NKWFB3126W\",\"stateCode\":\"27\",\"city\":\"Ahmednagar\",\"contact\":{\"name\":\"Pradeep Bhosale\",\"phone\":\"+91 9747018094\",\"email\":\"accounts@bhosaleenterprises.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":100000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C10",
+     "ord": 9,
+     "json": "{\"id\":\"C10\",\"kind\":\"customer\",\"name\":\"Wagh Power Solutions\",\"entity\":\"firm\",\"gstin\":\"27SFUFW7219W1ZU\",\"pan\":\"SFUFW7219W\",\"stateCode\":\"27\",\"city\":\"Nagpur\",\"contact\":{\"name\":\"Amit Wagh\",\"phone\":\"+91 9972609449\",\"email\":\"accounts@waghpowersolutions.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":250000000,\"buyerType\":\"solar\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C11",
+     "ord": 10,
+     "json": "{\"id\":\"C11\",\"kind\":\"customer\",\"name\":\"Jadhav & Sons\",\"entity\":\"firm\",\"gstin\":\"27HZCFJ6021C1ZA\",\"pan\":\"HZCFJ6021C\",\"stateCode\":\"27\",\"city\":\"Solapur\",\"contact\":{\"name\":\"Suresh Jadhav\",\"phone\":\"+91 9350479573\",\"email\":\"accounts@jadhavsons.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":200000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C12",
+     "ord": 11,
+     "json": "{\"id\":\"C12\",\"kind\":\"customer\",\"name\":\"More Electricals\",\"entity\":\"firm\",\"gstin\":\"27CNLFM6981M1ZL\",\"pan\":\"CNLFM6981M\",\"stateCode\":\"27\",\"city\":\"Chhatrapati Sambhajinagar\",\"contact\":{\"name\":\"Kiran More\",\"phone\":\"+91 9895803122\",\"email\":\"accounts@moreelectricals.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":100000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C13",
+     "ord": 12,
+     "json": "{\"id\":\"C13\",\"kind\":\"customer\",\"name\":\"Kale Constructions\",\"entity\":\"company\",\"gstin\":\"27WZSCK7416A1ZF\",\"pan\":\"WZSCK7416A\",\"stateCode\":\"27\",\"city\":\"Pimpri\",\"contact\":{\"name\":\"Ganesh Kale\",\"phone\":\"+91 9712828580\",\"email\":\"accounts@kaleconstructions.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":400000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C14",
+     "ord": 13,
+     "json": "{\"id\":\"C14\",\"kind\":\"customer\",\"name\":\"Phadke Home Store\",\"entity\":\"firm\",\"gstin\":\"27YKJFP8366H1ZG\",\"pan\":\"YKJFP8366H\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Aditi Phadke\",\"phone\":\"+91 9542190544\",\"email\":\"accounts@phadkehomestore.in\"},\"paymentTermsDays\":15,\"creditLimitPaise\":150000000,\"buyerType\":\"lighting\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C15",
+     "ord": 14,
+     "json": "{\"id\":\"C15\",\"kind\":\"customer\",\"name\":\"Lokhande Industries\",\"entity\":\"company\",\"gstin\":\"27FGDCL2821P1ZR\",\"pan\":\"FGDCL2821P\",\"stateCode\":\"27\",\"city\":\"Chakan\",\"contact\":{\"name\":\"Prakash Lokhande\",\"phone\":\"+91 9303597459\",\"email\":\"accounts@lokhandeindustries.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":100000000,\"buyerType\":\"industrial\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C16",
+     "ord": 15,
+     "json": "{\"id\":\"C16\",\"kind\":\"customer\",\"name\":\"Hegde Electricals\",\"entity\":\"firm\",\"gstin\":\"29MPDFH4621D1ZI\",\"pan\":\"MPDFH4621D\",\"stateCode\":\"29\",\"city\":\"Belagavi\",\"contact\":{\"name\":\"Ramesh Hegde\",\"phone\":\"+91 9470287148\",\"email\":\"accounts@hegdeelectricals.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":200000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C17",
+     "ord": 16,
+     "json": "{\"id\":\"C17\",\"kind\":\"customer\",\"name\":\"Shetty Builders\",\"entity\":\"company\",\"gstin\":\"29DDNCS1914S1Z8\",\"pan\":\"DDNCS1914S\",\"stateCode\":\"29\",\"city\":\"Bengaluru\",\"contact\":{\"name\":\"Kavya Shetty\",\"phone\":\"+91 9814774706\",\"email\":\"accounts@shettybuilders.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":100000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C18",
+     "ord": 17,
+     "json": "{\"id\":\"C18\",\"kind\":\"customer\",\"name\":\"Naik Hardware\",\"entity\":\"firm\",\"gstin\":\"30JVGFN1105M1Z9\",\"pan\":\"JVGFN1105M\",\"stateCode\":\"30\",\"city\":\"Margao\",\"contact\":{\"name\":\"Joao Naik\",\"phone\":\"+91 9245188703\",\"email\":\"accounts@naikhardware.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":150000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C19",
+     "ord": 18,
+     "json": "{\"id\":\"C19\",\"kind\":\"customer\",\"name\":\"Kamat Constructions\",\"entity\":\"company\",\"gstin\":\"30MBDCK1377P1ZZ\",\"pan\":\"MBDCK1377P\",\"stateCode\":\"30\",\"city\":\"Panaji\",\"contact\":{\"name\":\"Siddharth Kamat\",\"phone\":\"+91 9504062710\",\"email\":\"accounts@kamatconstructions.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":400000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C20",
+     "ord": 19,
+     "json": "{\"id\":\"C20\",\"kind\":\"customer\",\"name\":\"Patel Switchgear Mart\",\"entity\":\"firm\",\"gstin\":\"24YKUFP7410H1ZS\",\"pan\":\"YKUFP7410H\",\"stateCode\":\"24\",\"city\":\"Surat\",\"contact\":{\"name\":\"Hitesh Patel\",\"phone\":\"+91 9705036102\",\"email\":\"accounts@patelswitchgearmar.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":250000000,\"buyerType\":\"switchgear\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C21",
+     "ord": 20,
+     "json": "{\"id\":\"C21\",\"kind\":\"customer\",\"name\":\"Desai Infra\",\"entity\":\"company\",\"gstin\":\"24HAACD5083B1ZZ\",\"pan\":\"HAACD5083B\",\"stateCode\":\"24\",\"city\":\"Vadodara\",\"contact\":{\"name\":\"Mehul Desai\",\"phone\":\"+91 9223707317\",\"email\":\"accounts@desaiinfra.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":200000000,\"buyerType\":\"project\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C22",
+     "ord": 21,
+     "json": "{\"id\":\"C22\",\"kind\":\"customer\",\"name\":\"Reddy Electricals\",\"entity\":\"firm\",\"gstin\":\"36YMAFR7564L1ZD\",\"pan\":\"YMAFR7564L\",\"stateCode\":\"36\",\"city\":\"Hyderabad\",\"contact\":{\"name\":\"Srinivas Reddy\",\"phone\":\"+91 9567662209\",\"email\":\"accounts@reddyelectricals.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":250000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C23",
+     "ord": 22,
+     "json": "{\"id\":\"C23\",\"kind\":\"customer\",\"name\":\"Verma Traders\",\"entity\":\"firm\",\"gstin\":\"23ZPAFV4126J1ZT\",\"pan\":\"ZPAFV4126J\",\"stateCode\":\"23\",\"city\":\"Indore\",\"contact\":{\"name\":\"Anurag Verma\",\"phone\":\"+91 9464094408\",\"email\":\"accounts@vermatraders.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":250000000,\"buyerType\":\"retail\",\"tan\":null}"
+    },
+    {
+     "coll": "parties",
+     "id": "C24",
+     "ord": 23,
+     "json": "{\"id\":\"C24\",\"kind\":\"customer\",\"name\":\"Urban Nest Interiors Pvt Ltd\",\"entity\":\"company\",\"gstin\":\"27MMYCU6043S1Z1\",\"pan\":\"MMYCU6043S\",\"stateCode\":\"27\",\"city\":\"Mumbai\",\"contact\":{\"name\":\"Ishita Malhotra\",\"phone\":\"+91 9540976115\",\"email\":\"accounts@urbannestinteriors.in\"},\"paymentTermsDays\":30,\"creditLimitPaise\":150000000,\"buyerType\":\"lighting\",\"tan\":\"MUMU04417F\"}"
+    },
+    {
+     "coll": "parties",
+     "id": "C25",
+     "ord": 24,
+     "json": "{\"id\":\"C25\",\"kind\":\"customer\",\"name\":\"Sahyog Infratech Ltd\",\"entity\":\"company\",\"gstin\":\"27KGWCS6656D1Z4\",\"pan\":\"KGWCS6656D\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Nitin Bapat\",\"phone\":\"+91 9269386522\",\"email\":\"accounts@sahyoginfratechltd.in\"},\"paymentTermsDays\":45,\"creditLimitPaise\":100000000,\"buyerType\":\"project\",\"tan\":\"PNES12093B\"}"
+    },
+    {
+     "coll": "parties",
+     "id": "V01",
+     "ord": 25,
+     "json": "{\"id\":\"V01\",\"kind\":\"vendor\",\"name\":\"Sahyadri Cables Pvt Ltd\",\"entity\":\"company\",\"gstin\":\"27YNMCS7586Z1Z5\",\"pan\":\"YNMCS7586Z\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9893756166\",\"email\":\"billing@sahyadricablespvtl.in\"},\"supplyKind\":\"goods\",\"tdsSection\":\"194Q\",\"tdsRateBp\":10}"
+    },
+    {
+     "coll": "parties",
+     "id": "V02",
+     "ord": 26,
+     "json": "{\"id\":\"V02\",\"kind\":\"vendor\",\"name\":\"Narmada Switchgear Ltd\",\"entity\":\"company\",\"gstin\":\"24HFLCN6981P1Z2\",\"pan\":\"HFLCN6981P\",\"stateCode\":\"24\",\"city\":\"Ahmedabad\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9376047326\",\"email\":\"billing@narmadaswitchgearl.in\"},\"supplyKind\":\"goods\",\"tdsSection\":null,\"tdsRateBp\":0}"
+    },
+    {
+     "coll": "parties",
+     "id": "V03",
+     "ord": 27,
+     "json": "{\"id\":\"V03\",\"kind\":\"vendor\",\"name\":\"Deccan Lighting Co\",\"entity\":\"firm\",\"gstin\":\"36XENFD1632W1ZT\",\"pan\":\"XENFD1632W\",\"stateCode\":\"36\",\"city\":\"Hyderabad\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9431273147\",\"email\":\"billing@deccanlightingco.in\"},\"supplyKind\":\"goods\",\"tdsSection\":null,\"tdsRateBp\":0}"
+    },
+    {
+     "coll": "parties",
+     "id": "V04",
+     "ord": 28,
+     "json": "{\"id\":\"V04\",\"kind\":\"vendor\",\"name\":\"Bharat Fans & Appliances\",\"entity\":\"company\",\"gstin\":\"07NWLCB8985X1ZH\",\"pan\":\"NWLCB8985X\",\"stateCode\":\"07\",\"city\":\"New Delhi\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9220559148\",\"email\":\"billing@bharatfansapplianc.in\"},\"supplyKind\":\"goods\",\"tdsSection\":null,\"tdsRateBp\":0}"
+    },
+    {
+     "coll": "parties",
+     "id": "V05",
+     "ord": 29,
+     "json": "{\"id\":\"V05\",\"kind\":\"vendor\",\"name\":\"Konkan Logistics Pvt Ltd\",\"entity\":\"company\",\"gstin\":\"27ERXCK9287H1ZD\",\"pan\":\"ERXCK9287H\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9786485948\",\"email\":\"billing@konkanlogisticspvt.in\"},\"supplyKind\":\"service\",\"tdsSection\":\"194C\",\"tdsRateBp\":200}"
+    },
+    {
+     "coll": "parties",
+     "id": "V06",
+     "ord": 30,
+     "json": "{\"id\":\"V06\",\"kind\":\"vendor\",\"name\":\"Mehta & Associates\",\"entity\":\"firm\",\"gstin\":\"27GCVFM6755X1ZC\",\"pan\":\"GCVFM6755X\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9982953747\",\"email\":\"billing@mehtaassociates.in\"},\"supplyKind\":\"professional\",\"tdsSection\":\"194J\",\"tdsRateBp\":1000}"
+    },
+    {
+     "coll": "parties",
+     "id": "V07",
+     "ord": 31,
+     "json": "{\"id\":\"V07\",\"kind\":\"vendor\",\"name\":\"Shirke Properties\",\"entity\":\"individual\",\"gstin\":null,\"pan\":\"HEJPS5280Y\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9455256683\",\"email\":\"billing@shirkeproperties.in\"},\"supplyKind\":\"rent\",\"tdsSection\":\"194I\",\"tdsRateBp\":1000}"
+    },
+    {
+     "coll": "parties",
+     "id": "V08",
+     "ord": 32,
+     "json": "{\"id\":\"V08\",\"kind\":\"vendor\",\"name\":\"Patil Sales Agency\",\"entity\":\"individual\",\"gstin\":null,\"pan\":\"BTDPP9240N\",\"stateCode\":\"27\",\"city\":\"Pune\",\"contact\":{\"name\":\"Accounts desk\",\"phone\":\"+91 9835786775\",\"email\":\"billing@patilsalesagency.in\"},\"supplyKind\":\"commission\",\"tdsSection\":\"194H\",\"tdsRateBp\":200}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-101",
+     "ord": 0,
+     "json": "{\"id\":\"SKU-101\",\"name\":\"FR PVC wire 1.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":145000,\"costPaise\":118994,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-102",
+     "ord": 1,
+     "json": "{\"id\":\"SKU-102\",\"name\":\"FR PVC wire 1.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":215000,\"costPaise\":163062,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-103",
+     "ord": 2,
+     "json": "{\"id\":\"SKU-103\",\"name\":\"FR PVC wire 2.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":335000,\"costPaise\":274961,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-104",
+     "ord": 3,
+     "json": "{\"id\":\"SKU-104\",\"name\":\"FR PVC wire 4.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":525000,\"costPaise\":428853,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-105",
+     "ord": 4,
+     "json": "{\"id\":\"SKU-105\",\"name\":\"FR PVC wire 6.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":790000,\"costPaise\":598945,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-106",
+     "ord": 5,
+     "json": "{\"id\":\"SKU-106\",\"name\":\"Armoured cable 4 core 16 sq mm\",\"hsn\":\"8544\",\"unit\":\"MTR\",\"gstRate\":18,\"pricePaise\":41000,\"costPaise\":33425,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-107",
+     "ord": 6,
+     "json": "{\"id\":\"SKU-107\",\"name\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"unit\":\"MTR\",\"gstRate\":18,\"pricePaise\":62000,\"costPaise\":51293,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-108",
+     "ord": 7,
+     "json": "{\"id\":\"SKU-108\",\"name\":\"LAN cable Cat6, 305 m box\",\"hsn\":\"8544\",\"unit\":\"BOX\",\"gstRate\":18,\"pricePaise\":890000,\"costPaise\":647970,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-109",
+     "ord": 8,
+     "json": "{\"id\":\"SKU-109\",\"name\":\"Coaxial cable RG6, 90 m\",\"hsn\":\"8544\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":230000,\"costPaise\":176268,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-110",
+     "ord": 9,
+     "json": "{\"id\":\"SKU-110\",\"name\":\"Flexible cable 3 core 2.5 sq mm\",\"hsn\":\"8544\",\"unit\":\"MTR\",\"gstRate\":18,\"pricePaise\":9500,\"costPaise\":7389,\"category\":\"Cables\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-201",
+     "ord": 10,
+     "json": "{\"id\":\"SKU-201\",\"name\":\"MCB single pole 16 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":18500,\"costPaise\":14592,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-202",
+     "ord": 11,
+     "json": "{\"id\":\"SKU-202\",\"name\":\"MCB double pole 32 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":62000,\"costPaise\":50059,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-203",
+     "ord": 12,
+     "json": "{\"id\":\"SKU-203\",\"name\":\"RCCB 4 pole 63 A 30 mA\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":385000,\"costPaise\":303870,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-204",
+     "ord": 13,
+     "json": "{\"id\":\"SKU-204\",\"name\":\"MCCB 100 A 3 pole\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":690000,\"costPaise\":551451,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-205",
+     "ord": 14,
+     "json": "{\"id\":\"SKU-205\",\"name\":\"Distribution board 8 way DP\",\"hsn\":\"8537\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":245000,\"costPaise\":199218,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-206",
+     "ord": 15,
+     "json": "{\"id\":\"SKU-206\",\"name\":\"Modular switch 6 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":4800,\"costPaise\":3997,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-207",
+     "ord": 16,
+     "json": "{\"id\":\"SKU-207\",\"name\":\"Modular socket 16 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":16500,\"costPaise\":12251,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-208",
+     "ord": 17,
+     "json": "{\"id\":\"SKU-208\",\"name\":\"Changeover switch 63 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":295000,\"costPaise\":225855,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-209",
+     "ord": 18,
+     "json": "{\"id\":\"SKU-209\",\"name\":\"Isolator 4 pole 63 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":115000,\"costPaise\":85566,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-210",
+     "ord": 19,
+     "json": "{\"id\":\"SKU-210\",\"name\":\"Power contactor 32 A\",\"hsn\":\"8536\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":185000,\"costPaise\":156969,\"category\":\"Switchgear\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-301",
+     "ord": 20,
+     "json": "{\"id\":\"SKU-301\",\"name\":\"LED bulb 9 W\",\"hsn\":\"8539\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":6800,\"costPaise\":4944,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-302",
+     "ord": 21,
+     "json": "{\"id\":\"SKU-302\",\"name\":\"LED batten 20 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":26000,\"costPaise\":19018,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-303",
+     "ord": 22,
+     "json": "{\"id\":\"SKU-303\",\"name\":\"LED panel 2x2 ft 36 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":115000,\"costPaise\":97724,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-304",
+     "ord": 23,
+     "json": "{\"id\":\"SKU-304\",\"name\":\"LED floodlight 100 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":235000,\"costPaise\":186226,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-305",
+     "ord": 24,
+     "json": "{\"id\":\"SKU-305\",\"name\":\"LED street light 60 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":320000,\"costPaise\":250420,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-306",
+     "ord": 25,
+     "json": "{\"id\":\"SKU-306\",\"name\":\"LED downlight 12 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":29000,\"costPaise\":24351,\"category\":\"Lighting\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-307",
+     "ord": 26,
+     "json": "{\"id\":\"SKU-307\",\"name\":\"Solar street light 30 W\",\"hsn\":\"9405\",\"unit\":\"NOS\",\"gstRate\":5,\"pricePaise\":780000,\"costPaise\":575185,\"category\":\"Solar\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-308",
+     "ord": 27,
+     "json": "{\"id\":\"SKU-308\",\"name\":\"Solar inverter 3 kVA\",\"hsn\":\"8504\",\"unit\":\"NOS\",\"gstRate\":5,\"pricePaise\":3850000,\"costPaise\":2867245,\"category\":\"Solar\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-309",
+     "ord": 28,
+     "json": "{\"id\":\"SKU-309\",\"name\":\"Solar PV module 540 Wp\",\"hsn\":\"8541\",\"unit\":\"NOS\",\"gstRate\":5,\"pricePaise\":1420000,\"costPaise\":1061830,\"category\":\"Solar\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-401",
+     "ord": 29,
+     "json": "{\"id\":\"SKU-401\",\"name\":\"Ceiling fan 1200 mm\",\"hsn\":\"8414\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":185000,\"costPaise\":151063,\"category\":\"Fans\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-402",
+     "ord": 30,
+     "json": "{\"id\":\"SKU-402\",\"name\":\"BLDC ceiling fan 1200 mm\",\"hsn\":\"8414\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":345000,\"costPaise\":290235,\"category\":\"Fans\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-403",
+     "ord": 31,
+     "json": "{\"id\":\"SKU-403\",\"name\":\"Exhaust fan 300 mm\",\"hsn\":\"8414\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":125000,\"costPaise\":91683,\"category\":\"Fans\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-404",
+     "ord": 32,
+     "json": "{\"id\":\"SKU-404\",\"name\":\"Pedestal fan 400 mm\",\"hsn\":\"8414\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":215000,\"costPaise\":159011,\"category\":\"Fans\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-501",
+     "ord": 33,
+     "json": "{\"id\":\"SKU-501\",\"name\":\"PVC conduit pipe 25 mm, 3 m\",\"hsn\":\"3917\",\"unit\":\"PCS\",\"gstRate\":18,\"pricePaise\":7200,\"costPaise\":5491,\"category\":\"Conduit\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-502",
+     "ord": 34,
+     "json": "{\"id\":\"SKU-502\",\"name\":\"PVC junction box 4 way\",\"hsn\":\"3925\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":3800,\"costPaise\":3072,\"category\":\"Conduit\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-503",
+     "ord": 35,
+     "json": "{\"id\":\"SKU-503\",\"name\":\"Nylon cable ties, pack of 100\",\"hsn\":\"3926\",\"unit\":\"PAC\",\"gstRate\":18,\"pricePaise\":14500,\"costPaise\":11857,\"category\":\"Conduit\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-504",
+     "ord": 36,
+     "json": "{\"id\":\"SKU-504\",\"name\":\"PVC insulation tape\",\"hsn\":\"3919\",\"unit\":\"ROL\",\"gstRate\":18,\"pricePaise\":2200,\"costPaise\":1813,\"category\":\"Conduit\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-601",
+     "ord": 37,
+     "json": "{\"id\":\"SKU-601\",\"name\":\"Voltage stabiliser 5 kVA\",\"hsn\":\"8504\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":560000,\"costPaise\":450295,\"category\":\"Power\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-602",
+     "ord": 38,
+     "json": "{\"id\":\"SKU-602\",\"name\":\"Line interactive UPS 1 kVA\",\"hsn\":\"8504\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":680000,\"costPaise\":501626,\"category\":\"Power\"}"
+    },
+    {
+     "coll": "skus",
+     "id": "SKU-603",
+     "ord": 39,
+     "json": "{\"id\":\"SKU-603\",\"name\":\"Tubular battery 150 Ah\",\"hsn\":\"8507\",\"unit\":\"NOS\",\"gstRate\":18,\"pricePaise\":1390000,\"costPaise\":1083266,\"category\":\"Power\"}"
+    },
+    {
+     "coll": "documents",
+     "id": "doc-s0001",
+     "ord": 0,
+     "json": "{\"id\":\"doc-s0001\",\"kind\":\"sales_invoice\",\"refId\":\"inv-0001\",\"file\":\"/api/o/off_savedbooksabcdef/files/doc-s0001\",\"pages\":1,\"receivedAt\":\"2026-04-01T17:23:00+05:30\",\"channel\":\"generated\",\"from\":null,\"status\":\"posted\",\"regions\":[{\"key\":\"number\",\"label\":\"Invoice number\",\"page\":1,\"box\":[0.063,0.13564,0.12139,0.01865]},{\"key\":\"date\",\"label\":\"Invoice date\",\"page\":1,\"box\":[0.28138,0.13564,0.09992,0.01865]},{\"key\":\"terms\",\"label\":\"Payment terms\",\"page\":1,\"box\":[0.44937,0.13564,0.06723,0.01865]},{\"key\":\"dueDate\",\"label\":\"Due date\",\"page\":1,\"box\":[0.61736,0.13564,0.10645,0.01865]},{\"key\":\"party\",\"label\":\"Customer\",\"page\":1,\"box\":[0.063,0.18336,0.14087,0.01992]},{\"key\":\"gstin\",\"label\":\"Customer GSTIN\",\"page\":1,\"box\":[0.063,0.21549,0.18535,0.01674]},{\"key\":\"pos\",\"label\":\"Place of supply\",\"page\":1,\"box\":[0.55017,0.18434,0.13723,0.01865]},{\"key\":\"line.0.description\",\"label\":\"Line 1 description\",\"page\":1,\"box\":[0.09995,0.27251,0.16711,0.01674]},{\"key\":\"line.0.hsn\",\"label\":\"Line 1 HSN\",\"page\":1,\"box\":[0.41577,0.27251,0.04016,0.01674]},{\"key\":\"line.0.qty\",\"label\":\"Line 1 quantity\",\"page\":1,\"box\":[0.50096,0.27251,0.05761,0.01674]},{\"key\":\"line.0.taxable\",\"label\":\"Line 1 taxable value\",\"page\":1,\"box\":[0.73192,0.27251,0.07191,0.01674]},{\"key\":\"line.0.rate\",\"label\":\"Line 1 GST rate\",\"page\":1,\"box\":[0.81053,0.27251,0.03697,0.01674]},{\"key\":\"line.0.tax\",\"label\":\"Line 1 tax\",\"page\":1,\"box\":[0.86967,0.27251,0.07191,0.01674]},{\"key\":\"line.1.description\",\"label\":\"Line 2 description\",\"page\":1,\"box\":[0.09995,0.29151,0.15126,0.01674]},{\"key\":\"line.1.hsn\",\"label\":\"Line 2 HSN\",\"page\":1,\"box\":[0.41577,0.29151,0.04016,0.01674]},{\"key\":\"line.1.qty\",\"label\":\"Line 2 quantity\",\"page\":1,\"box\":[0.49937,0.29151,0.05919,0.01674]},{\"key\":\"line.1.taxable\",\"label\":\"Line 2 taxable value\",\"page\":1,\"box\":[0.73192,0.29151,0.07191,0.01674]},{\"key\":\"line.1.rate\",\"label\":\"Line 2 GST rate\",\"page\":1,\"box\":[0.81053,0.29151,0.03697,0.01674]},{\"key\":\"line.1.tax\",\"label\":\"Line 2 tax\",\"page\":1,\"box\":[0.87761,0.29151,0.06397,0.01674]},{\"key\":\"line.2.description\",\"label\":\"Line 3 description\",\"page\":1,\"box\":[0.09995,0.31052,0.1338,0.01674]},{\"key\":\"line.2.hsn\",\"label\":\"Line 3 HSN\",\"page\":1,\"box\":[0.41577,0.31052,0.04016,0.01674]},{\"key\":\"line.2.qty\",\"label\":\"Line 3 quantity\",\"page\":1,\"box\":[0.50096,0.31052,0.05761,0.01674]},{\"key\":\"line.2.taxable\",\"label\":\"Line 3 taxable value\",\"page\":1,\"box\":[0.73986,0.31052,0.06397,0.01674]},{\"key\":\"line.2.rate\",\"label\":\"Line 3 GST rate\",\"page\":1,\"box\":[0.81053,0.31052,0.03697,0.01674]},{\"key\":\"line.2.tax\",\"label\":\"Line 3 tax\",\"page\":1,\"box\":[0.88952,0.31052,0.05206,0.01674]},{\"key\":\"line.3.description\",\"label\":\"Line 4 description\",\"page\":1,\"box\":[0.09995,0.32952,0.13458,0.01674]},{\"key\":\"line.3.hsn\",\"label\":\"Line 4 HSN\",\"page\":1,\"box\":[0.41577,0.32952,0.04016,0.01674]},{\"key\":\"line.3.qty\",\"label\":\"Line 4 quantity\",\"page\":1,\"box\":[0.49937,0.32952,0.05919,0.01674]},{\"key\":\"line.3.taxable\",\"label\":\"Line 4 taxable value\",\"page\":1,\"box\":[0.72001,0.32952,0.08382,0.01674]},{\"key\":\"line.3.rate\",\"label\":\"Line 4 GST rate\",\"page\":1,\"box\":[0.81053,0.32952,0.03697,0.01674]},{\"key\":\"line.3.tax\",\"label\":\"Line 4 tax\",\"page\":1,\"box\":[0.85776,0.32952,0.08382,0.01674]},{\"key\":\"line.4.description\",\"label\":\"Line 5 description\",\"page\":1,\"box\":[0.09995,0.34853,0.13935,0.01674]},{\"key\":\"line.4.hsn\",\"label\":\"Line 5 HSN\",\"page\":1,\"box\":[0.41577,0.34853,0.04016,0.01674]},{\"key\":\"line.4.qty\",\"label\":\"Line 5 quantity\",\"page\":1,\"box\":[0.49937,0.34853,0.05919,0.01674]},{\"key\":\"line.4.taxable\",\"label\":\"Line 5 taxable value\",\"page\":1,\"box\":[0.73192,0.34853,0.07191,0.01674]},{\"key\":\"line.4.rate\",\"label\":\"Line 5 GST rate\",\"page\":1,\"box\":[0.81053,0.34853,0.03697,0.01674]},{\"key\":\"line.4.tax\",\"label\":\"Line 5 tax\",\"page\":1,\"box\":[0.87761,0.34853,0.06397,0.01674]},{\"key\":\"totals.taxable\",\"label\":\"Taxable value\",\"page\":1,\"box\":[0.85332,0.37655,0.08826,0.01738]},{\"key\":\"totals.cgst\",\"label\":\"CGST\",\"page\":1,\"box\":[0.86593,0.39317,0.07565,0.01738]},{\"key\":\"totals.sgst\",\"label\":\"SGST\",\"page\":1,\"box\":[0.86593,0.4098,0.07565,0.01738]},{\"key\":\"totals.roundOff\",\"label\":\"Round off\",\"page\":1,\"box\":[0.90376,0.42643,0.03782,0.01738]},{\"key\":\"totals.total\",\"label\":\"Invoice total\",\"page\":1,\"box\":[0.83558,0.44824,0.106,0.01992]},{\"key\":\"totals.words\",\"label\":\"Amount in words\",\"page\":1,\"box\":[0.063,0.47443,0.38697,0.01674]}]}"
+    },
+    {
+     "coll": "documents",
+     "id": "doc-s0002",
+     "ord": 1,
+     "json": "{\"id\":\"doc-s0002\",\"kind\":\"sales_invoice\",\"refId\":\"inv-0002\",\"file\":\"/api/o/off_savedbooksabcdef/files/doc-s0002\",\"pages\":1,\"receivedAt\":\"2026-04-01T11:15:00+05:30\",\"channel\":\"generated\",\"from\":null,\"status\":\"posted\",\"regions\":[{\"key\":\"number\",\"label\":\"Invoice number\",\"page\":1,\"box\":[0.063,0.13564,0.12139,0.01865]},{\"key\":\"date\",\"label\":\"Invoice date\",\"page\":1,\"box\":[0.28138,0.13564,0.09992,0.01865]},{\"key\":\"terms\",\"label\":\"Payment terms\",\"page\":1,\"box\":[0.44937,0.13564,0.06723,0.01865]},{\"key\":\"dueDate\",\"label\":\"Due date\",\"page\":1,\"box\":[0.61736,0.13564,0.10645,0.01865]},{\"key\":\"party\",\"label\":\"Customer\",\"page\":1,\"box\":[0.063,0.18336,0.19219,0.01992]},{\"key\":\"gstin\",\"label\":\"Customer GSTIN\",\"page\":1,\"box\":[0.063,0.21549,0.1925,0.01674]},{\"key\":\"pos\",\"label\":\"Place of supply\",\"page\":1,\"box\":[0.55017,0.18434,0.13723,0.01865]},{\"key\":\"line.0.description\",\"label\":\"Line 1 description\",\"page\":1,\"box\":[0.09995,0.27251,0.1338,0.01674]},{\"key\":\"line.0.hsn\",\"label\":\"Line 1 HSN\",\"page\":1,\"box\":[0.41577,0.27251,0.04016,0.01674]},{\"key\":\"line.0.qty\",\"label\":\"Line 1 quantity\",\"page\":1,\"box\":[0.49302,0.27251,0.06554,0.01674]},{\"key\":\"line.0.taxable\",\"label\":\"Line 1 taxable value\",\"page\":1,\"box\":[0.73986,0.27251,0.06397,0.01674]},{\"key\":\"line.0.rate\",\"label\":\"Line 1 GST rate\",\"page\":1,\"box\":[0.81053,0.27251,0.03697,0.01674]},{\"key\":\"line.0.tax\",\"label\":\"Line 1 tax\",\"page\":1,\"box\":[0.88952,0.27251,0.05206,0.01674]},{\"key\":\"line.1.description\",\"label\":\"Line 2 description\",\"page\":1,\"box\":[0.09995,0.29151,0.14331,0.01674]},{\"key\":\"line.1.hsn\",\"label\":\"Line 2 HSN\",\"page\":1,\"box\":[0.41577,0.29151,0.04016,0.01674]},{\"key\":\"line.1.qty\",\"label\":\"Line 2 quantity\",\"page\":1,\"box\":[0.49937,0.29151,0.05919,0.01674]},{\"key\":\"line.1.taxable\",\"label\":\"Line 2 taxable value\",\"page\":1,\"box\":[0.72001,0.29151,0.08382,0.01674]},{\"key\":\"line.1.rate\",\"label\":\"Line 2 GST rate\",\"page\":1,\"box\":[0.81053,0.29151,0.03697,0.01674]},{\"key\":\"line.1.tax\",\"label\":\"Line 2 tax\",\"page\":1,\"box\":[0.86967,0.29151,0.07191,0.01674]},{\"key\":\"line.2.description\",\"label\":\"Line 3 description\",\"page\":1,\"box\":[0.09995,0.31052,0.14569,0.01674]},{\"key\":\"line.2.hsn\",\"label\":\"Line 3 HSN\",\"page\":1,\"box\":[0.41577,0.31052,0.04016,0.01674]},{\"key\":\"line.2.qty\",\"label\":\"Line 3 quantity\",\"page\":1,\"box\":[0.49937,0.31052,0.05919,0.01674]},{\"key\":\"line.2.taxable\",\"label\":\"Line 3 taxable value\",\"page\":1,\"box\":[0.73986,0.31052,0.06397,0.01674]},{\"key\":\"line.2.rate\",\"label\":\"Line 3 GST rate\",\"page\":1,\"box\":[0.81053,0.31052,0.03697,0.01674]},{\"key\":\"line.2.tax\",\"label\":\"Line 3 tax\",\"page\":1,\"box\":[0.88952,0.31052,0.05206,0.01674]},{\"key\":\"line.3.description\",\"label\":\"Line 4 description\",\"page\":1,\"box\":[0.09995,0.32952,0.183,0.01674]},{\"key\":\"line.3.hsn\",\"label\":\"Line 4 HSN\",\"page\":1,\"box\":[0.41577,0.32952,0.04016,0.01674]},{\"key\":\"line.3.qty\",\"label\":\"Line 4 quantity\",\"page\":1,\"box\":[0.50016,0.32952,0.0584,0.01674]},{\"key\":\"line.3.taxable\",\"label\":\"Line 4 taxable value\",\"page\":1,\"box\":[0.72001,0.32952,0.08382,0.01674]},{\"key\":\"line.3.rate\",\"label\":\"Line 4 GST rate\",\"page\":1,\"box\":[0.81053,0.32952,0.03697,0.01674]},{\"key\":\"line.3.tax\",\"label\":\"Line 4 tax\",\"page\":1,\"box\":[0.86967,0.32952,0.07191,0.01674]},{\"key\":\"line.4.description\",\"label\":\"Line 5 description\",\"page\":1,\"box\":[0.09995,0.34853,0.09649,0.01674]},{\"key\":\"line.4.hsn\",\"label\":\"Line 5 HSN\",\"page\":1,\"box\":[0.41577,0.34853,0.04016,0.01674]},{\"key\":\"line.4.qty\",\"label\":\"Line 5 quantity\",\"page\":1,\"box\":[0.49937,0.34853,0.05919,0.01674]},{\"key\":\"line.4.taxable\",\"label\":\"Line 5 taxable value\",\"page\":1,\"box\":[0.73986,0.34853,0.06397,0.01674]},{\"key\":\"line.4.rate\",\"label\":\"Line 5 GST rate\",\"page\":1,\"box\":[0.81053,0.34853,0.03697,0.01674]},{\"key\":\"line.4.tax\",\"label\":\"Line 5 tax\",\"page\":1,\"box\":[0.88952,0.34853,0.05206,0.01674]},{\"key\":\"line.5.description\",\"label\":\"Line 6 description\",\"page\":1,\"box\":[0.09995,0.36753,0.21949,0.01674]},{\"key\":\"line.5.hsn\",\"label\":\"Line 6 HSN\",\"page\":1,\"box\":[0.41577,0.36753,0.04016,0.01674]},{\"key\":\"line.5.qty\",\"label\":\"Line 6 quantity\",\"page\":1,\"box\":[0.49145,0.36753,0.06712,0.01674]},{\"key\":\"line.5.taxable\",\"label\":\"Line 6 taxable value\",\"page\":1,\"box\":[0.73192,0.36753,0.07191,0.01674]},{\"key\":\"line.5.rate\",\"label\":\"Line 6 GST rate\",\"page\":1,\"box\":[0.81053,0.36753,0.03697,0.01674]},{\"key\":\"line.5.tax\",\"label\":\"Line 6 tax\",\"page\":1,\"box\":[0.86967,0.36753,0.07191,0.01674]},{\"key\":\"line.6.description\",\"label\":\"Line 7 description\",\"page\":1,\"box\":[0.09995,0.38653,0.19094,0.01674]},{\"key\":\"line.6.hsn\",\"label\":\"Line 7 HSN\",\"page\":1,\"box\":[0.41577,0.38653,0.04016,0.01674]},{\"key\":\"line.6.qty\",\"label\":\"Line 7 quantity\",\"page\":1,\"box\":[0.49302,0.38653,0.06554,0.01674]},{\"key\":\"line.6.taxable\",\"label\":\"Line 7 taxable value\",\"page\":1,\"box\":[0.73192,0.38653,0.07191,0.01674]},{\"key\":\"line.6.rate\",\"label\":\"Line 7 GST rate\",\"page\":1,\"box\":[0.81053,0.38653,0.03697,0.01674]},{\"key\":\"line.6.tax\",\"label\":\"Line 7 tax\",\"page\":1,\"box\":[0.87761,0.38653,0.06397,0.01674]},{\"key\":\"totals.taxable\",\"label\":\"Taxable value\",\"page\":1,\"box\":[0.85332,0.41456,0.08826,0.01738]},{\"key\":\"totals.cgst\",\"label\":\"CGST\",\"page\":1,\"box\":[0.86593,0.43118,0.07565,0.01738]},{\"key\":\"totals.sgst\",\"label\":\"SGST\",\"page\":1,\"box\":[0.86593,0.44781,0.07565,0.01738]},{\"key\":\"totals.roundOff\",\"label\":\"Round off\",\"page\":1,\"box\":[0.89872,0.46444,0.04286,0.01738]},{\"key\":\"totals.total\",\"label\":\"Invoice total\",\"page\":1,\"box\":[0.83558,0.48625,0.106,0.01992]},{\"key\":\"totals.words\",\"label\":\"Amount in words\",\"page\":1,\"box\":[0.063,0.51244,0.45519,0.01674]}]}"
+    },
+    {
+     "coll": "documents",
+     "id": "doc-s0003",
+     "ord": 2,
+     "json": "{\"id\":\"doc-s0003\",\"kind\":\"sales_invoice\",\"refId\":\"inv-0003\",\"file\":\"/docs/doc-s0003.pdf\",\"pages\":1,\"receivedAt\":\"2026-04-01T14:11:00+05:30\",\"channel\":\"generated\",\"from\":null,\"status\":\"posted\",\"regions\":[{\"key\":\"number\",\"label\":\"Invoice number\",\"page\":1,\"box\":[0.063,0.13564,0.12139,0.01865]},{\"key\":\"date\",\"label\":\"Invoice date\",\"page\":1,\"box\":[0.28138,0.13564,0.09992,0.01865]},{\"key\":\"terms\",\"label\":\"Payment terms\",\"page\":1,\"box\":[0.44937,0.13564,0.06723,0.01865]},{\"key\":\"dueDate\",\"label\":\"Due date\",\"page\":1,\"box\":[0.61736,0.13564,0.10645,0.01865]},{\"key\":\"party\",\"label\":\"Customer\",\"page\":1,\"box\":[0.063,0.18336,0.19219,0.01992]},{\"key\":\"gstin\",\"label\":\"Customer GSTIN\",\"page\":1,\"box\":[0.063,0.21549,0.1925,0.01674]},{\"key\":\"pos\",\"label\":\"Place of supply\",\"page\":1,\"box\":[0.55017,0.18434,0.13723,0.01865]},{\"key\":\"line.0.description\",\"label\":\"Line 1 description\",\"page\":1,\"box\":[0.09995,0.27251,0.183,0.01674]},{\"key\":\"line.0.hsn\",\"label\":\"Line 1 HSN\",\"page\":1,\"box\":[0.41577,0.27251,0.04016,0.01674]},{\"key\":\"line.0.qty\",\"label\":\"Line 1 quantity\",\"page\":1,\"box\":[0.50016,0.27251,0.0584,0.01674]},{\"key\":\"line.0.taxable\",\"label\":\"Line 1 taxable value\",\"page\":1,\"box\":[0.72001,0.27251,0.08382,0.01674]},{\"key\":\"line.0.rate\",\"label\":\"Line 1 GST rate\",\"page\":1,\"box\":[0.81053,0.27251,0.03697,0.01674]},{\"key\":\"line.0.tax\",\"label\":\"Line 1 tax\",\"page\":1,\"box\":[0.86967,0.27251,0.07191,0.01674]},{\"key\":\"line.1.description\",\"label\":\"Line 2 description\",\"page\":1,\"box\":[0.09995,0.29151,0.15126,0.01674]},{\"key\":\"line.1.hsn\",\"label\":\"Line 2 HSN\",\"page\":1,\"box\":[0.41577,0.29151,0.04016,0.01674]},{\"key\":\"line.1.qty\",\"label\":\"Line 2 quantity\",\"page\":1,\"box\":[0.49937,0.29151,0.05919,0.01674]},{\"key\":\"line.1.taxable\",\"label\":\"Line 2 taxable value\",\"page\":1,\"box\":[0.73192,0.29151,0.07191,0.01674]},{\"key\":\"line.1.rate\",\"label\":\"Line 2 GST rate\",\"page\":1,\"box\":[0.81053,0.29151,0.03697,0.01674]},{\"key\":\"line.1.tax\",\"label\":\"Line 2 tax\",\"page\":1,\"box\":[0.87761,0.29151,0.06397,0.01674]},{\"key\":\"line.2.description\",\"label\":\"Line 3 description\",\"page\":1,\"box\":[0.09995,0.31052,0.17982,0.01674]},{\"key\":\"line.2.hsn\",\"label\":\"Line 3 HSN\",\"page\":1,\"box\":[0.41577,0.31052,0.04016,0.01674]},{\"key\":\"line.2.qty\",\"label\":\"Line 3 quantity\",\"page\":1,\"box\":[0.50731,0.31052,0.05125,0.01674]},{\"key\":\"line.2.taxable\",\"label\":\"Line 3 taxable value\",\"page\":1,\"box\":[0.73192,0.31052,0.07191,0.01674]},{\"key\":\"line.2.rate\",\"label\":\"Line 3 GST rate\",\"page\":1,\"box\":[0.81053,0.31052,0.03697,0.01674]},{\"key\":\"line.2.tax\",\"label\":\"Line 3 tax\",\"page\":1,\"box\":[0.87761,0.31052,0.06397,0.01674]},{\"key\":\"line.3.description\",\"label\":\"Line 4 description\",\"page\":1,\"box\":[0.09995,0.32952,0.2266,0.01674]},{\"key\":\"line.3.hsn\",\"label\":\"Line 4 HSN\",\"page\":1,\"box\":[0.41577,0.32952,0.04016,0.01674]},{\"key\":\"line.3.qty\",\"label\":\"Line 4 quantity\",\"page\":1,\"box\":[0.50096,0.32952,0.05761,0.01674]},{\"key\":\"line.3.taxable\",\"label\":\"Line 4 taxable value\",\"page\":1,\"box\":[0.73192,0.32952,0.07191,0.01674]},{\"key\":\"line.3.rate\",\"label\":\"Line 4 GST rate\",\"page\":1,\"box\":[0.81053,0.32952,0.03697,0.01674]},{\"key\":\"line.3.tax\",\"label\":\"Line 4 tax\",\"page\":1,\"box\":[0.87761,0.32952,0.06397,0.01674]},{\"key\":\"line.4.description\",\"label\":\"Line 5 description\",\"page\":1,\"box\":[0.09995,0.34853,0.2266,0.01674]},{\"key\":\"line.4.hsn\",\"label\":\"Line 5 HSN\",\"page\":1,\"box\":[0.41577,0.34853,0.04016,0.01674]},{\"key\":\"line.4.qty\",\"label\":\"Line 5 quantity\",\"page\":1,\"box\":[0.50096,0.34853,0.05761,0.01674]},{\"key\":\"line.4.taxable\",\"label\":\"Line 5 taxable value\",\"page\":1,\"box\":[0.72001,0.34853,0.08382,0.01674]},{\"key\":\"line.4.rate\",\"label\":\"Line 5 GST rate\",\"page\":1,\"box\":[0.81053,0.34853,0.03697,0.01674]},{\"key\":\"line.4.tax\",\"label\":\"Line 5 tax\",\"page\":1,\"box\":[0.86967,0.34853,0.07191,0.01674]},{\"key\":\"line.5.description\",\"label\":\"Line 6 description\",\"page\":1,\"box\":[0.09995,0.36753,0.15126,0.01674]},{\"key\":\"line.5.hsn\",\"label\":\"Line 6 HSN\",\"page\":1,\"box\":[0.41577,0.36753,0.04016,0.01674]},{\"key\":\"line.5.qty\",\"label\":\"Line 6 quantity\",\"page\":1,\"box\":[0.49937,0.36753,0.05919,0.01674]},{\"key\":\"line.5.taxable\",\"label\":\"Line 6 taxable value\",\"page\":1,\"box\":[0.73986,0.36753,0.06397,0.01674]},{\"key\":\"line.5.rate\",\"label\":\"Line 6 GST rate\",\"page\":1,\"box\":[0.81053,0.36753,0.03697,0.01674]},{\"key\":\"line.5.tax\",\"label\":\"Line 6 tax\",\"page\":1,\"box\":[0.87761,0.36753,0.06397,0.01674]},{\"key\":\"totals.taxable\",\"label\":\"Taxable value\",\"page\":1,\"box\":[0.85332,0.39555,0.08826,0.01738]},{\"key\":\"totals.cgst\",\"label\":\"CGST\",\"page\":1,\"box\":[0.86593,0.41218,0.07565,0.01738]},{\"key\":\"totals.sgst\",\"label\":\"SGST\",\"page\":1,\"box\":[0.86593,0.42881,0.07565,0.01738]},{\"key\":\"totals.roundOff\",\"label\":\"Round off\",\"page\":1,\"box\":[0.89872,0.44544,0.04286,0.01738]},{\"key\":\"totals.total\",\"label\":\"Invoice total\",\"page\":1,\"box\":[0.83558,0.46725,0.106,0.01992]},{\"key\":\"totals.words\",\"label\":\"Amount in words\",\"page\":1,\"box\":[0.063,0.49344,0.40997,0.01674]}]}"
+    },
+    {
+     "coll": "invoices",
+     "id": "inv-0001",
+     "ord": 0,
+     "json": "{\"id\":\"inv-0001\",\"number\":\"KE/26-27/0001\",\"date\":\"2026-04-01\",\"partyId\":\"C11\",\"docId\":\"doc-s0001\",\"placeOfSupply\":\"27\",\"reverseCharge\":false,\"termsDays\":30,\"dueDate\":\"2026-05-01\",\"lines\":[{\"skuId\":\"SKU-109\",\"description\":\"Coaxial cable RG6, 90 m\",\"hsn\":\"8544\",\"qty\":28,\"unit\":\"ROL\",\"ratePaise\":230000,\"discountPct\":0,\"taxablePaise\":6440000,\"gstRate\":18,\"cgstPaise\":579600,\"sgstPaise\":579600,\"igstPaise\":0},{\"skuId\":\"SKU-303\",\"description\":\"LED panel 2x2 ft 36 W\",\"hsn\":\"9405\",\"qty\":27,\"unit\":\"NOS\",\"ratePaise\":115000,\"discountPct\":0,\"taxablePaise\":3105000,\"gstRate\":18,\"cgstPaise\":279450,\"sgstPaise\":279450,\"igstPaise\":0},{\"skuId\":\"SKU-504\",\"description\":\"PVC insulation tape\",\"hsn\":\"3919\",\"qty\":58,\"unit\":\"ROL\",\"ratePaise\":2200,\"discountPct\":0,\"taxablePaise\":127600,\"gstRate\":18,\"cgstPaise\":11484,\"sgstPaise\":11484,\"igstPaise\":0},{\"skuId\":\"SKU-204\",\"description\":\"MCCB 100 A 3 pole\",\"hsn\":\"8536\",\"qty\":82,\"unit\":\"NOS\",\"ratePaise\":690000,\"discountPct\":0,\"taxablePaise\":56580000,\"gstRate\":18,\"cgstPaise\":5092200,\"sgstPaise\":5092200,\"igstPaise\":0},{\"skuId\":\"SKU-403\",\"description\":\"Exhaust fan 300 mm\",\"hsn\":\"8414\",\"qty\":15,\"unit\":\"NOS\",\"ratePaise\":125000,\"discountPct\":0,\"taxablePaise\":1875000,\"gstRate\":18,\"cgstPaise\":168750,\"sgstPaise\":168750,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":68127600,\"cgstPaise\":6131484,\"sgstPaise\":6131484,\"igstPaise\":0,\"roundOffPaise\":32,\"totalPaise\":80390600},\"status\":\"posted\"}"
+    },
+    {
+     "coll": "invoices",
+     "id": "inv-0002",
+     "ord": 1,
+     "json": "{\"id\":\"inv-0002\",\"number\":\"KE/26-27/0002\",\"date\":\"2026-04-01\",\"partyId\":\"C25\",\"docId\":\"doc-s0002\",\"placeOfSupply\":\"27\",\"reverseCharge\":false,\"termsDays\":45,\"dueDate\":\"2026-05-16\",\"lines\":[{\"skuId\":\"SKU-504\",\"description\":\"PVC insulation tape\",\"hsn\":\"3919\",\"qty\":119,\"unit\":\"ROL\",\"ratePaise\":2200,\"discountPct\":0,\"taxablePaise\":261800,\"gstRate\":18,\"cgstPaise\":23562,\"sgstPaise\":23562,\"igstPaise\":0},{\"skuId\":\"SKU-305\",\"description\":\"LED street light 60 W\",\"hsn\":\"9405\",\"qty\":51,\"unit\":\"NOS\",\"ratePaise\":320000,\"discountPct\":0,\"taxablePaise\":16320000,\"gstRate\":18,\"cgstPaise\":1468800,\"sgstPaise\":1468800,\"igstPaise\":0},{\"skuId\":\"SKU-201\",\"description\":\"MCB single pole 16 A\",\"hsn\":\"8536\",\"qty\":21,\"unit\":\"NOS\",\"ratePaise\":18500,\"discountPct\":0,\"taxablePaise\":388500,\"gstRate\":18,\"cgstPaise\":34965,\"sgstPaise\":34965,\"igstPaise\":0},{\"skuId\":\"SKU-108\",\"description\":\"LAN cable Cat6, 305 m box\",\"hsn\":\"8544\",\"qty\":19,\"unit\":\"BOX\",\"ratePaise\":890000,\"discountPct\":0,\"taxablePaise\":16910000,\"gstRate\":18,\"cgstPaise\":1521900,\"sgstPaise\":1521900,\"igstPaise\":0},{\"skuId\":\"SKU-301\",\"description\":\"LED bulb 9 W\",\"hsn\":\"8539\",\"qty\":32,\"unit\":\"NOS\",\"ratePaise\":6800,\"discountPct\":0,\"taxablePaise\":217600,\"gstRate\":18,\"cgstPaise\":19584,\"sgstPaise\":19584,\"igstPaise\":0},{\"skuId\":\"SKU-107\",\"description\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"qty\":100,\"unit\":\"MTR\",\"ratePaise\":62000,\"discountPct\":0,\"taxablePaise\":6200000,\"gstRate\":18,\"cgstPaise\":558000,\"sgstPaise\":558000,\"igstPaise\":0},{\"skuId\":\"SKU-503\",\"description\":\"Nylon cable ties, pack of 100\",\"hsn\":\"3926\",\"qty\":310,\"unit\":\"PAC\",\"ratePaise\":14500,\"discountPct\":0,\"taxablePaise\":4495000,\"gstRate\":18,\"cgstPaise\":404550,\"sgstPaise\":404550,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":44792900,\"cgstPaise\":4031361,\"sgstPaise\":4031361,\"igstPaise\":0,\"roundOffPaise\":-22,\"totalPaise\":52855600},\"status\":\"posted\"}"
+    },
+    {
+     "coll": "invoices",
+     "id": "inv-0003",
+     "ord": 2,
+     "json": "{\"id\":\"inv-0003\",\"number\":\"KE/26-27/0003\",\"date\":\"2026-04-01\",\"partyId\":\"C25\",\"docId\":\"doc-s0003\",\"placeOfSupply\":\"27\",\"reverseCharge\":false,\"termsDays\":45,\"dueDate\":\"2026-05-16\",\"lines\":[{\"skuId\":\"SKU-108\",\"description\":\"LAN cable Cat6, 305 m box\",\"hsn\":\"8544\",\"qty\":19,\"unit\":\"BOX\",\"ratePaise\":890000,\"discountPct\":5,\"taxablePaise\":16064500,\"gstRate\":18,\"cgstPaise\":1445805,\"sgstPaise\":1445805,\"igstPaise\":0},{\"skuId\":\"SKU-303\",\"description\":\"LED panel 2x2 ft 36 W\",\"hsn\":\"9405\",\"qty\":14,\"unit\":\"NOS\",\"ratePaise\":115000,\"discountPct\":5,\"taxablePaise\":1529500,\"gstRate\":18,\"cgstPaise\":137655,\"sgstPaise\":137655,\"igstPaise\":0},{\"skuId\":\"SKU-602\",\"description\":\"Line interactive UPS 1 kVA\",\"hsn\":\"8504\",\"qty\":2,\"unit\":\"NOS\",\"ratePaise\":680000,\"discountPct\":5,\"taxablePaise\":1292000,\"gstRate\":18,\"cgstPaise\":116280,\"sgstPaise\":116280,\"igstPaise\":0},{\"skuId\":\"SKU-102\",\"description\":\"FR PVC wire 1.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":20,\"unit\":\"ROL\",\"ratePaise\":215000,\"discountPct\":5,\"taxablePaise\":4085000,\"gstRate\":18,\"cgstPaise\":367650,\"sgstPaise\":367650,\"igstPaise\":0},{\"skuId\":\"SKU-105\",\"description\":\"FR PVC wire 6.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":48,\"unit\":\"ROL\",\"ratePaise\":790000,\"discountPct\":5,\"taxablePaise\":36024000,\"gstRate\":18,\"cgstPaise\":3242160,\"sgstPaise\":3242160,\"igstPaise\":0},{\"skuId\":\"SKU-202\",\"description\":\"MCB double pole 32 A\",\"hsn\":\"8536\",\"qty\":15,\"unit\":\"NOS\",\"ratePaise\":62000,\"discountPct\":5,\"taxablePaise\":883500,\"gstRate\":18,\"cgstPaise\":79515,\"sgstPaise\":79515,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":59878500,\"cgstPaise\":5389065,\"sgstPaise\":5389065,\"igstPaise\":0,\"roundOffPaise\":-30,\"totalPaise\":70656600},\"status\":\"posted\"}"
+    },
+    {
+     "coll": "bills",
+     "id": "bill-0001",
+     "ord": 0,
+     "json": "{\"id\":\"bill-0001\",\"number\":\"SCPL/2604/321\",\"date\":\"2026-04-06\",\"partyId\":\"V01\",\"docId\":\"doc-p0001\",\"kind\":\"goods\",\"placeOfSupply\":\"27\",\"lines\":[{\"skuId\":\"SKU-109\",\"description\":\"Coaxial cable RG6, 90 m\",\"hsn\":\"8544\",\"qty\":113,\"unit\":\"ROL\",\"ratePaise\":176268,\"discountPct\":0,\"taxablePaise\":19918284,\"gstRate\":18,\"cgstPaise\":1792646,\"sgstPaise\":1792646,\"igstPaise\":0},{\"skuId\":\"SKU-106\",\"description\":\"Armoured cable 4 core 16 sq mm\",\"hsn\":\"8544\",\"qty\":500,\"unit\":\"MTR\",\"ratePaise\":33425,\"discountPct\":0,\"taxablePaise\":16712500,\"gstRate\":18,\"cgstPaise\":1504125,\"sgstPaise\":1504125,\"igstPaise\":0},{\"skuId\":\"SKU-101\",\"description\":\"FR PVC wire 1.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":168,\"unit\":\"ROL\",\"ratePaise\":118994,\"discountPct\":0,\"taxablePaise\":19990992,\"gstRate\":18,\"cgstPaise\":1799189,\"sgstPaise\":1799189,\"igstPaise\":0},{\"skuId\":\"SKU-503\",\"description\":\"Nylon cable ties, pack of 100\",\"hsn\":\"3926\",\"qty\":1686,\"unit\":\"PAC\",\"ratePaise\":11857,\"discountPct\":0,\"taxablePaise\":19990902,\"gstRate\":18,\"cgstPaise\":1799181,\"sgstPaise\":1799181,\"igstPaise\":0},{\"skuId\":\"SKU-103\",\"description\":\"FR PVC wire 2.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":72,\"unit\":\"ROL\",\"ratePaise\":274961,\"discountPct\":0,\"taxablePaise\":19797192,\"gstRate\":18,\"cgstPaise\":1781747,\"sgstPaise\":1781747,\"igstPaise\":0},{\"skuId\":\"SKU-502\",\"description\":\"PVC junction box 4 way\",\"hsn\":\"3925\",\"qty\":6510,\"unit\":\"NOS\",\"ratePaise\":3072,\"discountPct\":0,\"taxablePaise\":19998720,\"gstRate\":18,\"cgstPaise\":1799885,\"sgstPaise\":1799885,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":116408590,\"cgstPaise\":10476773,\"sgstPaise\":10476773,\"igstPaise\":0,\"roundOffPaise\":-36,\"totalPaise\":137362100},\"itcEligible\":true,\"tds\":null,\"status\":\"posted\"}"
+    },
+    {
+     "coll": "bills",
+     "id": "bill-0002",
+     "ord": 1,
+     "json": "{\"id\":\"bill-0002\",\"number\":\"SCPL/2604/780\",\"date\":\"2026-04-12\",\"partyId\":\"V01\",\"docId\":\"doc-p0002\",\"kind\":\"goods\",\"placeOfSupply\":\"27\",\"lines\":[{\"skuId\":\"SKU-103\",\"description\":\"FR PVC wire 2.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":72,\"unit\":\"ROL\",\"ratePaise\":274961,\"discountPct\":0,\"taxablePaise\":19797192,\"gstRate\":18,\"cgstPaise\":1781747,\"sgstPaise\":1781747,\"igstPaise\":0},{\"skuId\":\"SKU-107\",\"description\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"qty\":300,\"unit\":\"MTR\",\"ratePaise\":51293,\"discountPct\":0,\"taxablePaise\":15387900,\"gstRate\":18,\"cgstPaise\":1384911,\"sgstPaise\":1384911,\"igstPaise\":0},{\"skuId\":\"SKU-502\",\"description\":\"PVC junction box 4 way\",\"hsn\":\"3925\",\"qty\":6510,\"unit\":\"NOS\",\"ratePaise\":3072,\"discountPct\":0,\"taxablePaise\":19998720,\"gstRate\":18,\"cgstPaise\":1799885,\"sgstPaise\":1799885,\"igstPaise\":0},{\"skuId\":\"SKU-503\",\"description\":\"Nylon cable ties, pack of 100\",\"hsn\":\"3926\",\"qty\":1686,\"unit\":\"PAC\",\"ratePaise\":11857,\"discountPct\":0,\"taxablePaise\":19990902,\"gstRate\":18,\"cgstPaise\":1799181,\"sgstPaise\":1799181,\"igstPaise\":0},{\"skuId\":\"SKU-104\",\"description\":\"FR PVC wire 4.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":46,\"unit\":\"ROL\",\"ratePaise\":428853,\"discountPct\":0,\"taxablePaise\":19727238,\"gstRate\":18,\"cgstPaise\":1775451,\"sgstPaise\":1775451,\"igstPaise\":0},{\"skuId\":\"SKU-102\",\"description\":\"FR PVC wire 1.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":122,\"unit\":\"ROL\",\"ratePaise\":163062,\"discountPct\":0,\"taxablePaise\":19893564,\"gstRate\":18,\"cgstPaise\":1790421,\"sgstPaise\":1790421,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":114795516,\"cgstPaise\":10331596,\"sgstPaise\":10331596,\"igstPaise\":0,\"roundOffPaise\":-8,\"totalPaise\":135458700},\"itcEligible\":true,\"tds\":null,\"status\":\"posted\"}"
+    },
+    {
+     "coll": "bills",
+     "id": "bill-0003",
+     "ord": 2,
+     "json": "{\"id\":\"bill-0003\",\"number\":\"SCPL/2604/529\",\"date\":\"2026-04-23\",\"partyId\":\"V01\",\"docId\":\"doc-p0003\",\"kind\":\"goods\",\"placeOfSupply\":\"27\",\"lines\":[{\"skuId\":\"SKU-105\",\"description\":\"FR PVC wire 6.0 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":33,\"unit\":\"ROL\",\"ratePaise\":598945,\"discountPct\":0,\"taxablePaise\":19765185,\"gstRate\":18,\"cgstPaise\":1778867,\"sgstPaise\":1778867,\"igstPaise\":0},{\"skuId\":\"SKU-502\",\"description\":\"PVC junction box 4 way\",\"hsn\":\"3925\",\"qty\":6510,\"unit\":\"NOS\",\"ratePaise\":3072,\"discountPct\":0,\"taxablePaise\":19998720,\"gstRate\":18,\"cgstPaise\":1799885,\"sgstPaise\":1799885,\"igstPaise\":0},{\"skuId\":\"SKU-107\",\"description\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"qty\":300,\"unit\":\"MTR\",\"ratePaise\":51293,\"discountPct\":0,\"taxablePaise\":15387900,\"gstRate\":18,\"cgstPaise\":1384911,\"sgstPaise\":1384911,\"igstPaise\":0},{\"skuId\":\"SKU-103\",\"description\":\"FR PVC wire 2.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":72,\"unit\":\"ROL\",\"ratePaise\":274961,\"discountPct\":0,\"taxablePaise\":19797192,\"gstRate\":18,\"cgstPaise\":1781747,\"sgstPaise\":1781747,\"igstPaise\":0},{\"skuId\":\"SKU-102\",\"description\":\"FR PVC wire 1.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":122,\"unit\":\"ROL\",\"ratePaise\":163062,\"discountPct\":0,\"taxablePaise\":19893564,\"gstRate\":18,\"cgstPaise\":1790421,\"sgstPaise\":1790421,\"igstPaise\":0},{\"skuId\":\"SKU-503\",\"description\":\"Nylon cable ties, pack of 100\",\"hsn\":\"3926\",\"qty\":1686,\"unit\":\"PAC\",\"ratePaise\":11857,\"discountPct\":0,\"taxablePaise\":19990902,\"gstRate\":18,\"cgstPaise\":1799181,\"sgstPaise\":1799181,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":114833463,\"cgstPaise\":10335012,\"sgstPaise\":10335012,\"igstPaise\":0,\"roundOffPaise\":13,\"totalPaise\":135503500},\"itcEligible\":true,\"tds\":null,\"status\":\"posted\"}"
+    },
+    {
+     "coll": "payments",
+     "id": "pay-0008",
+     "ord": 0,
+     "json": "{\"id\":\"pay-0008\",\"date\":\"2026-04-15\",\"partyId\":\"V04\",\"direction\":\"out\",\"amountPaise\":46834500,\"mode\":\"RTGS\",\"reference\":\"UTR969523440976\",\"allocations\":[{\"billId\":\"bill-0008\",\"amountPaise\":46834500,\"tdsPaise\":0}],\"tdsDeductedPaise\":0,\"tdsSection\":null}"
+    },
+    {
+     "coll": "payments",
+     "id": "pay-0002",
+     "ord": 1,
+     "json": "{\"id\":\"pay-0002\",\"date\":\"2026-04-23\",\"partyId\":\"V01\",\"direction\":\"out\",\"amountPaise\":135458700,\"mode\":\"RTGS\",\"reference\":\"UTR425922530177\",\"allocations\":[{\"billId\":\"bill-0002\",\"amountPaise\":135458700,\"tdsPaise\":0}],\"tdsDeductedPaise\":0,\"tdsSection\":null}"
+    },
+    {
+     "coll": "payments",
+     "id": "pay-0006",
+     "ord": 2,
+     "json": "{\"id\":\"pay-0006\",\"date\":\"2026-04-23\",\"partyId\":\"V03\",\"direction\":\"out\",\"amountPaise\":78474700,\"mode\":\"RTGS\",\"reference\":\"UTR593672987481\",\"allocations\":[{\"billId\":\"bill-0006\",\"amountPaise\":78474700,\"tdsPaise\":0}],\"tdsDeductedPaise\":0,\"tdsSection\":null}"
+    },
+    {
+     "coll": "filedReturns",
+     "id": "gstr1-2026-04",
+     "ord": 0,
+     "json": "{\"id\":\"gstr1-2026-04\",\"period\":\"2026-04\",\"status\":\"filed\",\"filedOn\":\"2026-05-10\",\"sharedOn\":null,\"dueOn\":\"2026-05-11\",\"filedBy\":\"Mehta & Associates, Chartered Accountants\",\"form\":\"GSTR-1\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"fp\":\"042026\",\"b2b\":[{\"ctin\":\"23ZPAFV4126J1ZT\",\"inv\":[{\"inum\":\"KE/26-27/0027\",\"idt\":\"17-04-2026\",\"val\":414180,\"pos\":\"23\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":351000,\"iamt\":63180,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0034\",\"idt\":\"22-04-2026\",\"val\":452201,\"pos\":\"23\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":383221.16,\"iamt\":68979.81,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0036\",\"idt\":\"23-04-2026\",\"val\":550791,\"pos\":\"23\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":466772.04,\"iamt\":84018.97,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"27ADLFG2098D1Z5\",\"inv\":[{\"inum\":\"KE/26-27/0015\",\"idt\":\"09-04-2026\",\"val\":939511,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":796196,\"iamt\":0,\"camt\":71657.64,\"samt\":71657.64,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0031\",\"idt\":\"20-04-2026\",\"val\":122191,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":103552,\"iamt\":0,\"camt\":9319.68,\"samt\":9319.68,\"csamt\":0}}]}]},{\"ctin\":\"27AUTFJ2695K1ZD\",\"inv\":[{\"inum\":\"KE/26-27/0013\",\"idt\":\"08-04-2026\",\"val\":46840,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":39695,\"iamt\":0,\"camt\":3572.55,\"samt\":3572.55,\"csamt\":0}}]}]},{\"ctin\":\"27CNLFM6981M1ZL\",\"inv\":[{\"inum\":\"KE/26-27/0012\",\"idt\":\"07-04-2026\",\"val\":85821,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":72730,\"iamt\":0,\"camt\":6545.7,\"samt\":6545.7,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0043\",\"idt\":\"30-04-2026\",\"val\":100862,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":85476,\"iamt\":0,\"camt\":7692.84,\"samt\":7692.84,\"csamt\":0}}]}]},{\"ctin\":\"27DWSCK8081U1ZS\",\"inv\":[{\"inum\":\"KE/26-27/0004\",\"idt\":\"02-04-2026\",\"val\":306263,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":259544.75,\"iamt\":0,\"camt\":23359.04,\"samt\":23359.04,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0011\",\"idt\":\"04-04-2026\",\"val\":145486,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":123292.9,\"iamt\":0,\"camt\":11096.37,\"samt\":11096.37,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0023\",\"idt\":\"13-04-2026\",\"val\":176245,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":149360,\"iamt\":0,\"camt\":13442.4,\"samt\":13442.4,\"csamt\":0}}]}]},{\"ctin\":\"27FGDCL2821P1ZR\",\"inv\":[{\"inum\":\"KE/26-27/0021\",\"idt\":\"13-04-2026\",\"val\":157802,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":133730.8,\"iamt\":0,\"camt\":12035.77,\"samt\":12035.77,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0042\",\"idt\":\"29-04-2026\",\"val\":110212,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":93400,\"iamt\":0,\"camt\":8406,\"samt\":8406,\"csamt\":0}}]}]},{\"ctin\":\"27HZCFJ6021C1ZA\",\"inv\":[{\"inum\":\"KE/26-27/0001\",\"idt\":\"01-04-2026\",\"val\":803906,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":681276,\"iamt\":0,\"camt\":61314.84,\"samt\":61314.84,\"csamt\":0}}]}]},{\"ctin\":\"27KGWCS6656D1Z4\",\"inv\":[{\"inum\":\"KE/26-27/0002\",\"idt\":\"01-04-2026\",\"val\":528556,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":447929,\"iamt\":0,\"camt\":40313.61,\"samt\":40313.61,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0003\",\"idt\":\"01-04-2026\",\"val\":706566,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":598785,\"iamt\":0,\"camt\":53890.65,\"samt\":53890.65,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0007\",\"idt\":\"03-04-2026\",\"val\":83454,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":70724,\"iamt\":0,\"camt\":6365.16,\"samt\":6365.16,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0016\",\"idt\":\"10-04-2026\",\"val\":52906,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":44835.25,\"iamt\":0,\"camt\":4035.17,\"samt\":4035.17,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0019\",\"idt\":\"11-04-2026\",\"val\":190265,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":161241.16,\"iamt\":0,\"camt\":14511.71,\"samt\":14511.71,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0025\",\"idt\":\"14-04-2026\",\"val\":253038,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":214438.7,\"iamt\":0,\"camt\":19299.48,\"samt\":19299.48,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0032\",\"idt\":\"21-04-2026\",\"val\":181076,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":153454,\"iamt\":0,\"camt\":13810.86,\"samt\":13810.86,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0033\",\"idt\":\"22-04-2026\",\"val\":203964,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":172851.09,\"iamt\":0,\"camt\":15556.61,\"samt\":15556.61,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0038\",\"idt\":\"24-04-2026\",\"val\":14821,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":12560,\"iamt\":0,\"camt\":1130.4,\"samt\":1130.4,\"csamt\":0}}]}]},{\"ctin\":\"27MMYCU6043S1Z1\",\"inv\":[{\"inum\":\"KE/26-27/0009\",\"idt\":\"04-04-2026\",\"val\":435191,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":368806,\"iamt\":0,\"camt\":33192.54,\"samt\":33192.54,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0020\",\"idt\":\"11-04-2026\",\"val\":77762,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":65900,\"iamt\":0,\"camt\":5931,\"samt\":5931,\"csamt\":0}}]}]},{\"ctin\":\"27PKXFS1248V1ZW\",\"inv\":[{\"inum\":\"KE/26-27/0022\",\"idt\":\"13-04-2026\",\"val\":44047,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":37328,\"iamt\":0,\"camt\":3359.52,\"samt\":3359.52,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0030\",\"idt\":\"20-04-2026\",\"val\":11061,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":9374,\"iamt\":0,\"camt\":843.66,\"samt\":843.66,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0039\",\"idt\":\"24-04-2026\",\"val\":100203,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":84918,\"iamt\":0,\"camt\":7642.62,\"samt\":7642.62,\"csamt\":0}}]}]},{\"ctin\":\"27SCPFD6470H1ZG\",\"inv\":[{\"inum\":\"KE/26-27/0014\",\"idt\":\"08-04-2026\",\"val\":137654,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":116656,\"iamt\":0,\"camt\":10499.04,\"samt\":10499.04,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0018\",\"idt\":\"11-04-2026\",\"val\":701746,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":594700,\"iamt\":0,\"camt\":53523.01,\"samt\":53523.01,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0028\",\"idt\":\"18-04-2026\",\"val\":27232,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":23078,\"iamt\":0,\"camt\":2077.02,\"samt\":2077.02,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0037\",\"idt\":\"24-04-2026\",\"val\":588803,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":498986,\"iamt\":0,\"camt\":44908.74,\"samt\":44908.74,\"csamt\":0}}]}]},{\"ctin\":\"27SFUFW7219W1ZU\",\"inv\":[{\"inum\":\"KE/26-27/0041\",\"idt\":\"27-04-2026\",\"val\":125717,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":501,\"itm_det\":{\"rt\":5,\"txval\":78596,\"iamt\":0,\"camt\":1964.9,\"samt\":1964.9,\"csamt\":0}},{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":36603,\"iamt\":0,\"camt\":3294.27,\"samt\":3294.27,\"csamt\":0}}]}]},{\"ctin\":\"27SJHFP9827L1ZH\",\"inv\":[{\"inum\":\"KE/26-27/0010\",\"idt\":\"04-04-2026\",\"val\":115118,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":97558,\"iamt\":0,\"camt\":8780.22,\"samt\":8780.22,\"csamt\":0}}]}]},{\"ctin\":\"27WZSCK7416A1ZF\",\"inv\":[{\"inum\":\"KE/26-27/0040\",\"idt\":\"25-04-2026\",\"val\":683267,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":579040,\"iamt\":0,\"camt\":52113.6,\"samt\":52113.6,\"csamt\":0}}]}]},{\"ctin\":\"27XMAFA9397H1ZS\",\"inv\":[{\"inum\":\"KE/26-27/0017\",\"idt\":\"10-04-2026\",\"val\":176629,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":149685.2,\"iamt\":0,\"camt\":13471.67,\"samt\":13471.67,\"csamt\":0}}]}]},{\"ctin\":\"27YKJFP8366H1ZG\",\"inv\":[{\"inum\":\"KE/26-27/0026\",\"idt\":\"16-04-2026\",\"val\":302145,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":256055,\"iamt\":0,\"camt\":23044.95,\"samt\":23044.95,\"csamt\":0}}]}]},{\"ctin\":\"29DDNCS1914S1Z8\",\"inv\":[{\"inum\":\"KE/26-27/0029\",\"idt\":\"20-04-2026\",\"val\":117041,\"pos\":\"29\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":99187,\"iamt\":17853.66,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"29MPDFH4621D1ZI\",\"inv\":[{\"inum\":\"KE/26-27/0005\",\"idt\":\"02-04-2026\",\"val\":810212,\"pos\":\"29\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":686620,\"iamt\":123591.6,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"30MBDCK1377P1ZZ\",\"inv\":[{\"inum\":\"KE/26-27/0006\",\"idt\":\"03-04-2026\",\"val\":604785,\"pos\":\"30\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":512530,\"iamt\":92255.4,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0008\",\"idt\":\"03-04-2026\",\"val\":405058,\"pos\":\"30\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":343269.2,\"iamt\":61788.46,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0024\",\"idt\":\"14-04-2026\",\"val\":324990,\"pos\":\"30\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":275415.45,\"iamt\":49574.79,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0035\",\"idt\":\"23-04-2026\",\"val\":430750,\"pos\":\"30\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":365042,\"iamt\":65707.56,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]}],\"hsn\":{\"data\":[{\"num\":1,\"hsn_sc\":\"3917\",\"desc\":\"Conduit\",\"uqc\":\"PCS\",\"qty\":2980,\"rt\":18,\"txval\":211743.36,\"iamt\":12870.32,\"camt\":12621.74,\"samt\":12621.74,\"csamt\":0},{\"num\":2,\"hsn_sc\":\"3919\",\"desc\":\"Conduit\",\"uqc\":\"ROL\",\"qty\":1032,\"rt\":18,\"txval\":22148.5,\"iamt\":0,\"camt\":1993.37,\"samt\":1993.37,\"csamt\":0},{\"num\":3,\"hsn_sc\":\"3925\",\"desc\":\"Conduit\",\"uqc\":\"NOS\",\"qty\":634,\"rt\":18,\"txval\":24092,\"iamt\":752.4,\"camt\":1792.08,\"samt\":1792.08,\"csamt\":0},{\"num\":4,\"hsn_sc\":\"3926\",\"desc\":\"Conduit\",\"uqc\":\"PAC\",\"qty\":2408,\"rt\":18,\"txval\":342150.7,\"iamt\":33073.67,\"camt\":14256.73,\"samt\":14256.73,\"csamt\":0},{\"num\":5,\"hsn_sc\":\"8414\",\"desc\":\"Fans\",\"uqc\":\"NOS\",\"qty\":126,\"rt\":18,\"txval\":264992,\"iamt\":6343.56,\"camt\":20677.5,\"samt\":20677.5,\"csamt\":0},{\"num\":6,\"hsn_sc\":\"8504\",\"desc\":\"Power\",\"uqc\":\"NOS\",\"qty\":44,\"rt\":18,\"txval\":270596,\"iamt\":8827.2,\"camt\":19940.04,\"samt\":19940.04,\"csamt\":0},{\"num\":7,\"hsn_sc\":\"8536\",\"desc\":\"Switchgear\",\"uqc\":\"NOS\",\"qty\":1464,\"rt\":18,\"txval\":3048053.8,\"iamt\":192364.92,\"camt\":178142.4,\"samt\":178142.4,\"csamt\":0},{\"num\":8,\"hsn_sc\":\"8537\",\"desc\":\"Switchgear\",\"uqc\":\"NOS\",\"qty\":139,\"rt\":18,\"txval\":337365,\"iamt\":2646,\"camt\":29039.85,\"samt\":29039.85,\"csamt\":0},{\"num\":9,\"hsn_sc\":\"8539\",\"desc\":\"Lighting\",\"uqc\":\"NOS\",\"qty\":542,\"rt\":18,\"txval\":36732.24,\"iamt\":1434.29,\"camt\":2588.76,\"samt\":2588.76,\"csamt\":0},{\"num\":10,\"hsn_sc\":\"8541\",\"desc\":\"Solar\",\"uqc\":\"NOS\",\"qty\":4,\"rt\":5,\"txval\":55664,\"iamt\":0,\"camt\":1391.6,\"samt\":1391.6,\"csamt\":0},{\"num\":11,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"BOX\",\"qty\":171,\"rt\":18,\"txval\":1475175,\"iamt\":59354.1,\"camt\":103088.7,\"samt\":103088.7,\"csamt\":0},{\"num\":12,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"MTR\",\"qty\":1000,\"rt\":18,\"txval\":276392.5,\"iamt\":7290,\"camt\":21230.33,\"samt\":21230.33,\"csamt\":0},{\"num\":13,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"ROL\",\"qty\":742,\"rt\":18,\"txval\":2742967.5,\"iamt\":260126.1,\"camt\":116804.03,\"samt\":116804.03,\"csamt\":0},{\"num\":14,\"hsn_sc\":\"9405\",\"desc\":\"Solar\",\"uqc\":\"NOS\",\"qty\":3,\"rt\":5,\"txval\":22932,\"iamt\":0,\"camt\":573.3,\"samt\":573.3,\"csamt\":0},{\"num\":15,\"hsn_sc\":\"9405\",\"desc\":\"Lighting\",\"uqc\":\"NOS\",\"qty\":1155,\"rt\":18,\"txval\":1764407.1,\"iamt\":41867.69,\"camt\":137862.81,\"samt\":137862.81,\"csamt\":0}]}}}"
+    },
+    {
+     "coll": "filedReturns",
+     "id": "gstr3b-2026-04",
+     "ord": 1,
+     "json": "{\"id\":\"gstr3b-2026-04\",\"period\":\"2026-04\",\"status\":\"filed\",\"filedOn\":\"2026-05-19\",\"sharedOn\":null,\"dueOn\":\"2026-05-20\",\"filedBy\":\"Mehta & Associates, Chartered Accountants\",\"form\":\"GSTR-3B\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"ret_period\":\"042026\",\"sup_details\":{\"osup_det\":{\"iamt\":626950.25,\"camt\":662003.24,\"samt\":662003.24,\"csamt\":0,\"txval\":10895411.7}},\"itc_elg\":{\"itc_avl\":[{\"iamt\":547680.63,\"camt\":317283.81,\"samt\":317283.81,\"csamt\":0,\"ty\":\"OTH\"}]}}}"
+    },
+    {
+     "coll": "filedReturns",
+     "id": "gstr1-2026-05",
+     "ord": 2,
+     "json": "{\"id\":\"gstr1-2026-05\",\"period\":\"2026-05\",\"status\":\"filed\",\"filedOn\":\"2026-06-10\",\"sharedOn\":null,\"dueOn\":\"2026-06-11\",\"filedBy\":\"Mehta & Associates, Chartered Accountants\",\"form\":\"GSTR-1\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"fp\":\"052026\",\"b2b\":[{\"ctin\":\"23ZPAFV4126J1ZT\",\"inv\":[{\"inum\":\"KE/26-27/0046\",\"idt\":\"02-05-2026\",\"val\":121496,\"pos\":\"23\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":102963,\"iamt\":18533.34,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0083\",\"idt\":\"29-05-2026\",\"val\":200244,\"pos\":\"23\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":169698,\"iamt\":30545.64,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"24HAACD5083B1ZZ\",\"inv\":[{\"inum\":\"KE/26-27/0064\",\"idt\":\"16-05-2026\",\"val\":199791,\"pos\":\"24\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":169314,\"iamt\":30476.52,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0071\",\"idt\":\"20-05-2026\",\"val\":114700,\"pos\":\"24\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":97203,\"iamt\":17496.54,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"27AUTFJ2695K1ZD\",\"inv\":[{\"inum\":\"KE/26-27/0085\",\"idt\":\"30-05-2026\",\"val\":48970,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":41500,\"iamt\":0,\"camt\":3735,\"samt\":3735,\"csamt\":0}}]}]},{\"ctin\":\"27BCNCS2610R1ZN\",\"inv\":[{\"inum\":\"KE/26-27/0059\",\"idt\":\"14-05-2026\",\"val\":260758,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":220981.52,\"iamt\":0,\"camt\":19888.33,\"samt\":19888.33,\"csamt\":0}}]}]},{\"ctin\":\"27DWSCK8081U1ZS\",\"inv\":[{\"inum\":\"KE/26-27/0045\",\"idt\":\"02-05-2026\",\"val\":50051,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":42416,\"iamt\":0,\"camt\":3817.44,\"samt\":3817.44,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0062\",\"idt\":\"15-05-2026\",\"val\":459400,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":389322.11,\"iamt\":0,\"camt\":35038.99,\"samt\":35038.99,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0082\",\"idt\":\"28-05-2026\",\"val\":278616,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":236115.32,\"iamt\":0,\"camt\":21250.38,\"samt\":21250.38,\"csamt\":0}}]}]},{\"ctin\":\"27FGDCL2821P1ZR\",\"inv\":[{\"inum\":\"KE/26-27/0048\",\"idt\":\"04-05-2026\",\"val\":89739,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":76050,\"iamt\":0,\"camt\":6844.5,\"samt\":6844.5,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0074\",\"idt\":\"21-05-2026\",\"val\":157424,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":133410,\"iamt\":0,\"camt\":12006.9,\"samt\":12006.9,\"csamt\":0}}]}]},{\"ctin\":\"27HZCFJ6021C1ZA\",\"inv\":[{\"inum\":\"KE/26-27/0053\",\"idt\":\"07-05-2026\",\"val\":180413,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":152892,\"iamt\":0,\"camt\":13760.28,\"samt\":13760.28,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0055\",\"idt\":\"09-05-2026\",\"val\":86385,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":73207.96,\"iamt\":0,\"camt\":6588.72,\"samt\":6588.72,\"csamt\":0}}]}]},{\"ctin\":\"27KGWCS6656D1Z4\",\"inv\":[{\"inum\":\"KE/26-27/0044\",\"idt\":\"01-05-2026\",\"val\":55496,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":47030.7,\"iamt\":0,\"camt\":4232.77,\"samt\":4232.77,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0052\",\"idt\":\"07-05-2026\",\"val\":418233,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":354435,\"iamt\":0,\"camt\":31899.15,\"samt\":31899.15,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0056\",\"idt\":\"11-05-2026\",\"val\":337926,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":286378,\"iamt\":0,\"camt\":25774.02,\"samt\":25774.02,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0060\",\"idt\":\"14-05-2026\",\"val\":143831,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":121891,\"iamt\":0,\"camt\":10970.19,\"samt\":10970.19,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0065\",\"idt\":\"18-05-2026\",\"val\":346973,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":294044.95,\"iamt\":0,\"camt\":26464.06,\"samt\":26464.06,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0067\",\"idt\":\"19-05-2026\",\"val\":802523,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":680104,\"iamt\":0,\"camt\":61209.36,\"samt\":61209.36,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0070\",\"idt\":\"20-05-2026\",\"val\":642209,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":544245,\"iamt\":0,\"camt\":48982.05,\"samt\":48982.05,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0073\",\"idt\":\"21-05-2026\",\"val\":612356,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":518946,\"iamt\":0,\"camt\":46705.14,\"samt\":46705.14,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0084\",\"idt\":\"30-05-2026\",\"val\":185909,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":157550.31,\"iamt\":0,\"camt\":14179.54,\"samt\":14179.54,\"csamt\":0}}]}]},{\"ctin\":\"27MMYCU6043S1Z1\",\"inv\":[{\"inum\":\"KE/26-27/0076\",\"idt\":\"23-05-2026\",\"val\":774139,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":656050,\"iamt\":0,\"camt\":59044.5,\"samt\":59044.5,\"csamt\":0}}]}]},{\"ctin\":\"27NKWFB3126W1ZH\",\"inv\":[{\"inum\":\"KE/26-27/0061\",\"idt\":\"15-05-2026\",\"val\":252709,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":214160,\"iamt\":0,\"camt\":19274.4,\"samt\":19274.4,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0075\",\"idt\":\"23-05-2026\",\"val\":62057,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":52590.72,\"iamt\":0,\"camt\":4733.17,\"samt\":4733.17,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0080\",\"idt\":\"27-05-2026\",\"val\":84450,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":71568,\"iamt\":0,\"camt\":6441.12,\"samt\":6441.12,\"csamt\":0}}]}]},{\"ctin\":\"27PKXFS1248V1ZW\",\"inv\":[{\"inum\":\"KE/26-27/0050\",\"idt\":\"05-05-2026\",\"val\":121166,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":102683.42,\"iamt\":0,\"camt\":9241.5,\"samt\":9241.5,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0058\",\"idt\":\"13-05-2026\",\"val\":406540,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":344525,\"iamt\":0,\"camt\":31007.25,\"samt\":31007.25,\"csamt\":0}}]}]},{\"ctin\":\"27SCPFD6470H1ZG\",\"inv\":[{\"inum\":\"KE/26-27/0072\",\"idt\":\"20-05-2026\",\"val\":193223,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":163748,\"iamt\":0,\"camt\":14737.32,\"samt\":14737.32,\"csamt\":0}}]}]},{\"ctin\":\"27SFUFW7219W1ZU\",\"inv\":[{\"inum\":\"KE/26-27/0051\",\"idt\":\"06-05-2026\",\"val\":73027,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":61887,\"iamt\":0,\"camt\":5569.83,\"samt\":5569.83,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0081\",\"idt\":\"28-05-2026\",\"val\":233184,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":501,\"itm_det\":{\"rt\":5,\"txval\":85200,\"iamt\":0,\"camt\":2130,\"samt\":2130,\"csamt\":0}},{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":121800,\"iamt\":0,\"camt\":10962,\"samt\":10962,\"csamt\":0}}]}]},{\"ctin\":\"27WZSCK7416A1ZF\",\"inv\":[{\"inum\":\"KE/26-27/0047\",\"idt\":\"04-05-2026\",\"val\":605795,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":513386,\"iamt\":0,\"camt\":46204.74,\"samt\":46204.74,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0057\",\"idt\":\"13-05-2026\",\"val\":125581,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":106424.52,\"iamt\":0,\"camt\":9578.2,\"samt\":9578.2,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0066\",\"idt\":\"18-05-2026\",\"val\":814004,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":689833.76,\"iamt\":0,\"camt\":62085.04,\"samt\":62085.04,\"csamt\":0}}]}]},{\"ctin\":\"27XMAFA9397H1ZS\",\"inv\":[{\"inum\":\"KE/26-27/0078\",\"idt\":\"26-05-2026\",\"val\":181085,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":153462.12,\"iamt\":0,\"camt\":13811.59,\"samt\":13811.59,\"csamt\":0}}]}]},{\"ctin\":\"27YKJFP8366H1ZG\",\"inv\":[{\"inum\":\"KE/26-27/0079\",\"idt\":\"27-05-2026\",\"val\":563282,\"pos\":\"27\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":477358,\"iamt\":0,\"camt\":42962.22,\"samt\":42962.22,\"csamt\":0}}]}]},{\"ctin\":\"29MPDFH4621D1ZI\",\"inv\":[{\"inum\":\"KE/26-27/0049\",\"idt\":\"05-05-2026\",\"val\":16266,\"pos\":\"29\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":13784.68,\"iamt\":2481.24,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0068\",\"idt\":\"19-05-2026\",\"val\":120851,\"pos\":\"29\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":102416,\"iamt\":18434.88,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"30JVGFN1105M1Z9\",\"inv\":[{\"inum\":\"KE/26-27/0069\",\"idt\":\"19-05-2026\",\"val\":189650,\"pos\":\"30\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":160720,\"iamt\":28929.6,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]},{\"ctin\":\"36YMAFR7564L1ZD\",\"inv\":[{\"inum\":\"KE/26-27/0054\",\"idt\":\"08-05-2026\",\"val\":709888,\"pos\":\"36\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":601600,\"iamt\":108288,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0063\",\"idt\":\"15-05-2026\",\"val\":506137,\"pos\":\"36\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":428929.34,\"iamt\":77207.29,\"camt\":0,\"samt\":0,\"csamt\":0}}]},{\"inum\":\"KE/26-27/0077\",\"idt\":\"25-05-2026\",\"val\":263872,\"pos\":\"36\",\"rchrg\":\"N\",\"inv_typ\":\"R\",\"itms\":[{\"num\":1801,\"itm_det\":{\"rt\":18,\"txval\":223620,\"iamt\":40251.6,\"camt\":0,\"samt\":0,\"csamt\":0}}]}]}],\"hsn\":{\"data\":[{\"num\":1,\"hsn_sc\":\"3917\",\"desc\":\"Conduit\",\"uqc\":\"PCS\",\"qty\":4206,\"rt\":18,\"txval\":297051.84,\"iamt\":6106.49,\"camt\":23681.42,\"samt\":23681.42,\"csamt\":0},{\"num\":2,\"hsn_sc\":\"3919\",\"desc\":\"Conduit\",\"uqc\":\"ROL\",\"qty\":2721,\"rt\":18,\"txval\":59453.68,\"iamt\":3604.08,\"camt\":3548.8,\"samt\":3548.8,\"csamt\":0},{\"num\":3,\"hsn_sc\":\"3925\",\"desc\":\"Conduit\",\"uqc\":\"NOS\",\"qty\":790,\"rt\":18,\"txval\":29941.72,\"iamt\":1442.83,\"camt\":1973.34,\"samt\":1973.34,\"csamt\":0},{\"num\":4,\"hsn_sc\":\"3926\",\"desc\":\"Conduit\",\"uqc\":\"PAC\",\"qty\":2452,\"rt\":18,\"txval\":351236.4,\"iamt\":5655.35,\"camt\":28783.6,\"samt\":28783.6,\"csamt\":0},{\"num\":5,\"hsn_sc\":\"8414\",\"desc\":\"Fans\",\"uqc\":\"NOS\",\"qty\":153,\"rt\":18,\"txval\":284402,\"iamt\":23098.5,\"camt\":14046.93,\"samt\":14046.93,\"csamt\":0},{\"num\":6,\"hsn_sc\":\"8504\",\"desc\":\"Power\",\"uqc\":\"NOS\",\"qty\":22,\"rt\":18,\"txval\":135420,\"iamt\":0,\"camt\":12187.8,\"samt\":12187.8,\"csamt\":0},{\"num\":7,\"hsn_sc\":\"8507\",\"desc\":\"Power\",\"uqc\":\"NOS\",\"qty\":8,\"rt\":18,\"txval\":109671,\"iamt\":0,\"camt\":9870.39,\"samt\":9870.39,\"csamt\":0},{\"num\":8,\"hsn_sc\":\"8536\",\"desc\":\"Switchgear\",\"uqc\":\"NOS\",\"qty\":1510,\"rt\":18,\"txval\":1607690.15,\"iamt\":60298.22,\"camt\":114543.01,\"samt\":114543.01,\"csamt\":0},{\"num\":9,\"hsn_sc\":\"8537\",\"desc\":\"Switchgear\",\"uqc\":\"NOS\",\"qty\":290,\"rt\":18,\"txval\":703297,\"iamt\":99710.1,\"camt\":13441.68,\"samt\":13441.68,\"csamt\":0},{\"num\":10,\"hsn_sc\":\"8539\",\"desc\":\"Lighting\",\"uqc\":\"NOS\",\"qty\":276,\"rt\":18,\"txval\":18498.04,\"iamt\":477.36,\"camt\":1426.15,\"samt\":1426.15,\"csamt\":0},{\"num\":11,\"hsn_sc\":\"8541\",\"desc\":\"Solar\",\"uqc\":\"NOS\",\"qty\":6,\"rt\":5,\"txval\":85200,\"iamt\":0,\"camt\":2130,\"samt\":2130,\"csamt\":0},{\"num\":12,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"BOX\",\"qty\":220,\"rt\":18,\"txval\":1947676,\"iamt\":11214,\"camt\":169683.84,\"samt\":169683.84,\"csamt\":0},{\"num\":13,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"MTR\",\"qty\":650,\"rt\":18,\"txval\":312347.5,\"iamt\":855,\"camt\":27683.78,\"samt\":27683.78,\"csamt\":0},{\"num\":14,\"hsn_sc\":\"8544\",\"desc\":\"Cables\",\"uqc\":\"ROL\",\"qty\":616,\"rt\":18,\"txval\":2269509,\"iamt\":73449,\"camt\":167531.32,\"samt\":167531.32,\"csamt\":0},{\"num\":15,\"hsn_sc\":\"9405\",\"desc\":\"Lighting\",\"uqc\":\"NOS\",\"qty\":1609,\"rt\":18,\"txval\":2044050.1,\"iamt\":86733.72,\"camt\":140597.64,\"samt\":140597.64,\"csamt\":0}]}}}"
+    },
+    {
+     "coll": "gstr2b",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"period\":\"2026-04\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"rtnprd\":\"042026\",\"docdata\":{\"b2b\":[{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2604/321\",\"idt\":\"06-04-2026\",\"val\":1373621,\"txval\":1164085.9,\"iamt\":0,\"camt\":104767.73,\"samt\":104767.73},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2604/780\",\"idt\":\"12-04-2026\",\"val\":1354587,\"txval\":1147955.16,\"iamt\":0,\"camt\":103315.96,\"samt\":103315.96},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2604/529\",\"idt\":\"23-04-2026\",\"val\":1355035,\"txval\":1148334.63,\"iamt\":0,\"camt\":103350.12,\"samt\":103350.12},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2604/498\",\"idt\":\"09-04-2026\",\"val\":977437,\"txval\":828336.85,\"iamt\":149100.64,\"camt\":0,\"samt\":0},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2604/992\",\"idt\":\"12-04-2026\",\"val\":972637,\"txval\":824268.34,\"iamt\":148368.3,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2604/704\",\"idt\":\"05-04-2026\",\"val\":784747,\"txval\":703217.06,\"iamt\":81530.43,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2604/336\",\"idt\":\"12-04-2026\",\"val\":804642,\"txval\":707403.34,\"iamt\":97238.77,\"camt\":0,\"samt\":0},{\"ctin\":\"07NWLCB8985X1ZH\",\"trdnm\":\"Bharat Fans & Appliances\",\"inum\":\"BFA/2604/649\",\"idt\":\"03-04-2026\",\"val\":468345,\"txval\":396902.77,\"iamt\":71442.49,\"camt\":0,\"samt\":0},{\"ctin\":\"27ERXCK9287H1ZD\",\"trdnm\":\"Konkan Logistics Pvt Ltd\",\"inum\":\"05/2604/61\",\"idt\":\"30-04-2026\",\"val\":47200,\"txval\":40000,\"iamt\":0,\"camt\":3600,\"samt\":3600},{\"ctin\":\"27GCVFM6755X1ZC\",\"trdnm\":\"Mehta & Associates\",\"inum\":\"06/2604/72\",\"idt\":\"30-04-2026\",\"val\":29500,\"txval\":25000,\"iamt\":0,\"camt\":2250,\"samt\":2250}]}}},{\"period\":\"2026-05\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"rtnprd\":\"052026\",\"docdata\":{\"b2b\":[{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2605/877\",\"idt\":\"03-05-2026\",\"val\":1411244,\"txval\":1195969.74,\"iamt\":0,\"camt\":107637.28,\"samt\":107637.28},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2605/364\",\"idt\":\"12-05-2026\",\"val\":1313748,\"txval\":1113346.15,\"iamt\":0,\"camt\":100201.15,\"samt\":100201.15},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2605/826\",\"idt\":\"26-05-2026\",\"val\":1370211,\"txval\":1161196.18,\"iamt\":0,\"camt\":104507.65,\"samt\":104507.65},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2605/763\",\"idt\":\"07-05-2026\",\"val\":984837,\"txval\":834607.84,\"iamt\":150229.42,\"camt\":0,\"samt\":0},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2605/883\",\"idt\":\"16-05-2026\",\"val\":981900,\"txval\":832118.3,\"iamt\":149781.29,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2605/953\",\"idt\":\"04-05-2026\",\"val\":784965,\"txval\":703401.02,\"iamt\":81563.54,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2605/639\",\"idt\":\"15-05-2026\",\"val\":803695,\"txval\":706406.64,\"iamt\":97288.72,\"camt\":0,\"samt\":0},{\"ctin\":\"07NWLCB8985X1ZH\",\"trdnm\":\"Bharat Fans & Appliances\",\"inum\":\"BFA/2605/745\",\"idt\":\"03-05-2026\",\"val\":468345,\"txval\":396902.77,\"iamt\":71442.49,\"camt\":0,\"samt\":0},{\"ctin\":\"27ERXCK9287H1ZD\",\"trdnm\":\"Konkan Logistics Pvt Ltd\",\"inum\":\"05/2605/64\",\"idt\":\"31-05-2026\",\"val\":49560,\"txval\":42000,\"iamt\":0,\"camt\":3780,\"samt\":3780},{\"ctin\":\"27GCVFM6755X1ZC\",\"trdnm\":\"Mehta & Associates\",\"inum\":\"06/2605/97\",\"idt\":\"31-05-2026\",\"val\":29500,\"txval\":25000,\"iamt\":0,\"camt\":2250,\"samt\":2250}]}}},{\"period\":\"2026-06\",\"data\":{\"gstin\":\"27AAFCK4821M1Z9\",\"rtnprd\":\"062026\",\"docdata\":{\"b2b\":[{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2606/270\",\"idt\":\"03-06-2026\",\"val\":1405024,\"txval\":1190698.11,\"iamt\":0,\"camt\":107162.84,\"samt\":107162.84},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2606/708\",\"idt\":\"16-06-2026\",\"val\":1403983,\"txval\":1189815.93,\"iamt\":0,\"camt\":107083.43,\"samt\":107083.43},{\"ctin\":\"27YNMCS7586Z1Z5\",\"trdnm\":\"Sahyadri Cables Pvt Ltd\",\"inum\":\"SCPL/2606/402\",\"idt\":\"23-06-2026\",\"val\":1353766,\"txval\":1147258.98,\"iamt\":0,\"camt\":103253.31,\"samt\":103253.31},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2606/545\",\"idt\":\"06-06-2026\",\"val\":975360,\"txval\":826576.07,\"iamt\":148783.7,\"camt\":0,\"samt\":0},{\"ctin\":\"24HFLCN6981P1Z2\",\"trdnm\":\"Narmada Switchgear Ltd\",\"inum\":\"NSL/2606/355\",\"idt\":\"18-06-2026\",\"val\":987169,\"txval\":836583.71,\"iamt\":150585.07,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2606/290\",\"idt\":\"09-06-2026\",\"val\":784801,\"txval\":703262.18,\"iamt\":81538.54,\"camt\":0,\"samt\":0},{\"ctin\":\"36XENFD1632W1ZT\",\"trdnm\":\"Deccan Lighting Co\",\"inum\":\"DLC/2606/336\",\"idt\":\"16-06-2026\",\"val\":805601,\"txval\":708216.06,\"iamt\":97385.05,\"camt\":0,\"samt\":0},{\"ctin\":\"07NWLCB8985X1ZH\",\"trdnm\":\"Bharat Fans & Appliances\",\"inum\":\"BFA/2606/315\",\"idt\":\"09-06-2026\",\"val\":468345,\"txval\":396902.77,\"iamt\":71442.49,\"camt\":0,\"samt\":0},{\"ctin\":\"27ERXCK9287H1ZD\",\"trdnm\":\"Konkan Logistics Pvt Ltd\",\"inum\":\"05/2606/59\",\"idt\":\"30-06-2026\",\"val\":44840,\"txval\":38000,\"iamt\":0,\"camt\":3420,\"samt\":3420},{\"ctin\":\"27GCVFM6755X1ZC\",\"trdnm\":\"Mehta & Associates\",\"inum\":\"06/2606/21\",\"idt\":\"30-06-2026\",\"val\":29500,\"txval\":25000,\"iamt\":0,\"camt\":2250,\"samt\":2250}]}}}]"
+    },
+    {
+     "coll": "form26as",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"quarter\":\"FY2026-27-Q1\",\"deductorTan\":\"PNES12093B\",\"deductorName\":\"Sahyog Infratech Ltd\",\"section\":\"194Q\",\"invoiceId\":\"inv-0104\",\"receiptId\":\"rcpt-0101\",\"creditedOn\":\"2026-06-15\",\"amountPaidPaise\":14929345,\"tdsCreditedPaise\":3074},{\"quarter\":\"FY2026-27-Q1\",\"deductorTan\":\"PNES12093B\",\"deductorName\":\"Sahyog Infratech Ltd\",\"section\":\"194Q\",\"invoiceId\":\"inv-0105\",\"receiptId\":\"rcpt-0108\",\"creditedOn\":\"2026-06-15\",\"amountPaidPaise\":26250685,\"tdsCreditedPaise\":26251},{\"quarter\":\"FY2026-27-Q1\",\"deductorTan\":\"PNES12093B\",\"deductorName\":\"Sahyog Infratech Ltd\",\"section\":\"194Q\",\"invoiceId\":\"inv-0115\",\"receiptId\":\"rcpt-0118\",\"creditedOn\":\"2026-06-20\",\"amountPaidPaise\":1969800,\"tdsCreditedPaise\":1970}]"
+    },
+    {
+     "coll": "leads",
+     "id": "lead-001",
+     "ord": 0,
+     "json": "{\"id\":\"lead-001\",\"name\":\"Ostwal Realty\",\"city\":\"Pune\",\"source\":\"IndiaMART\",\"stage\":\"quoted\",\"valuePaise\":184000000,\"need\":\"Armoured cable and DBs for a 6-storey residential block\",\"createdOn\":\"2026-10-20\",\"lastTouchOn\":\"2026-11-01\",\"nextStep\":\"Follow up on quotation\"}"
+    },
+    {
+     "coll": "leads",
+     "id": "lead-002",
+     "ord": 1,
+     "json": "{\"id\":\"lead-002\",\"name\":\"Mahalaxmi Hospital\",\"city\":\"Kolhapur\",\"source\":\"Referral\",\"stage\":\"contacted\",\"valuePaise\":98000000,\"need\":\"LED panels and changeover for the new OPD wing\",\"createdOn\":\"2026-09-20\",\"lastTouchOn\":\"2026-09-28\",\"nextStep\":\"Send catalogue and site visit slot\"}"
+    },
+    {
+     "coll": "leads",
+     "id": "lead-003",
+     "ord": 2,
+     "json": "{\"id\":\"lead-003\",\"name\":\"Sinhgad Engineering College\",\"city\":\"Pune\",\"source\":\"Website\",\"stage\":\"new\",\"valuePaise\":62000000,\"need\":\"Lab rewiring, MCBs and conduit\",\"createdOn\":\"2026-09-07\",\"lastTouchOn\":\"2026-09-13\",\"nextStep\":\"Call to qualify budget and timeline\"}"
+    },
+    {
+     "coll": "quotes",
+     "id": "quote-001",
+     "ord": 0,
+     "json": "{\"id\":\"quote-001\",\"number\":\"KE/Q/26-27/041\",\"date\":\"2026-10-19\",\"leadId\":\"lead-001\",\"partyId\":null,\"status\":\"sent\",\"validUntil\":\"2026-11-03\",\"lines\":[{\"skuId\":\"SKU-106\",\"description\":\"Armoured cable 4 core 16 sq mm\",\"hsn\":\"8544\",\"qty\":300,\"unit\":\"MTR\",\"ratePaise\":41000,\"discountPct\":3,\"taxablePaise\":11931000,\"gstRate\":18,\"cgstPaise\":1073790,\"sgstPaise\":1073790,\"igstPaise\":0},{\"skuId\":\"SKU-107\",\"description\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"qty\":300,\"unit\":\"MTR\",\"ratePaise\":62000,\"discountPct\":3,\"taxablePaise\":18042000,\"gstRate\":18,\"cgstPaise\":1623780,\"sgstPaise\":1623780,\"igstPaise\":0},{\"skuId\":\"SKU-205\",\"description\":\"Distribution board 8 way DP\",\"hsn\":\"8537\",\"qty\":40,\"unit\":\"NOS\",\"ratePaise\":245000,\"discountPct\":3,\"taxablePaise\":9506000,\"gstRate\":18,\"cgstPaise\":855540,\"sgstPaise\":855540,\"igstPaise\":0},{\"skuId\":\"SKU-202\",\"description\":\"MCB double pole 32 A\",\"hsn\":\"8536\",\"qty\":56,\"unit\":\"NOS\",\"ratePaise\":62000,\"discountPct\":3,\"taxablePaise\":3367840,\"gstRate\":18,\"cgstPaise\":303106,\"sgstPaise\":303106,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":42846840,\"cgstPaise\":3856216,\"sgstPaise\":3856216,\"igstPaise\":0,\"roundOffPaise\":28,\"totalPaise\":50559300}}"
+    },
+    {
+     "coll": "quotes",
+     "id": "quote-002",
+     "ord": 1,
+     "json": "{\"id\":\"quote-002\",\"number\":\"KE/Q/26-27/042\",\"date\":\"2026-11-01\",\"leadId\":\"lead-004\",\"partyId\":null,\"status\":\"sent\",\"validUntil\":\"2026-11-16\",\"lines\":[{\"skuId\":\"SKU-304\",\"description\":\"LED floodlight 100 W\",\"hsn\":\"9405\",\"qty\":80,\"unit\":\"NOS\",\"ratePaise\":235000,\"discountPct\":3,\"taxablePaise\":18236000,\"gstRate\":18,\"cgstPaise\":1641240,\"sgstPaise\":1641240,\"igstPaise\":0},{\"skuId\":\"SKU-305\",\"description\":\"LED street light 60 W\",\"hsn\":\"9405\",\"qty\":67,\"unit\":\"NOS\",\"ratePaise\":320000,\"discountPct\":3,\"taxablePaise\":20796800,\"gstRate\":18,\"cgstPaise\":1871712,\"sgstPaise\":1871712,\"igstPaise\":0},{\"skuId\":\"SKU-107\",\"description\":\"Armoured cable 4 core 25 sq mm\",\"hsn\":\"8544\",\"qty\":300,\"unit\":\"MTR\",\"ratePaise\":62000,\"discountPct\":3,\"taxablePaise\":18042000,\"gstRate\":18,\"cgstPaise\":1623780,\"sgstPaise\":1623780,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":57074800,\"cgstPaise\":5136732,\"sgstPaise\":5136732,\"igstPaise\":0,\"roundOffPaise\":36,\"totalPaise\":67348300}}"
+    },
+    {
+     "coll": "quotes",
+     "id": "quote-003",
+     "ord": 2,
+     "json": "{\"id\":\"quote-003\",\"number\":\"KE/Q/26-27/043\",\"date\":\"2026-10-21\",\"leadId\":\"lead-011\",\"partyId\":null,\"status\":\"draft\",\"validUntil\":\"2026-11-05\",\"lines\":[{\"skuId\":\"SKU-102\",\"description\":\"FR PVC wire 1.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":67,\"unit\":\"ROL\",\"ratePaise\":215000,\"discountPct\":3,\"taxablePaise\":13972850,\"gstRate\":18,\"cgstPaise\":1257557,\"sgstPaise\":1257557,\"igstPaise\":0},{\"skuId\":\"SKU-103\",\"description\":\"FR PVC wire 2.5 sq mm, 90 m coil\",\"hsn\":\"8544\",\"qty\":53,\"unit\":\"ROL\",\"ratePaise\":335000,\"discountPct\":3,\"taxablePaise\":17222350,\"gstRate\":18,\"cgstPaise\":1550012,\"sgstPaise\":1550012,\"igstPaise\":0},{\"skuId\":\"SKU-201\",\"description\":\"MCB single pole 16 A\",\"hsn\":\"8536\",\"qty\":45,\"unit\":\"NOS\",\"ratePaise\":18500,\"discountPct\":3,\"taxablePaise\":807525,\"gstRate\":18,\"cgstPaise\":72677,\"sgstPaise\":72677,\"igstPaise\":0},{\"skuId\":\"SKU-206\",\"description\":\"Modular switch 6 A\",\"hsn\":\"8536\",\"qty\":79,\"unit\":\"NOS\",\"ratePaise\":4800,\"discountPct\":3,\"taxablePaise\":367824,\"gstRate\":18,\"cgstPaise\":33104,\"sgstPaise\":33104,\"igstPaise\":0},{\"skuId\":\"SKU-207\",\"description\":\"Modular socket 16 A\",\"hsn\":\"8536\",\"qty\":25,\"unit\":\"NOS\",\"ratePaise\":16500,\"discountPct\":3,\"taxablePaise\":400125,\"gstRate\":18,\"cgstPaise\":36011,\"sgstPaise\":36011,\"igstPaise\":0},{\"skuId\":\"SKU-501\",\"description\":\"PVC conduit pipe 25 mm, 3 m\",\"hsn\":\"3917\",\"qty\":12,\"unit\":\"PCS\",\"ratePaise\":7200,\"discountPct\":3,\"taxablePaise\":83808,\"gstRate\":18,\"cgstPaise\":7543,\"sgstPaise\":7543,\"igstPaise\":0}],\"totals\":{\"taxablePaise\":32854482,\"cgstPaise\":2956904,\"sgstPaise\":2956904,\"igstPaise\":0,\"roundOffPaise\":10,\"totalPaise\":38768300}}"
+    },
+    {
+     "coll": "campaigns",
+     "id": "camp-01",
+     "ord": 0,
+     "json": "{\"id\":\"camp-01\",\"name\":\"Diwali dealer scheme on fans\",\"channel\":\"WhatsApp broadcast\",\"skuIds\":[\"SKU-401\",\"SKU-402\"],\"status\":\"ended\",\"start\":\"2026-10-01\",\"end\":\"2026-10-25\",\"budgetPaise\":4500000,\"spentPaise\":4120000,\"reach\":1860,\"enquiries\":74,\"attributedSalesPaise\":186000000}"
+    },
+    {
+     "coll": "campaigns",
+     "id": "camp-02",
+     "ord": 1,
+     "json": "{\"id\":\"camp-02\",\"name\":\"Solar rooftop kits for contractors\",\"channel\":\"IndiaMART promotion\",\"skuIds\":[\"SKU-308\",\"SKU-309\",\"SKU-307\"],\"status\":\"running\",\"start\":\"2026-10-15\",\"end\":\"2026-11-30\",\"budgetPaise\":6000000,\"spentPaise\":2280000,\"reach\":5400,\"enquiries\":31,\"attributedSalesPaise\":41000000}"
+    },
+    {
+     "coll": "campaigns",
+     "id": "camp-03",
+     "ord": 2,
+     "json": "{\"id\":\"camp-03\",\"name\":\"Pune electricians' meet, Bhosari\",\"channel\":\"Dealer meet\",\"skuIds\":[\"SKU-203\",\"SKU-205\"],\"status\":\"planned\",\"start\":\"2026-11-22\",\"end\":\"2026-11-22\",\"budgetPaise\":8500000,\"spentPaise\":0,\"reach\":0,\"enquiries\":0,\"attributedSalesPaise\":0}"
+    },
+    {
+     "coll": "festivalCalendar",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"date\":\"2026-11-14\",\"name\":\"Children's Day\",\"relevance\":\"Low: no trade link\"},{\"date\":\"2026-11-24\",\"name\":\"Tulsi Vivah, start of wedding season\",\"relevance\":\"High: house wiring and lighting demand rises through February\"},{\"date\":\"2026-12-25\",\"name\":\"Christmas and year-end closing\",\"relevance\":\"Medium: contractors close projects before 31 March billing\"}]"
+    },
+    {
+     "coll": "competitorPrices",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"skuId\":\"SKU-102\",\"marketplace\":\"Industrybuying\",\"seller\":\"Shakti Traders\",\"pricePaise\":231134,\"seenOn\":\"2026-11-01\"},{\"skuId\":\"SKU-102\",\"marketplace\":\"Amazon Business\",\"seller\":\"VoltMart\",\"pricePaise\":208340,\"seenOn\":\"2026-11-02\"},{\"skuId\":\"SKU-102\",\"marketplace\":\"Moglix\",\"seller\":\"Ganesh Electricals\",\"pricePaise\":203814,\"seenOn\":\"2026-11-03\"}]"
+    },
+    {
+     "coll": "posts",
+     "id": "post-01",
+     "ord": 0,
+     "json": "{\"id\":\"post-01\",\"topic\":\"BLDC fans halve the power bill\",\"pillar\":\"products\",\"calendarId\":\"cal-2026-10\",\"campaignId\":null,\"status\":\"published\",\"at\":\"2026-10-29T18:30:00+05:30\",\"skuIds\":[\"SKU-402\"],\"facts\":[{\"id\":\"price:SKU-402\",\"kind\":\"price\",\"label\":\"BLDC ceiling fan 1200 mm, price before GST\",\"value\":\"₹3,450\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-402\"}},{\"id\":\"mrp:SKU-402\",\"kind\":\"price\",\"label\":\"BLDC ceiling fan 1200 mm, price with 18% GST\",\"value\":\"₹4,071\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-402\"}},{\"id\":\"gst:SKU-402\",\"kind\":\"spec\",\"label\":\"BLDC ceiling fan 1200 mm, GST rate\",\"value\":\"18%\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-402\"}}],\"variants\":[{\"channelId\":\"ch-instagram\",\"platform\":\"instagram\",\"text\":\"BLDC fans use about half the power of a regular ceiling fan. The BLDC ceiling fan 1200 mm is ₹4,071 with GST at our Bhosari counter.\\n\\nLink in bio.\\n\\n#PuneElectricals #KaveriElectricals\",\"mediaIds\":[\"media-01\"],\"link\":null,\"status\":\"published\",\"externalId\":\"17890001\",\"url\":\"https://www.instagram.com/p/C7kav01/\",\"publishedAt\":\"2026-10-29T18:30:00+05:30\",\"error\":null,\"approvedHash\":\"f14897fb\",\"metrics\":{\"views\":4820,\"likes\":212,\"comments\":18,\"saves\":41,\"shares\":23,\"clicks\":0,\"enquiries\":6}},{\"channelId\":\"ch-facebook\",\"platform\":\"facebook\",\"text\":\"BLDC fans use about half the power of a regular ceiling fan. The BLDC ceiling fan 1200 mm is ₹4,071 with GST at our Bhosari counter. Dealers, ask us for the price list.\\n\\nhttps://kaverielectricals.in/fans?utm_source=facebook&utm_medium=social&utm_campaign=post-01\\n\\n#PuneElectricals\",\"mediaIds\":[\"media-01\"],\"link\":\"https://kaverielectricals.in/fans?utm_source=facebook&utm_medium=social&utm_campaign=post-01\",\"status\":\"published\",\"externalId\":\"1001\",\"url\":\"https://www.facebook.com/kaverielectricals/posts/1001\",\"publishedAt\":\"2026-10-29T18:31:00+05:30\",\"error\":null,\"approvedHash\":\"c818fd1e\",\"metrics\":{\"views\":3110,\"likes\":96,\"comments\":11,\"saves\":0,\"shares\":14,\"clicks\":72,\"enquiries\":3}},{\"channelId\":\"ch-threads\",\"platform\":\"threads\",\"text\":\"BLDC fans use about half the power of a regular ceiling fan. BLDC ceiling fan 1200 mm, ₹4,071 with GST, in stock at Bhosari. #PuneElectricals\",\"mediaIds\":[],\"link\":null,\"status\":\"published\",\"externalId\":null,\"url\":\"https://www.threads.net/@kaverielectricals/post/C7kth01\",\"publishedAt\":\"2026-10-29T19:05:00+05:30\",\"error\":null,\"approvedHash\":\"3d37bce8\",\"metrics\":{\"views\":640,\"likes\":31,\"comments\":4,\"saves\":0,\"shares\":2,\"clicks\":0,\"enquiries\":0}}]}"
+    },
+    {
+     "coll": "posts",
+     "id": "post-02",
+     "ord": 1,
+     "json": "{\"id\":\"post-02\",\"topic\":\"LED panels back in stock\",\"pillar\":\"products\",\"calendarId\":\"cal-2026-10\",\"campaignId\":\"camp-04\",\"status\":\"published\",\"at\":\"2026-10-31T11:00:00+05:30\",\"skuIds\":[\"SKU-303\"],\"facts\":[{\"id\":\"price:SKU-303\",\"kind\":\"price\",\"label\":\"LED panel 2x2 ft 36 W, price before GST\",\"value\":\"₹1,150\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-303\"}},{\"id\":\"mrp:SKU-303\",\"kind\":\"price\",\"label\":\"LED panel 2x2 ft 36 W, price with 18% GST\",\"value\":\"₹1,357\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-303\"}},{\"id\":\"gst:SKU-303\",\"kind\":\"spec\",\"label\":\"LED panel 2x2 ft 36 W, GST rate\",\"value\":\"18%\",\"ref\":{\"kind\":\"sku\",\"id\":\"SKU-303\"}}],\"variants\":[{\"channelId\":\"ch-google\",\"platform\":\"google\",\"text\":\"Fresh stock of 2x2 LED panels at our Bhosari godown. Same-day dispatch inside PCMC.\",\"mediaIds\":[\"media-02\"],\"link\":null,\"status\":\"published\",\"externalId\":null,\"url\":\"https://g.page/kaveri-electricals/update/2\",\"publishedAt\":\"2026-10-31T11:00:00+05:30\",\"error\":null,\"approvedHash\":\"ac6e1d1f\",\"metrics\":{\"views\":1310,\"likes\":0,\"comments\":0,\"saves\":0,\"shares\":0,\"clicks\":58,\"enquiries\":4}},{\"channelId\":\"ch-facebook\",\"platform\":\"facebook\",\"text\":\"Fresh stock of 2x2 LED panels at our Bhosari godown: the LED panel 2x2 ft 36 W at ₹1,357 with GST. Same-day dispatch inside PCMC.\\n\\n#PuneElectricals\",\"mediaIds\":[\"media-02\"],\"link\":null,\"status\":\"published\",\"externalId\":\"1002\",\"url\":\"https://www.facebook.com/kaverielectricals/posts/1002\",\"publishedAt\":\"2026-10-31T11:02:00+05:30\",\"error\":null,\"approvedHash\":\"fe4fa317\",\"metrics\":{\"views\":1980,\"likes\":54,\"comments\":6,\"saves\":0,\"shares\":5,\"clicks\":31,\"enquiries\":2}}]}"
+    },
+    {
+     "coll": "posts",
+     "id": "post-03",
+     "ord": 2,
+     "json": "{\"id\":\"post-03\",\"topic\":\"Thank you, electricians\",\"pillar\":\"behind\",\"calendarId\":\"cal-2026-10\",\"campaignId\":null,\"status\":\"published\",\"at\":\"2026-11-01T19:15:00+05:30\",\"skuIds\":[\"SKU-203\"],\"facts\":[],\"variants\":[{\"channelId\":\"ch-facebook\",\"platform\":\"facebook\",\"text\":\"Thank you to the electricians who joined our RCCB safety session last month. The next one is at the electricians' meet in Bhosari.\",\"mediaIds\":[\"media-05\"],\"link\":null,\"status\":\"published\",\"externalId\":\"1003\",\"url\":\"https://www.facebook.com/kaverielectricals/posts/1003\",\"publishedAt\":\"2026-11-01T19:15:00+05:30\",\"error\":null,\"approvedHash\":\"528169d6\",\"metrics\":{\"views\":2240,\"likes\":133,\"comments\":9,\"saves\":4,\"shares\":11,\"clicks\":0,\"enquiries\":0}},{\"channelId\":\"ch-instagram\",\"platform\":\"instagram\",\"text\":\"Thank you to the electricians who joined our RCCB safety session last month. See you at the next one.\\n\\n#PuneElectricals #KaveriElectricals\",\"mediaIds\":[\"media-05\"],\"link\":null,\"status\":\"published\",\"externalId\":\"17890003\",\"url\":\"https://www.instagram.com/p/C7kav03/\",\"publishedAt\":\"2026-11-01T19:16:00+05:30\",\"error\":null,\"approvedHash\":\"05c69f14\",\"metrics\":{\"views\":2960,\"likes\":241,\"comments\":22,\"saves\":37,\"shares\":19,\"clicks\":0,\"enquiries\":1}},{\"channelId\":\"ch-linkedin\",\"platform\":\"linkedin\",\"text\":\"Thank you to the electricians who joined our RCCB safety session last month. Safer wiring starts with the people who do it every day.\",\"mediaIds\":[],\"link\":null,\"status\":\"published\",\"externalId\":\"urn:li:share:7001\",\"url\":\"https://www.linkedin.com/feed/update/urn:li:share:7001\",\"publishedAt\":\"2026-11-01T19:20:00+05:30\",\"error\":null,\"approvedHash\":\"78f3a2c6\",\"metrics\":{\"views\":1420,\"likes\":58,\"comments\":7,\"saves\":0,\"shares\":6,\"clicks\":0,\"enquiries\":0}}]}"
+    },
+    {
+     "coll": "socialInbox",
+     "id": "msg-01",
+     "ord": 0,
+     "json": "{\"id\":\"msg-01\",\"platform\":\"Google reviews\",\"channelId\":\"ch-google\",\"kind\":\"review\",\"author\":\"Prashant K.\",\"at\":\"2026-11-04T09:12:00+05:30\",\"rating\":2,\"text\":\"Waited 40 minutes at the counter for a simple MCB order. Staff were polite but slow.\",\"sentiment\":\"negative\",\"intent\":\"complaint\",\"draftReply\":\"Prashant, thank you for telling us. Forty minutes is too long for a counter order. We have added a second billing counter from this week; please ask for Leena next time and we will have you out in ten minutes.\",\"status\":\"open\",\"postId\":null,\"threadId\":null,\"externalId\":null,\"leadId\":null,\"replyBy\":null}"
+    },
+    {
+     "coll": "socialInbox",
+     "id": "msg-02",
+     "ord": 1,
+     "json": "{\"id\":\"msg-02\",\"platform\":\"Instagram\",\"channelId\":\"ch-instagram\",\"kind\":\"comment\",\"author\":\"@sparkline_electricals\",\"at\":\"2026-11-04T10:40:00+05:30\",\"rating\":null,\"text\":\"Do you have BLDC fans in brown? Need 24 pieces for a site in Wakad.\",\"sentiment\":\"neutral\",\"intent\":\"enquiry\",\"draftReply\":\"Thanks for asking. Our sales team will send you the details and a quotation shortly.\",\"status\":\"open\",\"postId\":\"post-01\",\"threadId\":null,\"externalId\":null,\"leadId\":\"lead-msg-02\",\"replyBy\":null}"
+    },
+    {
+     "coll": "socialInbox",
+     "id": "msg-03",
+     "ord": 2,
+     "json": "{\"id\":\"msg-03\",\"platform\":\"Google reviews\",\"channelId\":\"ch-google\",\"kind\":\"review\",\"author\":\"Sneha Joshi\",\"at\":\"2026-11-03T17:05:00+05:30\",\"rating\":5,\"text\":\"Genuine products and proper GST bills every time. Delivery to Hinjewadi was next day.\",\"sentiment\":\"positive\",\"intent\":\"praise\",\"draftReply\":\"Thank you, Sneha. We are glad the Hinjewadi delivery reached on time.\",\"status\":\"open\",\"postId\":null,\"threadId\":null,\"externalId\":null,\"leadId\":null,\"replyBy\":null}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-instagram",
+     "ord": 0,
+     "json": "{\"id\":\"ch-instagram\",\"platform\":\"instagram\",\"handle\":\"@kaverielectricals\",\"mode\":\"connected\",\"status\":\"connected\",\"lastError\":null,\"connectedAt\":\"2026-10-01T11:00:00+05:30\",\"followers\":3420,\"postingHours\":{\"from\":\"11:00\",\"to\":\"20:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-facebook",
+     "ord": 1,
+     "json": "{\"id\":\"ch-facebook\",\"platform\":\"facebook\",\"handle\":\"Kaveri Electricals\",\"mode\":\"connected\",\"status\":\"connected\",\"lastError\":null,\"connectedAt\":\"2026-10-01T11:00:00+05:30\",\"followers\":5180,\"postingHours\":{\"from\":\"10:00\",\"to\":\"21:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-threads",
+     "ord": 2,
+     "json": "{\"id\":\"ch-threads\",\"platform\":\"threads\",\"handle\":\"@kaverielectricals\",\"mode\":\"manual\",\"status\":\"manual\",\"lastError\":null,\"connectedAt\":null,\"followers\":610,\"postingHours\":{\"from\":\"11:00\",\"to\":\"20:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-linkedin",
+     "ord": 3,
+     "json": "{\"id\":\"ch-linkedin\",\"platform\":\"linkedin\",\"handle\":\"Anil Kaveri\",\"mode\":\"connected\",\"status\":\"connected\",\"lastError\":null,\"connectedAt\":\"2026-10-03T10:00:00+05:30\",\"followers\":1240,\"postingHours\":{\"from\":\"09:00\",\"to\":\"12:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-x",
+     "ord": 4,
+     "json": "{\"id\":\"ch-x\",\"platform\":\"x\",\"handle\":\"@kaveri_elec\",\"mode\":\"connected\",\"status\":\"rate_limited\",\"lastError\":\"X answered 429: the free tier's daily posting limit was reached\",\"connectedAt\":\"2026-10-03T10:00:00+05:30\",\"followers\":380,\"postingHours\":{\"from\":\"09:00\",\"to\":\"19:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-whatsapp",
+     "ord": 5,
+     "json": "{\"id\":\"ch-whatsapp\",\"platform\":\"whatsapp\",\"handle\":\"+91 20 2712 4480\",\"mode\":\"connected\",\"status\":\"connected\",\"lastError\":null,\"connectedAt\":\"2026-10-05T12:00:00+05:30\",\"followers\":420,\"postingHours\":{\"from\":\"10:00\",\"to\":\"19:00\"}}"
+    },
+    {
+     "coll": "channels",
+     "id": "ch-google",
+     "ord": 6,
+     "json": "{\"id\":\"ch-google\",\"platform\":\"google\",\"handle\":\"Kaveri Electricals, Bhosari\",\"mode\":\"manual\",\"status\":\"manual\",\"lastError\":null,\"connectedAt\":null,\"followers\":null,\"postingHours\":{\"from\":\"10:00\",\"to\":\"18:00\"}}"
+    },
+    {
+     "coll": "brandVoice",
+     "id": "_",
+     "ord": 0,
+     "json": "{\"tone\":\"Plain, warm and practical, like the counter manager who knows every product. Speaks to electricians and contractors as peers.\",\"dos\":[\"Name the product and what it does for the buyer\",\"Say where and when stock is available\",\"Thank customers by name\"],\"donts\":[\"No claims we cannot prove\",\"No competitor names\",\"No prices without GST\"],\"samples\":[\"BLDC fans use about half the power of a regular ceiling fan. Dealers: ask us for the price list.\",\"Fresh stock of 2x2 LED panels at our Bhosari godown. Same-day dispatch inside PCMC.\",\"Thank you to the electricians who joined our RCCB safety session last month.\"],\"languages\":[\"en\",\"mr\"],\"hashtags\":[\"#PuneElectricals\",\"#KaveriElectricals\"],\"emoji\":\"light\",\"pillars\":[{\"id\":\"products\",\"name\":\"Products in stock\",\"share\":40,\"description\":\"What is on the shelf and who it suits\"},{\"id\":\"know-how\",\"name\":\"Know-how\",\"share\":30,\"description\":\"Safety, wiring and energy tips\"},{\"id\":\"offers\",\"name\":\"Offers and events\",\"share\":20,\"description\":\"Schemes, meets and festival timings\"},{\"id\":\"behind\",\"name\":\"Behind the counter\",\"share\":10,\"description\":\"Team, deliveries and customers\"}],\"signoff\":\"\"}"
+    },
+    {
+     "coll": "calendars",
+     "id": "cal-2026-10",
+     "ord": 0,
+     "json": "{\"id\":\"cal-2026-10\",\"month\":\"2026-10\",\"status\":\"approved\",\"slots\":[{\"date\":\"2026-10-29\",\"pillarId\":\"products\",\"topic\":\"BLDC fans halve the power bill\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":\"post-01\"},{\"date\":\"2026-10-31\",\"pillarId\":\"products\",\"topic\":\"LED panels back in stock\",\"channelIds\":[\"ch-google\",\"ch-facebook\"],\"postId\":\"post-02\"},{\"date\":\"2026-11-01\",\"pillarId\":\"behind\",\"topic\":\"Thank you, electricians\",\"channelIds\":[\"ch-facebook\",\"ch-instagram\",\"ch-linkedin\"],\"postId\":\"post-03\"},{\"date\":\"2026-11-02\",\"pillarId\":\"products\",\"topic\":\"Solar inverters for rooftop partners\",\"channelIds\":[\"ch-linkedin\",\"ch-x\"],\"postId\":\"post-04\"}],\"createdAt\":\"2026-09-25T09:00:00+05:30\",\"approvedAt\":\"2026-09-26T10:12:00+05:30\",\"approvedBy\":\"Anil Kaveri\"}"
+    },
+    {
+     "coll": "calendars",
+     "id": "cal-2026-11",
+     "ord": 1,
+     "json": "{\"id\":\"cal-2026-11\",\"month\":\"2026-11\",\"status\":\"approved\",\"slots\":[{\"date\":\"2026-11-05\",\"pillarId\":\"offers\",\"topic\":\"Wedding-season lighting\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-whatsapp\"],\"postId\":\"post-05\"},{\"date\":\"2026-11-06\",\"pillarId\":\"behind\",\"topic\":\"Sunday pickups\",\"channelIds\":[\"ch-google\",\"ch-facebook\"],\"postId\":\"post-06\"},{\"date\":\"2026-11-09\",\"pillarId\":\"offers\",\"topic\":\"Pedestal fans while stock lasts\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-whatsapp\"],\"postId\":\"post-07\"},{\"date\":\"2026-11-11\",\"pillarId\":\"offers\",\"topic\":\"Pune electricians' meet\",\"channelIds\":[\"ch-facebook\",\"ch-linkedin\",\"ch-instagram\"],\"postId\":\"post-08\"},{\"date\":\"2026-11-16\",\"pillarId\":\"know-how\",\"topic\":\"Earthing checks every home should have\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-11-18\",\"pillarId\":\"products\",\"topic\":\"RCCB 4 pole 63 A 30 mA in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-11-20\",\"pillarId\":\"know-how\",\"topic\":\"What an RCCB protects you from\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\"],\"postId\":null},{\"date\":\"2026-11-23\",\"pillarId\":\"offers\",\"topic\":\"Tulsi Vivah, start of wedding season timings and offers\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-whatsapp\",\"ch-threads\"],\"postId\":null},{\"date\":\"2026-11-25\",\"pillarId\":\"products\",\"topic\":\"LED downlight 12 W in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-11-27\",\"pillarId\":\"know-how\",\"topic\":\"LED lighting that cuts the power bill\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-11-30\",\"pillarId\":\"products\",\"topic\":\"Distribution board 8 way DP in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null}],\"createdAt\":\"2026-10-25T09:00:00+05:30\",\"approvedAt\":\"2026-10-27T18:40:00+05:30\",\"approvedBy\":\"Anil Kaveri\"}"
+    },
+    {
+     "coll": "calendars",
+     "id": "cal-2026-12",
+     "ord": 2,
+     "json": "{\"id\":\"cal-2026-12\",\"month\":\"2026-12\",\"status\":\"draft\",\"slots\":[{\"date\":\"2026-12-02\",\"pillarId\":\"products\",\"topic\":\"Pedestal fan 400 mm in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-04\",\"pillarId\":\"know-how\",\"topic\":\"How to pick the right MCB rating for a room\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-07\",\"pillarId\":\"products\",\"topic\":\"Solar inverter 3 kVA in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-09\",\"pillarId\":\"behind\",\"topic\":\"New stock in at the godown\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\"],\"postId\":null},{\"date\":\"2026-12-11\",\"pillarId\":\"know-how\",\"topic\":\"Why ISI-marked wire is worth it\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-14\",\"pillarId\":\"products\",\"topic\":\"BLDC ceiling fan 1200 mm in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-16\",\"pillarId\":\"offers\",\"topic\":\"Solar rooftop kits for contractors\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-whatsapp\",\"ch-x\",\"ch-threads\"],\"postId\":null},{\"date\":\"2026-12-18\",\"pillarId\":\"know-how\",\"topic\":\"Sizing wire for an AC point\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-21\",\"pillarId\":\"products\",\"topic\":\"LED panel 2x2 ft 36 W in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-23\",\"pillarId\":\"offers\",\"topic\":\"Christmas and year-end closing timings and offers\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-whatsapp\",\"ch-x\",\"ch-threads\"],\"postId\":null},{\"date\":\"2026-12-25\",\"pillarId\":\"know-how\",\"topic\":\"Earthing checks every home should have\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-28\",\"pillarId\":\"products\",\"topic\":\"Ceiling fan 1200 mm in stock\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-threads\",\"ch-x\"],\"postId\":null},{\"date\":\"2026-12-30\",\"pillarId\":\"behind\",\"topic\":\"Meet the counter team\",\"channelIds\":[\"ch-instagram\",\"ch-facebook\",\"ch-linkedin\"],\"postId\":null}],\"createdAt\":\"2026-11-04T17:20:00+05:30\",\"approvedAt\":null,\"approvedBy\":null}"
+    },
+    {
+     "coll": "media",
+     "id": "media-01",
+     "ord": 0,
+     "json": "{\"id\":\"media-01\",\"url\":\"/samples/media-01.svg\",\"kind\":\"image\",\"alt\":\"A brown BLDC ceiling fan with three blades, boxed and unboxed on the counter\",\"skuId\":\"SKU-402\",\"rights\":\"own\",\"width\":1080,\"height\":1080}"
+    },
+    {
+     "coll": "media",
+     "id": "media-02",
+     "ord": 1,
+     "json": "{\"id\":\"media-02\",\"url\":\"/samples/media-02.svg\",\"kind\":\"image\",\"alt\":\"A stack of square LED panels in their cartons at the Bhosari godown\",\"skuId\":\"SKU-303\",\"rights\":\"own\",\"width\":1080,\"height\":1080}"
+    },
+    {
+     "coll": "media",
+     "id": "media-03",
+     "ord": 2,
+     "json": "{\"id\":\"media-03\",\"url\":\"/samples/media-03.svg\",\"kind\":\"image\",\"alt\":\"Round LED downlights lit in a false ceiling\",\"skuId\":\"SKU-306\",\"rights\":\"own\",\"width\":1080,\"height\":1080}"
+    },
+    {
+     "coll": "stock",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"skuId\":\"SKU-101\",\"onHand\":79,\"reorderPoint\":105,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-30\"},{\"skuId\":\"SKU-102\",\"onHand\":304,\"reorderPoint\":108,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-11-02\"},{\"skuId\":\"SKU-103\",\"onHand\":21,\"reorderPoint\":36,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-07\"},{\"skuId\":\"SKU-104\",\"onHand\":84,\"reorderPoint\":38,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-21\"},{\"skuId\":\"SKU-105\",\"onHand\":93,\"reorderPoint\":38,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-19\"},{\"skuId\":\"SKU-106\",\"onHand\":386,\"reorderPoint\":173,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-14\"},{\"skuId\":\"SKU-107\",\"onHand\":380,\"reorderPoint\":208,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-11-01\"},{\"skuId\":\"SKU-108\",\"onHand\":223,\"reorderPoint\":87,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-15\"},{\"skuId\":\"SKU-109\",\"onHand\":239,\"reorderPoint\":19,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-09-27\"},{\"skuId\":\"SKU-110\",\"onHand\":590,\"reorderPoint\":153,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-02\"},{\"skuId\":\"SKU-201\",\"onHand\":608,\"reorderPoint\":135,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-03\"},{\"skuId\":\"SKU-202\",\"onHand\":66,\"reorderPoint\":110,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-04\"},{\"skuId\":\"SKU-203\",\"onHand\":311,\"reorderPoint\":157,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-09-30\"},{\"skuId\":\"SKU-204\",\"onHand\":255,\"reorderPoint\":11,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-18\"},{\"skuId\":\"SKU-205\",\"onHand\":471,\"reorderPoint\":145,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-08\"},{\"skuId\":\"SKU-206\",\"onHand\":94,\"reorderPoint\":50,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-14\"},{\"skuId\":\"SKU-207\",\"onHand\":167,\"reorderPoint\":57,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-20\"},{\"skuId\":\"SKU-208\",\"onHand\":47,\"reorderPoint\":19,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-30\"},{\"skuId\":\"SKU-209\",\"onHand\":741,\"reorderPoint\":347,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-04\"},{\"skuId\":\"SKU-210\",\"onHand\":46,\"reorderPoint\":34,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-17\"},{\"skuId\":\"SKU-301\",\"onHand\":534,\"reorderPoint\":157,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-24\"},{\"skuId\":\"SKU-302\",\"onHand\":117,\"reorderPoint\":113,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-07\"},{\"skuId\":\"SKU-303\",\"onHand\":152,\"reorderPoint\":254,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-28\"},{\"skuId\":\"SKU-304\",\"onHand\":483,\"reorderPoint\":399,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-26\"},{\"skuId\":\"SKU-305\",\"onHand\":136,\"reorderPoint\":78,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-30\"},{\"skuId\":\"SKU-306\",\"onHand\":260,\"reorderPoint\":245,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-14\"},{\"skuId\":\"SKU-307\",\"onHand\":4,\"reorderPoint\":2,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-09\"},{\"skuId\":\"SKU-308\",\"onHand\":25,\"reorderPoint\":1,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-15\"},{\"skuId\":\"SKU-309\",\"onHand\":10,\"reorderPoint\":4,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-05\"},{\"skuId\":\"SKU-401\",\"onHand\":99,\"reorderPoint\":39,\"leadTimeDays\":10,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-22\"},{\"skuId\":\"SKU-402\",\"onHand\":16,\"reorderPoint\":27,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-03\"},{\"skuId\":\"SKU-403\",\"onHand\":37,\"reorderPoint\":56,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-31\"},{\"skuId\":\"SKU-404\",\"onHand\":24,\"reorderPoint\":4,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-28\"},{\"skuId\":\"SKU-501\",\"onHand\":4684,\"reorderPoint\":929,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-25\"},{\"skuId\":\"SKU-502\",\"onHand\":239,\"reorderPoint\":202,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-17\"},{\"skuId\":\"SKU-503\",\"onHand\":1956,\"reorderPoint\":590,\"leadTimeDays\":4,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-11-02\"},{\"skuId\":\"SKU-504\",\"onHand\":1850,\"reorderPoint\":650,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-05\"},{\"skuId\":\"SKU-601\",\"onHand\":13,\"reorderPoint\":11,\"leadTimeDays\":14,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-05\"},{\"skuId\":\"SKU-602\",\"onHand\":21,\"reorderPoint\":8,\"leadTimeDays\":7,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-09-27\"},{\"skuId\":\"SKU-603\",\"onHand\":20,\"reorderPoint\":3,\"leadTimeDays\":21,\"location\":\"Bhosari godown\",\"lastReceivedOn\":\"2026-10-08\"}]"
+    },
+    {
+     "coll": "purchaseOrders",
+     "id": "po-01",
+     "ord": 0,
+     "json": "{\"id\":\"po-01\",\"number\":\"KE/PO/26-27/112\",\"vendorId\":\"V01\",\"date\":\"2026-10-26\",\"status\":\"received\",\"lines\":[{\"skuId\":\"SKU-102\",\"qty\":400,\"ratePaise\":163062},{\"skuId\":\"SKU-501\",\"qty\":3000,\"ratePaise\":5491}],\"totalPaise\":81697800}"
+    },
+    {
+     "coll": "purchaseOrders",
+     "id": "po-02",
+     "ord": 1,
+     "json": "{\"id\":\"po-02\",\"number\":\"KE/PO/26-27/113\",\"vendorId\":\"V02\",\"date\":\"2026-11-01\",\"status\":\"sent\",\"lines\":[{\"skuId\":\"SKU-201\",\"qty\":1200,\"ratePaise\":14592}],\"totalPaise\":17510400}"
+    },
+    {
+     "coll": "purchaseOrders",
+     "id": "po-03",
+     "ord": 2,
+     "json": "{\"id\":\"po-03\",\"number\":\"KE/PO/26-27/114\",\"vendorId\":\"V03\",\"date\":\"2026-11-04\",\"status\":\"draft\",\"lines\":[{\"skuId\":\"SKU-303\",\"qty\":508,\"ratePaise\":97724}],\"totalPaise\":49643792}"
+    },
+    {
+     "coll": "rfqs",
+     "id": "rfq-01",
+     "ord": 0,
+     "json": "{\"id\":\"rfq-01\",\"title\":\"BLDC ceiling fans, 300 pieces\",\"skuId\":\"SKU-402\",\"qty\":300,\"quotes\":[{\"vendorName\":\"Bharat Fans & Appliances\",\"ratePaise\":271000,\"leadDays\":10,\"terms\":\"30 days credit\"},{\"vendorName\":\"Ujala Home Appliances\",\"ratePaise\":264000,\"leadDays\":21,\"terms\":\"Advance payment\"},{\"vendorName\":\"Swift Air Products\",\"ratePaise\":279000,\"leadDays\":7,\"terms\":\"45 days credit\"}]}"
+    },
+    {
+     "coll": "rfqs",
+     "id": "rfq-02",
+     "ord": 1,
+     "json": "{\"id\":\"rfq-02\",\"title\":\"RCCB 4 pole 63 A, 150 pieces\",\"skuId\":\"SKU-203\",\"qty\":150,\"quotes\":[{\"vendorName\":\"Narmada Switchgear Ltd\",\"ratePaise\":302000,\"leadDays\":7,\"terms\":\"30 days credit\"},{\"vendorName\":\"Volta Protect\",\"ratePaise\":296000,\"leadDays\":14,\"terms\":\"15 days credit\"}]}"
+    },
+    {
+     "coll": "compliance",
+     "id": "cmp-01",
+     "ord": 0,
+     "json": "{\"id\":\"cmp-01\",\"date\":\"2026-11-07\",\"form\":\"TDS payment\",\"description\":\"Deposit TDS deducted in October (Challan ITNS 281)\",\"authority\":\"Income Tax\",\"status\":\"upcoming\"}"
+    },
+    {
+     "coll": "compliance",
+     "id": "cmp-02",
+     "ord": 1,
+     "json": "{\"id\":\"cmp-02\",\"date\":\"2026-11-11\",\"form\":\"GSTR-1\",\"description\":\"Outward supplies for October 2026\",\"authority\":\"GST\",\"status\":\"upcoming\"}"
+    },
+    {
+     "coll": "compliance",
+     "id": "cmp-03",
+     "ord": 2,
+     "json": "{\"id\":\"cmp-03\",\"date\":\"2026-11-15\",\"form\":\"PF and ESI\",\"description\":\"Contributions for October wages\",\"authority\":\"EPFO / ESIC\",\"status\":\"upcoming\"}"
+    },
+    {
+     "coll": "employees",
+     "id": "E01",
+     "ord": 0,
+     "json": "{\"id\":\"E01\",\"name\":\"Sunil Patwardhan\",\"role\":\"Sales manager\",\"monthlyGrossPaise\":8500000,\"joinedOn\":\"2017-08-01\",\"pan\":null,\"attendance\":{\"period\":\"2026-10\",\"workingDays\":26,\"present\":24,\"paidLeave\":2,\"unpaidAbsence\":0}}"
+    },
+    {
+     "coll": "employees",
+     "id": "E02",
+     "ord": 1,
+     "json": "{\"id\":\"E02\",\"name\":\"Pooja Ranade\",\"role\":\"Accounts executive\",\"monthlyGrossPaise\":4200000,\"joinedOn\":\"2025-06-01\",\"pan\":null,\"attendance\":{\"period\":\"2026-10\",\"workingDays\":26,\"present\":24,\"paidLeave\":2,\"unpaidAbsence\":0}}"
+    },
+    {
+     "coll": "employees",
+     "id": "E03",
+     "ord": 2,
+     "json": "{\"id\":\"E03\",\"name\":\"Imran Shaikh\",\"role\":\"Sales executive\",\"monthlyGrossPaise\":3800000,\"joinedOn\":\"2025-04-01\",\"pan\":null,\"attendance\":{\"period\":\"2026-10\",\"workingDays\":26,\"present\":25,\"paidLeave\":1,\"unpaidAbsence\":0}}"
+    },
+    {
+     "coll": "agents",
+     "id": "_",
+     "ord": 0,
+     "json": "[{\"agentId\":\"office-manager\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-06-02\",\"accuracy\":{\"checked\":318,\"correct\":311}},{\"agentId\":\"accountant\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-06-02\",\"accuracy\":{\"checked\":1147,\"correct\":1140}},{\"agentId\":\"credit-controller\",\"hired\":true,\"trustLevel\":\"trainee\",\"hiredOn\":\"2026-08-18\",\"accuracy\":{\"checked\":142,\"correct\":138}},{\"agentId\":\"tax-clerk\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-06-02\",\"accuracy\":{\"checked\":96,\"correct\":96}},{\"agentId\":\"auditor\",\"hired\":true,\"trustLevel\":\"trainee\",\"hiredOn\":\"2026-09-01\",\"accuracy\":{\"checked\":41,\"correct\":40}},{\"agentId\":\"sales-rep\",\"hired\":true,\"trustLevel\":\"trainee\",\"hiredOn\":\"2026-09-22\",\"accuracy\":{\"checked\":64,\"correct\":57}},{\"agentId\":\"quote-desk\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-07-10\",\"accuracy\":{\"checked\":188,\"correct\":186}},{\"agentId\":\"account-manager\",\"hired\":false,\"trustLevel\":\"trainee\",\"hiredOn\":null,\"accuracy\":{\"checked\":0,\"correct\":0}},{\"agentId\":\"marketer\",\"hired\":true,\"trustLevel\":\"trainee\",\"hiredOn\":\"2026-10-01\",\"accuracy\":{\"checked\":22,\"correct\":19}},{\"agentId\":\"market-watcher\",\"hired\":false,\"trustLevel\":\"trainee\",\"hiredOn\":null,\"accuracy\":{\"checked\":0,\"correct\":0}},{\"agentId\":\"social-media-manager\",\"hired\":true,\"trustLevel\":\"trainee\",\"hiredOn\":\"2026-10-01\",\"accuracy\":{\"checked\":58,\"correct\":51}},{\"agentId\":\"storekeeper\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-07-10\",\"accuracy\":{\"checked\":402,\"correct\":399}},{\"agentId\":\"buyer\",\"hired\":false,\"trustLevel\":\"trainee\",\"hiredOn\":null,\"accuracy\":{\"checked\":0,\"correct\":0}},{\"agentId\":\"compliance-officer\",\"hired\":true,\"trustLevel\":\"trusted\",\"hiredOn\":\"2026-06-02\",\"accuracy\":{\"checked\":74,\"correct\":74}},{\"agentId\":\"payroll-clerk\",\"hired\":false,\"trustLevel\":\"trainee\",\"hiredOn\":null,\"accuracy\":{\"checked\":0,\"correct\":0}}]"
+    },
+    {
+     "coll": "teamLog",
+     "id": "log-001",
+     "ord": 0,
+     "json": "{\"id\":\"log-001\",\"at\":\"2026-11-04T08:30:00+05:30\",\"agentId\":\"compliance-officer\",\"text\":\"Checked the filing calendar: TDS payment for October is due on 7 November.\",\"ref\":{\"kind\":\"compliance\",\"id\":\"cmp-01\"}}"
+    },
+    {
+     "coll": "teamLog",
+     "id": "log-002",
+     "ord": 1,
+     "json": "{\"id\":\"log-002\",\"at\":\"2026-11-04T08:45:00+05:30\",\"agentId\":\"office-manager\",\"text\":\"Prepared the morning digest and emailed it to Anil Kaveri.\",\"ref\":null}"
+    },
+    {
+     "coll": "teamLog",
+     "id": "log-003",
+     "ord": 2,
+     "json": "{\"id\":\"log-003\",\"at\":\"2026-11-04T09:05:00+05:30\",\"agentId\":\"accountant\",\"text\":\"Read bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364. Waiting for your approval before posting.\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\"}}"
+    },
+    {
+     "coll": "staged",
+     "id": "chg-001",
+     "ord": 0,
+     "json": "{\"id\":\"chg-001\",\"agentId\":\"accountant\",\"kind\":\"ledger_entry\",\"createdAt\":\"2026-11-04T09:06:00+05:30\",\"title\":\"Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"summary\":\"Purchase of 6 items; input tax ₹3,86,140.28. TDS under 194Q of ₹2,145.22 to be deducted on payment.\",\"evidence\":[{\"label\":\"Bill total\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}},{\"label\":\"Supplier GSTIN\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"gstin\"}}],\"payload\":{\"billId\":\"bill-0086\"},\"status\":\"approved\",\"decidedAt\":\"2026-11-20T09:01:10.593Z\",\"decidedBy\":\"Anil Kumar\"}"
+    },
+    {
+     "coll": "staged",
+     "id": "chg-002",
+     "ord": 1,
+     "json": "{\"id\":\"chg-002\",\"agentId\":\"accountant\",\"kind\":\"ledger_entry\",\"createdAt\":\"2026-11-04T09:15:00+05:30\",\"title\":\"Post bill NSL/2611/876 from Narmada Switchgear Ltd, ₹12,65,285\",\"summary\":\"Purchase of 6 items; input tax ₹1,93,009.64. No TDS applies.\",\"evidence\":[{\"label\":\"Bill total\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0087\",\"region\":\"totals.total\"}},{\"label\":\"Supplier GSTIN\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0087\",\"region\":\"gstin\"}}],\"payload\":{\"billId\":\"bill-0087\"},\"status\":\"pending\"}"
+    },
+    {
+     "coll": "staged",
+     "id": "chg-004",
+     "ord": 2,
+     "json": "{\"id\":\"chg-004\",\"agentId\":\"quote-desk\",\"kind\":\"quote\",\"createdAt\":\"2026-11-04T11:41:00+05:30\",\"title\":\"Send quotation KE/Q/26-27/046 to Kale Constructions, ₹10,34,261\",\"summary\":\"Armoured cable, MCCBs and changeover switches at a 3% project discount, valid 15 days. Note: this customer has invoices over 60 days overdue.\",\"evidence\":[{\"label\":\"Customer ageing\",\"ref\":{\"kind\":\"party\",\"id\":\"C13\"}}],\"payload\":{\"quoteId\":\"quote-006\"},\"status\":\"pending\"}"
+    },
+    {
+     "coll": "teamLog",
+     "id": "log-4-70593",
+     "ord": 3,
+     "json": "{\"id\":\"log-4-70593\",\"at\":\"2026-11-04T14:31:10+05:30\",\"agentId\":\"you\",\"text\":\"Anil Kumar approved: Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}}"
+    }
+   ]
+  },
+  "social_tokens": {
+   "create": "CREATE TABLE social_tokens (channel_id TEXT PRIMARY KEY, sealed TEXT NOT NULL, updated_at INTEGER NOT NULL)",
+   "also": [],
+   "rows": []
+  },
+  "cf_agents_state": {
+   "create": "CREATE TABLE cf_agents_state ( id TEXT PRIMARY KEY NOT NULL, state TEXT )",
+   "also": [],
+   "rows": []
+  },
+  "cf_agents_queues": {
+   "create": "CREATE TABLE cf_agents_queues ( id TEXT PRIMARY KEY NOT NULL, payload TEXT, callback TEXT, created_at INTEGER DEFAULT (unixepoch()) )",
+   "also": [],
+   "rows": []
+  },
+  "cf_agents_schedules": {
+   "create": "CREATE TABLE cf_agents_schedules ( id TEXT PRIMARY KEY NOT NULL DEFAULT (randomblob(9)), callback TEXT, payload TEXT, type TEXT NOT NULL CHECK(type IN ('scheduled', 'delayed', 'cron')), time INTEGER, delayInSeconds INTEGER, cron TEXT, created_at INTEGER DEFAULT (unixepoch()) )",
+   "also": [],
+   "rows": [
+    {
+     "id": "Xs4vQ0b1k",
+     "callback": "daily",
+     "payload": null,
+     "type": "cron",
+     "time": 1793930400,
+     "delayInSeconds": null,
+     "cron": "0 2 * * *",
+     "created_at": 1793854800
+    }
+   ]
+  },
+  "cf_agents_mcp_servers": {
+   "create": "CREATE TABLE cf_agents_mcp_servers ( id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, server_url TEXT NOT NULL, callback_url TEXT NOT NULL, client_id TEXT, auth_url TEXT, server_options TEXT )",
+   "also": [],
+   "rows": []
+  }
+ },
+ "r2": {
+  "o/off_savedbooksabcdef/docs/doc-s0001": {
+   "body": "%PDF-1.4\n% doc-s0001, as uploaded\n",
+   "contentType": "application/pdf",
+   "customMetadata": {
+    "filename": "doc-s0001.pdf",
+    "by": "owner@saved.office.test"
+   }
+  },
+  "o/off_savedbooksabcdef/docs/doc-s0001.txt": {
+   "body": "Text of doc-s0001",
+   "contentType": "text/plain"
+  },
+  "o/off_savedbooksabcdef/docs/doc-s0002": {
+   "body": "%PDF-1.4\n% doc-s0002, as uploaded\n",
+   "contentType": "application/pdf",
+   "customMetadata": {
+    "filename": "doc-s0002.pdf",
+    "by": "owner@saved.office.test"
+   }
+  },
+  "o/off_savedbooksabcdef/docs/doc-s0002.txt": {
+   "body": "Text of doc-s0002",
+   "contentType": "text/plain"
+  }
+ }
+}
