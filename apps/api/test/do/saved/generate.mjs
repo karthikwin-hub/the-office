@@ -146,7 +146,7 @@ try {
   office.updateSettings({
     digestTime: "07:30",
     reminderPolicy: { ...office.settings().reminderPolicy, firstAfterDays: 4 },
-    business: { phone: "+91 80 4000 1234" },
+    business: { phone: "+91 00 0000 1234" },
   });
   commitAs(OWNER.name);
   const pending = office.books.staged.find((s) => s.status === "pending");
@@ -158,7 +158,7 @@ try {
 
   if (old.links && !tenancy) {
     const { code } = old.links.newJoinCode(kv, { email: OWNER.email, name: OWNER.name, role: "owner" }, Date.parse("2026-11-05T05:00:00Z"));
-    old.links.redeemJoinCode(kv, "+91 98450 12345", code, Date.parse("2026-11-05T05:01:00Z"));
+    old.links.redeemJoinCode(kv, "+91 00000 12345", code, Date.parse("2026-11-05T05:01:00Z"));
     old.links.updateLink(kv, OWNER.email, { language: "kn", digest: true });
   }
   if (runs && old.fixtures.sampleRoutineRuns) for (const r of old.fixtures.sampleRoutineRuns(AS_OF).slice(0, 2)) runs.record(r);
@@ -169,7 +169,7 @@ try {
     const thread = {
       id: "cs-t-saved1",
       channel: "whatsapp",
-      key: "919845067890",
+      key: "910000067890",
       name: "Ravi",
       partyId: null,
       verifiedContact: null,

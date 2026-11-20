@@ -33,7 +33,7 @@ type Inside = {
 };
 const inside = (o: Office) => o as unknown as Inside;
 
-const SAVED_PHONE = "919845012345";
+const SAVED_PHONE = "910000012345";
 let phones = 0;
 
 /** Opens an office whose Durable Object holds what `saved` holds, under a fresh office id and owner. */
@@ -103,7 +103,7 @@ describe.each(SAVED)("an office saved %s", (_what, saved) => {
     const settings = (await res.json()) as { digestTime: string; reminderPolicy: { firstAfterDays: number }; business: { phone: string } };
     expect(settings.digestTime).toBe("07:30");
     expect(settings.reminderPolicy.firstAfterDays).toBe(4);
-    expect(settings.business.phone).toBe("+91 80 4000 1234");
+    expect(settings.business.phone).toBe("+91 00 0000 1234");
 
     const prefs = await stub.fetch(await asCaller(me, ROUTES.prefs));
     expect(await prefs.json()).toEqual({ skin: "loft", wholeFloor: true });
@@ -143,7 +143,7 @@ describe.each(SAVED)("an office saved %s", (_what, saved) => {
       await asCaller(me, ROUTES.settings, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ business: { ...settings.business, phone: "+91 80 4000 9999" } }),
+        body: JSON.stringify({ business: { ...settings.business, phone: "+91 00 0000 9999" } }),
       }),
     );
     expect(write.status).toBe(200);
@@ -154,11 +154,11 @@ describe.each(SAVED)("an office saved %s", (_what, saved) => {
       expect([last.coll, last.action, last.changes]).toEqual([
         "business",
         "change",
-        [{ field: "phone", before: "+91 80 4000 1234", after: "+91 80 4000 9999" }],
+        [{ field: "phone", before: "+91 00 0000 1234", after: "+91 00 0000 9999" }],
       ]);
       if (!editsBefore.length) expect(log[0]?.action).toBe("baseline");
       const business = state.storage.sql.exec<{ json: string }>("SELECT json FROM book_rows WHERE coll = 'business'").one();
-      expect(JSON.parse(business.json).phone).toBe("+91 80 4000 9999");
+      expect(JSON.parse(business.json).phone).toBe("+91 00 0000 9999");
     });
   });
 });

@@ -22,7 +22,7 @@
     },
     {
      "k": "settings",
-     "v": "{\"business\":{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 80 4000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"},\"ingestEmail\":\"saved@in.the-office.test\",\"digestTime\":\"07:30\",\"reminderPolicy\":{\"firstAfterDays\":4,\"firmAfterDays\":16,\"finalAfterDays\":46,\"sendFrom\":\"accounts@kaverielectricals.in\"}}"
+     "v": "{\"business\":{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 00 0000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"},\"ingestEmail\":\"saved@in.the-office.test\",\"digestTime\":\"07:30\",\"reminderPolicy\":{\"firstAfterDays\":4,\"firmAfterDays\":16,\"finalAfterDays\":46,\"sendFrom\":\"accounts@kaverielectricals.in\"}}"
     },
     {
      "k": "prefs:owner@saved.office.test",
@@ -50,7 +50,7 @@
      "coll": "business",
      "id": "_",
      "ord": 0,
-     "json": "{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 80 4000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"}"
+     "json": "{\"id\":\"kaveri\",\"name\":\"Saved Books Traders\",\"legalName\":\"Kaveri Electricals Private Limited\",\"pan\":\"AAFCK4821M\",\"gstin\":\"27AAFCK4821M1Z9\",\"tan\":\"PNEK09382C\",\"stateCode\":\"27\",\"address\":\"Plot 14, Bhosari MIDC, Pune 411026, Maharashtra\",\"email\":\"accounts@kaverielectricals.in\",\"phone\":\"+91 00 0000 1234\",\"bank\":\"HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782\",\"fyStart\":\"2026-04-01\",\"asOf\":\"2026-11-04\",\"prevYearTurnoverPaise\":108400000000,\"owner\":\"Anil Kaveri\",\"accountantFirm\":\"Mehta & Associates, Chartered Accountants\"}"
     },
     {
      "coll": "states",
@@ -884,7 +884,7 @@
      "coll": "staged",
      "id": "chg-001",
      "ord": 0,
-     "json": "{\"id\":\"chg-001\",\"agentId\":\"accountant\",\"kind\":\"ledger_entry\",\"createdAt\":\"2026-11-04T09:06:00+05:30\",\"title\":\"Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"summary\":\"Purchase of 6 items; input tax ₹3,86,140.28. TDS under 194Q of ₹2,145.22 to be deducted on payment.\",\"evidence\":[{\"label\":\"Bill total\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}},{\"label\":\"Supplier GSTIN\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"gstin\"}}],\"payload\":{\"billId\":\"bill-0086\"},\"status\":\"approved\",\"decidedAt\":\"2026-11-20T09:01:10.593Z\",\"decidedBy\":\"Anil Kumar\"}"
+     "json": "{\"id\":\"chg-001\",\"agentId\":\"accountant\",\"kind\":\"ledger_entry\",\"createdAt\":\"2026-11-04T09:06:00+05:30\",\"title\":\"Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"summary\":\"Purchase of 6 items; input tax ₹3,86,140.28. TDS under 194Q of ₹2,145.22 to be deducted on payment.\",\"evidence\":[{\"label\":\"Bill total\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}},{\"label\":\"Supplier GSTIN\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"gstin\"}}],\"payload\":{\"billId\":\"bill-0086\"},\"status\":\"approved\",\"decidedAt\":\"2026-11-20T10:09:01.661Z\",\"decidedBy\":\"Anil Kumar\"}"
     },
     {
      "coll": "staged",
@@ -900,9 +900,9 @@
     },
     {
      "coll": "teamLog",
-     "id": "log-4-70593",
+     "id": "log-4-41662",
      "ord": 3,
-     "json": "{\"id\":\"log-4-70593\",\"at\":\"2026-11-04T14:31:10+05:30\",\"agentId\":\"you\",\"text\":\"Anil Kumar approved: Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}}"
+     "json": "{\"id\":\"log-4-41662\",\"at\":\"2026-11-04T15:39:01+05:30\",\"agentId\":\"you\",\"text\":\"Anil Kumar approved: Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364\",\"ref\":{\"kind\":\"document\",\"id\":\"doc-p0086\",\"region\":\"totals.total\"}}"
     }
    ]
   },
