@@ -114,6 +114,22 @@ describe("a log line", () => {
     expect(line("info", "x", { password: "hunter2" } as never)).toEqual({ event: "x", level: "info" });
     expect(line("info", "Not An Event!").event).toBe("invalid-event");
     expect(scrub("x".repeat(1000)).length).toBeLessThanOrEqual(301);
+    expect(scrub("Order 1,24,500 for 124500.00 and 12,000/- to SBIN0001234 a/c 00112233445")).toBe(
+      "Order [number] for [amount] and [amount] to [ifsc] a/c [number]",
+    );
+    // An unmatched quote hides the rest, across lines (a ZodError's message is multi-line JSON).
+    expect(scrub('Invalid input: [\n  {\n    "path": ["name"],\n    "received": "Anil Kumar')).toBe(
+      "Invalid input: [\n  {\n    [quoted]: [[quoted]],\n    [quoted]: [quoted]",
+    );
+    expect(scrub('first line "Anil Kumar\n14 MG Road')).toBe("first line [quoted]");
+  });
+
+  it("scrubs a huge error message quickly: the free plan has 10 ms of CPU a request", () => {
+    for (const big of ["a".repeat(64_000), `${"9".repeat(64_000)}@`, `"${"x ".repeat(32_000)}`]) {
+      const started = performance.now();
+      expect(scrub(big).length).toBeLessThanOrEqual(301);
+      expect(performance.now() - started).toBeLessThan(20);
+    }
   });
 
   it("names a route by its pattern, never by the ids, names or addresses in a path", () => {

@@ -84,20 +84,27 @@ export function inOffice(officeId: string) {
  */
 const SCRUB: [RegExp, string | ((m: string) => string)][] = [
   [/"[^"]*"|`[^`]*`|(?<!\w)'[^']*'(?!\w)/g, "[quoted]"],
-  [/["`].*$/, "[quoted]"],
-  [/[^\s@<>"'(),;:[\]]+@[^\s@<>"'(),;:[\]]+/g, "[email]"],
+  [/["`][\s\S]*$/, "[quoted]"],
+  [/[^\s@<>"'(),;:[\]]{1,64}@[^\s@<>"'(),;:[\]]{1,255}/g, "[email]"],
   [/\b(bearer|basic)\s+\S+/gi, "$1 [secret]"],
   [/\b(token|key|secret|password|cookie|session)(\s*[:=]\s*)\S+/gi, "$1$2[secret]"],
   [/\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]\b/g, "[gstin]"],
   [/\b[A-Z]{5}\d{4}[A-Z]\b/g, "[pan]"],
+  [/\b[A-Z]{4}0[A-Z\d]{6}\b/g, "[ifsc]"],
   [/(₹|\brs\.?|\binr)\s*\d[\d,]*(\.\d+)?/gi, "[amount]"],
+  [/\b\d[\d,]*(\.\d{2})?\s*\/-/g, "[amount]"],
+  [/\b\d[\d,]*\.\d{2}\b/g, "[amount]"],
   [/\+?\d[\d\s().-]{6,}\d/g, (m) => (m.replace(/\D/g, "").length >= 10 ? "[number]" : m)],
+  // An account, order or invoice number, or an amount without its sign: six digits or more.
+  [/\b\d[\d,]{5,}\b/g, "[number]"],
   [/[A-Za-z0-9_\-+=]{24,}/g, "[secret]"],
 ];
 const MAX_TEXT = 300;
+/** Cut before scrubbing, so the patterns' cost stays small whatever an error message holds. */
+const MAX_INPUT = 1000;
 
 export function scrub(text: string): string {
-  let out = text;
+  let out = text.length > MAX_INPUT ? text.slice(0, MAX_INPUT) : text;
   for (const [re, to] of SCRUB) out = typeof to === "string" ? out.replace(re, to) : out.replace(re, to);
   return out.length > MAX_TEXT ? `${out.slice(0, MAX_TEXT)}…` : out;
 }
