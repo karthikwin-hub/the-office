@@ -17,7 +17,7 @@ Update a row in the same pull request that changes its control.
 | Chapter | Met | Partly | Not met | N/A (rows) |
 | --- | --- | --- | --- | --- |
 | V1 Architecture | 29 | 9 | 0 | 0 |
-| V2 Authentication | 27 | 6 | 6 | 3 |
+| V2 Authentication | 29 | 4 | 6 | 3 |
 | V3 Session management | 11 | 2 | 2 | 0 |
 | V4 Access control | 9 | 0 | 0 | 0 |
 | V5 Validation, sanitisation and encoding | 21 | 2 | 0 | 4 |
@@ -92,7 +92,7 @@ Update a row in the same pull request that changes its control.
 | 2.1.12 | Option to show the password | Not met | Open |
 | 2.2.1 | Anti-automation on sign-in | Met | D1 rate limits per `cf-connecting-ip` (`auth.ts`). Test: `auth.test.ts` "the sign-in rate limit" |
 | 2.2.2 | Weak authenticators limited | Met | Email links only confirm addresses and reset passwords; the second step is TOTP or a backup code |
-| 2.2.3 | Notification after authentication changes | Partly | A sign-up attempt on an existing address and a reset tell the owner; enrolling or removing two-step does not send mail |
+| 2.2.3 | Notification after authentication changes | Met | Mail when two-step sign-in is turned on or off (`step-up.ts`), on a sign-up attempt with an existing address, and with every reset link |
 | 2.3.1 | System-generated initial secrets random and short-lived | Met | Invitation tokens single use, 14 days, hash stored (`tenancy.ts`); reset links one hour |
 | 2.3.2 | Enrolment of user-provided devices supported | Met | Any TOTP app (`twoFactor` plugin) |
 | 2.3.3 | Renewal instructions sent in time | N/A | No expiring authenticators |
@@ -105,7 +105,7 @@ Update a row in the same pull request that changes its control.
 | 2.5.2 | No hints or knowledge questions | Met | None |
 | 2.5.3 | Recovery never reveals the password | Met | Passwords are only hashed |
 | 2.5.4 | No shared or default accounts | Met | None; the system caller exists only inside the Worker-to-office seal |
-| 2.5.5 | Notification when a factor changes | Partly | Password reset signs the person out everywhere; no mail on two-step changes |
+| 2.5.5 | Notification when a factor changes | Met | Mail when two-step sign-in is turned on or off (`step-up.ts`); a password reset signs the person out everywhere |
 | 2.5.6 | Secure forgotten-password flow | Met | Reset link, sessions revoked (`revokeSessionsOnPasswordReset`); two-step still asked at sign-in |
 | 2.5.7 | Lost second factor: proof as strong as enrolment | Partly | Ten single-use backup codes; beyond them recovery is by the platform owners, by hand |
 | 2.6.1 | Backup codes used once | Met | better-auth `twoFactor` backup codes, single use |
@@ -113,7 +113,7 @@ Update a row in the same pull request that changes its control.
 | 2.7.1 | No SMS or phone for out-of-band | Met | Not used for authentication |
 | 2.8.1 | Time-based codes have a lifetime | Met | TOTP 30 s windows |
 | 2.8.3 | Approved algorithms for codes | Met | TOTP (RFC 6238) via better-auth |
-| 2.8.4 | A code used only once in its window | Partly | Relies on better-auth's TOTP verification; not covered by a test here |
+| 2.8.4 | A code used only once in its window | Partly | Sign-in codes are checked by better-auth, step-up codes by `createOTP` in `step-up.ts`; neither path has a test for reuse |
 | 2.8.5 | Reuse of a code logged and notified | Not met | Open (see V7) |
 | 2.8.6 | Physical one-time-password devices revocable | N/A | None used |
 | 2.10.1 | Service secrets not static passwords | Met | API keys and HMAC keys as Worker secrets |

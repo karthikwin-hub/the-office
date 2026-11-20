@@ -14,7 +14,8 @@ webhook belong to, which offices are deleted and due for purging. The books cann
 A small shared D1 database is the control plane (`apps/api/src/tenancy.ts`, `apps/api/src/schema.ts`,
 `apps/api/migrations/`): accounts and sessions (better-auth), offices, memberships and roles, invitations (hash only),
 inbound routes, WhatsApp links, consent and rights requests, backup erasures and the office audit trail. It never
-holds books, documents or their contents. Migrations only add.
+holds books, documents or their contents. New migrations only add tables and columns; the two early exceptions
+(a table renamed in `0002_tenancy.sql`, short-lived codes emptied in `0007_wa_join_guard.sql`) are not repeated.
 
 ## Consequences
 

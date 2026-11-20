@@ -118,7 +118,7 @@ under `apps/api/test/`.
 | I | A stored file runs as a page in the app's origin | Files are served inline only as PDF or PNG, JPEG, WebP, under `Content-Security-Policy: sandbox`; anything else downloads as bytes (`fileHeaders` in `edge.ts`). Test: `edge.test.ts` "stored files" |
 | I | Script injection in the app | React escaping; a strict CSP with one hashed inline script; `frame-ancestors 'none'` (`edge.ts`, `apps/web/public/_headers`). Test: `edge.test.ts` "security headers" |
 | D | One office exhausting AI or storage | Per office per day: 400 AI calls (150 for customer service), 250 MB of uploads (`quota.ts`). Test: `tenancy.test.ts` "quotas" |
-| E | An accountant approves what only the owner may | Role checks in the engine's dispatcher (`packages/engine/src/dispatch.ts`); owner-only routes in `app.ts` (`ownerOnly`). Test: `tenancy.test.ts` "people in an office" |
+| E | An accountant approves what only the owner may | Role checks in the engine's dispatcher (`packages/engine/src/dispatch.ts`, `ACCOUNTANT_CAN_DECIDE`); owner-only routes in `app.ts` (`ownerOnly`). Tests: `tenancy.test.ts` "people in an office" (administration), `packages/engine/test/whatsapp.test.ts` (decisions an accountant may not make) |
 | E | A removed member keeps watching | The live WebSocket closes when a member is removed or the office is suspended or deleted (`closeLive` in `app.ts`). Tests: `test/do/live.test.ts`, `tenancy.test.ts` "open screens of someone who leaves" |
 
 ### 4.3 Inbound email
