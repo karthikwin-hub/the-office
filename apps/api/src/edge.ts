@@ -45,7 +45,8 @@ export const BASE_HEADERS: Record<string, string> = {
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-content-type-options": "nosniff",
-  "permissions-policy": "accelerometer=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()",
+  "permissions-policy":
+    "accelerometer=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()",
 };
 
 /**
@@ -64,7 +65,8 @@ export const securityHeaders: MiddlewareHandler<{ Bindings: Env }> = async (c, n
   for (const [k, v] of Object.entries(BASE_HEADERS)) res.headers.set(k, v);
   if (!EMBEDDED.test(new URL(c.req.url).pathname)) {
     res.headers.set("x-frame-options", "DENY");
-    if (!res.headers.has("content-security-policy")) res.headers.set("content-security-policy", /^text\/html/i.test(res.headers.get("content-type") ?? "") ? appCsp(c.env) : API_CSP);
+    if (!res.headers.has("content-security-policy"))
+      res.headers.set("content-security-policy", /^text\/html/i.test(res.headers.get("content-type") ?? "") ? appCsp(c.env) : API_CSP);
   }
   // Cleared first so Hono takes the copy as it is instead of copying it again.
   c.res = undefined;
@@ -72,7 +74,13 @@ export const securityHeaders: MiddlewareHandler<{ Bindings: Env }> = async (c, n
 };
 
 /** The only stored types a browser may show from the app's origin: they run no script there. */
-const INLINE_TYPES: Record<string, string> = { "application/pdf": "application/pdf", "image/png": "image/png", "image/jpeg": "image/jpeg", "image/jpg": "image/jpeg", "image/webp": "image/webp" };
+const INLINE_TYPES: Record<string, string> = {
+  "application/pdf": "application/pdf",
+  "image/png": "image/png",
+  "image/jpeg": "image/jpeg",
+  "image/jpg": "image/jpeg",
+  "image/webp": "image/webp",
+};
 /** On every stored file: no script, no plugins, no same-origin access, nothing loaded, and never framed. Chrome still shows a PDF under it. */
 export const FILE_CSP = "sandbox; default-src 'none'; frame-ancestors 'none'";
 
@@ -86,7 +94,12 @@ export function fileHeaders(storedType: string | undefined, filename: string | n
   const name = filename?.replace(/["\\\r\n]/g, "") ?? "";
   const ascii = name.replace(/[^\x20-\x7e]/g, "_");
   const disposition = `${inline ? "inline" : "attachment"}${name ? `; filename="${ascii}"${ascii === name ? "" : `; filename*=UTF-8''${encodeURIComponent(name)}`}` : ""}`;
-  return { "content-type": inline ?? "application/octet-stream", "content-disposition": disposition, "content-security-policy": FILE_CSP, "x-content-type-options": "nosniff" };
+  return {
+    "content-type": inline ?? "application/octet-stream",
+    "content-disposition": disposition,
+    "content-security-policy": FILE_CSP,
+    "x-content-type-options": "nosniff",
+  };
 }
 
 /**
@@ -127,7 +140,8 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export const sameOrigin: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
   const upgrade = c.req.header("upgrade")?.toLowerCase() === "websocket";
   if ((SAFE_METHODS.has(c.req.method) && !upgrade) || CROSS_ORIGIN.test(new URL(c.req.url).pathname)) return next();
-  if (!ownOrigin(c.env, c.req.header("origin") ?? null, c.req.url)) return c.json({ error: "This request did not come from the app. Reload the page and try again." }, 403);
+  if (!ownOrigin(c.env, c.req.header("origin") ?? null, c.req.url))
+    return c.json({ error: "This request did not come from the app. Reload the page and try again." }, 403);
   if (upgrade) return next();
   const type = c.req.header("content-type");
   // A browser's body-less POST says Content-Length: 0, which may still arrive as an empty stream.

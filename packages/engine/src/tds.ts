@@ -81,7 +81,13 @@ export function sectionFromCited(text: string): TdsSection | null {
   if (old && old[1]! in TDS_RULES) return old[1] as TdsSection;
   for (const [section, n] of Object.entries(NEW_ACT) as [TdsSection, (typeof NEW_ACT)[TdsSection]][]) {
     if (t.replace(/\s/g, "").toLowerCase().includes(n.ref.replace(/\s/g, "").toLowerCase())) return section;
-    if (n.codes.split(/\D+/).filter(Boolean).some((c) => new RegExp(`(^|\\D)${c}(\\D|$)`).test(t))) return section;
+    if (
+      n.codes
+        .split(/\D+/)
+        .filter(Boolean)
+        .some((c) => new RegExp(`(^|\\D)${c}(\\D|$)`).test(t))
+    )
+      return section;
   }
   return null;
 }
@@ -123,7 +129,9 @@ export type ExpectedTds = { section: TdsSection; rateBp: number; basePaise: numb
  */
 export function expectedTdsByBill(l: Ledger): Map<string, ExpectedTds | null> {
   const out = new Map<string, ExpectedTds | null>();
-  const bills = [...l.books.bills].filter((b) => b.status !== "rejected" && !b.opening).sort((a, b) => (a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1));
+  const bills = [...l.books.bills]
+    .filter((b) => b.status !== "rejected" && !b.opening)
+    .sort((a, b) => (a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1));
   const fyTotals = new Map<string, number>();
   for (const b of bills) {
     const k = `${b.partyId}|${fyOf(b.date)}`;
@@ -167,7 +175,9 @@ export function expectedTdsByBill(l: Ledger): Map<string, ExpectedTds | null> {
 export function expectedCustomerTds(l: Ledger): Map<string, number> {
   const out = new Map<string, number>();
   const running = new Map<string, number>();
-  for (const inv of l.books.invoices.filter((i) => i.status === "posted" && !i.opening).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1))) {
+  for (const inv of l.books.invoices
+    .filter((i) => i.status === "posted" && !i.opening)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1))) {
     const party = l.party(inv.partyId);
     if (!party.tan) continue;
     const key = `${party.id}|${fyOf(inv.date)}`;

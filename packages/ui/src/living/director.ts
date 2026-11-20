@@ -48,7 +48,17 @@ export const TIMING = {
   fresh: 90_000,
 } as const;
 
-export const startState = (): DirectorState => ({ started: false, seen: [], arrived: [], lastLogAt: 0, lastAmbientAt: 0, gap: 0, used: [], usedOn: "", nextId: 1 });
+export const startState = (): DirectorState => ({
+  started: false,
+  seen: [],
+  arrived: [],
+  lastLogAt: 0,
+  lastAmbientAt: 0,
+  gap: 0,
+  used: [],
+  usedOn: "",
+  nextId: 1,
+});
 
 /** A small seeded generator, so a test can replay a day on the floor. */
 export function seeded(seed: number): () => number {
@@ -72,12 +82,34 @@ export function spoken(text: string, max = 96): string {
 }
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const WORDS = ["", "a month", "two months", "three months", "four months", "five months", "six months", "seven months", "eight months", "nine months", "ten months", "eleven months", "a year"];
+const WORDS = [
+  "",
+  "a month",
+  "two months",
+  "three months",
+  "four months",
+  "five months",
+  "six months",
+  "seven months",
+  "eight months",
+  "nine months",
+  "ten months",
+  "eleven months",
+  "a year",
+];
 
 /** The office's clock: India time. */
 export function officeClock(now: number): { date: string; hour: number; weekday: number } {
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23", weekday: "short" })
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hourCycle: "h23",
+      weekday: "short",
+    })
       .formatToParts(new Date(now))
       .map((p) => [p.type, p.value]),
   );
@@ -180,7 +212,15 @@ export function direct(prev: DirectorState, inputs: DirectorInputs, now: number,
   const arrival = inputs.arriving[0];
   if (arrival && !s.arrived.includes(arrival.docId)) {
     if (s.started && onFloor.has("office-manager") && arrival.agentId !== "office-manager") {
-      scenes.push({ id: id(), kind: "say", agentId: "office-manager", text: spoken(`For ${personaFor(arrival.agentId, names).name}: ${arrival.label}`), source: "arrival", at: now, until: now + TIMING.say });
+      scenes.push({
+        id: id(),
+        kind: "say",
+        agentId: "office-manager",
+        text: spoken(`For ${personaFor(arrival.agentId, names).name}: ${arrival.label}`),
+        source: "arrival",
+        at: now,
+        until: now + TIMING.say,
+      });
     }
     s.arrived = [...s.arrived, arrival.docId].slice(-50);
   }
@@ -207,7 +247,12 @@ export function direct(prev: DirectorState, inputs: DirectorInputs, now: number,
   for (const f of inputs.ambient?.festivals ?? []) {
     const d = daysBetween(today, f.date);
     if (d === 0) candidates.push({ key: `festival:${f.name}`, topic: "festival-today", values: { festival: f.name } });
-    else if (d > 0 && d < 7) candidates.push({ key: `festival-soon:${f.name}`, topic: "festival-soon", values: { festival: f.name, day: d === 1 ? "tomorrow" : `on ${WEEKDAYS[dayOf(f.date)]}` } });
+    else if (d > 0 && d < 7)
+      candidates.push({
+        key: `festival-soon:${f.name}`,
+        topic: "festival-soon",
+        values: { festival: f.name, day: d === 1 ? "tomorrow" : `on ${WEEKDAYS[dayOf(f.date)]}` },
+      });
   }
   for (const [who, hired] of Object.entries(inputs.ambient?.hiredOn ?? {})) {
     const span = hired && idleSet.has(who) ? anniversary(hired, today) : null;
@@ -216,7 +261,11 @@ export function direct(prev: DirectorState, inputs: DirectorInputs, now: number,
   if (lastWorkingDay(today) && clock.hour >= 10) candidates.push({ key: "month-end", topic: "month-end" });
   if (inputs.weather) {
     const w = weatherTopic(inputs.weather);
-    candidates.push({ key: `weather:${Math.floor(clock.hour / 3)}`, topic: w.topic, values: { ...(inputs.weather.city ? { city: inputs.weather.city } : {}), ...(w.feel ? { feel: w.feel } : {}) } });
+    candidates.push({
+      key: `weather:${Math.floor(clock.hour / 3)}`,
+      topic: w.topic,
+      values: { ...(inputs.weather.city ? { city: inputs.weather.city } : {}), ...(w.feel ? { feel: w.feel } : {}) },
+    });
   }
   if (clock.weekday === 1 && clock.hour < 13) candidates.push({ key: "monday", topic: "monday" });
   if (clock.weekday === 5 && clock.hour >= 14) candidates.push({ key: "friday", topic: "friday" });
@@ -243,7 +292,15 @@ export function direct(prev: DirectorState, inputs: DirectorInputs, now: number,
     { id: id(), kind: "walk", agentId: speaker, to: { kind: "coffee", slot: 0 }, at: now },
     { id: id(), kind: "walk", agentId: listener, to: { kind: "coffee", slot: 1 }, at: now + 400 },
     { id: id(), kind: "say", agentId: speaker, text: fill(ex[0], values), source: "ambient", at: talk, until: talk + TIMING.say },
-    { id: id(), kind: "say", agentId: listener, text: fill(ex[1], values), source: "ambient", at: talk + TIMING.say - 500, until: talk + TIMING.say + TIMING.reply },
+    {
+      id: id(),
+      kind: "say",
+      agentId: listener,
+      text: fill(ex[1], values),
+      source: "ambient",
+      at: talk + TIMING.say - 500,
+      until: talk + TIMING.say + TIMING.reply,
+    },
     { id: id(), kind: "walk", agentId: speaker, to: { kind: "home" }, at: back },
     { id: id(), kind: "walk", agentId: listener, to: { kind: "home" }, at: back + 600 },
   );

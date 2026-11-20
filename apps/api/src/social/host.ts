@@ -13,7 +13,11 @@ export type Retry = { attempt: number; notBefore: number };
 export type Adapters = Partial<Record<Platform, ChannelAdapter>>;
 
 /** What to do after a platform refused: try again later, or stop and say why. */
-export function afterFailure(e: PlatformError, attempt: number, now: number): { retryAt: number } | { stop: { rateLimited?: boolean; expired?: boolean; final?: boolean; manual?: boolean } } {
+export function afterFailure(
+  e: PlatformError,
+  attempt: number,
+  now: number,
+): { retryAt: number } | { stop: { rateLimited?: boolean; expired?: boolean; final?: boolean; manual?: boolean } } {
   if (e.kind === "rate_limited") return { stop: { rateLimited: true } };
   if (e.kind === "expired") return { stop: { expired: true } };
   if (e.kind === "not_set_up") return { stop: { manual: true } };
@@ -111,7 +115,15 @@ export class SocialHost {
     let error: PlatformError;
     if ("a" in r) {
       try {
-        const media = this.opts.mediaSecret ? await signedMedia(this.opts.mediaSecret, this.opts.base, this.opts.officeId, this.office.books.media.filter((m) => v.mediaIds.includes(m.id)), this.now()) : [];
+        const media = this.opts.mediaSecret
+          ? await signedMedia(
+              this.opts.mediaSecret,
+              this.opts.base,
+              this.opts.officeId,
+              this.office.books.media.filter((m) => v.mediaIds.includes(m.id)),
+              this.now(),
+            )
+          : [];
         if (v.mediaIds.length && !media.length) throw new PlatformError("Pictures need SOCIAL_TOKEN_KEY set to make their links", "not_set_up");
         const done = await r.a.publish(r.t, v, media);
         delete retries[key];
@@ -128,7 +140,11 @@ export class SocialHost {
     if ("retryAt" in next) {
       retries[key] = { attempt, notBefore: next.retryAt };
       this.setRetries(retries);
-      this.office.markFailed(postId, channelId, `${error.message}. Trying again at ${new Date(next.retryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })}.`);
+      this.office.markFailed(
+        postId,
+        channelId,
+        `${error.message}. Trying again at ${new Date(next.retryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })}.`,
+      );
       return;
     }
     delete retries[key];
@@ -152,7 +168,10 @@ export class SocialHost {
     } catch (e) {
       const why = e instanceof Error ? e.message : String(e);
       m.status = "open";
-      this.office.log("social-media-manager", `Could not reply to ${m.author} on ${m.platform}: ${why}. The reply is drafted for you to send by hand.`, { kind: "social", id: m.id });
+      this.office.log("social-media-manager", `Could not reply to ${m.author} on ${m.platform}: ${why}. The reply is drafted for you to send by hand.`, {
+        kind: "social",
+        id: m.id,
+      });
       if (e instanceof PlatformError && (e.kind === "expired" || e.kind === "rate_limited")) this.office.channelProblem(channelId, e.kind, why);
     }
   }
@@ -163,14 +182,20 @@ export class SocialHost {
     const v = post?.variants.find((x) => x.channelId === channelId);
     if (!post || !v) return;
     const r = await this.ready(channelId);
-    const audience = [...new Set(this.office.books.socialInbox.filter((m) => m.channelId === channelId && m.kind === "dm" && m.threadId).map((m) => m.threadId!))];
+    const audience = [
+      ...new Set(this.office.books.socialInbox.filter((m) => m.channelId === channelId && m.kind === "dm" && m.threadId).map((m) => m.threadId!)),
+    ];
     try {
       if (!("a" in r)) throw r.problem;
       if (!r.a.broadcast) throw new PlatformError("This channel cannot send broadcasts", "final");
       if (!audience.length) throw new PlatformError("Nobody has messaged you on WhatsApp yet, so there is no one to send to", "final");
       const sent = await r.a.broadcast(r.t, { template: r.t.extra.template ?? "", language: r.t.extra.templateLanguage ?? "en", text: v.text, audience });
       this.office.markPublished(postId, channelId, { externalId: null, url: null });
-      this.office.log("social-media-manager", `The WhatsApp broadcast for "${post.topic}" went to ${sent.sent} ${sent.sent === 1 ? "customer" : "customers"}${sent.failed ? `; ${sent.failed} could not be reached` : ""}.`, { kind: "post", id: post.id });
+      this.office.log(
+        "social-media-manager",
+        `The WhatsApp broadcast for "${post.topic}" went to ${sent.sent} ${sent.sent === 1 ? "customer" : "customers"}${sent.failed ? `; ${sent.failed} could not be reached` : ""}.`,
+        { kind: "post", id: post.id },
+      );
     } catch (e) {
       const err = e instanceof PlatformError ? e : new PlatformError(String(e), "final");
       this.office.markFailed(postId, channelId, err.message, { final: true, rateLimited: err.kind === "rate_limited", expired: err.kind === "expired" });
@@ -181,7 +206,10 @@ export class SocialHost {
   nextWake(): number | null {
     const now = this.now();
     const times = [
-      ...this.office.books.posts.filter((p) => p.status === "scheduled" && p.variants.some((v) => v.status === "scheduled")).map((p) => Date.parse(p.at)).filter((t) => t > now),
+      ...this.office.books.posts
+        .filter((p) => p.status === "scheduled" && p.variants.some((v) => v.status === "scheduled"))
+        .map((p) => Date.parse(p.at))
+        .filter((t) => t > now),
       ...Object.values(this.retries).map((r) => Math.max(r.notBefore, now + 1000)),
     ];
     return times.length ? Math.min(...times) : null;
@@ -197,7 +225,10 @@ export class SocialHost {
       const r = await this.ready(ch.id);
       if (!("a" in r)) continue;
       const since = this.opts.kv(`social_pulled:${ch.id}`) ?? new Date(now - 3 * 86_400_000).toISOString();
-      const externalIds = this.office.books.posts.flatMap((p) => p.variants).filter((v) => v.channelId === ch.id && v.externalId && v.publishedAt && now - Date.parse(v.publishedAt) < PULL_WINDOW_MS).map((v) => v.externalId!);
+      const externalIds = this.office.books.posts
+        .flatMap((p) => p.variants)
+        .filter((v) => v.channelId === ch.id && v.externalId && v.publishedAt && now - Date.parse(v.publishedAt) < PULL_WINDOW_MS)
+        .map((v) => v.externalId!);
       try {
         const got = await r.a.pull(r.t, { since, externalIds });
         messages += this.office.receiveMessages(got.messages.map((m) => ({ ...m, channelId: ch.id }))).added.length;

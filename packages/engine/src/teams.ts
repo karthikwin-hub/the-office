@@ -59,8 +59,16 @@ export function salesTeamReport(l: Ledger): SalesTeamReport {
     note: [
       { text: `${open.length} open leads are worth ` },
       { text: inrShort(open.reduce((a, x) => a + x.valuePaise, 0)), figureId: "pipeline:open" },
-      { text: `. ${quotes.filter((q) => q.status === "sent").length} quotations are with customers, and ${lateReorders.length} regular customers are late placing their usual order` },
-      ...(lateReorders[0] ? [{ text: `, starting with ${lateReorders[0].name}, who usually orders every ${lateReorders[0].avgIntervalDays} days and last ordered ${lateReorders[0].daysSince} days ago.` }] : [{ text: "." }]),
+      {
+        text: `. ${quotes.filter((q) => q.status === "sent").length} quotations are with customers, and ${lateReorders.length} regular customers are late placing their usual order`,
+      },
+      ...(lateReorders[0]
+        ? [
+            {
+              text: `, starting with ${lateReorders[0].name}, who usually orders every ${lateReorders[0].avgIntervalDays} days and last ordered ${lateReorders[0].daysSince} days ago.`,
+            },
+          ]
+        : [{ text: "." }]),
     ],
     pipeline: stages.map((stage) => {
       const list = l.books.leads.filter((x) => x.stage === stage);
@@ -80,23 +88,43 @@ export function marketingReport(l: Ledger): MarketingReport {
       const st = stock.get(s.id);
       const sold = sold60.get(s.id) ?? 0;
       const perDay = sold / 60;
-      return { skuId: s.id, name: s.name, onHand: st?.onHand ?? 0, soldLast60: sold, daysOfStock: perDay ? Math.round((st?.onHand ?? 0) / perDay) : null, stockValuePaise: (st?.onHand ?? 0) * s.costPaise };
+      return {
+        skuId: s.id,
+        name: s.name,
+        onHand: st?.onHand ?? 0,
+        soldLast60: sold,
+        daysOfStock: perDay ? Math.round((st?.onHand ?? 0) / perDay) : null,
+        stockValuePaise: (st?.onHand ?? 0) * s.costPaise,
+      };
     })
     .filter((x) => x.onHand > 0 && (x.daysOfStock === null || x.daysOfStock > 120))
     .sort((a, b) => b.stockValuePaise - a.stockValuePaise);
   const byPrice = new Map<string, { marketplace: string; seller: string; pricePaise: number }[]>();
-  for (const c of l.books.competitorPrices) byPrice.set(c.skuId, [...(byPrice.get(c.skuId) ?? []), { marketplace: c.marketplace, seller: c.seller, pricePaise: c.pricePaise }]);
+  for (const c of l.books.competitorPrices)
+    byPrice.set(c.skuId, [...(byPrice.get(c.skuId) ?? []), { marketplace: c.marketplace, seller: c.seller, pricePaise: c.pricePaise }]);
   const prices = [...byPrice.entries()].map(([skuId, offers]) => {
     const sku = l.sku(skuId);
     const min = Math.min(...offers.map((o) => o.pricePaise));
-    return { skuId, name: sku.name, ourPricePaise: sku.pricePaise, offers: offers.sort((a, b) => a.pricePaise - b.pricePaise), gapPct: Math.round(((sku.pricePaise - min) / min) * 1000) / 10 };
+    return {
+      skuId,
+      name: sku.name,
+      ourPricePaise: sku.pricePaise,
+      offers: offers.sort((a, b) => a.pricePaise - b.pricePaise),
+      gapPct: Math.round(((sku.pricePaise - min) / min) * 1000) / 10,
+    };
   });
-  const campaigns = l.books.campaigns.map((c) => ({ ...c, skuNames: c.skuIds.map((id) => l.sku(id).name), returnMultiple: c.spentPaise ? Math.round((c.attributedSalesPaise / c.spentPaise) * 10) / 10 : null }));
+  const campaigns = l.books.campaigns.map((c) => ({
+    ...c,
+    skuNames: c.skuIds.map((id) => l.sku(id).name),
+    returnMultiple: c.spentPaise ? Math.round((c.attributedSalesPaise / c.spentPaise) * 10) / 10 : null,
+  }));
   const slowValue = slow.reduce((a, x) => a + x.stockValuePaise, 0);
   const pricedAbove = prices.filter((p) => p.gapPct > 5);
   return {
     note: [
-      { text: `${campaigns.filter((c) => c.status === "running").length} campaigns are running. ${slow.length} SKUs have more than four months of stock, tying up ` },
+      {
+        text: `${campaigns.filter((c) => c.status === "running").length} campaigns are running. ${slow.length} SKUs have more than four months of stock, tying up `,
+      },
       { text: inrShort(slowValue), figureId: "marketing:slow", tone: "red" },
       { text: ` at cost. On marketplaces, ${pricedAbove.length} of ${prices.length} watched SKUs are listed more than 5% below your price.` },
     ],
@@ -121,7 +149,9 @@ export function socialReport(l: Ledger): SocialReport {
   const drafts = l.books.posts.filter((p) => p.status === "draft").length;
   return {
     note: [
-      { text: `${open.length} comments, messages and reviews are waiting for a reply${negative.length ? `, including ${negative.length} unhappy one${negative.length === 1 ? "" : "s"}` : ""}${enquiries.length ? `, and ${enquiries.length} ${enquiries.length === 1 ? "is an enquiry" : "are enquiries"} for the Sales Rep` : ""}. Reviews average ${average} out of 5. ${scheduled} posts are scheduled and ${drafts} drafts are waiting for approval${failing ? `; ${failing} of them ${failing === 1 ? "fails" : "fail"} a check` : ""}. Social leads have been invoiced ` },
+      {
+        text: `${open.length} comments, messages and reviews are waiting for a reply${negative.length ? `, including ${negative.length} unhappy one${negative.length === 1 ? "" : "s"}` : ""}${enquiries.length ? `, and ${enquiries.length} ${enquiries.length === 1 ? "is an enquiry" : "are enquiries"} for the Sales Rep` : ""}. Reviews average ${average} out of 5. ${scheduled} posts are scheduled and ${drafts} drafts are waiting for approval${failing ? `; ${failing} of them ${failing === 1 ? "fails" : "fail"} a check` : ""}. Social leads have been invoiced `,
+      },
       { text: inrShort(perf.funnel.invoicedPaise), figureId: "social:invoiced" },
       { text: " since they first got in touch." },
     ],
@@ -144,16 +174,34 @@ export function operationsReport(l: Ledger): OperationsReport {
     const sold = sold30.get(s.skuId) ?? 0;
     const cover = sold ? Math.round(s.onHand / (sold / 30)) : null;
     const status = s.onHand <= s.reorderPoint ? ("reorder" as const) : cover === null || cover > 120 ? ("excess" as const) : ("ok" as const);
-    return { skuId: s.skuId, name: sku.name, category: sku.category, onHand: s.onHand, unit: sku.unit, reorderPoint: s.reorderPoint, leadTimeDays: s.leadTimeDays, soldLast30: sold, daysOfCover: cover, status, stockValuePaise: s.onHand * sku.costPaise };
+    return {
+      skuId: s.skuId,
+      name: sku.name,
+      category: sku.category,
+      onHand: s.onHand,
+      unit: sku.unit,
+      reorderPoint: s.reorderPoint,
+      leadTimeDays: s.leadTimeDays,
+      soldLast30: sold,
+      daysOfCover: cover,
+      status,
+      stockValuePaise: s.onHand * sku.costPaise,
+    };
   });
   const order = { reorder: 0, excess: 1, ok: 2 } as const;
   stock.sort((a, b) => order[a.status] - order[b.status] || b.stockValuePaise - a.stockValuePaise);
   const rfqs = l.books.rfqs.map((r) => {
     const credit = (t: string) => (/(\d+) days credit/.exec(t) ? Number(/(\d+) days credit/.exec(t)![1]) : 0);
     const min = Math.min(...r.quotes.map((q) => q.ratePaise));
-    const scored = r.quotes.map((q) => ({ q, score: (q.ratePaise / min - 1) * 100 + q.leadDays * 0.3 - credit(q.terms) * 0.08 })).sort((a, b) => a.score - b.score);
+    const scored = r.quotes
+      .map((q) => ({ q, score: (q.ratePaise / min - 1) * 100 + q.leadDays * 0.3 - credit(q.terms) * 0.08 }))
+      .sort((a, b) => a.score - b.score);
     const best = scored[0]!.q;
-    return { ...r, recommended: best.vendorName, reason: `${best.ratePaise === min ? "Lowest price" : `${Math.round((best.ratePaise / min - 1) * 1000) / 10}% above the lowest price`}, ${best.leadDays}-day lead time, ${best.terms.toLowerCase()}.` };
+    return {
+      ...r,
+      recommended: best.vendorName,
+      reason: `${best.ratePaise === min ? "Lowest price" : `${Math.round((best.ratePaise / min - 1) * 1000) / 10}% above the lowest price`}, ${best.leadDays}-day lead time, ${best.terms.toLowerCase()}.`,
+    };
   });
   const toReorder = stock.filter((s) => s.status === "reorder");
   const compliance = buildObligations(l.books, l.asOf).map((o) => ({
@@ -171,10 +219,24 @@ export function operationsReport(l: Ledger): OperationsReport {
       { text: `${toReorder.length} SKUs are at or below their reorder point. Excess stock worth ` },
       { text: inrShort(stock.filter((s) => s.status === "excess").reduce((a, s) => a + s.stockValuePaise, 0)), figureId: "operations:excess" },
       { text: " is sitting in the godown." },
-      ...(next ? [{ text: ` The next filing is ${next.form} on ${new Date(next.date + "T00:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "long", timeZone: "UTC" })}.` }] : []),
+      ...(next
+        ? [
+            {
+              text: ` The next filing is ${next.form} on ${new Date(next.date + "T00:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "long", timeZone: "UTC" })}.`,
+            },
+          ]
+        : []),
     ],
     stock,
-    purchaseOrders: l.books.purchaseOrders.map((p) => ({ id: p.id, number: p.number, vendor: l.party(p.vendorId).name, date: p.date, status: p.status, lines: p.lines.length, totalPaise: p.totalPaise })),
+    purchaseOrders: l.books.purchaseOrders.map((p) => ({
+      id: p.id,
+      number: p.number,
+      vendor: l.party(p.vendorId).name,
+      date: p.date,
+      status: p.status,
+      lines: p.lines.length,
+      totalPaise: p.totalPaise,
+    })),
     rfqs,
     compliance,
   };
@@ -182,12 +244,50 @@ export function operationsReport(l: Ledger): OperationsReport {
 
 /** Monthly professional tax slabs by state code: [gross up to, tax] in rupees, the last applying above. February's extra in Maharashtra and Karnataka makes up the ₹2,500 a year. */
 const PT_SLABS: Record<string, { slabs: [number, number][]; february?: number }> = {
-  "27": { slabs: [[7_500, 0], [10_000, 175], [Infinity, 200]], february: 300 },
-  "29": { slabs: [[24_999, 0], [Infinity, 200]], february: 300 },
-  "36": { slabs: [[15_000, 0], [20_000, 150], [Infinity, 200]] },
-  "37": { slabs: [[15_000, 0], [20_000, 150], [Infinity, 200]] },
-  "24": { slabs: [[11_999, 0], [Infinity, 200]] },
-  "19": { slabs: [[10_000, 0], [15_000, 110], [25_000, 130], [40_000, 150], [Infinity, 200]] },
+  "27": {
+    slabs: [
+      [7_500, 0],
+      [10_000, 175],
+      [Infinity, 200],
+    ],
+    february: 300,
+  },
+  "29": {
+    slabs: [
+      [24_999, 0],
+      [Infinity, 200],
+    ],
+    february: 300,
+  },
+  "36": {
+    slabs: [
+      [15_000, 0],
+      [20_000, 150],
+      [Infinity, 200],
+    ],
+  },
+  "37": {
+    slabs: [
+      [15_000, 0],
+      [20_000, 150],
+      [Infinity, 200],
+    ],
+  },
+  "24": {
+    slabs: [
+      [11_999, 0],
+      [Infinity, 200],
+    ],
+  },
+  "19": {
+    slabs: [
+      [10_000, 0],
+      [15_000, 110],
+      [25_000, 130],
+      [40_000, 150],
+      [Infinity, 200],
+    ],
+  },
 };
 
 /** Professional tax for one month's gross, on the slabs for men; states without one (or not covered) give nil. */
@@ -248,7 +348,10 @@ export function peopleReport(l: Ledger, period?: string): PeopleReport {
       { text: `Payroll for ${monthLabel(p)} covers ${lines.length} people: ` },
       { text: inrShort(totals.netPaise), figureId: `payroll:net:${p}` },
       { text: " to pay out, with " },
-      { text: inrShort(totals.pfEmployeePaise + totals.pfEmployerPaise + totals.esiEmployeePaise + totals.esiEmployerPaise), figureId: `payroll:statutory:${p}` },
+      {
+        text: inrShort(totals.pfEmployeePaise + totals.pfEmployerPaise + totals.esiEmployeePaise + totals.esiEmployerPaise),
+        figureId: `payroll:statutory:${p}`,
+      },
       { text: " of PF and ESI due by the 15th." },
     ],
     lines,

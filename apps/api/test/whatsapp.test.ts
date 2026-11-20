@@ -25,7 +25,8 @@ function fakeAi(o: { heard?: string; language?: string; intent?: object } = {}) 
     const system = input.messages?.[0]?.content ?? "";
     const user = input.messages?.[1]?.content ?? "";
     if (system.includes("sort voice notes")) return { response: JSON.stringify(o.intent ?? { kind: "question", party: null, english: o.heard }) };
-    if (system.includes("Translate each numbered line")) return { response: JSON.stringify({ lines: user.split("\n").map((l) => `[hi] ${l.replace(/^\d+\.\s/, "")}`) }) };
+    if (system.includes("Translate each numbered line"))
+      return { response: JSON.stringify({ lines: user.split("\n").map((l) => `[hi] ${l.replace(/^\d+\.\s/, "")}`) }) };
     if (system.includes("into plain English")) return { response: JSON.stringify({ english: "Who owes me the most?" }) };
     return { response: "{}" };
   });
@@ -36,7 +37,8 @@ function fakeAi(o: { heard?: string; language?: string; intent?: object } = {}) 
 function fakeGraph(bytes = new Uint8Array([1, 2, 3, 4]), mime = "image/jpeg") {
   return vi.fn(async (url: string | URL | Request) => {
     const u = String(url);
-    if (u.includes("graph.facebook.com")) return Response.json({ url: "https://lookaside.fbsbx.com/whatsapp/media/abc", mime_type: mime, file_size: bytes.byteLength });
+    if (u.includes("graph.facebook.com"))
+      return Response.json({ url: "https://lookaside.fbsbx.com/whatsapp/media/abc", mime_type: mime, file_size: bytes.byteLength });
     if (u.startsWith("https://lookaside.fbsbx.com/")) return new Response(bytes, { headers: { "content-type": mime } });
     return new Response("not found", { status: 404 });
   }) as unknown as typeof fetch;
@@ -53,7 +55,13 @@ function setup(o: { ai?: Ai; fetch?: typeof fetch } = {}) {
     const staged = office.pending().find((s) => s.kind === "ledger_entry")!;
     return { document: office.books.documents[0]!, staged: { ...staged, id: staged.id, payload: { ...staged.payload, docId } }, message: "Read" };
   });
-  const readItems = vi.fn(async (_docId: string, _items: TextItem[]): Promise<IngestResult> => ({ document: office.books.documents[0]!, staged: office.pending().find((s) => s.kind === "ledger_entry")!, message: "Read" }));
+  const readItems = vi.fn(
+    async (_docId: string, _items: TextItem[]): Promise<IngestResult> => ({
+      document: office.books.documents[0]!,
+      staged: office.pending().find((s) => s.kind === "ledger_entry")!,
+      message: "Read",
+    }),
+  );
   let n = 0;
   const deps: WaDeps = {
     kv,
@@ -71,9 +79,25 @@ function setup(o: { ai?: Ai; fetch?: typeof fetch } = {}) {
   };
   return { office, kv, map, deps, stored, readImage, readItems };
 }
-const msg = (o: Partial<WaIncoming>): WaIncoming => ({ id: `wamid.${Math.random().toString(36).slice(2)}`, from: PHONE, at: "2026-11-04T09:30:00+05:30", kind: "text", text: "", media: null, ...o });
+const msg = (o: Partial<WaIncoming>): WaIncoming => ({
+  id: `wamid.${Math.random().toString(36).slice(2)}`,
+  from: PHONE,
+  at: "2026-11-04T09:30:00+05:30",
+  kind: "text",
+  text: "",
+  media: null,
+  ...o,
+});
 /** The person the Worker found behind the phone, as the office sees them. */
-const person = (who: { email: string; name: string; role: "owner" | "accountant" } = anil): WaPerson => ({ phone: PHONE, userId: `u-${who.name.split(" ")[0]!.toLowerCase()}`, name: who.name, email: who.email, role: who.role, language: "auto", digest: false });
+const person = (who: { email: string; name: string; role: "owner" | "accountant" } = anil): WaPerson => ({
+  phone: PHONE,
+  userId: `u-${who.name.split(" ")[0]!.toLowerCase()}`,
+  name: who.name,
+  email: who.email,
+  role: who.role,
+  language: "auto",
+  digest: false,
+});
 
 async function directory() {
   const db = d1();
@@ -95,7 +119,10 @@ describe("linking a number", () => {
     expect(await dir.redeem("0000", "999999")).toEqual({ error: "badCode" });
     tick(60_000);
     const r = await dir.redeem("+91 98220 12345", code);
-    expect(r).toMatchObject({ officeId: kaveri.id, link: { phone: PHONE, userId: "u-anil", email: anil.email, activeOfficeId: kaveri.id, language: "auto", digest: false } });
+    expect(r).toMatchObject({
+      officeId: kaveri.id,
+      link: { phone: PHONE, userId: "u-anil", email: anil.email, activeOfficeId: kaveri.id, language: "auto", digest: false },
+    });
     expect((await dir.linkOfUser("u-anil"))?.phone).toBe(PHONE);
     expect(await dir.personIn(kaveri.id, PHONE)).toMatchObject({ role: "owner" });
     expect(await dir.redeem(PHONE, code)).toEqual({ error: "badCode" });
@@ -203,11 +230,23 @@ describe("linking a number", () => {
   it("keeps a linked number's messages out of the social inbox", () => {
     const delivery = {
       object: "whatsapp_business_account",
-      entry: [{ changes: [{ field: "messages", value: { contacts: [], messages: [
-        { id: "wamid.owner", from: PHONE, timestamp: "1762229400", type: "text", text: { body: "desk" } },
-        { id: "wamid.cust", from: "919000000001", timestamp: "1762229400", type: "text", text: { body: "MCB price?" } },
-        { id: "wamid.join", from: "919000000002", timestamp: "1762229400", type: "text", text: { body: "JOIN 482193" } },
-      ] } }] }],
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                contacts: [],
+                messages: [
+                  { id: "wamid.owner", from: PHONE, timestamp: "1762229400", type: "text", text: { body: "desk" } },
+                  { id: "wamid.cust", from: "919000000001", timestamp: "1762229400", type: "text", text: { body: "MCB price?" } },
+                  { id: "wamid.join", from: "919000000002", timestamp: "1762229400", type: "text", text: { body: "JOIN 482193" } },
+                ],
+              },
+            },
+          ],
+        },
+      ],
     };
     const linked = new Set([PHONE]);
     const inbox = parseMetaDelivery(delivery, new Set(), Date.now(), (from, text) => linked.has(from) || /^join\s*\d{6}$/i.test(text));
@@ -276,7 +315,9 @@ describe("talking to the office", () => {
   });
 
   it("refuses a file over the size limit without downloading it", async () => {
-    const graph = vi.fn(async () => Response.json({ url: "https://lookaside.fbsbx.com/x", mime_type: "image/jpeg", file_size: 50 * 1024 * 1024 })) as unknown as typeof fetch;
+    const graph = vi.fn(async () =>
+      Response.json({ url: "https://lookaside.fbsbx.com/x", mime_type: "image/jpeg", file_size: 50 * 1024 * 1024 }),
+    ) as unknown as typeof fetch;
     const { deps, readImage } = setup({ fetch: graph });
     const who = person();
     const out = await officeWhatsApp(deps, msg({ kind: "image", media: { id: "big", mimeType: "image/jpeg", filename: null } }), who);
@@ -294,7 +335,12 @@ describe("talking to the office", () => {
     expect(stored.map((s) => s.key)).toEqual(["o/off_kaveri/docs/doc-wa1", "o/off_kaveri/docs/doc-wa1.txt"]);
     const [, items, auto] = readItems.mock.calls[0]! as unknown as [string, TextItem[], boolean];
     expect(auto).toBe(false);
-    expect(items.map((i) => i.str)).toEqual([expect.stringMatching(/^Bill from Tempo driver to /), expect.stringMatching(/^Date \d\d\/\d\d\/\d{4}$/), "Paid 2,400 for the tempo", heard]);
+    expect(items.map((i) => i.str)).toEqual([
+      expect.stringMatching(/^Bill from Tempo driver to /),
+      expect.stringMatching(/^Date \d\d\/\d\d\/\d{4}$/),
+      "Paid 2,400 for the tempo",
+      heard,
+    ]);
     expect(out!.text.startsWith(`मैंने सुना: "${heard}"`)).toBe(true);
     expect(out!.text).toContain("आपकी डेस्क पर आइटम 1 के रूप में।");
     expect(deps.office.allStaged().find((s) => s.summary.startsWith(`From a voice note: "${heard}"`))).toBeDefined();
@@ -309,7 +355,11 @@ describe("talking to the office", () => {
   });
 
   it("notes a spoken quote request for the Quote Desk", async () => {
-    const { ai } = fakeAi({ heard: "Quote Sai Krupa 40 LED panels", language: "en", intent: { kind: "quote", party: "Sai Krupa Builders", english: "Quote Sai Krupa 40 LED panels" } });
+    const { ai } = fakeAi({
+      heard: "Quote Sai Krupa 40 LED panels",
+      language: "en",
+      intent: { kind: "quote", party: "Sai Krupa Builders", english: "Quote Sai Krupa 40 LED panels" },
+    });
     const { deps, office } = setup({ ai, fetch: fakeGraph(new Uint8Array(4096), "audio/ogg") });
     const who = person();
     const leads = office.books.leads.length;

@@ -9,8 +9,29 @@ import { b64url } from "./social/tokens";
  */
 
 export type OfficeStatus = "active" | "suspended" | "deleting";
-export type OfficeRow = { id: string; name: string; slug: string; status: OfficeStatus; createdBy: string | null; createdAt: number; deletedAt: number | null; locale: OfficeLocale; subdomain: string | null };
-export type RouteKind = "email" | "wa_phone" | "meta_page" | "ig_account" | "threads" | "linkedin" | "x" | "support_email" | "widget" | "assistant_email" | "sales_email";
+export type OfficeRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status: OfficeStatus;
+  createdBy: string | null;
+  createdAt: number;
+  deletedAt: number | null;
+  locale: OfficeLocale;
+  subdomain: string | null;
+};
+export type RouteKind =
+  | "email"
+  | "wa_phone"
+  | "meta_page"
+  | "ig_account"
+  | "threads"
+  | "linkedin"
+  | "x"
+  | "support_email"
+  | "widget"
+  | "assistant_email"
+  | "sales_email";
 export type Member = { userId: string; name: string; email: string; role: Role; since: number };
 export type Invitation = { email: string; role: Role; invitedBy: string; createdAt: number; expiresAt: number };
 export type UserRef = { id: string; name: string; email: string; emailVerified: boolean };
@@ -50,9 +71,28 @@ export async function hashToken(token: string): Promise<string> {
 }
 
 type LocaleDb = { country: string; currency: string; locale: string; time_zone: string };
-type OfficeDb = { id: string; name: string; slug: string; status: OfficeStatus; created_by: string | null; created_at: number; deleted_at: number | null; subdomain?: string | null } & LocaleDb;
+type OfficeDb = {
+  id: string;
+  name: string;
+  slug: string;
+  status: OfficeStatus;
+  created_by: string | null;
+  created_at: number;
+  deleted_at: number | null;
+  subdomain?: string | null;
+} & LocaleDb;
 const localeOf = (r: LocaleDb): OfficeLocale => readLocale({ country: r.country, currency: r.currency, locale: r.locale, timeZone: r.time_zone });
-const toOffice = (r: OfficeDb): OfficeRow => ({ id: r.id, name: r.name, slug: r.slug, status: r.status, createdBy: r.created_by, createdAt: r.created_at, deletedAt: r.deleted_at, locale: localeOf(r), subdomain: r.subdomain ?? null });
+const toOffice = (r: OfficeDb): OfficeRow => ({
+  id: r.id,
+  name: r.name,
+  slug: r.slug,
+  status: r.status,
+  createdBy: r.created_by,
+  createdAt: r.created_at,
+  deletedAt: r.deleted_at,
+  locale: localeOf(r),
+  subdomain: r.subdomain ?? null,
+});
 
 export class ControlPlane {
   constructor(
@@ -105,8 +145,16 @@ export class ControlPlane {
   }
 
   /** A platform owner opens an office for a business: no one is in it until the owner accepts the invitation. */
-  async onboard(input: { name: string; ownerEmail: string; by: string; ingestDomain: string; locale?: OfficeLocale }): Promise<{ office: OfficeRow; token: string; expiresAt: number } | { error: string }> {
-    const made = await this.insertOffice(input.name, null, input.locale ?? INDIA, input.ingestDomain, (id) => [this.auditStmt(id, input.by, "office.onboarded", input.name.trim().slice(0, 80))]);
+  async onboard(input: {
+    name: string;
+    ownerEmail: string;
+    by: string;
+    ingestDomain: string;
+    locale?: OfficeLocale;
+  }): Promise<{ office: OfficeRow; token: string; expiresAt: number } | { error: string }> {
+    const made = await this.insertOffice(input.name, null, input.locale ?? INDIA, input.ingestDomain, (id) => [
+      this.auditStmt(id, input.by, "office.onboarded", input.name.trim().slice(0, 80)),
+    ]);
     if ("error" in made) return made;
     return { office: made, ...(await this.invite(made.id, input.ownerEmail, "owner", input.by, "platform.owner_invited")) };
   }
@@ -118,24 +166,48 @@ export class ControlPlane {
    */
   async inviteFirstOwner(officeId: string, email: string, by: string): Promise<{ token: string; expiresAt: number } | { error: string }> {
     const members = await this.members(officeId);
-    if (members.some((m) => m.role === "owner")) return { error: "This office already has an owner. Owners invite people themselves, from the office's Settings." };
+    if (members.some((m) => m.role === "owner"))
+      return { error: "This office already has an owner. Owners invite people themselves, from the office's Settings." };
     if (members.some((m) => emailKey(m.email) === emailKey(email))) return { error: `${emailKey(email)} is already in this office.` };
-    await this.db.prepare("DELETE FROM invitation WHERE office_id = ? AND role = 'owner' AND accepted_at IS NULL AND email != ?").bind(officeId, emailKey(email)).run();
+    await this.db
+      .prepare("DELETE FROM invitation WHERE office_id = ? AND role = 'owner' AND accepted_at IS NULL AND email != ?")
+      .bind(officeId, emailKey(email))
+      .run();
     return this.invite(officeId, email, "owner", by, "platform.owner_invited");
   }
 
-  private async insertOffice(rawName: string, createdBy: string | null, locale: OfficeLocale, ingestDomain: string, more: (id: string) => D1PreparedStatement[]): Promise<OfficeRow | { error: string }> {
+  private async insertOffice(
+    rawName: string,
+    createdBy: string | null,
+    locale: OfficeLocale,
+    ingestDomain: string,
+    more: (id: string) => D1PreparedStatement[],
+  ): Promise<OfficeRow | { error: string }> {
     const at = this.now();
     const name = rawName.trim().slice(0, 80);
     for (let i = 0; i < 5; i++) {
-      const row: OfficeRow = { id: newOfficeId(), name, slug: slugFor(name), status: "active", createdBy, createdAt: at, deletedAt: null, locale, subdomain: null };
+      const row: OfficeRow = {
+        id: newOfficeId(),
+        name,
+        slug: slugFor(name),
+        status: "active",
+        createdBy,
+        createdAt: at,
+        deletedAt: null,
+        locale,
+        subdomain: null,
+      };
       const taken = await this.db.prepare("SELECT 1 FROM office WHERE id = ? OR slug = ?").bind(row.id, row.slug).first();
       if (taken) continue;
       await this.db.batch([
         this.db
-          .prepare("INSERT INTO office (id, name, slug, status, created_by, created_at, country, currency, locale, time_zone) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)")
+          .prepare(
+            "INSERT INTO office (id, name, slug, status, created_by, created_at, country, currency, locale, time_zone) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
+          )
           .bind(row.id, row.name, row.slug, row.createdBy, at, locale.country, locale.currency, locale.locale, locale.timeZone),
-        this.db.prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES ('email', ?, ?, ?)").bind(ingestAddress(row.slug, ingestDomain), row.id, at),
+        this.db
+          .prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES ('email', ?, ?, ?)")
+          .bind(ingestAddress(row.slug, ingestDomain), row.id, at),
         ...more(row.id),
       ]);
       return row;
@@ -145,7 +217,13 @@ export class ControlPlane {
 
   /** Every office on the platform, for its owners' console: who owns it and when it last changed, nothing from its books. */
   async allOffices(): Promise<
-    (OfficeRow & { owners: { name: string; email: string }[]; people: number; ownerInvite: { email: string; expiresAt: number } | null; lastEvent: number | null; onboardedBy: string | null })[]
+    (OfficeRow & {
+      owners: { name: string; email: string }[];
+      people: number;
+      ownerInvite: { email: string; expiresAt: number } | null;
+      lastEvent: number | null;
+      onboardedBy: string | null;
+    })[]
   > {
     const [offices, owners, invites] = await Promise.all([
       this.db
@@ -155,13 +233,24 @@ export class ControlPlane {
           FROM office o ORDER BY o.created_at DESC`,
         )
         .all<OfficeDb & { people: number; last_event: number | null; onboarded_by: string | null }>(),
-      this.db.prepare("SELECT m.office_id, u.name, u.email FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.role = 'owner' ORDER BY m.created_at").all<{ office_id: string; name: string; email: string }>(),
-      this.db.prepare("SELECT office_id, email, expires_at FROM invitation WHERE role = 'owner' AND accepted_at IS NULL ORDER BY created_at").all<{ office_id: string; email: string; expires_at: number }>(),
+      this.db
+        .prepare("SELECT m.office_id, u.name, u.email FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.role = 'owner' ORDER BY m.created_at")
+        .all<{ office_id: string; name: string; email: string }>(),
+      this.db
+        .prepare("SELECT office_id, email, expires_at FROM invitation WHERE role = 'owner' AND accepted_at IS NULL ORDER BY created_at")
+        .all<{ office_id: string; email: string; expires_at: number }>(),
     ]);
     const ownersOf = new Map<string, { name: string; email: string }[]>();
     for (const o of owners.results) ownersOf.set(o.office_id, [...(ownersOf.get(o.office_id) ?? []), { name: o.name, email: o.email }]);
     const inviteOf = new Map(invites.results.map((i) => [i.office_id, { email: i.email, expiresAt: i.expires_at }]));
-    return offices.results.map((r) => ({ ...toOffice(r), owners: ownersOf.get(r.id) ?? [], people: r.people, ownerInvite: inviteOf.get(r.id) ?? null, lastEvent: r.last_event, onboardedBy: r.onboarded_by }));
+    return offices.results.map((r) => ({
+      ...toOffice(r),
+      owners: ownersOf.get(r.id) ?? [],
+      people: r.people,
+      ownerInvite: inviteOf.get(r.id) ?? null,
+      lastEvent: r.last_event,
+      onboardedBy: r.onboarded_by,
+    }));
   }
 
   async rename(officeId: string, name: string): Promise<void> {
@@ -178,7 +267,10 @@ export class ControlPlane {
 
   /** Offices deleted long enough ago that their books and files can go. */
   async purgeDue(): Promise<OfficeRow[]> {
-    const { results } = await this.db.prepare("SELECT * FROM office WHERE status = 'deleting' AND deleted_at < ?").bind(this.now() - PURGE_AFTER_MS).all<OfficeDb>();
+    const { results } = await this.db
+      .prepare("SELECT * FROM office WHERE status = 'deleting' AND deleted_at < ?")
+      .bind(this.now() - PURGE_AFTER_MS)
+      .all<OfficeDb>();
     return results.map(toOffice);
   }
 
@@ -202,22 +294,33 @@ export class ControlPlane {
 
   /** The erasures still to do, those that have failed least first, so one the store keeps refusing does not hold back the rest. */
   async backupErasures(limit: number): Promise<{ officeId: string; erased: number }[]> {
-    const { results } = await this.db.prepare("SELECT office_id, erased FROM backup_erasure ORDER BY tries, since LIMIT ?").bind(limit).all<{ office_id: string; erased: number }>();
+    const { results } = await this.db
+      .prepare("SELECT office_id, erased FROM backup_erasure ORDER BY tries, since LIMIT ?")
+      .bind(limit)
+      .all<{ office_id: string; erased: number }>();
     return results.map((r) => ({ officeId: r.office_id, erased: r.erased }));
   }
 
   /** Some copies went and more are left for the next night (`total` null), or the last of them did, `total` in all, which the audit trail records. */
   async backupErasureProgress(officeId: string, erased: number, total: number | null, error: string | null = null): Promise<void> {
     if (total !== null) {
-      await this.db.batch([this.db.prepare("DELETE FROM backup_erasure WHERE office_id = ?").bind(officeId), this.auditStmt(officeId, "system", "office.backups-erased", `${total} ${total === 1 ? "copy" : "copies"} in India deleted`)]);
+      await this.db.batch([
+        this.db.prepare("DELETE FROM backup_erasure WHERE office_id = ?").bind(officeId),
+        this.auditStmt(officeId, "system", "office.backups-erased", `${total} ${total === 1 ? "copy" : "copies"} in India deleted`),
+      ]);
       return;
     }
-    await this.db.prepare("UPDATE backup_erasure SET erased = erased + ?, tries = tries + 1, last_error = ? WHERE office_id = ?").bind(erased, error, officeId).run();
+    await this.db
+      .prepare("UPDATE backup_erasure SET erased = erased + ?, tries = tries + 1, last_error = ? WHERE office_id = ?")
+      .bind(erased, error, officeId)
+      .run();
   }
 
   async members(officeId: string): Promise<Member[]> {
     const { results } = await this.db
-      .prepare("SELECT u.id AS user_id, u.name, u.email, m.role, m.created_at FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.office_id = ? ORDER BY m.role DESC, u.name")
+      .prepare(
+        "SELECT u.id AS user_id, u.name, u.email, m.role, m.created_at FROM membership m JOIN `user` u ON u.id = m.user_id WHERE m.office_id = ? ORDER BY m.role DESC, u.name",
+      )
       .bind(officeId)
       .all<{ user_id: string; name: string; email: string; role: Role; created_at: number }>();
     return results.map((r) => ({ userId: r.user_id, name: r.name, email: r.email, role: r.role, since: r.created_at }));
@@ -228,8 +331,12 @@ export class ControlPlane {
     const members = await this.members(officeId);
     const target = members.find((m) => m.userId === userId);
     if (!target) return "That person is not in this office.";
-    if (target.role === "owner" && role !== "owner" && members.filter((m) => m.role === "owner").length === 1) return "The office needs an owner. Make someone else the owner first.";
-    await this.db.batch([this.db.prepare("UPDATE membership SET role = ? WHERE office_id = ? AND user_id = ?").bind(role, officeId, userId), this.auditStmt(officeId, actor, "member.role", `${target.email} is now ${role}`)]);
+    if (target.role === "owner" && role !== "owner" && members.filter((m) => m.role === "owner").length === 1)
+      return "The office needs an owner. Make someone else the owner first.";
+    await this.db.batch([
+      this.db.prepare("UPDATE membership SET role = ? WHERE office_id = ? AND user_id = ?").bind(role, officeId, userId),
+      this.auditStmt(officeId, actor, "member.role", `${target.email} is now ${role}`),
+    ]);
     return null;
   }
 
@@ -251,7 +358,8 @@ export class ControlPlane {
     const members = await this.members(officeId);
     const target = members.find((m) => m.userId === userId);
     if (!target) return "That person is not in this office.";
-    if (target.role === "owner" && members.filter((m) => m.role === "owner").length === 1) return "The only owner cannot leave. Hand the office to someone first, or delete it.";
+    if (target.role === "owner" && members.filter((m) => m.role === "owner").length === 1)
+      return "The only owner cannot leave. Hand the office to someone first, or delete it.";
     await this.db.batch([
       this.db.prepare("DELETE FROM membership WHERE office_id = ? AND user_id = ?").bind(officeId, userId),
       this.db.prepare("DELETE FROM wa_code WHERE office_id = ? AND user_id = ?").bind(officeId, userId),
@@ -265,14 +373,22 @@ export class ControlPlane {
 
   async invitations(officeId: string): Promise<Invitation[]> {
     const { results } = await this.db
-      .prepare("SELECT email, role, invited_by, created_at, expires_at FROM invitation WHERE office_id = ? AND accepted_at IS NULL AND expires_at > ? ORDER BY created_at DESC")
+      .prepare(
+        "SELECT email, role, invited_by, created_at, expires_at FROM invitation WHERE office_id = ? AND accepted_at IS NULL AND expires_at > ? ORDER BY created_at DESC",
+      )
       .bind(officeId, this.now())
       .all<{ email: string; role: Role; invited_by: string; created_at: number; expires_at: number }>();
     return results.map((r) => ({ email: r.email, role: r.role, invitedBy: r.invited_by, createdAt: r.created_at, expiresAt: r.expires_at }));
   }
 
   /** A new token replaces any earlier invitation for the same address. Only its hash is kept. */
-  async invite(officeId: string, email: string, role: Role, by: string, action: "invitation.sent" | "platform.owner_invited" = "invitation.sent"): Promise<{ token: string; expiresAt: number }> {
+  async invite(
+    officeId: string,
+    email: string,
+    role: Role,
+    by: string,
+    action: "invitation.sent" | "platform.owner_invited" = "invitation.sent",
+  ): Promise<{ token: string; expiresAt: number }> {
     const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
     const at = this.now();
     const expiresAt = at + INVITE_TTL_MS;
@@ -296,7 +412,9 @@ export class ControlPlane {
   /** What an invitation link is for, before it is accepted: shown to the person who opened it. */
   async peekInvite(token: string): Promise<{ officeName: string; email: string; role: Role } | null> {
     const r = await this.db
-      .prepare("SELECT i.email, i.role, o.name FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.expires_at > ? AND o.status = 'active'")
+      .prepare(
+        "SELECT i.email, i.role, o.name FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.expires_at > ? AND o.status = 'active'",
+      )
       .bind(await hashToken(token), this.now())
       .first<{ email: string; role: Role; name: string }>();
     return r ? { officeName: r.name, email: r.email, role: r.role } : null;
@@ -321,7 +439,9 @@ export class ControlPlane {
     if (!user.emailVerified) return { error: "Confirm your email address first, then open the invitation again." };
     const at = this.now();
     await this.db.batch([
-      this.db.prepare("INSERT INTO membership (office_id, user_id, role, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (office_id, user_id) DO NOTHING").bind(r.office_id, user.id, r.role, at),
+      this.db
+        .prepare("INSERT INTO membership (office_id, user_id, role, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (office_id, user_id) DO NOTHING")
+        .bind(r.office_id, user.id, r.role, at),
       this.db.prepare("UPDATE invitation SET accepted_at = ? WHERE office_id = ? AND email = ?").bind(at, r.office_id, r.email),
       this.auditStmt(r.office_id, user.email, "invitation.accepted", r.role),
     ]);
@@ -334,7 +454,9 @@ export class ControlPlane {
   async routeFor(kind: RouteKind | RouteKind[], externalId: string): Promise<string | null> {
     const kinds = Array.isArray(kind) ? kind : [kind];
     const r = await this.db
-      .prepare(`SELECT r.office_id FROM route r JOIN office o ON o.id = r.office_id WHERE r.kind IN (${kinds.map(() => "?").join(",")}) AND r.external_id = ? AND o.status = 'active'`)
+      .prepare(
+        `SELECT r.office_id FROM route r JOIN office o ON o.id = r.office_id WHERE r.kind IN (${kinds.map(() => "?").join(",")}) AND r.external_id = ? AND o.status = 'active'`,
+      )
       .bind(...kinds, externalId)
       .first<{ office_id: string }>();
     return r?.office_id ?? null;
@@ -350,7 +472,10 @@ export class ControlPlane {
 
   /** Claims an inbound id for this office. Fails if another office already has it, so no one can hijack another business's page. */
   async claimRoute(officeId: string, kind: RouteKind, externalId: string): Promise<boolean> {
-    await this.db.prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (kind, external_id) DO NOTHING").bind(kind, externalId, officeId, this.now()).run();
+    await this.db
+      .prepare("INSERT INTO route (kind, external_id, office_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (kind, external_id) DO NOTHING")
+      .bind(kind, externalId, officeId, this.now())
+      .run();
     const owner = await this.db.prepare("SELECT office_id FROM route WHERE kind = ? AND external_id = ?").bind(kind, externalId).first<{ office_id: string }>();
     return owner?.office_id === officeId;
   }
@@ -374,7 +499,10 @@ export class ControlPlane {
   }
 
   async auditTrail(officeId: string, limit = 50): Promise<{ actor: string; action: string; detail: string | null; at: number }[]> {
-    const { results } = await this.db.prepare("SELECT actor, action, detail, at FROM audit WHERE office_id = ? ORDER BY at DESC, id DESC LIMIT ?").bind(officeId, limit).all<{ actor: string; action: string; detail: string | null; at: number }>();
+    const { results } = await this.db
+      .prepare("SELECT actor, action, detail, at FROM audit WHERE office_id = ? ORDER BY at DESC, id DESC LIMIT ?")
+      .bind(officeId, limit)
+      .all<{ actor: string; action: string; detail: string | null; at: number }>();
     return results;
   }
 }

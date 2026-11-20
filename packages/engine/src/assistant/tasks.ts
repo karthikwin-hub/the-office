@@ -16,14 +16,17 @@ function dateIn(phrase: string, asOf: string): { date: string; match: string } |
     const n = { a: 1, one: 1, two: 2, three: 3 }[m[1] as "a"] ?? Number(m[1]);
     return { date: addDays(asOf, m[2]!.startsWith("week") ? n * 7 : n), match: m[0] };
   }
-  if ((m = /\bnext week\b/.exec(p))) return { date: addDays(asOf, ((8 - weekdayOf(asOf)) % 7) || 7), match: m[0] };
+  if ((m = /\bnext week\b/.exec(p))) return { date: addDays(asOf, (8 - weekdayOf(asOf)) % 7 || 7), match: m[0] };
   if ((m = /\b(?:on |by |this |next )?(sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|nesday|rsday|urday|sday)?\b/.exec(p))) {
     const want = WEEKDAYS.findIndex((d) => d.startsWith(m![1]!.slice(0, 3)));
     let gap = (want - weekdayOf(asOf) + 7) % 7;
     if (gap === 0 || /\bnext\b/.test(m[0])) gap += 7;
     return { date: addDays(asOf, gap), match: m[0] };
   }
-  if ((m = /\b(?:on |by )?(\d{1,2})(?:st|nd|rd|th)? (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/.exec(p)) || (m = /\b(?:on |by )?(\d{1,2})[/-](\d{1,2})\b/.exec(p))) {
+  if (
+    (m = /\b(?:on |by )?(\d{1,2})(?:st|nd|rd|th)? (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/.exec(p)) ||
+    (m = /\b(?:on |by )?(\d{1,2})[/-](\d{1,2})\b/.exec(p))
+  ) {
     const day = Number(m[1]);
     const month = /\d/.test(m[2]!) ? Number(m[2]) : MONTHS.indexOf(m[2]!) + 1;
     if (day < 1 || day > 31 || month < 1 || month > 12) return null;

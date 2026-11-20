@@ -19,21 +19,35 @@ export class AccountRecords {
 
   /** The documents whose current version this person has not accepted yet. */
   async consentNeeded(userId: string): Promise<{ document: LegalDocument; version: string }[]> {
-    const { results } = await this.db.prepare("SELECT document, version FROM consent WHERE user_id = ?").bind(userId).all<{ document: string; version: string }>();
+    const { results } = await this.db
+      .prepare("SELECT document, version FROM consent WHERE user_id = ?")
+      .bind(userId)
+      .all<{ document: string; version: string }>();
     const have = new Set(results.map((r) => `${r.document}|${r.version}`));
-    return (Object.keys(LEGAL_DOCUMENTS) as LegalDocument[]).filter((d) => !have.has(`${d}|${LEGAL_DOCUMENTS[d].version}`)).map((d) => ({ document: d, version: LEGAL_DOCUMENTS[d].version }));
+    return (Object.keys(LEGAL_DOCUMENTS) as LegalDocument[])
+      .filter((d) => !have.has(`${d}|${LEGAL_DOCUMENTS[d].version}`))
+      .map((d) => ({ document: d, version: LEGAL_DOCUMENTS[d].version }));
   }
 
   /** Only the current version of a document can be accepted, so nobody records agreeing to a text they were not shown. */
   async accept(userId: string, documents: { document: LegalDocument; version: string }[], country: string | null): Promise<string | null> {
     const stale = documents.find((d) => LEGAL_DOCUMENTS[d.document].version !== d.version);
     if (stale) return `The ${LEGAL_DOCUMENTS[stale.document].title.toLowerCase()} has changed. Reload the page to read the new version.`;
-    await this.db.batch(documents.map((d) => this.db.prepare("INSERT INTO consent (user_id, document, version, accepted_at, country) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING").bind(userId, d.document, d.version, this.now(), country)));
+    await this.db.batch(
+      documents.map((d) =>
+        this.db
+          .prepare("INSERT INTO consent (user_id, document, version, accepted_at, country) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING")
+          .bind(userId, d.document, d.version, this.now(), country),
+      ),
+    );
     return null;
   }
 
   async requests(userId: string): Promise<RightsRequestView[]> {
-    const { results } = await this.db.prepare("SELECT id, kind, status, created_at FROM rights_request WHERE user_id = ? ORDER BY created_at DESC LIMIT 20").bind(userId).all<RequestDb>();
+    const { results } = await this.db
+      .prepare("SELECT id, kind, status, created_at FROM rights_request WHERE user_id = ? ORDER BY created_at DESC LIMIT 20")
+      .bind(userId)
+      .all<RequestDb>();
     return results.map(toView);
   }
 
@@ -58,7 +72,9 @@ export class AccountRecords {
     const sole = offices.filter((o) => o.role === "owner" && o.owners === 1 && o.people > 1 && o.status !== "deleting");
     if (sole.length) {
       const one = sole.length === 1;
-      return { error: `You are the only owner of ${sole.map((o) => o.name).join(", ")}, and others work in ${one ? "it" : "them"}. Make one of them an owner, or delete ${one ? "the office" : "those offices"}, first.` };
+      return {
+        error: `You are the only owner of ${sole.map((o) => o.name).join(", ")}, and others work in ${one ? "it" : "them"}. Make one of them an owner, or delete ${one ? "the office" : "those offices"}, first.`,
+      };
     }
     // A suspended office stays as it is: the platform suspended it, and only the platform decides what happens to it next.
     const closed = offices.filter((o) => o.people === 1 && o.status === "active").map((o) => o.office_id);
@@ -66,8 +82,18 @@ export class AccountRecords {
     const email = user.email.toLowerCase();
     const by = (q: string, ...v: unknown[]) => this.db.prepare(q).bind(...v);
     await this.db.batch([
-      ...closed.flatMap((id) => [by("UPDATE office SET status = 'deleting', deleted_at = ? WHERE id = ? AND status = 'active'", at, id), by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'office.deleting', 'its only member deleted their account', ?)", id, DELETED_ACCOUNT, at)]),
-      ...offices.map((o) => by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'member.account-deleted', NULL, ?)", o.office_id, DELETED_ACCOUNT, at)),
+      ...closed.flatMap((id) => [
+        by("UPDATE office SET status = 'deleting', deleted_at = ? WHERE id = ? AND status = 'active'", at, id),
+        by(
+          "INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'office.deleting', 'its only member deleted their account', ?)",
+          id,
+          DELETED_ACCOUNT,
+          at,
+        ),
+      ]),
+      ...offices.map((o) =>
+        by("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, 'member.account-deleted', NULL, ?)", o.office_id, DELETED_ACCOUNT, at),
+      ),
       by("DELETE FROM wa_code WHERE user_id = ?", user.id),
       by("DELETE FROM wa_link WHERE user_id = ?", user.id),
       by("DELETE FROM membership WHERE user_id = ?", user.id),
@@ -81,15 +107,27 @@ export class AccountRecords {
       by("DELETE FROM verification WHERE value = ? OR lower(identifier) = ?", user.id, email),
       by("DELETE FROM rate_limit WHERE key = ?", `step-up:${user.id}`),
       // Earlier requests lose the name and address too; one done request, with neither, is the record that it was done.
-      by("UPDATE rights_request SET user_id = '', email = '', note = NULL, status = CASE WHEN status = 'open' THEN 'done' ELSE status END, done_at = COALESCE(done_at, ?), done_by = COALESCE(done_by, 'self') WHERE user_id = ?", at, user.id),
-      by("INSERT INTO rights_request (id, user_id, email, kind, status, note, created_at, done_at, done_by) VALUES (?, '', '', 'delete', 'done', NULL, ?, ?, 'self')", `req_${crypto.randomUUID()}`, at, at),
+      by(
+        "UPDATE rights_request SET user_id = '', email = '', note = NULL, status = CASE WHEN status = 'open' THEN 'done' ELSE status END, done_at = COALESCE(done_at, ?), done_by = COALESCE(done_by, 'self') WHERE user_id = ?",
+        at,
+        user.id,
+      ),
+      by(
+        "INSERT INTO rights_request (id, user_id, email, kind, status, note, created_at, done_at, done_by) VALUES (?, '', '', 'delete', 'done', NULL, ?, ?, 'self')",
+        `req_${crypto.randomUUID()}`,
+        at,
+        at,
+      ),
       by("DELETE FROM user WHERE id = ?", user.id),
     ]);
     return { left: offices.map((o) => o.office_id), closed };
   }
 
   async withdraw(userId: string, id: string): Promise<boolean> {
-    const r = await this.db.prepare("UPDATE rights_request SET status = 'withdrawn', done_at = ?, done_by = 'self' WHERE id = ? AND user_id = ? AND status = 'open'").bind(this.now(), id, userId).run();
+    const r = await this.db
+      .prepare("UPDATE rights_request SET status = 'withdrawn', done_at = ?, done_by = 'self' WHERE id = ? AND user_id = ? AND status = 'open'")
+      .bind(this.now(), id, userId)
+      .run();
     return r.meta.changes > 0;
   }
 
@@ -98,14 +136,29 @@ export class AccountRecords {
     const one = <T>(q: string) => this.db.prepare(q).bind(userId).first<T>();
     const all = async <T>(q: string) => (await this.db.prepare(q).bind(userId).all<T>()).results;
     const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() : null);
-    const user = await one<{ id: string; name: string; email: string; email_verified: number; created_at: number }>("SELECT id, name, email, email_verified, created_at FROM user WHERE id = ?");
+    const user = await one<{ id: string; name: string; email: string; email_verified: number; created_at: number }>(
+      "SELECT id, name, email, email_verified, created_at FROM user WHERE id = ?",
+    );
     if (!user) return null;
-    const sessions = await all<{ created_at: number; expires_at: number; ip_address: string | null; user_agent: string | null }>("SELECT created_at, expires_at, ip_address, user_agent FROM session WHERE user_id = ? ORDER BY created_at DESC");
+    const sessions = await all<{ created_at: number; expires_at: number; ip_address: string | null; user_agent: string | null }>(
+      "SELECT created_at, expires_at, ip_address, user_agent FROM session WHERE user_id = ? ORDER BY created_at DESC",
+    );
     const logins = await all<{ provider_id: string; created_at: number }>("SELECT provider_id, created_at FROM account WHERE user_id = ?");
-    const offices = await all<{ id: string; name: string; role: string; created_at: number }>("SELECT o.id, o.name, m.role, m.created_at FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ?");
-    const wa = await one<{ phone: string; language: string; digest: number; linked_at: number }>("SELECT phone, language, digest, linked_at FROM wa_link WHERE user_id = ?");
-    const consent = await all<{ document: string; version: string; accepted_at: number; country: string | null }>("SELECT document, version, accepted_at, country FROM consent WHERE user_id = ? ORDER BY accepted_at");
-    const invitations = (await this.db.prepare("SELECT o.name AS office, i.role, i.created_at, i.accepted_at FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.email = ?").bind(user.email.toLowerCase()).all<{ office: string; role: string; created_at: number; accepted_at: number | null }>()).results;
+    const offices = await all<{ id: string; name: string; role: string; created_at: number }>(
+      "SELECT o.id, o.name, m.role, m.created_at FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ?",
+    );
+    const wa = await one<{ phone: string; language: string; digest: number; linked_at: number }>(
+      "SELECT phone, language, digest, linked_at FROM wa_link WHERE user_id = ?",
+    );
+    const consent = await all<{ document: string; version: string; accepted_at: number; country: string | null }>(
+      "SELECT document, version, accepted_at, country FROM consent WHERE user_id = ? ORDER BY accepted_at",
+    );
+    const invitations = (
+      await this.db
+        .prepare("SELECT o.name AS office, i.role, i.created_at, i.accepted_at FROM invitation i JOIN office o ON o.id = i.office_id WHERE i.email = ?")
+        .bind(user.email.toLowerCase())
+        .all<{ office: string; role: string; created_at: number; accepted_at: number | null }>()
+    ).results;
     return {
       exportedAt: new Date(this.now()).toISOString(),
       account: { id: user.id, name: user.name, email: user.email, emailVerified: Boolean(user.email_verified), createdAt: iso(user.created_at) },

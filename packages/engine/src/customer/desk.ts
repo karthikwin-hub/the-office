@@ -1,4 +1,17 @@
-import type { BusinessFacts, CannedAnswer, CsChannel, CsGround, CsMessage, CsThread, CsThreadView, CustomerDeskView, Kpi, Order, OrderStatus, StagedChange } from "@office/contracts";
+import type {
+  BusinessFacts,
+  CannedAnswer,
+  CsChannel,
+  CsGround,
+  CsMessage,
+  CsThread,
+  CsThreadView,
+  CustomerDeskView,
+  Kpi,
+  Order,
+  OrderStatus,
+  StagedChange,
+} from "@office/contracts";
 import { CS_CHANNEL_NAMES } from "@office/contracts";
 import { openInvoices } from "../ageing";
 import { dateLabel } from "../dates";
@@ -131,7 +144,12 @@ export class CustomerService {
     const pool = candidates.length ? candidates : answers.filter((a) => a.enabled).slice(0, 5);
     if (decisive(rules) || (!m.test && !this.office.hired(CS_AGENT))) return { rules, prompt: null, candidates: pool };
     const t = this.findThread(m);
-    const recent = t ? this.store.messages(t.id).slice(-4).map((x) => `${x.direction === "in" ? "Customer" : "Us"}: ${x.text}`) : [];
+    const recent = t
+      ? this.store
+          .messages(t.id)
+          .slice(-4)
+          .map((x) => `${x.direction === "in" ? "Customer" : "Us"}: ${x.text}`)
+      : [];
     return { rules, prompt: classifierPrompt(this.business(), m.text, recent, pool, this.setup.facts), candidates: pool };
   }
 
@@ -162,7 +180,14 @@ export class CustomerService {
     if (waiting) return { code: waiting, fresh: false };
     // Only what they wrote since the last code, so an old claim does not send codes on its own.
     const since = codes.at(-1)?.sentAt ?? "";
-    const recent = [...this.store.messages(t.id).filter((x) => x.direction === "in" && x.at > since).slice(-4).map((x) => x.text), text].join("\n");
+    const recent = [
+      ...this.store
+        .messages(t.id)
+        .filter((x) => x.direction === "in" && x.at > since)
+        .slice(-4)
+        .map((x) => x.text),
+      text,
+    ].join("\n");
     const phones = phonesIn(recent);
     const emails = emailsIn(recent);
     for (const n of orderNumbers(recent)) {
@@ -184,23 +209,53 @@ export class CustomerService {
     const at = Date.parse(now);
     const today = this.store.codesSince(new Date(at - 86_400_000).toISOString());
     const real = t.test ? [] : today.filter((x) => !this.store.thread(x.threadId)?.test);
-    if (today.filter((x) => x.threadId === t.id).length >= CODES_PER_THREAD || real.filter((x) => x.contact === contact && at - Date.parse(x.sentAt) < 3600_000).length >= CODES_PER_CONTACT || real.length >= CODES_PER_DAY) return "limited";
+    if (
+      today.filter((x) => x.threadId === t.id).length >= CODES_PER_THREAD ||
+      real.filter((x) => x.contact === contact && at - Date.parse(x.sentAt) < 3600_000).length >= CODES_PER_CONTACT ||
+      real.length >= CODES_PER_DAY
+    )
+      return "limited";
     const n = new Uint32Array(1);
     crypto.getRandomValues(n);
-    const code: CsCode = { id: newId("csc"), threadId: t.id, code: String(n[0]! % 1_000_000).padStart(6, "0"), contact, partyId: o.partyId, orderNumber: o.number, ask, sentAt: now, expiresAt: new Date(at + CODE_MS).toISOString(), tries: 0, done: false };
+    const code: CsCode = {
+      id: newId("csc"),
+      threadId: t.id,
+      code: String(n[0]! % 1_000_000).padStart(6, "0"),
+      contact,
+      partyId: o.partyId,
+      orderNumber: o.number,
+      ask,
+      sentAt: now,
+      expiresAt: new Date(at + CODE_MS).toISOString(),
+      tries: 0,
+      done: false,
+    };
     this.store.saveCode(code);
     const where = email ? "email address" : "WhatsApp number";
     if (t.test) notes.push(`A real visitor would get a code on the ${where} on order ${o.number}. To try it here, type ${code.code}.`);
-    else this.effects.push({ kind: "code", threadId: t.id, channel: email ? "email" : "whatsapp", to: contact, subject: `Your code from ${this.business()}`, text: `${code.code} is your code from ${this.business()}, to see order ${o.number} in the chat on our website. It works for 10 minutes. If you did not ask for it, ignore this message.` });
+    else
+      this.effects.push({
+        kind: "code",
+        threadId: t.id,
+        channel: email ? "email" : "whatsapp",
+        to: contact,
+        subject: `Your code from ${this.business()}`,
+        text: `${code.code} is your code from ${this.business()}, to see order ${o.number} in the chat on our website. It works for 10 minutes. If you did not ask for it, ignore this message.`,
+      });
     return { code, fresh: true };
   }
 
   /** What the visitor is told while a code stands between them and their order. */
   private codePrompt(gate: Exclude<Gate, null>): Plan {
-    if (gate === "limited") return { kind: "reply", ground: "verify", text: "I cannot send another code just now. Try again in an hour, or ask to speak to a person." };
+    if (gate === "limited")
+      return { kind: "reply", ground: "verify", text: "I cannot send another code just now. Try again in an hour, or ask to speak to a person." };
     const c = gate.code;
     const where = c.contact.includes("@") ? "email address" : "WhatsApp number";
-    return { kind: "reply", ground: "verify", text: `To keep your account private, I have sent a 6-digit code to the ${where} on order ${c.orderNumber}. Type it here and I will ${c.ask === "balance" ? "tell you what is open on your account" : "tell you about the order"}. It works for 10 minutes.` };
+    return {
+      kind: "reply",
+      ground: "verify",
+      text: `To keep your account private, I have sent a 6-digit code to the ${where} on order ${c.orderNumber}. Type it here and I will ${c.ask === "balance" ? "tell you what is open on your account" : "tell you about the order"}. It works for 10 minutes.`,
+    };
   }
 
   /** A code the visitor typed back: right, and the conversation is confirmed and answered; wrong, and they may try a few times. */
@@ -219,7 +274,14 @@ export class CustomerService {
     const tries = code.tries + 1;
     this.store.saveCode({ ...code, tries, done: tries >= CODE_TRIES });
     const left = CODE_TRIES - tries;
-    return { kind: "reply", ground: "verify", text: left > 0 ? `That code is not right. Check the message and type the 6 digits again; ${plural(left, "try", "tries")} left.` : "That code is not right, and it no longer works. Send the order number with your phone number or email again for a new one." };
+    return {
+      kind: "reply",
+      ground: "verify",
+      text:
+        left > 0
+          ? `That code is not right. Check the message and type the 6 digits again; ${plural(left, "try", "tries")} left.`
+          : "That code is not right, and it no longer works. Send the order number with your phone number or email again for a new one.",
+    };
   }
 
   private findOrder(number: string): Order | null {
@@ -258,16 +320,49 @@ export class CustomerService {
     let t = this.findThread(m);
     const isNew = !t;
     if (!t) {
-      t = { id: newId("cst"), channel: m.channel, key: m.key, name: m.name.slice(0, 120) || CS_CHANNEL_NAMES[m.channel], partyId: null, verifiedContact: null, status: "open", subject: m.subject?.slice(0, 200) ?? null, startedAt: now, lastAt: now, lastInboundAt: null, disclosed: false, handoffs: 0, firstReplySeconds: null, test: Boolean(m.test) };
+      t = {
+        id: newId("cst"),
+        channel: m.channel,
+        key: m.key,
+        name: m.name.slice(0, 120) || CS_CHANNEL_NAMES[m.channel],
+        partyId: null,
+        verifiedContact: null,
+        status: "open",
+        subject: m.subject?.slice(0, 200) ?? null,
+        startedAt: now,
+        lastAt: now,
+        lastInboundAt: null,
+        disclosed: false,
+        handoffs: 0,
+        firstReplySeconds: null,
+        test: Boolean(m.test),
+      };
     }
     if (!m.test && !this.office.hired(CS_AGENT)) return { thread: t, outcome: "ignored", notes };
-    if (isNew && m.channel === "web" && !m.test && this.store.countStarted("web", new Date(Date.parse(now) - 86_400_000).toISOString()) >= WEB_THREADS_PER_DAY) {
+    if (
+      isNew &&
+      m.channel === "web" &&
+      !m.test &&
+      this.store.countStarted("web", new Date(Date.parse(now) - 86_400_000).toISOString()) >= WEB_THREADS_PER_DAY
+    ) {
       notes.push(`The website chat has started ${WEB_THREADS_PER_DAY} conversations in a day; this one was not kept.`);
       return { thread: t, outcome: "limited", notes };
     }
     const gate = this.identify(t, m.text, c, now, notes);
     const recentIn = this.store.messages(t.id).filter((x) => x.direction === "in" && Date.parse(now) - Date.parse(x.at) < RATE_WINDOW_MS).length;
-    this.store.addMessage({ id: newId("csm"), threadId: t.id, at: now, direction: "in", by: "customer", text: m.text.slice(0, 4000), intent: c.intent, ground: null, status: "received", externalId: m.externalId ?? null, error: null });
+    this.store.addMessage({
+      id: newId("csm"),
+      threadId: t.id,
+      at: now,
+      direction: "in",
+      by: "customer",
+      text: m.text.slice(0, 4000),
+      intent: c.intent,
+      ground: null,
+      status: "received",
+      externalId: m.externalId ?? null,
+      error: null,
+    });
     t.lastAt = now;
     t.lastInboundAt = now;
     if (m.name && t.name === CS_CHANNEL_NAMES[m.channel]) t.name = m.name.slice(0, 120);
@@ -281,8 +376,12 @@ export class CustomerService {
 
     const plan = this.codeTyped(t, m.text, c, gate) ?? this.answer(t, c, gate);
     if (plan.kind === "handoff") return this.handoff(t, c, m.text, plan.reason, notes);
-    const last = this.store.messages(t.id).filter((x) => x.direction === "out" && x.by === "agent").slice(-2);
-    if (last.length === 2 && last.every((x) => x.text.endsWith(plan.text))) return this.handoff(t, c, m.text, "keeps asking something the agent has already answered twice", notes);
+    const last = this.store
+      .messages(t.id)
+      .filter((x) => x.direction === "out" && x.by === "agent")
+      .slice(-2);
+    if (last.length === 2 && last.every((x) => x.text.endsWith(plan.text)))
+      return this.handoff(t, c, m.text, "keeps asking something the agent has already answered twice", notes);
 
     const level = this.trust();
     const auto = plan.ground === "fact" ? level === "autonomous" : level !== "trainee";
@@ -292,12 +391,28 @@ export class CustomerService {
       this.store.saveThread(t);
       return { thread: t, outcome: "sent", notes };
     }
-    const draft: CsMessage = { id: newId("csm"), threadId: t.id, at: this.clock ?? new Date().toISOString(), direction: "out", by: "agent", text: plan.text, intent: c.intent, ground: plan.ground, status: "draft", externalId: null, error: null };
+    const draft: CsMessage = {
+      id: newId("csm"),
+      threadId: t.id,
+      at: this.clock ?? new Date().toISOString(),
+      direction: "out",
+      by: "agent",
+      text: plan.text,
+      intent: c.intent,
+      ground: plan.ground,
+      status: "draft",
+      externalId: null,
+      error: null,
+    };
     this.store.addMessage(draft);
     t.status = "waiting";
     this.store.saveThread(t);
     if (t.test) {
-      notes.push(level === "trainee" ? "This reply would wait on your desk for approval, because the agent is a trainee." : "This reply would wait on your desk: only an autonomous agent answers from your business facts on its own.");
+      notes.push(
+        level === "trainee"
+          ? "This reply would wait on your desk for approval, because the agent is a trainee."
+          : "This reply would wait on your desk: only an autonomous agent answers from your business facts on its own.",
+      );
       return { thread: t, outcome: "drafted", notes };
     }
     this.office.books.staged.push({
@@ -320,11 +435,16 @@ export class CustomerService {
     const facts = this.setup.facts;
     if (c.intent === "sensitive") return { kind: "handoff", reason: HUMAN_TOPIC_NAMES[c.topic ?? "complaint"] };
     if (c.intent === "human") return { kind: "handoff", reason: "asked for a person" };
-    if (c.confidence < MIN_CONFIDENCE && c.intent !== "order_status") return { kind: "handoff", reason: "asked something the agent could not answer from your records" };
+    if (c.confidence < MIN_CONFIDENCE && c.intent !== "order_status")
+      return { kind: "handoff", reason: "asked something the agent could not answer from your records" };
     const name = first(t.name);
     switch (c.intent) {
       case "greeting":
-        return { kind: "reply", ground: "greeting", text: `Hello${name && !/^(website|whatsapp|email)$/i.test(name) ? ` ${name}` : ""}! I can help with your orders, your invoices and questions about ${this.business()}. What can I do for you?` };
+        return {
+          kind: "reply",
+          ground: "greeting",
+          text: `Hello${name && !/^(website|whatsapp|email)$/i.test(name) ? ` ${name}` : ""}! I can help with your orders, your invoices and questions about ${this.business()}. What can I do for you?`,
+        };
       case "thanks":
         return { kind: "reply", ground: "greeting", text: "You are welcome. Write any time if there is anything else." };
       case "answer": {
@@ -333,8 +453,15 @@ export class CustomerService {
       }
       case "fact": {
         const v = c.fact ? facts[c.fact].trim() : "";
-        if (!c.fact || !v) return { kind: "handoff", reason: `asked about your ${c.fact ? FACT_NAMES[c.fact] : "business"}, which is not in your business facts yet` };
-        const label: Record<string, string> = { hours: "Our opening hours", address: "You can find us at", delivery: "On delivery", returns: "On returns", payments: "We accept" };
+        if (!c.fact || !v)
+          return { kind: "handoff", reason: `asked about your ${c.fact ? FACT_NAMES[c.fact] : "business"}, which is not in your business facts yet` };
+        const label: Record<string, string> = {
+          hours: "Our opening hours",
+          address: "You can find us at",
+          delivery: "On delivery",
+          returns: "On returns",
+          payments: "We accept",
+        };
         return { kind: "reply", ground: "fact", text: `${label[c.fact]}: ${v}` };
       }
       case "order_status":
@@ -367,7 +494,8 @@ export class CustomerService {
 
   private balanceReply(t: CsThread, gate: Gate): Plan {
     if (t.channel === "web" && !t.verifiedContact) return gate ? this.codePrompt(gate) : { kind: "reply", ground: "verify", text: verifyPrompt("web") };
-    if (!t.partyId || !this.office.ledger.findParty(t.partyId)) return { kind: "handoff", reason: "asked about their account, but their contact details do not match a customer in your books" };
+    if (!t.partyId || !this.office.ledger.findParty(t.partyId))
+      return { kind: "handoff", reason: "asked about their account, but their contact details do not match a customer in your books" };
     const open = openInvoices(this.office.ledger).filter((o) => o.partyId === t.partyId);
     if (!open.length) return { kind: "reply", ground: "balance", text: "Nothing is outstanding on your account. Thank you!" };
     const total = open.reduce((a, o) => a + o.outstandingPaise, 0);
@@ -384,7 +512,10 @@ export class CustomerService {
   private handoff(t: CsThread, c: Classification, text: string, reason: string, notes: string[]): ReceiveResult {
     const level = this.trust();
     const owner = this.office.books.business.owner;
-    const tried = c.intent === "sensitive" || c.intent === "human" ? "It did not try to answer: this is always yours." : `It read this as ${c.intent.replace("_", " ")} (${Math.round(c.confidence * 100)}% sure, by ${c.method === "model" ? "the model" : "its rules"}) and found nothing it could send.`;
+    const tried =
+      c.intent === "sensitive" || c.intent === "human"
+        ? "It did not try to answer: this is always yours."
+        : `It read this as ${c.intent.replace("_", " ")} (${Math.round(c.confidence * 100)}% sure, by ${c.method === "model" ? "the model" : "its rules"}) and found nothing it could send.`;
     if (level !== "trainee" || t.test) this.deliver(t, holdingReply(owner, this.setup.facts), "agent", "holding", c.intent);
     t.status = "handed_off";
     if (t.test) {
@@ -411,13 +542,21 @@ export class CustomerService {
       createdAt: this.office.nowIst(),
       title: `${t.name} on ${CS_CHANNEL_NAMES[t.channel]} ${reason}`,
       summary: `${t.name} wrote: ${quoted(text, 200)} ${tried}${t.partyId ? ` They are ${this.office.ledger.findParty(t.partyId)?.name ?? "a customer"} in your books.` : t.verifiedContact ? "" : " The agent could not tell who they are."}`,
-      evidence: [{ label: "The conversation", ref: { kind: "conversation", id: t.id } }, ...(t.partyId ? [{ label: "The customer", ref: { kind: "party" as const, id: t.partyId } }] : [])],
+      evidence: [
+        { label: "The conversation", ref: { kind: "conversation", id: t.id } },
+        ...(t.partyId ? [{ label: "The customer", ref: { kind: "party" as const, id: t.partyId } }] : []),
+      ],
       payload: { threadId: t.id, reason, reply: greeting, ask: text.slice(0, 1500), channel: t.channel, ref, saveAs: "" },
       status: "pending",
     };
     this.office.books.staged.push(item);
     this.office.log(CS_AGENT, `Handed to you: ${t.name} on ${CS_CHANNEL_NAMES[t.channel]} ${reason}.`, { kind: "conversation", id: t.id });
-    this.effects.push({ kind: "notify", stagedId: item.id, ref, text: `${t.name} (${CS_CHANNEL_NAMES[t.channel]}) ${reason}:\n"${text.slice(0, 300)}"\n\nReply "reply ${ref} " and your answer to send it to them.` });
+    this.effects.push({
+      kind: "notify",
+      stagedId: item.id,
+      ref,
+      text: `${t.name} (${CS_CHANNEL_NAMES[t.channel]}) ${reason}:\n"${text.slice(0, 300)}"\n\nReply "reply ${ref} " and your answer to send it to them.`,
+    });
     return { thread: t, outcome: "handed_off", notes };
   }
 
@@ -441,13 +580,40 @@ export class CustomerService {
     if (by === "agent") t.disclosed = true;
     const lastIn = [...this.store.messages(t.id)].reverse().find((x) => x.direction === "in");
     const closed = t.channel === "whatsapp" && !t.test && (!t.lastInboundAt || Date.now() - Date.parse(t.lastInboundAt) > WINDOW_MS);
-    const msg: CsMessage = { id: draftId ?? newId("csm"), threadId: t.id, at: now, direction: "out", by, text, intent, ground, status: closed ? "failed" : "sent", externalId: null, error: closed ? "More than 24 hours since the customer last wrote; WhatsApp only allows an approved template now." : null };
+    const msg: CsMessage = {
+      id: draftId ?? newId("csm"),
+      threadId: t.id,
+      at: now,
+      direction: "out",
+      by,
+      text,
+      intent,
+      ground,
+      status: closed ? "failed" : "sent",
+      externalId: null,
+      error: closed ? "More than 24 hours since the customer last wrote; WhatsApp only allows an approved template now." : null,
+    };
     if (draftId) this.store.updateMessage(draftId, msg);
     else this.store.addMessage(msg);
     if (t.firstReplySeconds === null && t.lastInboundAt) t.firstReplySeconds = Math.max(0, Math.round((Date.parse(now) - Date.parse(t.startedAt)) / 1000));
     t.lastAt = now;
-    if (closed) this.office.log(CS_AGENT, `Could not reply to ${t.name} on WhatsApp: it has been more than 24 hours since they wrote. Call them, or send an approved template from WhatsApp.`, { kind: "conversation", id: t.id });
-    else if (!t.test && t.channel !== "web") this.effects.push({ kind: "send", threadId: t.id, messageId: msg.id, channel: t.channel, to: t.key, text, subject: t.channel === "email" ? `Re: ${(t.subject ?? this.business()).replace(/^(re:\s*)+/i, "")}` : null, inReplyTo: lastIn?.externalId ?? null });
+    if (closed)
+      this.office.log(
+        CS_AGENT,
+        `Could not reply to ${t.name} on WhatsApp: it has been more than 24 hours since they wrote. Call them, or send an approved template from WhatsApp.`,
+        { kind: "conversation", id: t.id },
+      );
+    else if (!t.test && t.channel !== "web")
+      this.effects.push({
+        kind: "send",
+        threadId: t.id,
+        messageId: msg.id,
+        channel: t.channel,
+        to: t.key,
+        text,
+        subject: t.channel === "email" ? `Re: ${(t.subject ?? this.business()).replace(/^(re:\s*)+/i, "")}` : null,
+        inReplyTo: lastIn?.externalId ?? null,
+      });
     return msg;
   }
 
@@ -458,14 +624,22 @@ export class CustomerService {
   /** A code that could not go: the visitor is not confirmed, and the owner reads why in the log. */
   codeFailed(threadId: string, error: string) {
     const t = this.store.thread(threadId);
-    this.office.log(CS_AGENT, `Could not send a code to confirm ${t?.name ?? "a website visitor"}: ${error.slice(0, 160)}`, t ? { kind: "conversation", id: t.id } : undefined);
+    this.office.log(
+      CS_AGENT,
+      `Could not send a code to confirm ${t?.name ?? "a website visitor"}: ${error.slice(0, 160)}`,
+      t ? { kind: "conversation", id: t.id } : undefined,
+    );
   }
 
   markFailed(messageId: string, error: string) {
     const m = this.store.message(messageId);
     this.store.updateMessage(messageId, { status: "failed", error: error.slice(0, 500) });
     const t = m ? this.store.thread(m.threadId) : null;
-    if (t) this.office.log(CS_AGENT, `Could not send the reply to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}: ${error.slice(0, 160)}`, { kind: "conversation", id: t.id });
+    if (t)
+      this.office.log(CS_AGENT, `Could not send the reply to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}: ${error.slice(0, 160)}`, {
+        kind: "conversation",
+        id: t.id,
+      });
   }
 
   /* ---------- The owner ---------- */
@@ -490,7 +664,8 @@ export class CustomerService {
     this.store.saveThread(t);
     this.office.log(CS_AGENT, `Sent your reply to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}.`, { kind: "conversation", id: t.id });
     const title = typeof p.saveAs === "string" ? p.saveAs.trim() : "";
-    if (item.kind === "handoff" && title && p.ask) this.addAnswer({ title: title.slice(0, 120), examples: [p.ask.split("\n").at(-1)!.slice(0, 300)], answer: text.slice(0, 2000), enabled: true });
+    if (item.kind === "handoff" && title && p.ask)
+      this.addAnswer({ title: title.slice(0, 120), examples: [p.ask.split("\n").at(-1)!.slice(0, 300)], answer: text.slice(0, 2000), enabled: true });
   }
 
   /** The owner writing in a conversation themselves, from its page or from WhatsApp. Any card waiting on it is settled. */
@@ -501,7 +676,8 @@ export class CustomerService {
     t.status = "resolved";
     this.store.saveThread(t);
     for (const s of this.office.books.staged) {
-      if ((s.kind !== "handoff" && s.kind !== "customer_reply") || s.status !== "pending" || (s.payload as { threadId?: string }).threadId !== threadId) continue;
+      if ((s.kind !== "handoff" && s.kind !== "customer_reply") || s.status !== "pending" || (s.payload as { threadId?: string }).threadId !== threadId)
+        continue;
       s.status = s.kind === "handoff" ? "approved" : "rejected";
       s.decidedAt = new Date().toISOString();
       s.decidedBy = by;
@@ -525,10 +701,20 @@ export class CustomerService {
   /** The morning look: customers waiting on the owner for more than four hours, WhatsApp chats about to close, and old conversations deleted. */
   chase(now = Date.now()): { waiting: string[]; closing: string[]; pruned: number } {
     const pending = this.office.books.staged.filter((s) => s.kind === "handoff" && s.status === "pending");
-    const waiting = pending.filter((s) => now - Date.parse(s.createdAt) > 4 * 3600_000).map((s) => this.store.thread((s.payload as { threadId: string }).threadId)?.name ?? "a customer");
+    const waiting = pending
+      .filter((s) => now - Date.parse(s.createdAt) > 4 * 3600_000)
+      .map((s) => this.store.thread((s.payload as { threadId: string }).threadId)?.name ?? "a customer");
     const closing = this.store
       .threads(300)
-      .filter((t) => !t.test && t.channel === "whatsapp" && (t.status === "handed_off" || t.status === "waiting") && t.lastInboundAt && now - Date.parse(t.lastInboundAt) > WINDOW_MS - 3 * 3600_000 && now - Date.parse(t.lastInboundAt) < WINDOW_MS)
+      .filter(
+        (t) =>
+          !t.test &&
+          t.channel === "whatsapp" &&
+          (t.status === "handed_off" || t.status === "waiting") &&
+          t.lastInboundAt &&
+          now - Date.parse(t.lastInboundAt) > WINDOW_MS - 3 * 3600_000 &&
+          now - Date.parse(t.lastInboundAt) < WINDOW_MS,
+      )
       .map((t) => t.name);
     const before = new Date(now);
     before.setUTCMonth(before.getUTCMonth() - this.setup.retentionMonths);
@@ -541,7 +727,9 @@ export class CustomerService {
   threadView(id: string): CsThreadView {
     const thread = this.store.thread(id);
     if (!thread) throw new Error(`No conversation ${id}`);
-    const pending = this.office.books.staged.filter((s) => s.status === "pending" && (s.kind === "handoff" || s.kind === "customer_reply") && (s.payload as { threadId?: string }).threadId === id).map((s) => s.title);
+    const pending = this.office.books.staged
+      .filter((s) => s.status === "pending" && (s.kind === "handoff" || s.kind === "customer_reply") && (s.payload as { threadId?: string }).threadId === id)
+      .map((s) => s.title);
     return { thread, messages: this.store.messages(id).filter((m) => m.status !== "withdrawn"), pending };
   }
 
@@ -564,18 +752,32 @@ export class CustomerService {
     return [
       { label: "Waiting for you", value: String(waiting), ...(waiting ? { tone: "red" as const } : {}) },
       { label: "Answered without you, 30 days", value: recent.length ? `${Math.round((resolved / recent.length) * 100)}%` : "-" },
-      { label: "First reply, on average", value: avg === null ? "-" : avg < 90 ? `${avg} seconds` : avg < 5400 ? `${Math.round(avg / 60)} minutes` : `${Math.round(avg / 3600)} hours` },
-      { label: "WhatsApp replies this month", value: `${wa} of ${WHATSAPP_FREE_SERVICE.toLocaleString("en-IN")} free`, ...(wa > WHATSAPP_FREE_SERVICE * 0.8 ? { tone: "red" as const } : {}) },
+      {
+        label: "First reply, on average",
+        value: avg === null ? "-" : avg < 90 ? `${avg} seconds` : avg < 5400 ? `${Math.round(avg / 60)} minutes` : `${Math.round(avg / 3600)} hours`,
+      },
+      {
+        label: "WhatsApp replies this month",
+        value: `${wa} of ${WHATSAPP_FREE_SERVICE.toLocaleString("en-IN")} free`,
+        ...(wa > WHATSAPP_FREE_SERVICE * 0.8 ? { tone: "red" as const } : {}),
+      },
     ];
   }
 
   view(): CustomerDeskView {
     const s = this.setup;
-    const threads = this.store.threads(100).filter((t) => !t.test).map((t) => {
-      const ms = this.store.messages(t.id).filter((m) => m.status !== "withdrawn");
-      const last = ms.at(-1);
-      return { ...t, preview: last ? `${last.direction === "in" ? "" : last.by === "owner" ? "You: " : "Agent: "}${last.text.slice(0, 120)}` : "", waiting: t.status === "handed_off" || t.status === "waiting" };
-    });
+    const threads = this.store
+      .threads(100)
+      .filter((t) => !t.test)
+      .map((t) => {
+        const ms = this.store.messages(t.id).filter((m) => m.status !== "withdrawn");
+        const last = ms.at(-1);
+        return {
+          ...t,
+          preview: last ? `${last.direction === "in" ? "" : last.by === "owner" ? "You: " : "Agent: "}${last.text.slice(0, 120)}` : "",
+          waiting: t.status === "handed_off" || t.status === "waiting",
+        };
+      });
     return {
       threads,
       kpis: this.kpis(),
@@ -628,7 +830,10 @@ export class CustomerService {
     if (enabled && !w.key) {
       const bytes = new Uint8Array(12);
       crypto.getRandomValues(bytes);
-      w.key = `w${[...bytes].map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 20)}`;
+      w.key = `w${[...bytes]
+        .map((b) => b.toString(36).padStart(2, "0"))
+        .join("")
+        .slice(0, 20)}`;
     }
     w.enabled = enabled;
     this.office.log(CS_AGENT, enabled ? "Turned on the chat on your website." : "Turned off the chat on your website.");
@@ -638,10 +843,26 @@ export class CustomerService {
   /** A customer in the books with this phone or email, so the order is linked to them. */
   private linkParty(o: Pick<Order, "phone" | "email">): string | null {
     const email = o.email.toLowerCase();
-    return this.office.books.parties.find((p) => p.kind === "customer" && ((o.phone && p.contact.phone && samePhone(p.contact.phone, o.phone)) || (email && p.contact.email.toLowerCase() === email)))?.id ?? null;
+    return (
+      this.office.books.parties.find(
+        (p) =>
+          p.kind === "customer" && ((o.phone && p.contact.phone && samePhone(p.contact.phone, o.phone)) || (email && p.contact.email.toLowerCase() === email)),
+      )?.id ?? null
+    );
   }
 
-  addOrder(input: { number: string; customer: string; phone?: string; email?: string; items?: string; status?: OrderStatus; placedOn?: string; expectedOn?: string | null; tracking?: string | null; note?: string }): Order {
+  addOrder(input: {
+    number: string;
+    customer: string;
+    phone?: string;
+    email?: string;
+    items?: string;
+    status?: OrderStatus;
+    placedOn?: string;
+    expectedOn?: string | null;
+    tracking?: string | null;
+    note?: string;
+  }): Order {
     const number = input.number.replace(/^#/, "").trim().toUpperCase();
     if (this.office.books.orders.some((o) => o.number.toUpperCase() === number)) throw new Error(`Order ${number} is already here; change it instead.`);
     const o: Order = {
@@ -672,7 +893,8 @@ export class CustomerService {
     if (change.number) o.number = change.number.replace(/^#/, "").trim().toUpperCase();
     if (change.email !== undefined) o.email = o.email.toLowerCase();
     o.partyId = this.linkParty(o) ?? o.partyId;
-    if (by && change.status && change.status !== was) this.office.log(CS_AGENT, `${by} marked order ${o.number} ${change.status}.`, { kind: "order", id: o.id });
+    if (by && change.status && change.status !== was)
+      this.office.log(CS_AGENT, `${by} marked order ${o.number} ${change.status}.`, { kind: "order", id: o.id });
     return o;
   }
 
@@ -701,7 +923,10 @@ export class CustomerService {
 
 /** A message that is a code and nothing else ("482913", "the code is 482913"), not a question with a PIN code in it. */
 function codeIn(text: string): string | null {
-  const rest = text.toLowerCase().replace(/\b(the|my|code|otp|is|it|its|here|this)\b/g, "").replace(/[^a-z0-9]/g, "");
+  const rest = text
+    .toLowerCase()
+    .replace(/\b(the|my|code|otp|is|it|its|here|this)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
   return /^\d{6}$/.test(rest) ? rest : null;
 }
 
@@ -729,12 +954,23 @@ function groundName(g: CsGround): string {
 }
 
 export function describeOrder(o: Order, today: string): string {
-  const when = o.status === "delivered" || o.status === "cancelled" ? "" : o.expectedOn ? (o.expectedOn < today ? ` It was expected on ${dateLabel(o.expectedOn)}; we are checking on it.` : ` It should reach you by ${dateLabel(o.expectedOn)}.`) : "";
+  const when =
+    o.status === "delivered" || o.status === "cancelled"
+      ? ""
+      : o.expectedOn
+        ? o.expectedOn < today
+          ? ` It was expected on ${dateLabel(o.expectedOn)}; we are checking on it.`
+          : ` It should reach you by ${dateLabel(o.expectedOn)}.`
+        : "";
   return `Order ${o.number}${o.items ? ` (${o.items.slice(0, 80)})` : ""} is ${STATUS_WORDS[o.status]}.${when}${o.tracking && o.status === "dispatched" ? ` Track it here: ${o.tracking}` : ""}`;
 }
 
 /** The whole conversation turn, for hosts: the rules, then the model if they are not sure, then the agent's decision. */
-export async function converse(cs: CustomerService, m: Inbound, model?: (prompt: { system: string; user: string }) => Promise<unknown>): Promise<ReceiveResult> {
+export async function converse(
+  cs: CustomerService,
+  m: Inbound,
+  model?: (prompt: { system: string; user: string }) => Promise<unknown>,
+): Promise<ReceiveResult> {
   const prep = cs.prepare(m);
   let c = prep.rules;
   if (prep.prompt && model) {

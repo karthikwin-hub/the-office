@@ -69,7 +69,15 @@ export function PublishingPackCard({ post, variant: v, report }: { post: Post; v
             >
               <div className="field">
                 <label htmlFor={`${id}-url`}>Link to the post on {name}</label>
-                <input id={`${id}-url`} className="input" type="url" required placeholder={v.platform === "threads" ? "https://www.threads.net/@…/post/…" : "https://…"} value={url} onChange={(e) => setUrl(e.target.value)} />
+                <input
+                  id={`${id}-url`}
+                  className="input"
+                  type="url"
+                  required
+                  placeholder={v.platform === "threads" ? "https://www.threads.net/@…/post/…" : "https://…"}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                />
               </div>
               <button type="submit" className="btn btn-primary" disabled={social.isPending || !url.trim()}>
                 Mark as posted
@@ -92,7 +100,10 @@ export function MetricsImport() {
   const id = useId();
   return (
     <Section title="Add results from a platform export">
-      <p className="section-lede">For channels that are not connected, export post results as CSV from the platform's insights page. Rows are matched to posts by the link you pasted at Mark as posted.</p>
+      <p className="section-lede">
+        For channels that are not connected, export post results as CSV from the platform's insights page. Rows are matched to posts by the link you pasted at
+        Mark as posted.
+      </p>
       <div className="field">
         <label htmlFor={id}>Results file (CSV)</label>
         <input
@@ -107,7 +118,9 @@ export function MetricsImport() {
             social.mutate(() => api.importMetrics(content), {
               onSuccess: (r) => {
                 const x = r as { matched: number; unmatched: number };
-                setResult(`Added results for ${x.matched} ${x.matched === 1 ? "post" : "posts"}${x.unmatched ? `. ${x.unmatched} rows matched no post: check that each was marked as posted with its link.` : "."}`);
+                setResult(
+                  `Added results for ${x.matched} ${x.matched === 1 ? "post" : "posts"}${x.unmatched ? `. ${x.unmatched} rows matched no post: check that each was marked as posted with its link.` : "."}`,
+                );
               },
             });
             e.target.value = "";
@@ -210,26 +223,36 @@ export function FrameMaker({ post, report }: { post: Post; report: SocialReport 
   useEffect(() => {
     if (!open || !photo || !canvas.current) return;
     setError(null);
-    drawFrame(canvas.current, photo, frame, { title: post.facts.find((f) => f.id === `mrp:${sku}`)?.label.split(",")[0] ?? title, line, business }).catch((e: Error) => setError(e.message));
+    drawFrame(canvas.current, photo, frame, { title: post.facts.find((f) => f.id === `mrp:${sku}`)?.label.split(",")[0] ?? title, line, business }).catch(
+      (e: Error) => setError(e.message),
+    );
   }, [open, photo, frame, line, business, sku, title, post.facts]);
 
   if (!photos.length || (!price && !festival)) return null;
   const add = () =>
-    canvas.current?.toBlob((blob) => {
-      if (!blob || !photo) return;
-      const form = new FormData();
-      form.set("file", new File([blob], `${post.id}-${frame}.jpg`, { type: "image/jpeg" }));
-      form.set("alt", `${photo.alt}${photo.alt ? ". " : ""}${frame === "price" ? `Price tag: ${line}` : `Border for ${line}`}`);
-      form.set("skuId", photo.skuId ?? "");
-      form.set("rights", "own");
-      form.set("width", "1080");
-      form.set("height", "1080");
-      social.mutate(async () => {
-        const asset = await api.uploadMedia(form);
-        for (const v of post.variants) if (v.status !== "published" && RULES[v.platform].media.images > 0 && v.platform !== "whatsapp") await api.editVariant(post.id, v.channelId, { mediaIds: [asset.id, ...v.mediaIds.filter((x) => x !== photo.id)].slice(0, RULES[v.platform].media.images) });
-        setOpen(false);
-      });
-    }, "image/jpeg", 0.9);
+    canvas.current?.toBlob(
+      (blob) => {
+        if (!blob || !photo) return;
+        const form = new FormData();
+        form.set("file", new File([blob], `${post.id}-${frame}.jpg`, { type: "image/jpeg" }));
+        form.set("alt", `${photo.alt}${photo.alt ? ". " : ""}${frame === "price" ? `Price tag: ${line}` : `Border for ${line}`}`);
+        form.set("skuId", photo.skuId ?? "");
+        form.set("rights", "own");
+        form.set("width", "1080");
+        form.set("height", "1080");
+        social.mutate(async () => {
+          const asset = await api.uploadMedia(form);
+          for (const v of post.variants)
+            if (v.status !== "published" && RULES[v.platform].media.images > 0 && v.platform !== "whatsapp")
+              await api.editVariant(post.id, v.channelId, {
+                mediaIds: [asset.id, ...v.mediaIds.filter((x) => x !== photo.id)].slice(0, RULES[v.platform].media.images),
+              });
+          setOpen(false);
+        });
+      },
+      "image/jpeg",
+      0.9,
+    );
 
   return (
     <details className="frame-maker" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
@@ -254,10 +277,13 @@ export function FrameMaker({ post, report }: { post: Post; report: SocialReport 
               </label>
             ) : null}
             <label>
-              <input type="radio" name={`${id}-frame`} checked={frame === "festival"} onChange={() => setFrame("festival")} /> Border{festival ? ` for ${festival.label}` : ""}
+              <input type="radio" name={`${id}-frame`} checked={frame === "festival"} onChange={() => setFrame("festival")} /> Border
+              {festival ? ` for ${festival.label}` : ""}
             </label>
           </fieldset>
-          <p className="muted">The price comes from the price list, so the check against the books still holds. Your own photo stays your own; nothing is generated.</p>
+          <p className="muted">
+            The price comes from the price list, so the check against the books still holds. Your own photo stays your own; nothing is generated.
+          </p>
           <button type="button" className="btn btn-primary" disabled={social.isPending || !!error} onClick={add}>
             Add to the post
           </button>

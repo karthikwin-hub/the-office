@@ -75,7 +75,10 @@ await owner.waitForTimeout(1500);
 check(!(await owner.getByText("reconnecting").isVisible()), "live updates are connected");
 await owner.screenshot({ path: join(out, "floor-owner.png") });
 
-await owner.locator(".topbar-nav").getByRole("link", { name: /your desk/i }).click();
+await owner
+  .locator(".topbar-nav")
+  .getByRole("link", { name: /your desk/i })
+  .click();
 await owner.locator(".approval").first().waitFor();
 const cards = await owner.locator(".approval").count();
 check(cards > 0, `desk shows ${cards} cards`);
@@ -85,12 +88,19 @@ const acct = await signedIn(acctEmail, acctPassword, "accountant");
 check(await acct.locator(".role-banner").isVisible(), "accountant sees the role banner");
 await acct.goto(`${base}/desk`);
 await acct.locator(".approval").first().waitFor();
-const acctApprove = acct.locator(".approval").filter({ hasText: /post bill/i }).first().locator(".btn-primary");
+const acctApprove = acct
+  .locator(".approval")
+  .filter({ hasText: /post bill/i })
+  .first()
+  .locator(".btn-primary");
 check((await acctApprove.count()) === 0 || (await acctApprove.isDisabled()), "accountant cannot approve a bill");
 await acct.screenshot({ path: join(out, "desk-accountant.png") });
 
 // The owner approves a bill (or a reminder, once the bills are done); the accountant's open desk drops it without a reload.
-const bill = owner.locator(".approval:not(.approval-decided)").filter({ hasText: /post bill|send a reminder/i }).first();
+const bill = owner
+  .locator(".approval:not(.approval-decided)")
+  .filter({ hasText: /post bill|send a reminder/i })
+  .first();
 const title = (await bill.locator("h3, h2").first().textContent())?.trim() ?? "";
 await bill.locator(".btn-primary").click();
 const pending = owner.locator(".approval:not(.approval-decided)").filter({ has: owner.getByText(title, { exact: true }) });
@@ -106,20 +116,30 @@ check(gone, "the accountant's desk updated over the WebSocket");
 // An upload goes to R2 and is read from its text layer in the browser; a bill already in the books is set aside.
 await owner.goto(`${base}/rooms/accountant`);
 await owner.locator('input[type="file"]').setInputFiles(join(resolve(import.meta.dirname, "../.."), "apps/web/public/docs/doc-p0002.pdf"));
-const setAside = owner.locator(".intake").getByText(/already recorded|set aside/i).first();
+const setAside = owner
+  .locator(".intake")
+  .getByText(/already recorded|set aside/i)
+  .first();
 await setAside.waitFor({ timeout: 20_000 }).catch(() => undefined);
 check(await setAside.isVisible(), "an uploaded copy of a recorded bill is set aside");
-const stored = await owner.evaluate(async ([path, office]) => {
-  const docs = await (await fetch(path)).json();
-  const up = docs.find((d) => d.channel === "upload" && d.file.startsWith(`/api/o/${office}/files/`));
-  return up ? (await fetch(up.file)).headers.get("content-type") : null;
-}, [o("/api/documents"), officeId]);
+const stored = await owner.evaluate(
+  async ([path, office]) => {
+    const docs = await (await fetch(path)).json();
+    const up = docs.find((d) => d.channel === "upload" && d.file.startsWith(`/api/o/${office}/files/`));
+    return up ? (await fetch(up.file)).headers.get("content-type") : null;
+  },
+  [o("/api/documents"), officeId],
+);
 check(stored === "application/pdf", `the upload is served back from R2 (${stored})`);
 await owner.screenshot({ path: join(out, "room-accountant-upload.png") });
 
 const session = await acct.evaluate(async (path) => (await fetch(path)).json(), o("/api/session"));
 check(session.role === "accountant" && session.mode === "live", "accountant session is live and read-only");
-const spoof = await acct.evaluate(async (path) => (await fetch(path, { method: "POST", headers: { "content-type": "application/json", "x-office-as": "owner" }, body: '{"hired":true}' })).status, o("/api/hiring/marketer"));
+const spoof = await acct.evaluate(
+  async (path) =>
+    (await fetch(path, { method: "POST", headers: { "content-type": "application/json", "x-office-as": "owner" }, body: '{"hired":true}' })).status,
+  o("/api/hiring/marketer"),
+);
 check(spoof === 403, `accountant cannot hire, even claiming to be the owner (${spoof})`);
 const elsewhere = await acct.evaluate(async () => (await fetch("/api/o/off_aaaaaaaaaaaaaaaa/desk")).status);
 check(elsewhere === 404, `an office the accountant is not in does not exist for them (${elsewhere})`);
@@ -128,8 +148,15 @@ check(old === 404, `the old single-office paths are gone (${old})`);
 
 // Social media: demo channels without a stored sign-in post by hand, and nothing reaches the Office unsigned.
 const social = await owner.evaluate(async (path) => (await fetch(path)).json(), o("/api/reports/social"));
-check(social.channels.every((c) => c.mode === "manual" || c.connectedAt), "channels without a stored sign-in are posted by hand");
-const unsigned = await fetch(`${base}/api/hooks/meta`, { method: "POST", headers: { "content-type": "application/json" }, body: '{"object":"instagram","entry":[]}' });
+check(
+  social.channels.every((c) => c.mode === "manual" || c.connectedAt),
+  "channels without a stored sign-in are posted by hand",
+);
+const unsigned = await fetch(`${base}/api/hooks/meta`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: '{"object":"instagram","entry":[]}',
+});
 check(unsigned.status === 401, `an unsigned Meta webhook is refused (${unsigned.status})`);
 const handshake = await fetch(`${base}/api/hooks/meta?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=1`);
 check(handshake.status === 403, `a webhook handshake with the wrong token is refused (${handshake.status})`);
@@ -137,7 +164,10 @@ const media = await fetch(`${base}/media/${officeId}/media-u1?exp=9999999999&sig
 check(media.status === 404, `a forged media link finds nothing (${media.status})`);
 const acctConnect = await acct.evaluate(async (path) => (await fetch(path, { redirect: "manual" })).status, o("/api/channels/instagram/connect"));
 check(acctConnect === 403, `the accountant cannot connect a channel (${acctConnect})`);
-const acctVoice = await acct.evaluate(async (path) => (await fetch(path, { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" })).status, o("/api/social/voice"));
+const acctVoice = await acct.evaluate(
+  async (path) => (await fetch(path, { method: "PUT", headers: { "content-type": "application/json" }, body: "{}" })).status,
+  o("/api/social/voice"),
+);
 check(acctVoice === 403, `the accountant cannot change the brand voice (${acctVoice})`);
 
 await owner.goto(`${base}/rooms/social-media-manager`);
@@ -145,7 +175,9 @@ await owner.locator(".channel-strip").waitFor();
 check((await owner.locator(".channel-bay").count()) === social.channels.length, "the room shows every channel");
 await owner.screenshot({ path: join(out, "room-social-media-manager.png"), fullPage: true });
 
-const manual = social.posts.flatMap((p) => p.variants.filter((v) => v.status === "scheduled" && social.channels.find((c) => c.id === v.channelId)?.mode === "manual").map((v) => [p.id, v.channelId]))[0];
+const manual = social.posts.flatMap((p) =>
+  p.variants.filter((v) => v.status === "scheduled" && social.channels.find((c) => c.id === v.channelId)?.mode === "manual").map((v) => [p.id, v.channelId]),
+)[0];
 if (manual) {
   const [postId, channelId] = manual;
   const pack = await owner.evaluate(async (path) => (await fetch(path)).json(), o(`/api/social/posts/${postId}/variants/${channelId}/pack`));
@@ -165,7 +197,10 @@ await owner.screenshot({ path: join(out, "settings-channels.png"), fullPage: tru
 
 // Routines: every scheduled job is listed with its owner, and running one now records a run.
 const routines = await owner.evaluate(async (path) => (await fetch(path)).json(), o("/api/routines"));
-check(routines.routines?.some((r) => r.id === "morning-digest" && r.active), "the morning digest is listed as a routine");
+check(
+  routines.routines?.some((r) => r.id === "morning-digest" && r.active),
+  "the morning digest is listed as a routine",
+);
 const ran = await owner.evaluate(async (path) => {
   const r = await fetch(path, { method: "POST" });
   return { status: r.status, body: await r.json() };
@@ -182,10 +217,14 @@ await owner.screenshot({ path: join(out, "routines.png"), fullPage: true });
 
 // Customer service: a website visitor asks for a refund, the agent hands it over, the owner answers and the visitor sees it.
 const json = (method, body) => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-const ownerFetch = (path, init) => owner.evaluate(async ([p, i]) => {
-  const r = await fetch(p, i);
-  return { status: r.status, body: await r.json().catch(() => null) };
-}, [path, init]);
+const ownerFetch = (path, init) =>
+  owner.evaluate(
+    async ([p, i]) => {
+      const r = await fetch(p, i);
+      return { status: r.status, body: await r.json().catch(() => null) };
+    },
+    [path, init],
+  );
 const hiring = await ownerFetch(o("/api/hiring"));
 const wasHired = hiring.body?.agents?.find((a) => a.agentId === "customer-service")?.hired ?? false;
 await ownerFetch(o("/api/hiring/customer-service"), json("POST", { hired: true, trustLevel: "trusted" }));
@@ -204,8 +243,14 @@ const answer = "Sorry about that. Send us a photo and we will replace them.";
 const replied = await ownerFetch(o(`/api/customers/threads/${thread?.id}/reply`), json("POST", { text: answer }));
 check(replied.status === 200, `the owner answers in the conversation (${replied.status})`);
 const seen = await (await fetch(`${base}/api/chat/${key}?visitor=${visitor}`)).json();
-check(seen.messages?.some((m) => m.from === "us" && m.text === answer), "the visitor sees the owner's answer in the chat");
-const acctReply = await acct.evaluate(async ([p, b]) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: b })).status, [o(`/api/customers/threads/${thread?.id}/reply`), JSON.stringify({ text: "x" })]);
+check(
+  seen.messages?.some((m) => m.from === "us" && m.text === answer),
+  "the visitor sees the owner's answer in the chat",
+);
+const acctReply = await acct.evaluate(
+  async ([p, b]) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: b })).status,
+  [o(`/api/customers/threads/${thread?.id}/reply`), JSON.stringify({ text: "x" })],
+);
 check(acctReply === 403, `the accountant cannot answer customers (${acctReply})`);
 await owner.goto(`${base}/rooms/customer-service`);
 await owner.locator(".cs-threads").waitFor();
@@ -226,20 +271,30 @@ const weather = await ownerFetch(o("/api/weather"));
 check(weather.status === 200 && "weather" in (weather.body ?? {}), `the weather answers, or says it does not know (${JSON.stringify(weather.body)})`);
 const renamed = await ownerFetch(o("/api/personas"), json("PUT", { names: { accountant: "Revathi" } }));
 check(renamed.status === 200, `the owner renames the accountant (${renamed.status})`);
-const acctRename = await acct.evaluate(async (p) => (await fetch(p, { method: "PUT", headers: { "content-type": "application/json" }, body: '{"names":{}}' })).status, o("/api/personas"));
+const acctRename = await acct.evaluate(
+  async (p) => (await fetch(p, { method: "PUT", headers: { "content-type": "application/json" }, body: '{"names":{}}' })).status,
+  o("/api/personas"),
+);
 check(acctRename === 403, `the accountant cannot rename the team (${acctRename})`);
 await owner.reload();
 await owner.locator(livedIn).first().waitFor({ timeout: 30_000 });
 await owner.waitForTimeout(1500);
 check(await owner.locator(".team-log-who").getByText("Revathi, Accountant").first().isVisible(), "the team log uses the new name");
 await owner.screenshot({ path: join(out, "floor-lived-in.png") });
-for (const [at, name] of [["18:10", "dusk"], ["21:30", "night"]]) {
+for (const [at, name] of [
+  ["18:10", "dusk"],
+  ["21:30", "night"],
+]) {
   await owner.goto(`${base}/?skin=lived-in&at=${at}`);
   await owner.locator(livedIn).first().waitFor({ timeout: 30_000 });
   await owner.waitForTimeout(1500);
   await owner.screenshot({ path: join(out, `floor-lived-in-${name}.png`) });
 }
-await owner.locator(in3d ? ".diorama-plate" : ".room-slot").filter({ hasText: /office manager/i }).first().click();
+await owner
+  .locator(in3d ? ".diorama-plate" : ".room-slot")
+  .filter({ hasText: /office manager/i })
+  .first()
+  .click();
 await owner.waitForURL(/\/rooms\/office-manager/);
 check(true, "a room still opens from the Lived-in floor");
 await ownerFetch(o("/api/personas"), json("PUT", { names: {} }));
@@ -259,18 +314,26 @@ const onboarding = acct.locator("section", { has: acct.getByRole("heading", { na
 await onboarding.waitFor();
 await onboarding.getByLabel("Books start on").fill(booksFrom);
 await onboarding.getByLabel("Customers and suppliers").setInputFiles({ name: "parties.csv", mimeType: "text/csv", buffer: Buffer.from(csv.parties) });
-await onboarding.getByLabel("Unpaid invoices and bills").setInputFiles({ name: "open-items.csv", mimeType: "text/csv", buffer: Buffer.from(csv["open-items"]) });
+await onboarding
+  .getByLabel("Unpaid invoices and bills")
+  .setInputFiles({ name: "open-items.csv", mimeType: "text/csv", buffer: Buffer.from(csv["open-items"]) });
 await onboarding.getByRole("button", { name: "Check the files" }).click();
 await onboarding.locator(".onboarding-ready, [role=alert]").first().waitFor();
 check(await onboarding.locator(".onboarding-ready").isVisible(), "the accountant's files read without an issue");
 await onboarding.getByRole("button", { name: "Send to the Desk for approval" }).click();
 await onboarding.getByRole("status").filter({ hasText: "Waiting on the" }).waitFor();
 await acct.screenshot({ path: join(out, "settings-onboarding.png"), fullPage: true });
-const huge = await acct.evaluate(async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: "x".repeat(3_100_000) })).status, o("/api/onboarding/check"));
+const huge = await acct.evaluate(
+  async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: "x".repeat(3_100_000) })).status,
+  o("/api/onboarding/check"),
+);
 check(huge === 413, `an import over the size limit is refused (${huge})`);
 const importCard = (await ownerFetch(o("/api/desk"))).body?.items?.find((i) => i.kind === "onboarding");
 check(Boolean(importCard), "the import waits on the owner's Desk");
-const acctImport = await acct.evaluate(async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: '{"action":"approve"}' })).status, o(`/api/desk/${importCard?.id}`));
+const acctImport = await acct.evaluate(
+  async (p) => (await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: '{"action":"approve"}' })).status,
+  o(`/api/desk/${importCard?.id}`),
+);
 check(acctImport === 403, `the accountant cannot approve the import (${acctImport})`);
 await owner.goto(`${base}/desk`);
 const card = owner.locator(".approval:not(.approval-decided)").filter({ hasText: "Bring in your books" });
@@ -279,16 +342,22 @@ await owner.screenshot({ path: join(out, "desk-onboarding.png") });
 await card.getByRole("button", { name: "Bring into the books" }).click();
 for (let i = 0; i < 10 && (await card.count()) > 0; i++) await owner.waitForTimeout(300);
 const ageing = (await ownerFetch(o("/api/reports/ageing"))).body;
-check(ageing?.open?.some((x) => x.number === `E2E/${tag}/1` && x.outstandingPaise === 12_500_00), "the brought-forward invoice counts towards ageing");
+check(
+  ageing?.open?.some((x) => x.number === `E2E/${tag}/1` && x.outstandingPaise === 12_500_00),
+  "the brought-forward invoice counts towards ageing",
+);
 const settled = (await ownerFetch(o("/api/settings"))).body?.business?.booksFrom;
 check(settled === booksFrom, `the books now start on ${settled}`);
-const kept = await owner.evaluate(async ([path, office]) => {
-  const docs = await (await fetch(path)).json();
-  const d = docs.find((x) => x.channel === "import" && x.file.startsWith(`/api/o/${office}/files/`));
-  if (!d) return null;
-  const r = await fetch(d.file);
-  return `${r.headers.get("content-type")} ${(await r.text()).split("\n")[0]}`;
-}, [o("/api/documents"), officeId]);
+const kept = await owner.evaluate(
+  async ([path, office]) => {
+    const docs = await (await fetch(path)).json();
+    const d = docs.find((x) => x.channel === "import" && x.file.startsWith(`/api/o/${office}/files/`));
+    if (!d) return null;
+    const r = await fetch(d.file);
+    return `${r.headers.get("content-type")} ${(await r.text()).split("\n")[0]}`;
+  },
+  [o("/api/documents"), officeId],
+);
 check(kept === "text/csv; charset=utf-8 type,number,date,party,total,outstanding", `the CSV is kept and served back (${kept})`);
 
 await browser.close();

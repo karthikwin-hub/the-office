@@ -42,7 +42,8 @@ export function trail(prev: TrailState, view: Snapshot): { state: TrailState; ev
   const now = new Set(hired);
   for (const id of hired) if (!was.has(id)) events.push({ kind: "hire", agentId: id });
   for (const id of prev.hired) if (!now.has(id)) events.push({ kind: "leave", agentId: id });
-  for (const a of arriving) if (!prev.arrived.includes(a.docId)) events.push({ kind: "arrive", docId: a.docId, agentId: a.agentId, channel: channelOf(a.channel), label: a.label });
+  for (const a of arriving)
+    if (!prev.arrived.includes(a.docId)) events.push({ kind: "arrive", docId: a.docId, agentId: a.agentId, channel: channelOf(a.channel), label: a.label });
   // Oldest decision first, so the pile comes down in the order the owner worked.
   for (const d of decided.slice().reverse()) if (!prev.decided.includes(d.id)) events.push({ kind: "decide", id: d.id, agentId: d.agentId, status: d.status });
   for (const id of hired) {

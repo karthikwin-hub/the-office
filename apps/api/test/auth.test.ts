@@ -43,20 +43,33 @@ describe("the sign-in rate limit", () => {
     const statuses: number[] = [];
     for (let i = 0; i < 10; i++) {
       const xff = i % 2 ? randomIp() : `not-an-ip-${i}`;
-      const res = await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: "a-wrong-password-1" }, { "x-forwarded-for": xff, "cf-connecting-ip": "203.0.113.7" });
+      const res = await post(
+        env,
+        "/api/auth/sign-in/email",
+        { email: "anil@kaveri.test", password: "a-wrong-password-1" },
+        { "x-forwarded-for": xff, "cf-connecting-ip": "203.0.113.7" },
+      );
       statuses.push(res.status);
     }
     expect(statuses.slice(0, 8).every((s) => s !== 429)).toBe(true);
     expect(statuses.slice(8)).toEqual([429, 429]);
     // Someone else, at another address, is not locked out by it.
-    const other = await post(env, "/api/auth/sign-in/email", { email: "bina@shah.test", password: "a-wrong-password-1" }, { "cf-connecting-ip": "198.51.100.4" });
+    const other = await post(
+      env,
+      "/api/auth/sign-in/email",
+      { email: "bina@shah.test", password: "a-wrong-password-1" },
+      { "cf-connecting-ip": "198.51.100.4" },
+    );
     expect(other.status).not.toBe(429);
   });
 
   it("still limits a caller with no Cloudflare address, sharing one bucket", async () => {
     const { env } = liveEnv();
     const statuses: number[] = [];
-    for (let i = 0; i < 9; i++) statuses.push((await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: "a-wrong-password-1" }, { "x-forwarded-for": randomIp() })).status);
+    for (let i = 0; i < 9; i++)
+      statuses.push(
+        (await post(env, "/api/auth/sign-in/email", { email: "anil@kaveri.test", password: "a-wrong-password-1" }, { "x-forwarded-for": randomIp() })).status,
+      );
     expect(statuses.at(-1)).toBe(429);
   });
 
@@ -162,13 +175,21 @@ describe("making an account", () => {
     const sent: { to: string; raw: string }[] = [];
     Object.assign(env, { EMAIL_VERIFICATION: undefined, MAILER: { send: async (m: { to: string; raw: string }) => void sent.push(m) } });
     const bodyOf = (raw: string) => Buffer.from(raw.split("\r\n\r\n").slice(1).join("").replace(/\s+/g, ""), "base64").toString("utf8");
-    const subjectOf = (raw: string) => (/^Subject: (.*)$/m.exec(raw)?.[1] ?? "").replace(/=\?UTF-8\?B\?([^?]*)\?=\s*/gi, (_, b: string) => Buffer.from(b, "base64").toString("utf8"));
+    const subjectOf = (raw: string) =>
+      (/^Subject: (.*)$/m.exec(raw)?.[1] ?? "").replace(/=\?UTF-8\?B\?([^?]*)\?=\s*/gi, (_, b: string) => Buffer.from(b, "base64").toString("utf8"));
     return { env, db, sent, bodyOf, subjectOf };
   }
   const signUpAs = (env: Env, email: string, password = PASSWORD) => post(env, "/api/auth/sign-up/email", { name: "Someone", email, password });
   const shape = async (res: Response) => {
     const body = (await res.json()) as { token: unknown; user: Record<string, unknown> };
-    return { status: res.status, cookies: (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().length, token: body.token, keys: Object.keys(body.user).sort(), email: body.user.email, emailVerified: body.user.emailVerified };
+    return {
+      status: res.status,
+      cookies: (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().length,
+      token: body.token,
+      keys: Object.keys(body.user).sort(),
+      email: body.user.email,
+      emailVerified: body.user.emailVerified,
+    };
   };
 
   it("answers the same whether or not the address already has an account", async () => {

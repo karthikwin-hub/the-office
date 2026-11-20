@@ -36,8 +36,20 @@ describe("the type a received file is stored under", () => {
   });
 
   it("stores an emailed r.csv sent as text/html as text/csv, and drops what its bytes deny", async () => {
-    const part = (type: string, name: string, data: string) => [`--b`, `Content-Type: ${type}; name="${name}"`, `Content-Disposition: attachment; filename="${name}"`, "", data].join("\r\n");
-    const raw = ["From: a@b.test", "To: x@y.test", "Subject: r", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", part("text/html", "r.csv", "a,b"), part("text/html", "MTR.xlsx", "<html>"), "--b--", ""].join("\r\n");
+    const part = (type: string, name: string, data: string) =>
+      [`--b`, `Content-Type: ${type}; name="${name}"`, `Content-Disposition: attachment; filename="${name}"`, "", data].join("\r\n");
+    const raw = [
+      "From: a@b.test",
+      "To: x@y.test",
+      "Subject: r",
+      "MIME-Version: 1.0",
+      'Content-Type: multipart/mixed; boundary="b"',
+      "",
+      part("text/html", "r.csv", "a,b"),
+      part("text/html", "MTR.xlsx", "<html>"),
+      "--b--",
+      "",
+    ].join("\r\n");
     const mail = await parseInbound(enc(raw).buffer as ArrayBuffer, { sheets: true });
     expect(mail.attachments.map((a) => [a.filename, a.mimeType])).toEqual([["r.csv", "text/csv"]]);
     expect(mail.skipped).toEqual(["MTR.xlsx"]);

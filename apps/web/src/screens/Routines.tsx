@@ -18,7 +18,12 @@ const OUTCOME: Record<RoutineOutcome, { label: string; tone: string }> = {
 const when = (iso: string) => {
   const d = new Date(iso);
   const today = new Date();
-  const day = d.toDateString() === today.toDateString() ? "Today" : d.toDateString() === new Date(today.getTime() + 86_400_000).toDateString() ? "Tomorrow" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const day =
+    d.toDateString() === today.toDateString()
+      ? "Today"
+      : d.toDateString() === new Date(today.getTime() + 86_400_000).toDateString()
+        ? "Tomorrow"
+        : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   return `${day}, ${d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 };
 
@@ -117,7 +122,15 @@ function History({ id }: { id: string }) {
   return (
     <details className="routine-history" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>Earlier runs</summary>
-      {runs.data ? runs.data.runs.length ? <RunTable runs={runs.data.runs} /> : <p className="muted">No runs yet.</p> : <p className="loading">Fetching the runs</p>}
+      {runs.data ? (
+        runs.data.runs.length ? (
+          <RunTable runs={runs.data.runs} />
+        ) : (
+          <p className="muted">No runs yet.</p>
+        )
+      ) : (
+        <p className="loading">Fetching the runs</p>
+      )}
     </details>
   );
 }

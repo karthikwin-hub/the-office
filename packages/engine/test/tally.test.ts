@@ -20,7 +20,14 @@ const COURIER = "27AAACB5678R1ZW";
 
 function books(): Books {
   const b = emptyBooks({ asOf: "2026-11-17", owner: "Owner" } as Parameters<typeof emptyBooks>[0]);
-  Object.assign(b.business, { name: "Sample Traders", legalName: "Sample Traders (OPC) Private Limited", gstin: OWN, stateCode: "27", pan: "AABCS1234Q", otherGstins: [OWN_GJ] });
+  Object.assign(b.business, {
+    name: "Sample Traders",
+    legalName: "Sample Traders (OPC) Private Limited",
+    gstin: OWN,
+    stateCode: "27",
+    pan: "AABCS1234Q",
+    otherGstins: [OWN_GJ],
+  });
   b.states = { ...b.states, "24": "Gujarat", "27": "Maharashtra", "30": "Goa" };
   return b;
 }
@@ -71,9 +78,28 @@ describe("a purchase bill with tax in rows of its own", () => {
     const b = books();
     b.parties.push(courier);
     const e = extractInvoice(layer("courier-bill"), b);
-    expect(e).toMatchObject({ kind: "purchase_bill", docType: "invoice", registration: OWN, number: "MC/07/2627/P/8", date: "2026-07-11", partyId: "V01", partyGstin: COURIER, placeOfSupply: "27", intra: true });
+    expect(e).toMatchObject({
+      kind: "purchase_bill",
+      docType: "invoice",
+      registration: OWN,
+      number: "MC/07/2627/P/8",
+      date: "2026-07-11",
+      partyId: "V01",
+      partyGstin: COURIER,
+      placeOfSupply: "27",
+      intra: true,
+    });
     expect(e.lines).toHaveLength(1);
-    expect(e.lines[0]).toMatchObject({ description: "Courier Services Jun 2026 Annexure Attached", hsn: "996812", qty: 1, gstRate: 18, taxablePaise: 3091100, cgstPaise: 278199, sgstPaise: 278199, igstPaise: 0 });
+    expect(e.lines[0]).toMatchObject({
+      description: "Courier Services Jun 2026 Annexure Attached",
+      hsn: "996812",
+      qty: 1,
+      gstRate: 18,
+      taxablePaise: 3091100,
+      cgstPaise: 278199,
+      sgstPaise: 278199,
+      igstPaise: 0,
+    });
     expect(e.totals).toEqual({ taxablePaise: 3091100, cgstPaise: 278199, sgstPaise: 278199, igstPaise: 0, roundOffPaise: 2, totalPaise: 3647500 });
     expect(e.checks.filter((c) => !c.ok)).toEqual([]);
   });
@@ -99,15 +125,44 @@ describe("a purchase bill with tax in rows of its own", () => {
 describe("a sale to an unregistered customer from another registration", () => {
   it("knows its own Gujarat GSTIN, the rate before tax and the place of supply under the consignee", () => {
     const e = extractInvoice(layer("b2c-invoice-other-registration"), books());
-    expect(e).toMatchObject({ kind: "sales_invoice", docType: "invoice", registration: OWN_GJ, partyGstin: null, partyName: "Corner Salon", number: "2026/27/104", date: "2026-10-09", placeOfSupply: "30", intra: false });
-    expect(e.lines[0]).toMatchObject({ description: "Northwind Legendary Shave Foam - 400 ml", hsn: "34013012", qty: 24, unit: "NOS", ratePaise: 12458, taxablePaise: 298992, gstRate: 18, igstPaise: 53819 });
+    expect(e).toMatchObject({
+      kind: "sales_invoice",
+      docType: "invoice",
+      registration: OWN_GJ,
+      partyGstin: null,
+      partyName: "Corner Salon",
+      number: "2026/27/104",
+      date: "2026-10-09",
+      placeOfSupply: "30",
+      intra: false,
+    });
+    expect(e.lines[0]).toMatchObject({
+      description: "Northwind Legendary Shave Foam - 400 ml",
+      hsn: "34013012",
+      qty: 24,
+      unit: "NOS",
+      ratePaise: 12458,
+      taxablePaise: 298992,
+      gstRate: 18,
+      igstPaise: 53819,
+    });
     expect(e.totals).toEqual({ taxablePaise: 298992, cgstPaise: 0, sgstPaise: 0, igstPaise: 53819, roundOffPaise: 0, totalPaise: 352811 });
     expect(e.checks.filter((c) => !c.ok).map((c) => c.key)).toEqual(["party"]);
   });
 
   it("finds an unregistered customer already in the books by name", () => {
     const b = books();
-    b.parties.push({ ...courier, id: "C01", kind: "customer", name: "Corner Salon", gstin: null, pan: "", stateCode: "30", tdsSection: null, supplyKind: undefined });
+    b.parties.push({
+      ...courier,
+      id: "C01",
+      kind: "customer",
+      name: "Corner Salon",
+      gstin: null,
+      pan: "",
+      stateCode: "30",
+      tdsSection: null,
+      supplyKind: undefined,
+    });
     const e = extractInvoice(layer("b2c-invoice-other-registration"), b);
     expect(e.partyId).toBe("C01");
     expect(e.checks.filter((c) => !c.ok)).toEqual([]);
@@ -151,7 +206,12 @@ describe("a sale to an unregistered customer from another registration", () => {
     inv.totals = { ...inv.totals, totalPaise: 1_20_000_00 };
     const gj = computeGstr1(o.ledger, "2026-10", OWN_GJ);
     expect(gj.b2cs).toEqual([]);
-    expect(gj.b2cl).toEqual([{ pos: "30", inv: [{ inum: "2026/27/104", idt: "09-10-2026", val: 120000, itms: [{ num: 1801, itm_det: { rt: 18, txval: 2989.92, iamt: 538.19, csamt: 0 } }] }] }]);
+    expect(gj.b2cl).toEqual([
+      {
+        pos: "30",
+        inv: [{ inum: "2026/27/104", idt: "09-10-2026", val: 120000, itms: [{ num: 1801, itm_det: { rt: 18, txval: 2989.92, iamt: 538.19, csamt: 0 } }] }],
+      },
+    ]);
   });
 });
 
@@ -219,7 +279,7 @@ const reprint = (as: "invoice" | "credit_note"): TextItem[] =>
   });
 
 describe("what the page says over its heading or a model", () => {
-  it("knows a credit note by its number field when Tally heads it \"Tax Invoice\", and files it", () => {
+  it('knows a credit note by its number field when Tally heads it "Tax Invoice", and files it', () => {
     expect(docTypeOf(reprint("credit_note"))).toBe("credit_note");
     expect(docTypeOf(reprint("invoice"))).toBe("invoice");
     const { o } = office();

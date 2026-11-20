@@ -8,7 +8,11 @@ import { asCaller, callerFor, openOffice } from "./office";
 type Inside = { office: OfficeService; syncSalesRoute: () => Promise<void> };
 const inside = (o: Office) => o as unknown as Inside;
 const stored = (state: DurableObjectState) => state.storage.sql.exec("SELECT coll, id, json FROM book_rows ORDER BY coll, ord").toArray();
-const put = (path: string, body: unknown) => ({ method: path.includes("hiring") ? "POST" : "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const put = (path: string, body: unknown) => ({
+  method: path.includes("hiring") ? "POST" : "PUT",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
 
 describe("a request that fails", () => {
   it("leaves the books exactly as they were, for this request and the next one that saves", async () => {

@@ -66,7 +66,10 @@ describe("the office export", () => {
     const prefix = officePrefix(id);
     const big = Array.from({ length: 7 }, (_, i) => ({ key: `${prefix}docs/doc-big-${i}`, data: fill(8 * MB + i, i) }));
     // Enough small files that the archive needs more than one part.
-    const small = Array.from({ length: EXPORT_PART_FILES + 10 }, (_, i) => ({ key: `${prefix}media/m-${String(i).padStart(3, "0")}`, data: fill(100 + i, 1000 + i) }));
+    const small = Array.from({ length: EXPORT_PART_FILES + 10 }, (_, i) => ({
+      key: `${prefix}media/m-${String(i).padStart(3, "0")}`,
+      data: fill(100 + i, 1000 + i),
+    }));
     for (const f of [...big, ...small]) await env.DOCS.put(f.key, f.data);
     await env.DOCS.put(`${officePrefix(other.id)}docs/not-yours`, "another office's file");
 
@@ -103,14 +106,22 @@ describe("the office export", () => {
   it("is the office's own work: a person cannot plan or read one, and parts come only in order", async () => {
     const { id, owner, stub } = await openOffice();
     await env.DOCS.put(`${officePrefix(id)}docs/doc-1`, "a bill");
-    const asOwner = await stub.fetch(await asCaller(callerFor(id, owner), "/internal/export/plan", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }));
+    const asOwner = await stub.fetch(
+      await asCaller(callerFor(id, owner), "/internal/export/plan", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }),
+    );
     expect(asOwner.status).toBe(404);
 
     const plan = (await (await stub.fetch(await asSystem(id, "/internal/export/plan"))).json()) as ExportPlan;
     expect(plan.parts).toBe(1);
     expect((await stub.fetch(await asSystem(id, "/internal/export/part", { id: plan.id, part: 1 }))).status).toBe(410);
     expect((await stub.fetch(await asSystem(id, "/internal/export/part", { id: "made-up", part: 0 }))).status).toBe(410);
-    const ownerPart = await stub.fetch(await asCaller(callerFor(id, owner), "/internal/export/part", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: plan.id, part: 0 }) }));
+    const ownerPart = await stub.fetch(
+      await asCaller(callerFor(id, owner), "/internal/export/part", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: plan.id, part: 0 }),
+      }),
+    );
     expect(ownerPart.status).toBe(404);
 
     const part = await stub.fetch(await asSystem(id, "/internal/export/part", { id: plan.id, part: 0 }));

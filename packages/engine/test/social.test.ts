@@ -79,7 +79,15 @@ describe("post checks against the books", () => {
 
 describe("the monthly planner", () => {
   it("splits slots by pillar share and largest remainder", () => {
-    const s = shareSlots([{ id: "a", share: 40 }, { id: "b", share: 30 }, { id: "c", share: 20 }, { id: "d", share: 10 }], 13);
+    const s = shareSlots(
+      [
+        { id: "a", share: 40 },
+        { id: "b", share: 30 },
+        { id: "c", share: 20 },
+        { id: "d", share: 10 },
+      ],
+      13,
+    );
     expect([...s.values()].reduce((a, b) => a + b, 0)).toBe(13);
     expect(s.get("a")).toBe(5);
     expect(s.get("d")).toBe(1);
@@ -99,13 +107,30 @@ describe("the monthly planner", () => {
 });
 
 describe("trust", () => {
-  const praise = { id: "msg-t1", platform: "Instagram", channelId: "ch-instagram", kind: "comment" as const, author: "@meera", at: "2026-11-04T10:00:00+05:30", rating: null, text: "Lovely shop, very helpful staff. Thank you!" };
+  const praise = {
+    id: "msg-t1",
+    platform: "Instagram",
+    channelId: "ch-instagram",
+    kind: "comment" as const,
+    author: "@meera",
+    at: "2026-11-04T10:00:00+05:30",
+    rating: null,
+    text: "Lovely shop, very helpful staff. Thank you!",
+  };
 
   it("lets a trusted manager send thank-you replies on its own, and nothing else", () => {
     const o = office();
     const r = o.receiveMessages([
       praise,
-      { ...praise, id: "msg-t2", kind: "review", platform: "Google reviews", channelId: "ch-google", rating: 2, text: "Waited an hour and the fan was faulty." },
+      {
+        ...praise,
+        id: "msg-t2",
+        kind: "review",
+        platform: "Google reviews",
+        channelId: "ch-google",
+        rating: 2,
+        text: "Waited an hour and the fan was faulty.",
+      },
       { ...praise, id: "msg-t3", kind: "dm", platform: "WhatsApp", channelId: "ch-whatsapp", text: "Thank you for the quick delivery!" },
     ]);
     expect(r.replied).toBe(1);
@@ -121,7 +146,18 @@ describe("trust", () => {
   });
 
   it("never thanks with figures or promises", () => {
-    const m = { ...praise, sentiment: "positive", intent: "praise", draftReply: "", status: "open", postId: null, threadId: null, externalId: null, leadId: null, replyBy: null } as const;
+    const m = {
+      ...praise,
+      sentiment: "positive",
+      intent: "praise",
+      draftReply: "",
+      status: "open",
+      postId: null,
+      threadId: null,
+      externalId: null,
+      leadId: null,
+      replyBy: null,
+    } as const;
     expect(isThankYou(m, "Thank you, Meera!")).toBe(true);
     expect(isThankYou(m, "Thank you! Use code 10 for ₹100 off.")).toBe(false);
     expect(isThankYou(m, "Thank you, we will deliver tomorrow.")).toBe(false);
@@ -130,7 +166,12 @@ describe("trust", () => {
   it("publishes an approved calendar post at its time when nothing changed", () => {
     const o = office();
     const out = o.publishDue("2026-11-05T13:00:00Z");
-    expect(out.filter((e) => e.kind === "publish" && e.postId === "post-05").map((e) => e.channelId).sort()).toEqual(["ch-facebook", "ch-instagram"]);
+    expect(
+      out
+        .filter((e) => e.kind === "publish" && e.postId === "post-05")
+        .map((e) => e.channelId)
+        .sort(),
+    ).toEqual(["ch-facebook", "ch-instagram"]);
     expect(post(o.books, "post-05").variants.find((v) => v.channelId === "ch-threads")!.error).toMatch(/by hand/);
   });
 
@@ -173,7 +214,18 @@ describe("the inbox", () => {
 
   it("passes an enquiry to the Sales Rep as a lead", () => {
     const o = office();
-    o.receiveMessages([{ id: "msg-e1", platform: "Instagram", channelId: "ch-instagram", kind: "comment", author: "@sunil_builders", at: "2026-11-04T11:00:00+05:30", rating: null, text: "Price for 20 LED panels? Need them this week for a site." }]);
+    o.receiveMessages([
+      {
+        id: "msg-e1",
+        platform: "Instagram",
+        channelId: "ch-instagram",
+        kind: "comment",
+        author: "@sunil_builders",
+        at: "2026-11-04T11:00:00+05:30",
+        rating: null,
+        text: "Price for 20 LED panels? Need them this week for a site.",
+      },
+    ]);
     const m = o.books.socialInbox.find((x) => x.id === "msg-e1")!;
     expect(m.leadId).toBe("lead-msg-e1");
     const lead = o.books.leads.find((l) => l.id === "lead-msg-e1")!;
@@ -183,7 +235,17 @@ describe("the inbox", () => {
 
   it("does not take the same comment twice", () => {
     const o = office();
-    const raw = { id: "ig-1", externalId: "1", platform: "Instagram", channelId: "ch-instagram", kind: "comment" as const, author: "@a", at: "2026-11-04T11:00:00+05:30", rating: null, text: "Nice" };
+    const raw = {
+      id: "ig-1",
+      externalId: "1",
+      platform: "Instagram",
+      channelId: "ch-instagram",
+      kind: "comment" as const,
+      author: "@a",
+      at: "2026-11-04T11:00:00+05:30",
+      rating: null,
+      text: "Nice",
+    };
     o.receiveMessages([raw]);
     expect(o.receiveMessages([{ ...raw, id: "ig-1b" }]).added).toHaveLength(0);
   });

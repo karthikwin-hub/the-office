@@ -20,7 +20,11 @@ describe("purging an office", () => {
     expect(new TextDecoder("latin1").decode(bytes)).not.toContain("Kaveri Electricals");
 
     await expect(open(env.SOCIAL_TOKEN_KEY!, bytes, "off_another000000000")).rejects.toThrow(/belongs to/);
-    const kept = JSON.parse(await gunzip((await open(env.SOCIAL_TOKEN_KEY!, bytes, id)).plain)) as { office: string; books: { business: { name: string } }; edits: unknown[] };
+    const kept = JSON.parse(await gunzip((await open(env.SOCIAL_TOKEN_KEY!, bytes, id)).plain)) as {
+      office: string;
+      books: { business: { name: string } };
+      edits: unknown[];
+    };
     expect(kept.office).toBe(id);
     expect(kept.books.business.name).toBe("Kaveri Electricals");
     expect(kept.edits.length).toBeGreaterThan(0);

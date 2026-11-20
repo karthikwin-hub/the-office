@@ -32,14 +32,25 @@ function BusinessForm({ b }: { b: Business }) {
   const gstinBad = !b.gstin && gstin !== "" && !Gstin.safeParse(gstin).success;
   // Other registrations are the same legal entity in other states, so they carry the same PAN.
   const [others, setOthers] = useState((b.otherGstins ?? []).join(", "));
-  const otherList = others.split(/[\s,]+/).map((g) => g.trim().toUpperCase()).filter(Boolean);
+  const otherList = others
+    .split(/[\s,]+/)
+    .map((g) => g.trim().toUpperCase())
+    .filter(Boolean);
   const pan = (b.gstin || gstin).slice(2, 12);
   const othersBad = otherList.some((g) => !Gstin.safeParse(g).success || (pan.length === 10 && g.slice(2, 12) !== pan));
   const turnover = Number(form.turnover.replace(/[,\s]/g, ""));
   const save = useMutation({
     mutationFn: () => {
       const { turnover: _t, ...business } = form;
-      return api.saveSettings({ business: { ...business, gstin: b.gstin || gstin, otherGstins: otherList, tan: form.tan.trim().toUpperCase(), prevYearTurnoverPaise: Math.round((Number.isFinite(turnover) ? turnover : 0) * 100) } });
+      return api.saveSettings({
+        business: {
+          ...business,
+          gstin: b.gstin || gstin,
+          otherGstins: otherList,
+          tan: form.tan.trim().toUpperCase(),
+          prevYearTurnoverPaise: Math.round((Number.isFinite(turnover) ? turnover : 0) * 100),
+        },
+      });
     },
     onSuccess: (s) => {
       setForm({ ...s.business, turnover: String(Math.round(s.business.prevYearTurnoverPaise / 100)) });
@@ -52,10 +63,21 @@ function BusinessForm({ b }: { b: Business }) {
     setSaved(false);
     setForm({ ...form, [k]: e.target.value });
   };
-  const text = (k: "name" | "legalName" | "owner" | "tan" | "email" | "phone" | "accountantFirm", label: string, extra: { type?: string; placeholder?: string; className?: string } = {}) => (
+  const text = (
+    k: "name" | "legalName" | "owner" | "tan" | "email" | "phone" | "accountantFirm",
+    label: string,
+    extra: { type?: string; placeholder?: string; className?: string } = {},
+  ) => (
     <div className="field">
       <label htmlFor={`b-${k}`}>{label}</label>
-      <input id={`b-${k}`} className={`input ${extra.className ?? ""}`} type={extra.type ?? "text"} placeholder={extra.placeholder} value={form[k]} onChange={set(k)} />
+      <input
+        id={`b-${k}`}
+        className={`input ${extra.className ?? ""}`}
+        type={extra.type ?? "text"}
+        placeholder={extra.placeholder}
+        value={form[k]}
+        onChange={set(k)}
+      />
     </div>
   );
 
@@ -69,14 +91,34 @@ function BusinessForm({ b }: { b: Business }) {
     >
       <fieldset>
         <legend className="h2">Business</legend>
-        {!b.gstin ? <p className="field-help business-intro">Your agents put these details on invoices, returns and reminders. Fill in what you have; you can come back for the rest.</p> : null}
+        {!b.gstin ? (
+          <p className="field-help business-intro">
+            Your agents put these details on invoices, returns and reminders. Fill in what you have; you can come back for the rest.
+          </p>
+        ) : null}
         <div className="settings-grid">
           {text("name", "Name customers know")}
           {text("legalName", "Legal name", { placeholder: "As on your GST certificate" })}
           <div className="field">
             <label htmlFor="b-gstin">GSTIN</label>
-            <input id="b-gstin" className="input code" value={b.gstin || form.gstin} readOnly={Boolean(b.gstin)} maxLength={15} placeholder="27ABCDE1234F1Z5" aria-invalid={gstinBad} aria-describedby="b-gstin-help" onChange={set("gstin")} />
-            <span id="b-gstin-help" className="field-help">{b.gstin ? `State ${b.stateCode}, PAN ${b.pan}. Fixed once entered.` : gstinBad ? "That is not a valid GSTIN: 15 characters, starting with the state code." : "Sets your state and PAN. It cannot be changed later."}</span>
+            <input
+              id="b-gstin"
+              className="input code"
+              value={b.gstin || form.gstin}
+              readOnly={Boolean(b.gstin)}
+              maxLength={15}
+              placeholder="27ABCDE1234F1Z5"
+              aria-invalid={gstinBad}
+              aria-describedby="b-gstin-help"
+              onChange={set("gstin")}
+            />
+            <span id="b-gstin-help" className="field-help">
+              {b.gstin
+                ? `State ${b.stateCode}, PAN ${b.pan}. Fixed once entered.`
+                : gstinBad
+                  ? "That is not a valid GSTIN: 15 characters, starting with the state code."
+                  : "Sets your state and PAN. It cannot be changed later."}
+            </span>
           </div>
           <div className="field">
             <label htmlFor="b-others">Other GST registrations</label>
@@ -93,7 +135,9 @@ function BusinessForm({ b }: { b: Business }) {
               }}
             />
             <span id="b-others-help" className="field-help">
-              {othersBad ? "Each must be a valid GSTIN with the same PAN as yours." : "Branches or premises in other states, separated by commas. Documents printed with them are read as yours, and kept apart in each GSTIN's returns."}
+              {othersBad
+                ? "Each must be a valid GSTIN with the same PAN as yours."
+                : "Branches or premises in other states, separated by commas. Documents printed with them are read as yours, and kept apart in each GSTIN's returns."}
             </span>
           </div>
           {text("tan", "TAN", { className: "code", placeholder: "MUMA12345B" })}
@@ -152,7 +196,10 @@ function SettingsForm({ s }: { s: Settings }) {
 
   return (
     <>
-      <PageHead title="Settings" lede={owner ? undefined : "Only the owner can change the office's settings; how the office looks to you is yours to choose."} />
+      <PageHead
+        title="Settings"
+        lede={owner ? undefined : "Only the owner can change the office's settings; how the office looks to you is yours to choose."}
+      />
       <SkinPicker />
       <WhatsAppSettings />
       {owner ? (
@@ -160,13 +207,39 @@ function SettingsForm({ s }: { s: Settings }) {
       ) : (
         <Section title="Business">
           <dl className="details">
-            <div><dt>Legal name</dt><dd>{b.legalName || "Not entered yet"}</dd></div>
-            <div><dt>GSTIN</dt><dd className="num">{b.gstin || "Not entered yet"}</dd></div>
-            <div><dt>PAN</dt><dd className="num">{b.pan}</dd></div>
-            <div><dt>TAN</dt><dd className="num">{b.tan}</dd></div>
-            <div><dt>Address</dt><dd>{b.address}</dd></div>
-            <div><dt>Turnover last year</dt><dd>{inr(b.prevYearTurnoverPaise, { symbol: true, rupees: true })}{b.prevYearTurnoverPaise > 10 * 1e9 ? ", so TDS on purchases (section 393, code 1031; formerly 194Q) applies above ₹50 lakh from one supplier" : ""}</dd></div>
-            <div><dt>Accountant</dt><dd>{b.accountantFirm}</dd></div>
+            <div>
+              <dt>Legal name</dt>
+              <dd>{b.legalName || "Not entered yet"}</dd>
+            </div>
+            <div>
+              <dt>GSTIN</dt>
+              <dd className="num">{b.gstin || "Not entered yet"}</dd>
+            </div>
+            <div>
+              <dt>PAN</dt>
+              <dd className="num">{b.pan}</dd>
+            </div>
+            <div>
+              <dt>TAN</dt>
+              <dd className="num">{b.tan}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{b.address}</dd>
+            </div>
+            <div>
+              <dt>Turnover last year</dt>
+              <dd>
+                {inr(b.prevYearTurnoverPaise, { symbol: true, rupees: true })}
+                {b.prevYearTurnoverPaise > 10 * 1e9
+                  ? ", so TDS on purchases (section 393, code 1031; formerly 194Q) applies above ₹50 lakh from one supplier"
+                  : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Accountant</dt>
+              <dd>{b.accountantFirm}</dd>
+            </div>
           </dl>
         </Section>
       )}
@@ -177,7 +250,8 @@ function SettingsForm({ s }: { s: Settings }) {
       <AccountSettings />
       <Section title="Getting documents in">
         <p>
-          Forward bills and invoices to <strong className="num">{s.ingestEmail}</strong>, or upload them on the Accountant's room. The Accountant reads each one within a few minutes.
+          Forward bills and invoices to <strong className="num">{s.ingestEmail}</strong>, or upload them on the Accountant's room. The Accountant reads each one
+          within a few minutes.
         </p>
       </Section>
       <OnboardingSettings b={b} />
@@ -188,21 +262,45 @@ function SettingsForm({ s }: { s: Settings }) {
             <div className="field">
               <label htmlFor="first">Friendly reminder after</label>
               <div className="input-suffix">
-                <input id="first" className="input num" type="number" min={1} max={60} value={policy.firstAfterDays} onChange={(e) => setPolicy({ ...policy, firstAfterDays: Number(e.target.value) })} />
+                <input
+                  id="first"
+                  className="input num"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={policy.firstAfterDays}
+                  onChange={(e) => setPolicy({ ...policy, firstAfterDays: Number(e.target.value) })}
+                />
                 <span>days overdue</span>
               </div>
             </div>
             <div className="field">
               <label htmlFor="firm">Firm reminder after</label>
               <div className="input-suffix">
-                <input id="firm" className="input num" type="number" min={2} max={90} value={policy.firmAfterDays} onChange={(e) => setPolicy({ ...policy, firmAfterDays: Number(e.target.value) })} />
+                <input
+                  id="firm"
+                  className="input num"
+                  type="number"
+                  min={2}
+                  max={90}
+                  value={policy.firmAfterDays}
+                  onChange={(e) => setPolicy({ ...policy, firmAfterDays: Number(e.target.value) })}
+                />
                 <span>days overdue</span>
               </div>
             </div>
             <div className="field">
               <label htmlFor="final">Final notice after</label>
               <div className="input-suffix">
-                <input id="final" className="input num" type="number" min={3} max={180} value={policy.finalAfterDays} onChange={(e) => setPolicy({ ...policy, finalAfterDays: Number(e.target.value) })} />
+                <input
+                  id="final"
+                  className="input num"
+                  type="number"
+                  min={3}
+                  max={180}
+                  value={policy.finalAfterDays}
+                  onChange={(e) => setPolicy({ ...policy, finalAfterDays: Number(e.target.value) })}
+                />
                 <span>days overdue</span>
               </div>
             </div>
@@ -215,9 +313,15 @@ function SettingsForm({ s }: { s: Settings }) {
               <input id="digest" className="input num" type="time" value={digest} onChange={(e) => setDigest(e.target.value)} />
             </div>
           </div>
-          {policy.firstAfterDays >= policy.firmAfterDays || policy.firmAfterDays >= policy.finalAfterDays ? <p className="form-error">Each reminder must come after the one before it.</p> : null}
+          {policy.firstAfterDays >= policy.firmAfterDays || policy.firmAfterDays >= policy.finalAfterDays ? (
+            <p className="form-error">Each reminder must come after the one before it.</p>
+          ) : null}
           <div className="approval-actions">
-            <button type="submit" className="btn btn-primary" disabled={save.isPending || policy.firstAfterDays >= policy.firmAfterDays || policy.firmAfterDays >= policy.finalAfterDays}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={save.isPending || policy.firstAfterDays >= policy.firmAfterDays || policy.firmAfterDays >= policy.finalAfterDays}
+            >
               Save settings
             </button>
             {saved ? <span role="status">Settings saved</span> : null}

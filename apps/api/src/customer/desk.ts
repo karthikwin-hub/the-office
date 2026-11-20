@@ -86,7 +86,15 @@ export class CustomerDesk {
         } else if (e.channel === "email") {
           if (!this.d.send) throw new Error("Email is not set up for this office.");
           const domain = this.d.mailFrom.split("@")[1] ?? "localhost";
-          const id = await this.d.send({ fromName: this.d.businessName, to: e.to, replyTo: this.d.supportAddress ?? undefined, subject: e.subject ?? this.d.businessName, body: e.text, messageId: `<${e.messageId}@${domain}>`, inReplyTo: e.inReplyTo });
+          const id = await this.d.send({
+            fromName: this.d.businessName,
+            to: e.to,
+            replyTo: this.d.supportAddress ?? undefined,
+            subject: e.subject ?? this.d.businessName,
+            body: e.text,
+            messageId: `<${e.messageId}@${domain}>`,
+            inReplyTo: e.inReplyTo,
+          });
           cs.markSent(e.messageId, id);
         } else cs.markSent(e.messageId, null);
       } catch (err) {

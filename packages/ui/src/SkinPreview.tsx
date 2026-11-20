@@ -15,7 +15,15 @@ export function SkinPreview({ skin }: { skin: Skin }) {
         </defs>
         <rect width="160" height="96" className="skin-preview-paper" />
         <rect x="6" y="8" width="148" height="80" className="building-floor" />
-        <rect x="6" y="8" width="148" height="80" fill={`url(#${id})`} className="floor-texture" style={{ opacity: Math.min(1, skin.tokens.textureOpacity * 10) }} />
+        <rect
+          x="6"
+          y="8"
+          width="148"
+          height="80"
+          fill={`url(#${id})`}
+          className="floor-texture"
+          style={{ opacity: Math.min(1, skin.tokens.textureOpacity * 10) }}
+        />
         <rect x="6" y="8" width="34" height="80" className="room-wall room-idle" />
         {rooms.map((i) => (
           <g key={i}>

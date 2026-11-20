@@ -16,7 +16,11 @@ function sqlStorage(): SqlStorage {
   } as unknown as SqlStorage;
 }
 
-const MTR = ["Invoice Number,Invoice Date,Transaction Type,Order Id,Quantity,Sku,Ship To City,Ship To State,Invoice Amount,Tax Exclusive Gross,Total Tax Amount", "IN-1,2026-10-02,Shipment,402-1,2,SW-6A,PUNE,MAHARASHTRA,1180.00,1000.00,180.00", "CN-1,2026-10-09,Refund,402-1,1,SW-6A,PUNE,MAHARASHTRA,-590.00,-500.00,-90.00"].join("\n");
+const MTR = [
+  "Invoice Number,Invoice Date,Transaction Type,Order Id,Quantity,Sku,Ship To City,Ship To State,Invoice Amount,Tax Exclusive Gross,Total Tax Amount",
+  "IN-1,2026-10-02,Shipment,402-1,2,SW-6A,PUNE,MAHARASHTRA,1180.00,1000.00,180.00",
+  "CN-1,2026-10-09,Refund,402-1,1,SW-6A,PUNE,MAHARASHTRA,-590.00,-500.00,-90.00",
+].join("\n");
 const bytes = (s: string) => new TextEncoder().encode(s).buffer as ArrayBuffer;
 
 function office(sql = sqlStorage()) {
@@ -42,7 +46,12 @@ describe("online sales on the server", () => {
   it("keeps a large sheet waiting for its columns in pieces, and reads it once mapped", async () => {
     const o = office();
     const rows = Array.from({ length: 20_000 }, (_, i) => `05/10/2026,PO-${i},LED panel with a fairly long description ${i},Mumbai,1,590`);
-    const [imp] = await readSalesFile(o, { name: "blinkit.csv", bytes: bytes(["Date,PO Number,Item Name,City,Qty Sold,GMV", ...rows].join("\n")), via: "upload", sender: "owner@x.test" });
+    const [imp] = await readSalesFile(o, {
+      name: "blinkit.csv",
+      bytes: bytes(["Date,PO Number,Item Name,City,Qty Sold,GMV", ...rows].join("\n")),
+      via: "upload",
+      sender: "owner@x.test",
+    });
     expect(imp).toMatchObject({ status: "needs_mapping", channel: "blinkit" });
     expect(o.sales.store.pending(imp!.id)!.rows).toHaveLength(20_001);
     const done = o.sales.applyMapping(imp!.id, "blinkit", { date: "Date", order: "PO Number", qty: "Qty Sold", gross: "GMV", city: "City", item: "Item Name" });
@@ -52,7 +61,12 @@ describe("online sales on the server", () => {
 
   it("says why a file cannot be read", async () => {
     const o = office();
-    const [imp] = await readSalesFile(o, { name: "old.xls", bytes: new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]).buffer as ArrayBuffer, via: "whatsapp", sender: null });
+    const [imp] = await readSalesFile(o, {
+      name: "old.xls",
+      bytes: new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]).buffer as ArrayBuffer,
+      via: "whatsapp",
+      sender: null,
+    });
     expect(imp).toMatchObject({ status: "unreadable", note: expect.stringContaining(".xlsx") });
   });
 
@@ -66,7 +80,27 @@ describe("online sales on the server", () => {
   });
 
   it("keeps spreadsheets in an email only for the sales address", async () => {
-    const raw = ["From: a@b.test", "To: x@y.test", "Subject: r", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", 'Content-Type: text/csv; name="r.csv"', 'Content-Disposition: attachment; filename="r.csv"', "", "a,b", "--b", 'Content-Type: application/pdf; name="bill.pdf"', 'Content-Disposition: attachment; filename="bill.pdf"', "Content-Transfer-Encoding: base64", "", btoa("%PDF-1.4"), "--b--", ""].join("\r\n");
+    const raw = [
+      "From: a@b.test",
+      "To: x@y.test",
+      "Subject: r",
+      "MIME-Version: 1.0",
+      'Content-Type: multipart/mixed; boundary="b"',
+      "",
+      "--b",
+      'Content-Type: text/csv; name="r.csv"',
+      'Content-Disposition: attachment; filename="r.csv"',
+      "",
+      "a,b",
+      "--b",
+      'Content-Type: application/pdf; name="bill.pdf"',
+      'Content-Disposition: attachment; filename="bill.pdf"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      btoa("%PDF-1.4"),
+      "--b--",
+      "",
+    ].join("\r\n");
     const bills = await parseInbound(bytes(raw));
     expect(bills.attachments.map((a) => a.filename)).toEqual(["bill.pdf"]);
     expect(bills.skipped).toEqual(["r.csv"]);

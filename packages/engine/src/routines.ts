@@ -23,7 +23,10 @@ export class MemoryRoutineLog implements RoutineLog {
     this.all.push(run);
   }
   runs(routine: string, limit: number) {
-    return this.all.filter((r) => r.routine === routine).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)).slice(0, limit);
+    return this.all
+      .filter((r) => r.routine === routine)
+      .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+      .slice(0, limit);
   }
   last(routine: string) {
     return this.runs(routine, 1)[0] ?? null;
@@ -58,7 +61,12 @@ const runId = () => `run-${Date.now().toString(36)}-${(++seq).toString(36)}${Mat
  * and does not stop the routines after it. A paused routine is recorded as skipped; one whose agent
  * is not on the team does not run and leaves no record.
  */
-export async function runRoutine(office: OfficeService, id: string, trigger: RoutineRun["trigger"], fn: () => StepResult | Promise<StepResult>): Promise<RoutineRun | null> {
+export async function runRoutine(
+  office: OfficeService,
+  id: string,
+  trigger: RoutineRun["trigger"],
+  fn: () => StepResult | Promise<StepResult>,
+): Promise<RoutineRun | null> {
   const def = ROUTINE_BY_ID[id];
   if (!def) throw new Error(`Unknown routine ${id}`);
   if (!office.hired(def.agentId)) return null;
@@ -70,10 +78,30 @@ export async function runRoutine(office: OfficeService, id: string, trigger: Rou
   } else {
     try {
       const r = await fn();
-      run = { id: runId(), routine: id, trigger, startedAt, finishedAt: new Date().toISOString(), outcome: r.outcome ?? "ok", summary: r.summary, counts: r.counts ?? {}, error: null };
+      run = {
+        id: runId(),
+        routine: id,
+        trigger,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        outcome: r.outcome ?? "ok",
+        summary: r.summary,
+        counts: r.counts ?? {},
+        error: null,
+      };
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
-      run = { id: runId(), routine: id, trigger, startedAt, finishedAt: new Date().toISOString(), outcome: "failed", summary: `Stopped with an error: ${error.slice(0, 200)}`, counts: {}, error: error.slice(0, 1000) };
+      run = {
+        id: runId(),
+        routine: id,
+        trigger,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        outcome: "failed",
+        summary: `Stopped with an error: ${error.slice(0, 200)}`,
+        counts: {},
+        error: error.slice(0, 1000),
+      };
       office.log(def.agentId, `"${def.title}" failed: ${error.slice(0, 160)}`);
     }
   }
@@ -99,13 +127,27 @@ export function reminderQueue(office: OfficeService, just: StagedChange[], now =
   const ids = new Set(just.map((s) => s.id));
   const retry = office.books.staged.filter((s) => {
     const p = s.payload as { sentAt?: string; sendError?: string; attempts?: number; triedAt?: string };
-    return s.kind === "reminder" && s.status === "approved" && !ids.has(s.id) && !p.sentAt && p.sendError && (p.attempts ?? 0) < 3 && (!p.triedAt || now - Date.parse(p.triedAt) >= 3600_000);
+    return (
+      s.kind === "reminder" &&
+      s.status === "approved" &&
+      !ids.has(s.id) &&
+      !p.sentAt &&
+      p.sendError &&
+      (p.attempts ?? 0) < 3 &&
+      (!p.triedAt || now - Date.parse(p.triedAt) >= 3600_000)
+    );
   });
   return [...just.filter((s) => s.kind === "reminder"), ...retry];
 }
 
 /** One routine, by itself: what "Run now" does, and what the morning round does for each in turn. */
-export async function runOne(office: OfficeService, id: string, trigger: RoutineRun["trigger"], host: RoutineHost, notes: string[] = []): Promise<RoutineRun | null> {
+export async function runOne(
+  office: OfficeService,
+  id: string,
+  trigger: RoutineRun["trigger"],
+  host: RoutineHost,
+  notes: string[] = [],
+): Promise<RoutineRun | null> {
   switch (id) {
     case "trusted-work":
       return runRoutine(office, id, trigger, async (): Promise<StepResult> => {
@@ -117,14 +159,22 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
         for (const d of done) by.set(d.agentId, (by.get(d.agentId) ?? 0) + 1);
         const who = [...by].map(([a, n]) => `${n} by ${AGENT_BY_ID[a]?.title.replace(/^The /, "the ") ?? a}`).join(", ");
         notes.push(`${plural(done.length, "routine task")} done by trusted agents.`);
-        return { outcome: sent.failed ? "partial" : "ok", summary: `${plural(done.length, "item")} done on their own: ${who}.${sent.sent ? ` ${plural(sent.sent, "reminder")} sent.` : ""}${sent.failed ? ` ${plural(sent.failed, "reminder")} could not be sent.` : ""}`, counts: { done: done.length, sent: sent.sent, failed: sent.failed } };
+        return {
+          outcome: sent.failed ? "partial" : "ok",
+          summary: `${plural(done.length, "item")} done on their own: ${who}.${sent.sent ? ` ${plural(sent.sent, "reminder")} sent.` : ""}${sent.failed ? ` ${plural(sent.failed, "reminder")} could not be sent.` : ""}`,
+          counts: { done: done.length, sent: sent.sent, failed: sent.failed },
+        };
       });
     case "send-reminders":
       return runRoutine(office, id, trigger, async (): Promise<StepResult> => {
         const queue = reminderQueue(office, []);
         if (!queue.length) return { outcome: "nothing", summary: "No approved reminder is waiting to go out.", counts: { sent: 0 } };
         const r = await host.sendReminders(queue);
-        return { outcome: r.failed ? (r.sent ? "partial" : "failed") : "ok", summary: `${plural(r.sent, "reminder")} sent${r.failed ? `; ${r.failed} could not be sent and will be tried again` : ""}.`, counts: { sent: r.sent, failed: r.failed } };
+        return {
+          outcome: r.failed ? (r.sent ? "partial" : "failed") : "ok",
+          summary: `${plural(r.sent, "reminder")} sent${r.failed ? `; ${r.failed} could not be sent and will be tried again` : ""}.`,
+          counts: { sent: r.sent, failed: r.failed },
+        };
       });
     case "social-morning":
       return runRoutine(office, id, trigger, () => host.socialMorning());
@@ -133,20 +183,36 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
     case "reorder-check":
       return runRoutine(office, id, trigger, () => {
         const r = office.reorderCheck();
-        if (r.items.length) notes.push(`${plural(r.items.length, "item")} at or under the reorder level${r.drafted ? `; ${plural(r.drafted, "purchase order")} drafted` : ""}.`);
+        if (r.items.length)
+          notes.push(`${plural(r.items.length, "item")} at or under the reorder level${r.drafted ? `; ${plural(r.drafted, "purchase order")} drafted` : ""}.`);
         return r.items.length
-          ? { summary: `${plural(r.items.length, "item")} to reorder: ${r.items.slice(0, 5).join(", ")}${r.items.length > 5 ? ` and ${r.items.length - 5} more` : ""}. ${r.drafted ? `${plural(r.drafted, "purchase order")} drafted for your desk.` : r.covered ? "Each already has a purchase order open." : "No supplier on record to draft an order for."}`, counts: { items: r.items.length, drafted: r.drafted } }
+          ? {
+              summary: `${plural(r.items.length, "item")} to reorder: ${r.items.slice(0, 5).join(", ")}${r.items.length > 5 ? ` and ${r.items.length - 5} more` : ""}. ${r.drafted ? `${plural(r.drafted, "purchase order")} drafted for your desk.` : r.covered ? "Each already has a purchase order open." : "No supplier on record to draft an order for."}`,
+              counts: { items: r.items.length, drafted: r.drafted },
+            }
           : { outcome: "nothing", summary: "Every item is above its reorder level.", counts: { items: 0, drafted: 0 } };
       });
     case "compliance-due":
       return runRoutine(office, id, trigger, () => {
         const due = office.complianceDue(7);
         const nudge = new Set(dueReminders(office.books, office.asOf).map((o) => o.id));
-        for (const d of due) if (nudge.has(d.id)) notes.push(`${d.line}${d.assignee ? ` (${d.assignee === "owner" ? "you" : d.assignee.toUpperCase()} to do)` : ""}`);
+        for (const d of due)
+          if (nudge.has(d.id)) notes.push(`${d.line}${d.assignee ? ` (${d.assignee === "owner" ? "you" : d.assignee.toUpperCase()} to do)` : ""}`);
         const late = due.filter((d) => d.state === "late");
-        if (nudge.size) office.log("compliance-officer", `Reminded you about ${plural(nudge.size, "filing")}: ${due.filter((d) => nudge.has(d.id)).map((d) => d.form).join(", ")}.`, { kind: "report", id: "compliance" });
+        if (nudge.size)
+          office.log(
+            "compliance-officer",
+            `Reminded you about ${plural(nudge.size, "filing")}: ${due
+              .filter((d) => nudge.has(d.id))
+              .map((d) => d.form)
+              .join(", ")}.`,
+            { kind: "report", id: "compliance" },
+          );
         return due.length
-          ? { summary: `${due.map((d) => `${d.form} ${d.state === "late" ? `late since ${dateLabel(d.dueOn)}` : `by ${dateLabel(d.dueOn)}`}`).join("; ")}.`, counts: { due: due.length, late: late.length, reminded: nudge.size } }
+          ? {
+              summary: `${due.map((d) => `${d.form} ${d.state === "late" ? `late since ${dateLabel(d.dueOn)}` : `by ${dateLabel(d.dueOn)}`}`).join("; ")}.`,
+              counts: { due: due.length, late: late.length, reminded: nudge.size },
+            }
           : { outcome: "nothing", summary: "Nothing is due in the next seven days.", counts: { due: 0, late: 0, reminded: 0 } };
       });
     case "handoff-chase":
@@ -159,20 +225,29 @@ export async function runOne(office: OfficeService, id: string, trigger: Routine
           r.closing.length ? `${plural(r.closing.length, "WhatsApp chat")} closing within three hours` : "",
           r.pruned ? `${plural(r.pruned, "old conversation")} deleted` : "",
         ].filter(Boolean);
-        return parts.length ? { summary: `${parts.join("; ")}.`, counts: { waiting: r.waiting.length, closing: r.closing.length, pruned: r.pruned } } : { outcome: "nothing", summary: "No customer is waiting on you.", counts: { waiting: 0, closing: 0, pruned: 0 } };
+        return parts.length
+          ? { summary: `${parts.join("; ")}.`, counts: { waiting: r.waiting.length, closing: r.closing.length, pruned: r.pruned } }
+          : { outcome: "nothing", summary: "No customer is waiting on you.", counts: { waiting: 0, closing: 0, pruned: 0 } };
       });
     case "online-sales":
       return runRoutine(office, id, trigger, () => {
         const lines = office.sales.morning();
         notes.push(...lines);
-        return lines.length ? { summary: lines.join(" "), counts: { lines: lines.length } } : { outcome: "nothing", summary: "No sales report covering the last three days has come in.", counts: { lines: 0 } };
+        return lines.length
+          ? { summary: lines.join(" "), counts: { lines: lines.length } }
+          : { outcome: "nothing", summary: "No sales report covering the last three days has come in.", counts: { lines: 0 } };
       });
     case "assistant-agenda":
       return runRoutine(office, id, trigger, async () => {
         const cal = host.refreshCalendars ? await host.refreshCalendars() : { read: 0, failed: 0 };
         const r = office.assistant.morning(office.assistant.store.owners());
         // The agendas themselves go to each owner in their own brief; the run says only how many.
-        if (!r.owners) return { outcome: "nothing", summary: "No owner has given the assistant a calendar or a task yet.", counts: { owners: 0, calendars: cal.read, failed: cal.failed } };
+        if (!r.owners)
+          return {
+            outcome: "nothing",
+            summary: "No owner has given the assistant a calendar or a task yet.",
+            counts: { owners: 0, calendars: cal.read, failed: cal.failed },
+          };
         return {
           outcome: cal.failed ? "partial" : "ok",
           summary: `Planned the next three days for ${plural(r.owners, "owner")}${cal.failed ? `; ${plural(cal.failed, "calendar")} could not be read, so the last copy was used` : ""}.`,
@@ -235,7 +310,14 @@ export function routinesView(office: OfficeService, now = Date.now(), publishAt?
   return ROUTINES.map((r) => {
     const active = office.hired(r.agentId);
     const paused = office.routines.paused(r.id);
-    const nextRunAt = !active || paused ? null : r.schedule === "morning" ? nextMorning(digest, now) : nextPost !== undefined ? new Date(Math.max(nextPost, now)).toISOString() : null;
+    const nextRunAt =
+      !active || paused
+        ? null
+        : r.schedule === "morning"
+          ? nextMorning(digest, now)
+          : nextPost !== undefined
+            ? new Date(Math.max(nextPost, now)).toISOString()
+            : null;
     return {
       id: r.id,
       title: r.title,

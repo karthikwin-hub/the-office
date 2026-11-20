@@ -123,7 +123,15 @@ export const OnlineSalesReport = z.object({
   period: z.object({ from: IsoDate, to: IsoDate, label: z.string() }),
   previous: z.object({ from: IsoDate, to: IsoDate }),
   hasData: z.boolean(),
-  totals: z.object({ orders: z.number().int(), units: z.number(), grossPaise: Money, returnedPaise: Money, returnsPct: z.number(), aovPaise: Money, vsPreviousPct: z.number().nullable() }),
+  totals: z.object({
+    orders: z.number().int(),
+    units: z.number(),
+    grossPaise: Money,
+    returnedPaise: Money,
+    returnsPct: z.number(),
+    aovPaise: Money,
+    vsPreviousPct: z.number().nullable(),
+  }),
   channels: z.array(
     z.object({
       channel: SalesChannel,
@@ -142,7 +150,18 @@ export const OnlineSalesReport = z.object({
   ),
   /** Weeks starting Monday, oldest first, with each channel's sales. */
   weeks: z.array(z.object({ week: IsoDate, label: z.string(), byChannel: z.record(z.string(), Money), totalPaise: Money })),
-  skus: z.array(z.object({ key: z.string(), skuId: z.string().nullable(), name: z.string(), units: z.number(), grossPaise: Money, returnedUnits: z.number(), returnsPct: z.number(), channels: z.array(SalesChannel) })),
+  skus: z.array(
+    z.object({
+      key: z.string(),
+      skuId: z.string().nullable(),
+      name: z.string(),
+      units: z.number(),
+      grossPaise: Money,
+      returnedUnits: z.number(),
+      returnsPct: z.number(),
+      channels: z.array(SalesChannel),
+    }),
+  ),
   /** SKUs in the catalogue that sold nothing online in the period, while others did. */
   unsold: z.array(z.object({ skuId: z.string(), name: z.string() })),
   states: z.array(z.object({ state: z.string(), name: z.string(), orders: z.number().int(), grossPaise: Money })),
@@ -157,7 +176,9 @@ export const OnlineSalesReport = z.object({
 export type OnlineSalesReport = z.infer<typeof OnlineSalesReport>;
 
 export const SalesMappingInput = z.object({ channel: SalesChannel, mapping: ColumnMapping }).strict();
-export const SalesUploadInput = z.object({ file: z.string().min(1).max(200), content: z.string().min(1).max(15_000_000), encoding: z.enum(["text", "base64"]) }).strict();
+export const SalesUploadInput = z
+  .object({ file: z.string().min(1).max(200), content: z.string().min(1).max(15_000_000), encoding: z.enum(["text", "base64"]) })
+  .strict();
 
 /** `<slug>.sales@<domain>`: where a seller sends the reports the platforms email them. */
 export const salesAddress = (ingestEmail: string): string | null => {

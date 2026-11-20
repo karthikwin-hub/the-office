@@ -50,11 +50,14 @@ export function OnboardingSettings({ b }: { b: Business }) {
   return (
     <Section title="Bring in your books">
       <p className="section-lede">
-        Already keeping books in Tally, Excel or a notebook? Fill in the templates with your customers and suppliers, your products and stock, and the invoices and bills still unpaid. The Accountant checks every row; nothing goes into the books until {owner ? "you approve" : "the owner approves"} it on the Desk.
+        Already keeping books in Tally, Excel or a notebook? Fill in the templates with your customers and suppliers, your products and stock, and the invoices
+        and bills still unpaid. The Accountant checks every row; nothing goes into the books until {owner ? "you approve" : "the owner approves"} it on the
+        Desk.
       </p>
       {b.booksFrom ? (
         <p>
-          Your books start on <strong>{dateLabel(b.booksFrom)}</strong>. Anything from before then comes in as brought forward: it counts towards what is owed, but not towards GST returns or sales.
+          Your books start on <strong>{dateLabel(b.booksFrom)}</strong>. Anything from before then comes in as brought forward: it counts towards what is owed,
+          but not towards GST returns or sales.
         </p>
       ) : null}
       <form
@@ -82,10 +85,14 @@ export function OnboardingSettings({ b }: { b: Business }) {
               }}
             />
             <span id="ob-from-help" className="field-help">
-              {b.booksFrom ? "Fixed by the first import." : "Usually the first day of this month. Unpaid invoices and bills must be dated before it. Fixed once approved."}
+              {b.booksFrom
+                ? "Fixed by the first import."
+                : "Usually the first day of this month. Unpaid invoices and bills must be dated before it. Fixed once approved."}
             </span>
           </div>
-          <p className="field-help field-wide">Fill in any of the templates in Excel or Google Sheets and save each as CSV. Leave out a template you do not need.</p>
+          <p className="field-help field-wide">
+            Fill in any of the templates in Excel or Google Sheets and save each as CSV. Leave out a template you do not need.
+          </p>
           {KINDS.map((kind) => (
             <div className="field" key={kind}>
               <label htmlFor={`ob-${kind}`}>{IMPORT_FILES[kind].label}</label>
@@ -115,7 +122,7 @@ export function OnboardingSettings({ b }: { b: Business }) {
               Waiting on the <Link to="/desk">Desk</Link> {owner ? "for your approval" : "for the owner"}.
             </span>
           ) : null}
-          {check.error ?? stage.error ? <span className="form-error">{(check.error ?? stage.error)!.message}</span> : null}
+          {(check.error ?? stage.error) ? <span className="form-error">{(check.error ?? stage.error)!.message}</span> : null}
         </div>
       </form>
     </Section>
@@ -168,7 +175,8 @@ function Preview({ p }: { p: ImportPreview }) {
   return (
     <div role="alert">
       <p className="form-error">
-        {p.issues.length === 1 ? "One thing needs" : `${p.issues.length >= 200 ? "At least 200 things" : `${p.issues.length} things`} need`} fixing before these can come in. Correct the file and choose it again.
+        {p.issues.length === 1 ? "One thing needs" : `${p.issues.length >= 200 ? "At least 200 things" : `${p.issues.length} things`} need`} fixing before these
+        can come in. Correct the file and choose it again.
       </p>
       <table className="ledger onboarding-issues">
         <thead>

@@ -29,21 +29,25 @@ const room = (agentId: string, status: RoomStatus["status"], now: string, todayC
 });
 
 function roomsAt(step: number, approved: boolean, compact: boolean): RoomStatus[] {
-  const accountant =
-    approved
-      ? room("accountant", "idle", "Posted BC/2026/0412 to the books", 5)
-      : step === 1
-        ? room("accountant", "working", "Reading BC/2026/0412 from Bharat Cables", 4)
-        : step >= 2
-          ? room("accountant", "waiting", "Staged the bill for your approval", 5, 1)
-          : room("accountant", "idle", "Matched 6 bank receipts", 4);
+  const accountant = approved
+    ? room("accountant", "idle", "Posted BC/2026/0412 to the books", 5)
+    : step === 1
+      ? room("accountant", "working", "Reading BC/2026/0412 from Bharat Cables", 4)
+      : step >= 2
+        ? room("accountant", "waiting", "Staged the bill for your approval", 5, 1)
+        : room("accountant", "idle", "Matched 6 bank receipts", 4);
   const rooms = [
     room("office-manager", step === 0 ? "working" : "idle", step === 0 ? "A photo arrived on WhatsApp" : "Sent the Bharat Cables bill to the Accountant", 3),
     accountant,
     room("credit-controller", "idle", "Drafted reminders for the six oldest", 6),
   ];
   if (compact) return rooms;
-  return [...rooms, room("tax-clerk", "idle", "October GSTR-1 is ready", 1), room("auditor", "idle", "Compared GSTR-2B with the books", 2), room("social-media-manager", "idle", "Drafted the Diwali post", 3)];
+  return [
+    ...rooms,
+    room("tax-clerk", "idle", "October GSTR-1 is ready", 1),
+    room("auditor", "idle", "Compared GSTR-2B with the books", 2),
+    room("social-media-manager", "idle", "Drafted the Diwali post", 3),
+  ];
 }
 
 const asText = (_id: string, className: string, children: ReactNode) => <span className={className}>{children}</span>;
@@ -69,10 +73,21 @@ function routeTo(plan: Plan, agentId: string): Pt[] | null {
   const d = r.door.size / 2;
   if (!plan.narrow) {
     const y = c.y + c.h / 2;
-    return [{ x: plan.entrance.x - 70, y }, { x: plan.entrance.x + 30, y }, { x: r.door.x + d, y }, { x: r.door.x + d, y: r.door.y - 26 }];
+    return [
+      { x: plan.entrance.x - 70, y },
+      { x: plan.entrance.x + 30, y },
+      { x: r.door.x + d, y },
+      { x: r.door.x + d, y: r.door.y - 26 },
+    ];
   }
   const x = c.x + c.w / 2;
-  return [{ x: plan.entrance.x + 20, y: plan.entrance.y - 70 }, { x: plan.entrance.x + 20, y: plan.entrance.y + 40 }, { x, y: c.y + 14 }, { x, y: r.door.y + d }, { x: r.door.x - 26, y: r.door.y + d }];
+  return [
+    { x: plan.entrance.x + 20, y: plan.entrance.y - 70 },
+    { x: plan.entrance.x + 20, y: plan.entrance.y + 40 },
+    { x, y: c.y + 14 },
+    { x, y: r.door.y + d },
+    { x: r.door.x - 26, y: r.door.y + d },
+  ];
 }
 
 /** Act two: one bill from a WhatsApp photo to the Boardroom, on the same floor plan the owner works on. */
@@ -281,7 +296,20 @@ export function BillWalk() {
               }}
             />
           </div>
-          <div className="walk-tray">{reduced ? <>{panels[0]}{panels[1]}{desk}{approved ? panels[4] : null}</> : <div className="walk-panel" key={shown === 3 ? 2 : shown}>{panels[shown]}</div>}</div>
+          <div className="walk-tray">
+            {reduced ? (
+              <>
+                {panels[0]}
+                {panels[1]}
+                {desk}
+                {approved ? panels[4] : null}
+              </>
+            ) : (
+              <div className="walk-panel" key={shown === 3 ? 2 : shown}>
+                {panels[shown]}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>

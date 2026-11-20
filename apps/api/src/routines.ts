@@ -1,7 +1,17 @@
 import type { RoutineRun } from "@office/contracts";
 import type { RoutineLog } from "@office/engine";
 
-type Row = { id: string; routine: string; trigger: string; started_at: string; finished_at: string; outcome: string; summary: string; counts: string; error: string | null };
+type Row = {
+  id: string;
+  routine: string;
+  trigger: string;
+  started_at: string;
+  finished_at: string;
+  outcome: string;
+  summary: string;
+  counts: string;
+  error: string | null;
+};
 
 const toRun = (r: Row): RoutineRun => ({
   id: r.id,
@@ -48,7 +58,10 @@ export class SqlRoutineLog implements RoutineLog {
   }
 
   since(routine: string, fromIso: string) {
-    return this.sql.exec<Row>("SELECT * FROM routine_run WHERE routine = ? AND started_at >= ? ORDER BY started_at DESC", routine, fromIso).toArray().map(toRun);
+    return this.sql
+      .exec<Row>("SELECT * FROM routine_run WHERE routine = ? AND started_at >= ? ORDER BY started_at DESC", routine, fromIso)
+      .toArray()
+      .map(toRun);
   }
 
   paused(routine: string) {

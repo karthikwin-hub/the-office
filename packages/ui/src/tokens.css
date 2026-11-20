@@ -39,8 +39,7 @@
   /* Shape: radius follows hierarchy */
   --radius-control: 3px;
   --radius-panel: 6px;
-  --shadow-panel: 0 12px 32px -12px color-mix(in srgb, var(--carbon) 35%, transparent),
-    0 2px 6px color-mix(in srgb, var(--graphite) 12%, transparent);
+  --shadow-panel: 0 12px 32px -12px color-mix(in srgb, var(--carbon) 35%, transparent), 0 2px 6px color-mix(in srgb, var(--graphite) 12%, transparent);
 
   /* Lines */
   --wall: 2px;

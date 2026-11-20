@@ -31,7 +31,9 @@ export function PersonaNamesForm() {
     <div className="persona-names">
       <h3 className="h3">Names in the Lived-in office</h3>
       <p className="field-help">
-        {owner ? "What the team is called on the floor and in its log, for everyone in this office. Leave a name empty to use the one shown." : "The owner chooses what the team is called on the floor."}
+        {owner
+          ? "What the team is called on the floor and in its log, for everyone in this office. Leave a name empty to use the one shown."
+          : "The owner chooses what the team is called on the floor."}
       </p>
       <form
         onSubmit={(e) => {
@@ -47,7 +49,14 @@ export function PersonaNamesForm() {
               </dt>
               <dd>
                 {owner ? (
-                  <input id={`persona-${id}`} type="text" maxLength={24} placeholder={PERSONAS[id]!.name} value={draft[id] ?? ""} onChange={(e) => setDraft({ ...draft, [id]: e.target.value })} />
+                  <input
+                    id={`persona-${id}`}
+                    type="text"
+                    maxLength={24}
+                    placeholder={PERSONAS[id]!.name}
+                    value={draft[id] ?? ""}
+                    onChange={(e) => setDraft({ ...draft, [id]: e.target.value })}
+                  />
                 ) : (
                   <span id={`persona-${id}`}>{ambient.data?.names[id] ?? PERSONAS[id]!.name}</span>
                 )}
@@ -65,7 +74,13 @@ export function PersonaNamesForm() {
             </button>
           </div>
         ) : null}
-        {save.error ? <p className="form-error">{save.error.message}</p> : save.isSuccess ? <p role="status" className="muted">Saved.</p> : null}
+        {save.error ? (
+          <p className="form-error">{save.error.message}</p>
+        ) : save.isSuccess ? (
+          <p role="status" className="muted">
+            Saved.
+          </p>
+        ) : null}
       </form>
     </div>
   );

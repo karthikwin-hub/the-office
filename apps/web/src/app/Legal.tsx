@@ -49,7 +49,8 @@ export function LegalFooter() {
   );
 }
 
-export const currentDocuments = () => (Object.keys(LEGAL_DOCUMENTS) as (keyof typeof LEGAL_DOCUMENTS)[]).map((document) => ({ document, version: LEGAL_DOCUMENTS[document].version }));
+export const currentDocuments = () =>
+  (Object.keys(LEGAL_DOCUMENTS) as (keyof typeof LEGAL_DOCUMENTS)[]).map((document) => ({ document, version: LEGAL_DOCUMENTS[document].version }));
 
 /** Shown once after sign-up, and again whenever the terms or the privacy notice get a new version. */
 export function ConsentGate({ me }: { me: Me }) {
@@ -63,7 +64,8 @@ export function ConsentGate({ me }: { me: Me }) {
         <BrandPlate />
         <h1>{me.offices.length ? "We have updated our terms" : "Before you start"}</h1>
         <p className="muted">
-          Please read {changed.map((d, i) => (
+          Please read{" "}
+          {changed.map((d, i) => (
             <span key={d.path}>
               {i ? " and " : ""}
               <a href={d.path} target="_blank" rel="noreferrer">

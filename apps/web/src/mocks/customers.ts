@@ -34,9 +34,14 @@ function mockHost(office: OfficeService): RoutineHost {
       office.publishDue(new Date().toISOString());
       const effects = office.takeEffects();
       runMockEffects(office, effects);
-      return effects.length ? { summary: `${effects.length} ${effects.length === 1 ? "post" : "posts"} published (pretend).`, counts: { published: effects.length } } : { outcome: "nothing", summary: "No post was due." };
+      return effects.length
+        ? { summary: `${effects.length} ${effects.length === 1 ? "post" : "posts"} published (pretend).`, counts: { published: effects.length } }
+        : { outcome: "nothing", summary: "No post was due." };
     },
-    digest: async (notes) => ({ summary: `In the live office this goes to the owners by email or WhatsApp. ${office.pending().length} waiting on the desk${notes.length ? `; ${notes.length} lines from the routines` : ""}.`, counts: { waiting: office.pending().length } }),
+    digest: async (notes) => ({
+      summary: `In the live office this goes to the owners by email or WhatsApp. ${office.pending().length} waiting on the desk${notes.length ? `; ${notes.length} lines from the routines` : ""}.`,
+      counts: { waiting: office.pending().length },
+    }),
   };
 }
 
@@ -56,7 +61,9 @@ export async function mockMore(request: Request, path: string, role: Role, offic
   if (path === "/api/customers/try" && request.method === "POST") {
     if (role !== "owner") return HttpResponse.json({ error: "Only the owner can try the agent." }, { status: 403 });
     const body = (await request.json().catch(() => ({}))) as { text?: string };
-    const text = String(body.text ?? "").trim().slice(0, 2000);
+    const text = String(body.text ?? "")
+      .trim()
+      .slice(0, 2000);
     if (!text) return HttpResponse.json({ error: "Write a message to try." }, { status: 400 });
     const r = await converse(office.customers, { channel: "web", key: "try:owner", name: "You, trying it", text, test: true });
     return HttpResponse.json({ thread: office.customers.threadView(r.thread.id), notes: r.notes });

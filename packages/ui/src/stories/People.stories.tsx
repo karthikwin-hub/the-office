@@ -32,7 +32,13 @@ export const HireHired: StoryObj = { render: () => <HireCard state={agent("accou
 export const HireNotHired: StoryObj = { render: () => <HireCard state={agent("payroll-clerk")} onHire={() => {}} /> };
 export const HireReadOnly: StoryObj = { render: () => <HireCard state={agent("buyer")} readOnly /> };
 
-export const LogToday: StoryObj = { render: () => <div style={{ maxWidth: 360 }}><TeamLog entries={view.log} /></div> };
+export const LogToday: StoryObj = {
+  render: () => (
+    <div style={{ maxWidth: 360 }}>
+      <TeamLog entries={view.log} />
+    </div>
+  ),
+};
 export const LogOneAgent: StoryObj = {
   render: () => (
     <div style={{ maxWidth: 560 }}>

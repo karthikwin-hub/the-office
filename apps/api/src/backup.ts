@@ -10,8 +10,16 @@ import type { Env } from "./env";
 export type BackupTarget = { endpoint: string; bucket: string; region: string; accessKeyId: string; secretAccessKey: string };
 
 export function backupTarget(env: Env): BackupTarget | null {
-  const { INDIA_BACKUP_ENDPOINT: endpoint, INDIA_BACKUP_BUCKET: bucket, INDIA_BACKUP_REGION: region, INDIA_BACKUP_ACCESS_KEY_ID: accessKeyId, INDIA_BACKUP_SECRET_ACCESS_KEY: secretAccessKey } = env;
-  return endpoint && bucket && region && accessKeyId && secretAccessKey ? { endpoint: endpoint.replace(/\/$/, ""), bucket, region, accessKeyId, secretAccessKey } : null;
+  const {
+    INDIA_BACKUP_ENDPOINT: endpoint,
+    INDIA_BACKUP_BUCKET: bucket,
+    INDIA_BACKUP_REGION: region,
+    INDIA_BACKUP_ACCESS_KEY_ID: accessKeyId,
+    INDIA_BACKUP_SECRET_ACCESS_KEY: secretAccessKey,
+  } = env;
+  return endpoint && bucket && region && accessKeyId && secretAccessKey
+    ? { endpoint: endpoint.replace(/\/$/, ""), bucket, region, accessKeyId, secretAccessKey }
+    : null;
 }
 
 export async function gzip(text: string): Promise<ArrayBuffer> {
@@ -25,7 +33,8 @@ export async function sealedCopy(secret: string, officeId: string, data: unknown
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (data: ArrayBuffer | Uint8Array | string) => hex(await crypto.subtle.digest("SHA-256", typeof data === "string" ? enc.encode(data) : data));
+const sha256 = async (data: ArrayBuffer | Uint8Array | string) =>
+  hex(await crypto.subtle.digest("SHA-256", typeof data === "string" ? enc.encode(data) : data));
 async function hmac(key: ArrayBuffer | string, data: string): Promise<ArrayBuffer> {
   const k = await crypto.subtle.importKey("raw", typeof key === "string" ? enc.encode(key) : key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return crypto.subtle.sign("HMAC", k, enc.encode(data));
@@ -40,13 +49,24 @@ type Bytes = ArrayBuffer | Uint8Array;
  * One request to the store, path-style (`<endpoint>/<bucket>/<key>`), which every S3-compatible store accepts,
  * signed with AWS Signature Version 4. Throws with the store's answer unless it is a success.
  */
-async function signed(t: BackupTarget, method: "GET" | "PUT" | "POST", key: string, query: Record<string, string>, body: Bytes | null, extra: Record<string, string>, now: Date): Promise<Response> {
+async function signed(
+  t: BackupTarget,
+  method: "GET" | "PUT" | "POST",
+  key: string,
+  query: Record<string, string>,
+  body: Bytes | null,
+  extra: Record<string, string>,
+  now: Date,
+): Promise<Response> {
   const qs = Object.keys(query)
     .sort()
     .map((k) => `${encodeQuery(k)}=${encodeQuery(query[k]!)}`)
     .join("&");
   const url = new URL(`${t.endpoint}/${t.bucket}${key ? `/${encodeKey(key)}` : ""}${qs ? `?${qs}` : ""}`);
-  const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const amzDate = now
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
   const day = amzDate.slice(0, 8);
   const payloadHash = await sha256(body ?? "");
   const headers: Record<string, string> = { host: url.host, ...extra, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
@@ -82,7 +102,12 @@ const text = (xml: string, name: string) => tags(xml, name).map(unescapeXml);
  * One page (up to 1,000) of the keys under `prefix` (ListObjectsV2): `truncated` when more are left, with the
  * token for the next page when the store gives one.
  */
-export async function listObjects(t: BackupTarget, prefix: string, after?: string, now = new Date()): Promise<{ keys: string[]; truncated: boolean; next: string | null }> {
+export async function listObjects(
+  t: BackupTarget,
+  prefix: string,
+  after?: string,
+  now = new Date(),
+): Promise<{ keys: string[]; truncated: boolean; next: string | null }> {
   const xml = await (await signed(t, "GET", "", { "list-type": "2", prefix, ...(after ? { "continuation-token": after } : {}) }, null, {}, now)).text();
   const keys = tags(xml, "Contents").flatMap((c) => text(c, "Key"));
   const truncated = text(xml, "IsTruncated")[0] === "true";
@@ -94,7 +119,9 @@ export async function deleteObjects(t: BackupTarget, keys: string[], now = new D
   if (!keys.length) return;
   if (keys.length > 1000) throw new Error("At most 1,000 keys go in one delete.");
   const esc = (k: string) => k.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const body = enc.encode(`<?xml version="1.0" encoding="UTF-8"?><Delete><Quiet>true</Quiet>${keys.map((k) => `<Object><Key>${esc(k)}</Key></Object>`).join("")}</Delete>`);
+  const body = enc.encode(
+    `<?xml version="1.0" encoding="UTF-8"?><Delete><Quiet>true</Quiet>${keys.map((k) => `<Object><Key>${esc(k)}</Key></Object>`).join("")}</Delete>`,
+  );
   // The S3 API asks for the body's MD5 on this request; it is a checksum here, not a protection.
   const md5 = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("MD5", body))));
   const xml = await (await signed(t, "POST", "", { delete: "" }, body, { "content-md5": md5, "content-type": "application/xml" }, now)).text();
@@ -125,7 +152,12 @@ export function retainedKeepUntil(o: { key: string; customMetadata?: Record<stri
   const fromKey = m ? retainedUntil(new Date(Date.UTC(Number(m[1]), 5, 1))) : null;
   const said = o.customMetadata?.keepUntil;
   const fromMeta = said && /^\d{4}-\d{2}-\d{2}$/.test(said) ? said : null;
-  return [fromKey, fromMeta].filter((d): d is string => d !== null).sort().at(-1) ?? null;
+  return (
+    [fromKey, fromMeta]
+      .filter((d): d is string => d !== null)
+      .sort()
+      .at(-1) ?? null
+  );
 }
 
 /** The office a retained copy belongs to. */

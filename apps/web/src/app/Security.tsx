@@ -16,7 +16,15 @@ function QrCode({ text, label }: { text: string; label: string }) {
     return { path: d, size: qr.size };
   }, [text]);
   return (
-    <svg role="img" aria-label={label} viewBox={`0 0 ${size} ${size}`} width={200} height={200} shapeRendering="crispEdges" style={{ background: "#fff", display: "block" }}>
+    <svg
+      role="img"
+      aria-label={label}
+      viewBox={`0 0 ${size} ${size}`}
+      width={200}
+      height={200}
+      shapeRendering="crispEdges"
+      style={{ background: "#fff", display: "block" }}
+    >
       <path d={path} fill="#000" />
     </svg>
   );
@@ -49,7 +57,15 @@ export function TwoFactorSetup({ onDone }: { onDone?: () => void }) {
       <form onSubmit={begin} className="signin-form">
         <div className="field">
           <label htmlFor="tf-password">Your password</label>
-          <input id="tf-password" className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            id="tf-password"
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
         {start.error ? (
           <p className="form-error" role="alert">
@@ -77,7 +93,16 @@ export function TwoFactorSetup({ onDone }: { onDone?: () => void }) {
       </ul>
       <div className="field">
         <label htmlFor="tf-code">3. The six-digit code the app shows now</label>
-        <input id="tf-code" className="input" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 ]{6,7}" required value={code} onChange={(e) => setCode(e.target.value)} />
+        <input
+          id="tf-code"
+          className="input"
+          autoComplete="one-time-code"
+          inputMode="numeric"
+          pattern="[0-9 ]{6,7}"
+          required
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
       </div>
       {confirm.error ? (
         <p className="form-error" role="alert">
@@ -157,16 +182,32 @@ export function TwoFactorSettings() {
           )}
         </div>
       ) : null}
-      {enabled && required ? <p className="muted">As an owner you cannot turn it off. If you lose your phone, sign in with a backup code and set it up again.</p> : null}
+      {enabled && required ? (
+        <p className="muted">As an owner you cannot turn it off. If you lose your phone, sign in with a backup code and set it up again.</p>
+      ) : null}
       {action ? (
         <form onSubmit={submit} className="signin-form">
           <div className="field">
-            <label htmlFor="tf-confirm">{action === "codes" ? "Your password, to make new backup codes (the old ones stop working)" : "Your password, to turn two-step sign-in off"}</label>
-            <input id="tf-confirm" className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <label htmlFor="tf-confirm">
+              {action === "codes" ? "Your password, to make new backup codes (the old ones stop working)" : "Your password, to turn two-step sign-in off"}
+            </label>
+            <input
+              id="tf-confirm"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
           {run.error ? (
             <p className="form-error" role="alert">
-              {/password/i.test(run.error.message) ? "That password is not right." : /fresh|session/i.test(run.error.message) ? "Sign out and in again, then try once more." : run.error.message}
+              {/password/i.test(run.error.message)
+                ? "That password is not right."
+                : /fresh|session/i.test(run.error.message)
+                  ? "Sign out and in again, then try once more."
+                  : run.error.message}
             </p>
           ) : null}
           <div className="approval-actions">
@@ -206,7 +247,10 @@ export function StepUpDialog() {
   // With two-factor on, only the code confirms; the password alone is for those without it.
   const withCode = hasCode;
   const [value, setValue] = useState("");
-  const confirm = useMutation({ mutationFn: () => account.stepUp(withCode ? { code: value.replace(/\s+/g, "") } : { password: value }), onSuccess: () => finish(true) });
+  const confirm = useMutation({
+    mutationFn: () => account.stepUp(withCode ? { code: value.replace(/\s+/g, "") } : { password: value }),
+    onSuccess: () => finish(true),
+  });
 
   useEffect(
     () =>
@@ -241,13 +285,35 @@ export function StepUpDialog() {
     <dialog ref={ref} aria-labelledby="step-up-title" onCancel={(e) => (e.preventDefault(), finish(false))}>
       <form onSubmit={submit} className="signin-form">
         <h2 id="step-up-title">Confirm it is you</h2>
-        <p className="muted">Exporting, inviting, changing who is an owner and deleting need a sign-in from the last 15 minutes. {withCode ? "Type the code your authenticator app shows." : "Type your password."}</p>
+        <p className="muted">
+          Exporting, inviting, changing who is an owner and deleting need a sign-in from the last 15 minutes.{" "}
+          {withCode ? "Type the code your authenticator app shows." : "Type your password."}
+        </p>
         <div className="field">
           <label htmlFor="step-up-value">{withCode ? "Code from your app" : "Password"}</label>
           {withCode ? (
-            <input id="step-up-value" className="input" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 ]{6,7}" required autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+            <input
+              id="step-up-value"
+              className="input"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="[0-9 ]{6,7}"
+              required
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
           ) : (
-            <input id="step-up-value" className="input" type="password" autoComplete="current-password" required autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+            <input
+              id="step-up-value"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              required
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
           )}
           {hasCode ? <span className="muted">Lost your phone? Sign out, then sign in with a backup code.</span> : null}
         </div>

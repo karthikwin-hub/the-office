@@ -72,7 +72,13 @@ export const AssistantView = z.object({
   owner: z.string(),
   /** Where the owner forwards emails, e.g. neltrade-v9sc.assistant@in.office.snilld.in. */
   address: z.string().nullable(),
-  calendar: z.object({ connected: z.boolean(), label: z.string().nullable(), fetchedAt: IsoDateTime.nullable(), error: z.string().nullable(), events: z.number().int() }),
+  calendar: z.object({
+    connected: z.boolean(),
+    label: z.string().nullable(),
+    fetchedAt: IsoDateTime.nullable(),
+    error: z.string().nullable(),
+    events: z.number().int(),
+  }),
   /** Gmail's code for confirming a forwarding address, when Gmail has sent one. */
   forwarding: z.object({ code: z.string().nullable(), link: z.string().nullable(), at: IsoDateTime }).nullable(),
   days: z.array(AgendaDay),
@@ -84,9 +90,20 @@ export const AssistantView = z.object({
 export type AssistantView = z.infer<typeof AssistantView>;
 
 /** Google Calendar's "Secret address in iCal format", or any private .ics link. */
-export const CalendarLinkInput = z.object({ url: z.string().trim().refine(isUrl, "Invalid url").max(2000).refine((u) => /^https:\/\//i.test(u) || /^webcal:\/\//i.test(u), "Use the https or webcal address your calendar gives you.") }).strict();
+export const CalendarLinkInput = z
+  .object({
+    url: z
+      .string()
+      .trim()
+      .refine(isUrl, "Invalid url")
+      .max(2000)
+      .refine((u) => /^https:\/\//i.test(u) || /^webcal:\/\//i.test(u), "Use the https or webcal address your calendar gives you."),
+  })
+  .strict();
 export const TaskInput = z.object({ title: z.string().trim().min(1, "Say what to do.").max(200), due: IsoDate.nullable().optional() }).strict();
-export const TaskChange = z.object({ status: z.enum(["open", "done"]).optional(), due: IsoDate.nullable().optional(), snoozedUntil: IsoDate.nullable().optional() }).strict();
+export const TaskChange = z
+  .object({ status: z.enum(["open", "done"]).optional(), due: IsoDate.nullable().optional(), snoozedUntil: IsoDate.nullable().optional() })
+  .strict();
 
 /** What the office keeps for one owner. Small: two weeks of calendar, the last 50 emails, the tasks. */
 export type AssistantDoc = {

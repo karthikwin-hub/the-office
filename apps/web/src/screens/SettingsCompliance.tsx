@@ -1,4 +1,12 @@
-import { type Business, type CompanyEventKind, type CompanyLoan, type ComplianceFlags, type ComplianceProfile, type Director, type Shareholder } from "@office/contracts";
+import {
+  type Business,
+  type CompanyEventKind,
+  type CompanyLoan,
+  type ComplianceFlags,
+  type ComplianceProfile,
+  type Director,
+  type Shareholder,
+} from "@office/contracts";
 import { inr } from "@office/engine";
 import { LedgerTable } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +39,14 @@ const FLAGS: [keyof ComplianceFlags, string][] = [
   ["salaryTds", "We deduct TDS from salaries (Form 138, Form 130)"],
 ];
 type LoanKind = CompanyLoan["kind"];
-const LOAN_KINDS: Record<LoanKind, string> = { director: "Director", shareholder: "Shareholder", related_company: "Related company", bank: "Bank", nbfc: "NBFC", other: "Other" };
+const LOAN_KINDS: Record<LoanKind, string> = {
+  director: "Director",
+  shareholder: "Shareholder",
+  related_company: "Related company",
+  bank: "Bank",
+  nbfc: "NBFC",
+  other: "Other",
+};
 const EVENT_KINDS: [CompanyEventKind, string][] = [
   ["special_resolution", "A special resolution was passed (MGT-14)"],
   ["shares_allotted", "Shares were allotted (PAS-3)"],
@@ -47,7 +62,14 @@ export function ComplianceSettings({ b }: { b: Business }) {
     <Section title="Compliance profile" id="compliance">
       {view.data ? (
         <>
-          <ProfileForm b={b} initial={view.data.profile} answered={view.data.answers.filter((a) => a.answered).length} questions={view.data.answers.length} filings={view.data.obligations.filter((o) => o.source !== "manual").length} small={view.data.small} />
+          <ProfileForm
+            b={b}
+            initial={view.data.profile}
+            answered={view.data.answers.filter((a) => a.answered).length}
+            questions={view.data.answers.length}
+            filings={view.data.obligations.filter((o) => o.source !== "manual").length}
+            small={view.data.small}
+          />
           <EventForm />
           <MasterPaste />
         </>
@@ -58,10 +80,30 @@ export function ComplianceSettings({ b }: { b: Business }) {
   );
 }
 
-function ProfileForm({ b, initial, answered, questions, filings, small }: { b: Business; initial: ComplianceProfile; answered: number; questions: number; filings: number; small: { value: boolean | null; reason: string } }) {
+function ProfileForm({
+  b,
+  initial,
+  answered,
+  questions,
+  filings,
+  small,
+}: {
+  b: Business;
+  initial: ComplianceProfile;
+  answered: number;
+  questions: number;
+  filings: number;
+  small: { value: boolean | null; reason: string };
+}) {
   const save = useChange();
   const [p, setP] = useState<ComplianceProfile>(initial);
-  const [capital, setCapital] = useState({ authorised: rupees(initial.authorisedCapitalPaise), paidUp: rupees(initial.paidUpCapitalPaise), profit: rupees(initial.netProfitPaise), worth: rupees(initial.netWorthPaise), tax: rupees(initial.estimatedTaxPaise) });
+  const [capital, setCapital] = useState({
+    authorised: rupees(initial.authorisedCapitalPaise),
+    paidUp: rupees(initial.paidUpCapitalPaise),
+    profit: rupees(initial.netProfitPaise),
+    worth: rupees(initial.netWorthPaise),
+    tax: rupees(initial.estimatedTaxPaise),
+  });
   const [meetings, setMeetings] = useState(initial.boardMeetings.join(", "));
   const [saved, setSaved] = useState(false);
   const lastAgm = [...p.agms].sort((x, y) => (x.heldOn < y.heldOn ? 1 : -1))[0];
@@ -72,7 +114,13 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
   const text = (k: "cin" | "roc" | "registeredOffice" | "auditor", label: string, extra: { placeholder?: string; className?: string; help?: string } = {}) => (
     <div className={`field${k === "registeredOffice" ? " field-wide" : ""}`}>
       <label htmlFor={`cp-${k}`}>{label}</label>
-      <input id={`cp-${k}`} className={`input ${extra.className ?? ""}`} placeholder={extra.placeholder} value={p[k]} onChange={(e) => put({ [k]: k === "cin" ? e.target.value.toUpperCase() : e.target.value })} />
+      <input
+        id={`cp-${k}`}
+        className={`input ${extra.className ?? ""}`}
+        placeholder={extra.placeholder}
+        value={p[k]}
+        onChange={(e) => put({ [k]: k === "cin" ? e.target.value.toUpperCase() : e.target.value })}
+      />
       {extra.help ? <span className="field-help">{extra.help}</span> : null}
     </div>
   );
@@ -81,10 +129,16 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
       <label htmlFor={`cp-${k}`}>{label}</label>
       <div className="input-suffix input-suffix-wide">
         <span>₹</span>
-        <input id={`cp-${k}`} className="input num" inputMode="numeric" value={capital[k]} onChange={(e) => {
+        <input
+          id={`cp-${k}`}
+          className="input num"
+          inputMode="numeric"
+          value={capital[k]}
+          onChange={(e) => {
             setSaved(false);
             setCapital({ ...capital, [k]: e.target.value });
-          }} />
+          }}
+        />
       </div>
       {help ? <span className="field-help">{help}</span> : null}
     </div>
@@ -137,16 +191,26 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
           {text("cin", "CIN", { className: "code", placeholder: "U31900MH2012PTC123456" })}
           <div className="field">
             <label htmlFor="cp-inc">Incorporated on</label>
-            <input id="cp-inc" className="input num" type="date" value={p.incorporatedOn ?? ""} onChange={(e) => put({ incorporatedOn: e.target.value || null })} />
+            <input
+              id="cp-inc"
+              className="input num"
+              type="date"
+              value={p.incorporatedOn ?? ""}
+              onChange={(e) => put({ incorporatedOn: e.target.value || null })}
+            />
           </div>
-          {text("roc", "Registrar of Companies", { placeholder: "ROC Pune", help: "The ROC jurisdictions were redrawn on 16 February 2026; check the one on your master data." })}
+          {text("roc", "Registrar of Companies", {
+            placeholder: "ROC Pune",
+            help: "The ROC jurisdictions were redrawn on 16 February 2026; check the one on your master data.",
+          })}
           {text("registeredOffice", "Registered office")}
           {money("authorised", "Authorised capital")}
           {money("paidUp", "Paid-up capital")}
           {money("profit", "Net profit last year", "Before tax, from the audited accounts. Sets whether CSR applies.")}
           {money("worth", "Net worth last year")}
           <label className="form-check field-wide">
-            <input type="checkbox" checked={p.holdingOrSubsidiary} onChange={(e) => put({ holdingOrSubsidiary: e.target.checked })} /> The company is a holding or subsidiary company of another company
+            <input type="checkbox" checked={p.holdingOrSubsidiary} onChange={(e) => put({ holdingOrSubsidiary: e.target.checked })} /> The company is a holding
+            or subsidiary company of another company
           </label>
         </div>
       </fieldset>
@@ -170,20 +234,38 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
           </div>
           <div className="field">
             <label htmlFor="cp-plan">Next AGM planned for</label>
-            <input id="cp-plan" className="input num" type="date" value={p.plannedAgmOn ?? ""} onChange={(e) => put({ plannedAgmOn: e.target.value || null })} />
+            <input
+              id="cp-plan"
+              className="input num"
+              type="date"
+              value={p.plannedAgmOn ?? ""}
+              onChange={(e) => put({ plannedAgmOn: e.target.value || null })}
+            />
           </div>
           <div className="field field-wide">
             <label htmlFor="cp-meet">Board meetings held this year</label>
-            <input id="cp-meet" className="input num" placeholder="2026-05-14, 2026-08-09" value={meetings} onChange={(e) => {
-              setSaved(false);
-              setMeetings(e.target.value);
-            }} />
+            <input
+              id="cp-meet"
+              className="input num"
+              placeholder="2026-05-14, 2026-08-09"
+              value={meetings}
+              onChange={(e) => {
+                setSaved(false);
+                setMeetings(e.target.value);
+              }}
+            />
             <span className="field-help">Dates as YYYY-MM-DD, separated by commas. No more than 120 days may pass between two meetings.</span>
           </div>
           {text("auditor", "Statutory auditor")}
           <div className="field">
             <label htmlFor="cp-term">Auditor's term ends with the AGM for</label>
-            <input id="cp-term" className="input num" placeholder="2026-27" value={p.auditorTermEndsFy ?? ""} onChange={(e) => put({ auditorTermEndsFy: /^\d{4}-\d{2}$/.test(e.target.value) ? e.target.value : e.target.value ? p.auditorTermEndsFy : null })} />
+            <input
+              id="cp-term"
+              className="input num"
+              placeholder="2026-27"
+              value={p.auditorTermEndsFy ?? ""}
+              onChange={(e) => put({ auditorTermEndsFy: /^\d{4}-\d{2}$/.test(e.target.value) ? e.target.value : e.target.value ? p.auditorTermEndsFy : null })}
+            />
           </div>
         </div>
       </fieldset>
@@ -192,7 +274,12 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
         <div className="settings-grid">
           <div className="field">
             <label htmlFor="cp-gst">GST returns</label>
-            <select id="cp-gst" className="input" value={p.gstFrequency ?? ""} onChange={(e) => put({ gstFrequency: (e.target.value || null) as ComplianceProfile["gstFrequency"] })}>
+            <select
+              id="cp-gst"
+              className="input"
+              value={p.gstFrequency ?? ""}
+              onChange={(e) => put({ gstFrequency: (e.target.value || null) as ComplianceProfile["gstFrequency"] })}
+            >
               <option value="">Not answered</option>
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly, under QRMP</option>
@@ -202,7 +289,14 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
           <YesNo id="cp-esi" label="Registered for ESI" value={p.esi} onChange={(v) => put({ esi: v })} />
           <div className="field">
             <label htmlFor="cp-pt">Professional tax state code</label>
-            <input id="cp-pt" className="input num" maxLength={2} placeholder={b.stateCode} value={p.ptState} onChange={(e) => put({ ptState: e.target.value.replace(/\D/g, "") })} />
+            <input
+              id="cp-pt"
+              className="input num"
+              maxLength={2}
+              placeholder={b.stateCode}
+              value={p.ptState}
+              onChange={(e) => put({ ptState: e.target.value.replace(/\D/g, "") })}
+            />
             <span className="field-help">Blank uses the state of the GSTIN.</span>
           </div>
           <div className="field">
@@ -264,7 +358,15 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
         help="For DPT-3 by 30 June. A secured loan also needs its charge registered on CHG-1 within 30 days, and satisfied on CHG-4 when repaid."
         rows={p.loans}
         onChange={(loans) => put({ loans })}
-        blank={() => ({ id: uid("loan"), lender: "", kind: "bank", amountPaise: 0, takenOn: new Date().toISOString().slice(0, 10), secured: false, closedOn: null })}
+        blank={() => ({
+          id: uid("loan"),
+          lender: "",
+          kind: "bank",
+          amountPaise: 0,
+          takenOn: new Date().toISOString().slice(0, 10),
+          secured: false,
+          closedOn: null,
+        })}
         addLabel="Add a loan"
         render={(l, set) => (
           <>
@@ -281,7 +383,12 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
               </select>
             </Cell>
             <Cell label="Amount (₹)">
-              <input className="input num" inputMode="numeric" value={rupees(l.amountPaise)} onChange={(e) => set({ amountPaise: paise(e.target.value) ?? 0 })} />
+              <input
+                className="input num"
+                inputMode="numeric"
+                value={rupees(l.amountPaise)}
+                onChange={(e) => set({ amountPaise: paise(e.target.value) ?? 0 })}
+              />
             </Cell>
             <Cell label="Taken on">
               <input className="input num" type="date" value={l.takenOn} onChange={(e) => set({ takenOn: e.target.value })} />
@@ -308,7 +415,12 @@ function ProfileForm({ b, initial, answered, questions, filings, small }: { b: B
               <input className="input" value={s.name} onChange={(e) => set({ name: e.target.value })} />
             </Cell>
             <Cell label="Shares">
-              <input className="input num" inputMode="numeric" value={String(s.shares)} onChange={(e) => set({ shares: Number(e.target.value.replace(/\D/g, "")) || 0 })} />
+              <input
+                className="input num"
+                inputMode="numeric"
+                value={String(s.shares)}
+                onChange={(e) => set({ shares: Number(e.target.value.replace(/\D/g, "")) || 0 })}
+              />
             </Cell>
             <Cell label="Holder">
               <select className="input" value={s.gender} onChange={(e) => set({ gender: e.target.value as Shareholder["gender"] })}>
@@ -339,7 +451,12 @@ function YesNo({ id, label, value, onChange }: { id: string; label: string; valu
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <select id={id} className="input" value={value === null ? "" : value ? "yes" : "no"} onChange={(e) => onChange(e.target.value === "" ? null : e.target.value === "yes")}>
+      <select
+        id={id}
+        className="input"
+        value={value === null ? "" : value ? "yes" : "no"}
+        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value === "yes")}
+      >
         <option value="">Not answered</option>
         <option value="yes">Yes</option>
         <option value="no">No</option>
@@ -357,7 +474,23 @@ function Cell({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Rows<T extends { id: string }>({ title, help, rows, onChange, blank, render, addLabel }: { title: string; help: string; rows: T[]; onChange: (rows: T[]) => void; blank: () => T; render: (row: T, set: (change: Partial<T>) => void) => ReactNode; addLabel: string }) {
+function Rows<T extends { id: string }>({
+  title,
+  help,
+  rows,
+  onChange,
+  blank,
+  render,
+  addLabel,
+}: {
+  title: string;
+  help: string;
+  rows: T[];
+  onChange: (rows: T[]) => void;
+  blank: () => T;
+  render: (row: T, set: (change: Partial<T>) => void) => ReactNode;
+  addLabel: string;
+}) {
   return (
     <fieldset>
       <legend className="h2">{title}</legend>
@@ -403,7 +536,14 @@ function EventForm() {
         </div>
         <div className="field field-wide">
           <label htmlFor="ev-detail">In a line</label>
-          <input id="ev-detail" className="input" maxLength={300} value={e.detail} placeholder="Members approved the new articles" onChange={(x) => setE({ ...e, detail: x.target.value })} />
+          <input
+            id="ev-detail"
+            className="input"
+            maxLength={300}
+            value={e.detail}
+            placeholder="Members approved the new articles"
+            onChange={(x) => setE({ ...e, detail: x.target.value })}
+          />
         </div>
         {e.kind === "shares_allotted" ? (
           <>
@@ -415,7 +555,21 @@ function EventForm() {
             </label>
           </>
         ) : null}
-        <button type="button" className="btn" disabled={add.isPending || !e.on || !e.detail.trim()} onClick={() => add.mutate(() => compliance.addEvent({ kind: e.kind, on: e.on, detail: e.detail.trim(), ...(e.kind === "shares_allotted" ? { privatePlacement: e.privatePlacement, foreign: e.foreign } : {}) }))}>
+        <button
+          type="button"
+          className="btn"
+          disabled={add.isPending || !e.on || !e.detail.trim()}
+          onClick={() =>
+            add.mutate(() =>
+              compliance.addEvent({
+                kind: e.kind,
+                on: e.on,
+                detail: e.detail.trim(),
+                ...(e.kind === "shares_allotted" ? { privatePlacement: e.privatePlacement, foreign: e.foreign } : {}),
+              }),
+            )
+          }
+        >
           Add the filing it needs
         </button>
         {add.isSuccess ? <span role="status">Added to the calendar.</span> : null}
@@ -439,7 +593,8 @@ export function BooksRecordSettings() {
       const lines = [["Seq", "At", "By", "Record kind", "Record", "Action", "Field", "Before", "After", "Hash"].join(",")];
       for (const e of [...entries].reverse()) {
         const changes = e.changes.length ? e.changes : [{ field: "", before: "", after: "" }];
-        for (const c of changes) lines.push([e.seq, e.at, cell(e.by), e.coll, cell(e.recordId), e.action, cell(c.field), cell(c.before), cell(c.after), e.hash].join(","));
+        for (const c of changes)
+          lines.push([e.seq, e.at, cell(e.by), e.coll, cell(e.recordId), e.action, cell(c.field), cell(c.before), cell(c.after), e.hash].join(","));
       }
       savePaper({ filename: "Edit_log.csv", mime: "text/csv", content: lines.join("\n") + "\n" });
     } catch (e) {
@@ -450,7 +605,10 @@ export function BooksRecordSettings() {
     <Section title="How your books are kept">
       {r ? (
         <>
-          <p className="section-lede">Companies that keep their books in software must have an edit log that cannot be turned off, a daily copy on servers in India, and must tell the ROC each year who keeps the books and where. Your auditor reports on this under Rule 11(g).</p>
+          <p className="section-lede">
+            Companies that keep their books in software must have an edit log that cannot be turned off, a daily copy on servers in India, and must tell the ROC
+            each year who keeps the books and where. Your auditor reports on this under Rule 11(g).
+          </p>
           <dl className="details">
             <div>
               <dt>Books kept by</dt>
@@ -463,7 +621,9 @@ export function BooksRecordSettings() {
             <div>
               <dt>Copy in India</dt>
               <dd className={r.backup.configured && !r.backup.lastError ? undefined : "is-red"}>
-                {r.backup.configured ? `${r.backup.where}. ${r.backup.lastAt ? `Last copy ${longDate(r.backup.lastAt)}.` : "No copy taken yet."}${r.backup.lastError ? ` The last attempt failed: ${r.backup.lastError}` : ""}` : r.backup.where}
+                {r.backup.configured
+                  ? `${r.backup.where}. ${r.backup.lastAt ? `Last copy ${longDate(r.backup.lastAt)}.` : "No copy taken yet."}${r.backup.lastError ? ` The last attempt failed: ${r.backup.lastError}` : ""}`
+                  : r.backup.where}
               </dd>
             </div>
             <div>
@@ -477,18 +637,28 @@ export function BooksRecordSettings() {
               <dd>{`${r.retentionYears} years after the year they relate to, including if the office is closed.`}</dd>
             </div>
           </dl>
-          <p className="field-help">Give the name, address and server details above to your CA for AOC-4, where the company tells the ROC who keeps its books online.</p>
+          <p className="field-help">
+            Give the name, address and server details above to your CA for AOC-4, where the company tells the ROC who keeps its books online.
+          </p>
           <div className="approval-actions">
             <button type="button" className="btn" onClick={() => compliance.auditorStatement(fyLabel(fy)).then(savePaper, (e: Error) => setError(e.message))}>
               {`Statement for the auditor, ${fyLabel(fy)}`}
             </button>
-            <button type="button" className="btn btn-quiet" onClick={() => compliance.auditorStatement(fyLabel(fy - 1)).then(savePaper, (e: Error) => setError(e.message))}>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={() => compliance.auditorStatement(fyLabel(fy - 1)).then(savePaper, (e: Error) => setError(e.message))}
+            >
               {`For ${fyLabel(fy - 1)}`}
             </button>
             <button type="button" className="btn" onClick={() => void downloadLog()}>
               Download the latest 500 changes
             </button>
-            {error ? <span className="toolbar-error" role="alert">{error}</span> : null}
+            {error ? (
+              <span className="toolbar-error" role="alert">
+                {error}
+              </span>
+            ) : null}
           </div>
           {r.editLog.latest.length ? (
             <details>
@@ -501,7 +671,18 @@ export function BooksRecordSettings() {
                   { id: "at", header: "When", cell: (e) => `${shortDate(e.at)} ${e.at.slice(11, 16)}` },
                   { id: "by", header: "Who", cell: (e) => e.by },
                   { id: "what", header: "Record", cell: (e) => `${e.coll} ${e.recordId}` },
-                  { id: "act", header: "Change", cell: (e) => (e.action === "change" ? e.changes.map((c) => c.field).join(", ") : e.action === "create" ? "Added" : e.action === "delete" ? "Removed" : "Starting point") },
+                  {
+                    id: "act",
+                    header: "Change",
+                    cell: (e) =>
+                      e.action === "change"
+                        ? e.changes.map((c) => c.field).join(", ")
+                        : e.action === "create"
+                          ? "Added"
+                          : e.action === "delete"
+                            ? "Removed"
+                            : "Starting point",
+                  },
                 ]}
               />
             </details>

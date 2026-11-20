@@ -52,7 +52,8 @@ export const SCALE = 0.1;
 
 export function layoutFrom(plan: Plan): Layout {
   const b = plan.building;
-  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const cx = b.x + b.w / 2,
+    cy = b.y + b.h / 2;
   // biome-ignore lint/correctness/noComponentHookFactories: X and Z are coordinate helpers, not React components.
   const X = (p: number) => (p - cx) * SCALE;
   // biome-ignore lint/correctness/noComponentHookFactories: as above.
@@ -65,7 +66,8 @@ export function layoutFrom(plan: Plan): Layout {
   const order: string[] = [];
   for (const r of plan.rooms) {
     const box = { x0: X(r.rect.x), x1: X(r.rect.x + r.rect.w), z0: Z(r.rect.y), z1: Z(r.rect.y + r.rect.h) };
-    const rcx = (box.x0 + box.x1) / 2, rcz = (box.z0 + box.z1) / 2;
+    const rcx = (box.x0 + box.x1) / 2,
+      rcz = (box.z0 + box.z1) / 2;
     const d = r.door;
     const half = (d.size * SCALE) / 2;
     if (r.agentId === "office-manager") {
@@ -93,15 +95,29 @@ export function layoutFrom(plan: Plan): Layout {
     return { text: w.text, x: X(w.x), z: top ? building.z0 - 1.6 : building.z1 + 2.6 };
   });
   return {
-    building, corridor, lane, rooms, order, alcove, entrance, page, yard, gate,
+    building,
+    corridor,
+    lane,
+    rooms,
+    order,
+    alcove,
+    entrance,
+    page,
+    yard,
+    gate,
     road: { z0: building.z1 + 17.2, z1: building.z1 + 25.2 },
     sundial: [(building.x0 + building.x1) / 2 + 6, building.z1 + 8.6],
     tree: [building.x1 - 2.4, building.z1 + 7.6],
     tulsi: [building.x0 - 3.1, entrance.z + 4.6],
     cart: [gate.x + 17, building.z1 + 19.1],
     scooter: [gate.x + 11, building.z1 + 10.6],
-    desk, deskStand: [desk[0] - 2.2, lane + 0.6],
-    tea, teaSpots: [[tea[0] - 1.6, lane - 0.8], [tea[0] + 1.6, lane - 0.8]],
+    desk,
+    deskStand: [desk[0] - 2.2, lane + 0.6],
+    tea,
+    teaSpots: [
+      [tea[0] - 1.6, lane - 0.8],
+      [tea[0] + 1.6, lane - 0.8],
+    ],
     wings,
   };
 }
@@ -124,7 +140,10 @@ export function outsideDoor(L: Layout, id: string): V2[] {
   const r = L.rooms[id];
   if (!r) return [];
   if (r.row === "front") return [[r.door.x + 1.6, L.lane]];
-  return [[r.door.x, r.door.z - r.door.inDir * 1.4], [r.door.x, L.lane]];
+  return [
+    [r.door.x, r.door.z - r.door.inDir * 1.4],
+    [r.door.x, L.lane],
+  ];
 }
 /** A place in the corridor, and the step back onto its middle line. */
 export const corridorSpot = (L: Layout, p: V2): V2[] => [p, [p[0], L.lane]];

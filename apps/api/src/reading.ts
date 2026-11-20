@@ -51,7 +51,10 @@ export async function readScan(ai: Ai, image: ArrayBuffer, ctx: ExtractContext &
   const { system } = modelPrompt([], ctx.business);
   const input = {
     messages: [
-      { role: "system", content: `${system}\nThe JSON schema is: ${JSON.stringify(MODEL_SCHEMA)}\nThere are no numbered runs for an image, so set every item to null.` },
+      {
+        role: "system",
+        content: `${system}\nThe JSON schema is: ${JSON.stringify(MODEL_SCHEMA)}\nThere are no numbered runs for an image, so set every item to null.`,
+      },
       { role: "user", content: "Read this invoice or bill and answer with the JSON only." },
     ],
     image: [...new Uint8Array(image)],

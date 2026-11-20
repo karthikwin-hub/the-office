@@ -147,7 +147,11 @@ export const ComplianceProfile = z.object({
   loans: z.array(CompanyLoan).default([]),
   auditor: z.string().max(120).default(""),
   /** The financial year whose AGM appoints or re-appoints the auditor, for example "2026-27". */
-  auditorTermEndsFy: z.string().regex(/^\d{4}-\d{2}$/).nullable().default(null),
+  auditorTermEndsFy: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable()
+    .default(null),
   /** AGMs held, by the financial year they adopt the accounts of ("2025-26"). */
   agms: z.array(z.object({ fy: z.string().regex(/^\d{4}-\d{2}$/), heldOn: IsoDate })).default([]),
   plannedAgmOn: IsoDate.nullable().default(null),
@@ -165,7 +169,10 @@ export const ComplianceProfile = z.object({
   /** Dates before this are not chased: the calendar starts when the company first answered. */
   calendarFrom: IsoDate.nullable().default(null),
   /** The company's master data as last pasted from the MCA portal. */
-  masterData: z.object({ checkedOn: IsoDate, fields: z.record(z.string(), z.string()) }).nullable().default(null),
+  masterData: z
+    .object({ checkedOn: IsoDate, fields: z.record(z.string(), z.string()) })
+    .nullable()
+    .default(null),
 });
 export type ComplianceProfile = z.infer<typeof ComplianceProfile>;
 
@@ -354,14 +361,33 @@ export const Gstr1 = z.object({
   ),
   /** Sales to unregistered customers: intra-state ones and inter-state ones up to ₹1 lakh, summed by place of supply and rate. */
   b2cs: z
-    .array(z.object({ sply_ty: z.enum(["INTRA", "INTER"]), pos: z.string(), typ: z.string(), rt: z.number(), txval: z.number(), iamt: z.number(), camt: z.number(), samt: z.number(), csamt: z.number() }))
+    .array(
+      z.object({
+        sply_ty: z.enum(["INTRA", "INTER"]),
+        pos: z.string(),
+        typ: z.string(),
+        rt: z.number(),
+        txval: z.number(),
+        iamt: z.number(),
+        camt: z.number(),
+        samt: z.number(),
+        csamt: z.number(),
+      }),
+    )
     .default([]),
   /** Inter-state invoices to unregistered customers above ₹1 lakh, one by one. */
   b2cl: z
     .array(
       z.object({
         pos: z.string(),
-        inv: z.array(z.object({ inum: z.string(), idt: z.string(), val: z.number(), itms: z.array(z.object({ num: z.number(), itm_det: z.object({ rt: z.number(), txval: z.number(), iamt: z.number(), csamt: z.number() }) })) })),
+        inv: z.array(
+          z.object({
+            inum: z.string(),
+            idt: z.string(),
+            val: z.number(),
+            itms: z.array(z.object({ num: z.number(), itm_det: z.object({ rt: z.number(), txval: z.number(), iamt: z.number(), csamt: z.number() }) })),
+          }),
+        ),
       }),
     )
     .default([]),
@@ -556,7 +582,8 @@ export const Channel = z.object({
 export type Channel = z.infer<typeof Channel>;
 
 /** Books saved before channels existed get one per platform, posted by hand until connected. Ids match the upgraded posts. */
-const defaultChannels = () => Platform.options.map((platform) => ({ id: `ch-${platform}`, platform, handle: "", mode: "manual" as const, status: "manual" as const }));
+const defaultChannels = () =>
+  Platform.options.map((platform) => ({ id: `ch-${platform}`, platform, handle: "", mode: "manual" as const, status: "manual" as const }));
 
 export const Pillar = z.object({ id: z.string(), name: z.string(), share: z.number().int().min(0).max(100), description: z.string() });
 export type Pillar = z.infer<typeof Pillar>;
@@ -665,8 +692,19 @@ export const Post = z.preprocess((raw) => {
   const platform = platformOf(String(p.platform ?? ""));
   return {
     ...p,
-    topic: String(p.text ?? "").split(/[.!?]/)[0]!.slice(0, 80),
-    variants: [{ channelId: `ch-${platform}`, platform, text: p.text, status: p.status, metrics: p.metrics ?? null, publishedAt: p.status === "published" ? p.at : null }],
+    topic: String(p.text ?? "")
+      .split(/[.!?]/)[0]!
+      .slice(0, 80),
+    variants: [
+      {
+        channelId: `ch-${platform}`,
+        platform,
+        text: p.text,
+        status: p.status,
+        metrics: p.metrics ?? null,
+        publishedAt: p.status === "published" ? p.at : null,
+      },
+    ],
   };
 }, PostShape);
 export type Post = z.infer<typeof PostShape>;
@@ -697,12 +735,27 @@ export const SocialMessage = z.preprocess((raw) => {
   if (!m || typeof m !== "object" || m.kind) return raw;
   const platform = platformOf(String(m.platform ?? ""));
   const text = String(m.text ?? "").toLowerCase();
-  const intent = /\b(price|rate|quote|stock|available|need|pieces|pcs|order)\b|\?$/.test(text) && m.sentiment !== "negative" ? (/\b(price|rate|quote|need|pieces|pcs|order|stock)\b/.test(text) ? "enquiry" : "question") : m.sentiment === "negative" ? "complaint" : m.sentiment === "positive" ? "praise" : "question";
+  const intent =
+    /\b(price|rate|quote|stock|available|need|pieces|pcs|order)\b|\?$/.test(text) && m.sentiment !== "negative"
+      ? /\b(price|rate|quote|need|pieces|pcs|order|stock)\b/.test(text)
+        ? "enquiry"
+        : "question"
+      : m.sentiment === "negative"
+        ? "complaint"
+        : m.sentiment === "positive"
+          ? "praise"
+          : "question";
   return { ...m, channelId: `ch-${platform}`, kind: m.rating !== null && m.rating !== undefined ? "review" : "comment", intent };
 }, MessageShape);
 export type SocialMessage = z.infer<typeof MessageShape>;
 
-export const CalendarSlot = z.object({ date: IsoDate, pillarId: z.string(), topic: z.string(), channelIds: z.array(z.string()), postId: z.string().nullable() });
+export const CalendarSlot = z.object({
+  date: IsoDate,
+  pillarId: z.string(),
+  topic: z.string(),
+  channelIds: z.array(z.string()),
+  postId: z.string().nullable(),
+});
 export type CalendarSlot = z.infer<typeof CalendarSlot>;
 
 export const ContentCalendar = z.object({
@@ -777,7 +830,10 @@ export const ComplianceEvent = z.object({
   filedOn: IsoDate.nullable().optional(),
   /** The acknowledgement, challan or SRN number from the portal. */
   ack: z.string().max(80).optional(),
-  proof: z.object({ file: z.string(), name: z.string().max(200) }).nullable().optional(),
+  proof: z
+    .object({ file: z.string(), name: z.string().max(200) })
+    .nullable()
+    .optional(),
   snoozedUntil: IsoDate.nullable().optional(),
   snoozeReason: z.string().max(300).optional(),
   /** An MCA filing's service request: the signed PDF is due within 15 days of it. */
@@ -834,8 +890,14 @@ export type CannedAnswer = z.infer<typeof CannedAnswer>;
 export const BusinessFacts = z.object({
   hours: z.string().max(300).default(""),
   /** When a person is around to answer, in the office's time zone; outside it, a hand-off says when to expect a reply. */
-  opensAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("09:30"),
-  closesAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("19:00"),
+  opensAt: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .default("09:30"),
+  closesAt: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .default("19:00"),
   /** 0 is Sunday. */
   openDays: z.array(z.number().int().min(0).max(6)).default([1, 2, 3, 4, 5, 6]),
   address: z.string().max(500).default(""),
@@ -859,7 +921,13 @@ export const CustomerServiceSetup = z.object({
   supportEmail: z.string().nullable().default(null),
 });
 export type CustomerServiceSetup = z.infer<typeof CustomerServiceSetup>;
-export const DEFAULT_CUSTOMER_SERVICE: CustomerServiceSetup = { facts: BusinessFacts.parse({}), answers: [], widget: { enabled: false, key: null }, retentionMonths: 12, supportEmail: null };
+export const DEFAULT_CUSTOMER_SERVICE: CustomerServiceSetup = {
+  facts: BusinessFacts.parse({}),
+  answers: [],
+  widget: { enabled: false, key: null },
+  retentionMonths: 12,
+  supportEmail: null,
+};
 
 /* ---------- People ---------- */
 

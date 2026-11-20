@@ -37,7 +37,11 @@ if ((target !== "" && target !== "staging") || args.some((a) => a.startsWith("--
 const [command, ...rest] = args.filter((a, i) => a !== "--local" && (envAt < 0 || (i !== envAt && i !== envAt + 1)));
 const OFFICE = /^(off_[a-z2-9]{16}|kaveri-electricals)$/;
 const KINDS = new Set(["email", "wa_phone", "meta_page", "ig_account", "threads", "linkedin", "x", "support_email", "widget"]);
-const env = { ...process.env, CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? (target ? process.env.CLOUDFLARE_API_TOKEN_OFFICE_STAGING : process.env.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE) };
+const env = {
+  ...process.env,
+  CLOUDFLARE_API_TOKEN:
+    process.env.CLOUDFLARE_API_TOKEN ?? (target ? process.env.CLOUDFLARE_API_TOKEN_OFFICE_STAGING : process.env.CLOUDFLARE_API_TOKEN_SNILLD_OFFICE),
+};
 const lit = (v) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 const CONFIG = join(api, "wrangler.jsonc");
 // Live's vars come first in the file; staging's are in its own block under "env".
@@ -47,13 +51,41 @@ const configVar = (name) => {
 };
 // The same rules as `subdomainProblem` in packages/contracts/src/api.ts.
 const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
-const RESERVED = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
+const RESERVED = new Set([
+  "console",
+  "demo",
+  "www",
+  "app",
+  "api",
+  "admin",
+  "auth",
+  "mail",
+  "email",
+  "in",
+  "help",
+  "support",
+  "status",
+  "docs",
+  "blog",
+  "static",
+  "cdn",
+  "assets",
+  "media",
+  "dev",
+  "staging",
+  "test",
+]);
 const END_OF_CUSTOMERS = "// customers end";
 
 // Always names the environment (empty is live). DB is the binding, looked up in that environment's own block: a
 // database name not in the block would be looked up across the whole account, and could find live's.
 function wrangler(...a) {
-  return execFileSync(join(api, "node_modules/.bin/wrangler"), [...a, "--env", target], { cwd: api, env, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  return execFileSync(join(api, "node_modules/.bin/wrangler"), [...a, "--env", target], {
+    cwd: api,
+    env,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  });
 }
 function sql(query) {
   const out = JSON.parse(wrangler("d1", "execute", "DB", local ? "--local" : "--remote", "--json", "--command", query));
@@ -86,7 +118,9 @@ function forgetUser(email) {
     DELETE FROM membership WHERE user_id = ${lit(u.id)}; DELETE FROM invitation WHERE email = ${lit(email)};
     DELETE FROM consent WHERE user_id = ${lit(u.id)};
     DELETE FROM session WHERE user_id = ${lit(u.id)}; DELETE FROM account WHERE user_id = ${lit(u.id)}; DELETE FROM user WHERE id = ${lit(u.id)}`);
-  console.log(`Removed ${u.name}'s account from ${offices.length} offices. Their name may remain in those offices' books, where the business keeps it as a record.`);
+  console.log(
+    `Removed ${u.name}'s account from ${offices.length} offices. Their name may remain in those offices' books, where the business keeps it as a record.`,
+  );
 }
 
 /**
@@ -104,7 +138,9 @@ async function subdomain(o, label) {
     sql(`UPDATE office SET subdomain = NULL WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", "removed")}`);
     const line = new RegExp(`^.*"${row.subdomain}\\.${domain.replace(/\./g, "\\.")}".*\\n`, "m");
     if (!local && line.test(text)) writeFileSync(CONFIG, text.replace(line, ""));
-    console.log(`${o.name} opens on the app again.${local ? "" : ` Removed ${row.subdomain}.${domain} from wrangler.jsonc: commit and deploy to take the address down.`}`);
+    console.log(
+      `${o.name} opens on the app again.${local ? "" : ` Removed ${row.subdomain}.${domain} from wrangler.jsonc: commit and deploy to take the address down.`}`,
+    );
     return;
   }
   if (!SUBDOMAIN.test(label)) fail("Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit.");
@@ -115,12 +151,17 @@ async function subdomain(o, label) {
   if (!local && !text.includes(`"${host}"`)) {
     if (!text.includes(END_OF_CUSTOMERS)) fail(`Could not find "${END_OF_CUSTOMERS}" in apps/api/wrangler.jsonc.`);
     writeFileSync(CONFIG, text.replace(END_OF_CUSTOMERS, `{ "pattern": "${host}", "custom_domain": true },\n    ${END_OF_CUSTOMERS}`));
-    console.log(`Added ${host} to apps/api/wrangler.jsonc for ${o.name}.\nNext: commit it, deploy, wait a few minutes for the certificate, then run this same command again.`);
+    console.log(
+      `Added ${host} to apps/api/wrangler.jsonc for ${o.name}.\nNext: commit it, deploy, wait a few minutes for the certificate, then run this same command again.`,
+    );
     return;
   }
   if (!local) {
-    const health = await fetch(`https://${host}/api/health`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (health?.appDomain !== domain) fail(`https://${host} is not answering as the office yet. Check the deploy finished; a new certificate can take up to 15 minutes. Then run this again.`);
+    const health = await fetch(`https://${host}/api/health`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    if (health?.appDomain !== domain)
+      fail(`https://${host} is not answering as the office yet. Check the deploy finished; a new certificate can take up to 15 minutes. Then run this again.`);
   }
   sql(`UPDATE office SET subdomain = ${lit(label)} WHERE id = ${lit(o.id)}; ${audit(o.id, "office.subdomain", host)}`);
   console.log(`${o.name} now opens on ${local ? "http" : "https"}://${host}${local ? ":8787" : ""}. Its people are sent there from the app.`);
@@ -135,7 +176,18 @@ switch (command) {
       (SELECT MAX(at) FROM audit a WHERE a.office_id = o.id) AS last_at
       FROM office o ORDER BY o.created_at`);
     const day = (ms) => (ms ? new Date(ms).toISOString().slice(0, 10) : "");
-    console.table(rows.map((r) => ({ id: r.id, name: r.name, status: r.status, opened: day(r.created_at), people: r.people, routes: r.routes, events: r.events, "last activity": day(r.last_at) })));
+    console.table(
+      rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        status: r.status,
+        opened: day(r.created_at),
+        people: r.people,
+        routes: r.routes,
+        events: r.events,
+        "last activity": day(r.last_at),
+      })),
+    );
     break;
   }
   case "suspend":
@@ -166,7 +218,9 @@ switch (command) {
     if (!KINDS.has(kind) || !external) fail(`route <office> <${[...KINDS].join("|")}> <external id>`);
     const [taken] = sql(`SELECT office_id FROM route WHERE kind = ${lit(kind)} AND external_id = ${lit(external)}`);
     if (taken && taken.office_id !== o.id) fail(`${kind} ${external} already goes to ${taken.office_id}.`);
-    sql(`INSERT INTO route (kind, external_id, office_id, created_at) VALUES (${lit(kind)}, ${lit(external)}, ${lit(o.id)}, ${Date.now()}) ON CONFLICT DO NOTHING; ${audit(o.id, "route.added", `${kind} ${external}`)}`);
+    sql(
+      `INSERT INTO route (kind, external_id, office_id, created_at) VALUES (${lit(kind)}, ${lit(external)}, ${lit(o.id)}, ${Date.now()}) ON CONFLICT DO NOTHING; ${audit(o.id, "route.added", `${kind} ${external}`)}`,
+    );
     console.log(`${kind} ${external} now goes to ${o.name}.`);
     break;
   }
@@ -180,7 +234,9 @@ switch (command) {
   case "backup": {
     // deploy.sh names the file itself; by hand it goes into backups/ with the time in its name.
     const dir = join(root, "backups");
-    const file = rest[0] ? resolve(rest[0]) : join(dir, `office${target ? `-${target}` : ""}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.sql`);
+    const file = rest[0]
+      ? resolve(rest[0])
+      : join(dir, `office${target ? `-${target}` : ""}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.sql`);
     mkdirSync(dirname(file), { recursive: true });
     // A database that was never migrated (staging's first deploy) has nothing to keep, and an export of it may fail.
     const [{ n } = { n: 0 }] = sql("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'");
@@ -205,10 +261,21 @@ switch (command) {
       const open = sql("SELECT id, email, kind, note, created_at FROM rights_request WHERE status = 'open' ORDER BY created_at");
       const day = (ms) => new Date(ms).toISOString().slice(0, 10);
       if (!open.length) console.log("No open requests.");
-      else console.table(open.map((r) => ({ id: r.id, email: r.email, kind: r.kind, asked: day(r.created_at), "days open": Math.floor((Date.now() - r.created_at) / 86400_000), note: r.note ?? "" })));
+      else
+        console.table(
+          open.map((r) => ({
+            id: r.id,
+            email: r.email,
+            kind: r.kind,
+            asked: day(r.created_at),
+            "days open": Math.floor((Date.now() - r.created_at) / 86400_000),
+            note: r.note ?? "",
+          })),
+        );
       break;
     }
-    if (action !== "done" || !/^req_[0-9a-f-]{36}$/.test(id ?? "")) fail("requests            lists the open requests\nrequests done <id>  completes one: deletes the account it asks about");
+    if (action !== "done" || !/^req_[0-9a-f-]{36}$/.test(id ?? ""))
+      fail("requests            lists the open requests\nrequests done <id>  completes one: deletes the account it asks about");
     const [r] = sql(`SELECT id, email, kind, status FROM rights_request WHERE id = ${lit(id)}`);
     if (!r) fail(`No request ${id}`);
     if (r.status !== "open") fail(`Request ${id} is already ${r.status}.`);
@@ -222,6 +289,8 @@ switch (command) {
     break;
   }
   default:
-    console.log(`Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user, requests, subdomain. See the top of ${import.meta.filename}.`);
+    console.log(
+      `Commands: list, suspend, resume, invite-owner, route, purge-soon, backup, forget-user, requests, subdomain. See the top of ${import.meta.filename}.`,
+    );
     process.exit(command ? 1 : 0);
 }

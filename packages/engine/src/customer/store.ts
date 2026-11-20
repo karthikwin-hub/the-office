@@ -100,6 +100,9 @@ export class MemoryCsStore implements CsStore {
     this.cs.set(c.id, { ...c });
   }
   codesSince(fromIso: string) {
-    return [...this.cs.values()].filter((c) => c.sentAt >= fromIso).sort((a, b) => (a.sentAt < b.sentAt ? -1 : a.sentAt > b.sentAt ? 1 : 0)).map((c) => ({ ...c }));
+    return [...this.cs.values()]
+      .filter((c) => c.sentAt >= fromIso)
+      .sort((a, b) => (a.sentAt < b.sentAt ? -1 : a.sentAt > b.sentAt ? 1 : 0))
+      .map((c) => ({ ...c }));
   }
 }

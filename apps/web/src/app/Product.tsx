@@ -66,7 +66,9 @@ export function ProductPage() {
 
         <section className="product-section" aria-labelledby="team">
           <h2 id="team">The team you hire</h2>
-          <p className="product-note">Hire the roles you need from the hiring hall. Each one comes with a job description, a work log and an accuracy record.</p>
+          <p className="product-note">
+            Hire the roles you need from the hiring hall. Each one comes with a job description, a work log and an accuracy record.
+          </p>
           <dl className="product-rooms">
             {TEAM.map((t) => (
               <div key={t.role}>
@@ -94,7 +96,10 @@ export function ProductPage() {
         <section className="product-section product-pair" aria-label="Your accountant and WhatsApp">
           <div>
             <h2>Your accountant stays</h2>
-            <p>Invite them to the office. They read everything, download returns ready to upload and answer the Auditor&apos;s questions. Approvals stay with you.</p>
+            <p>
+              Invite them to the office. They read everything, download returns ready to upload and answer the Auditor&apos;s questions. Approvals stay with
+              you.
+            </p>
             <h2>On WhatsApp, in your language</h2>
             <p>Approve the morning&apos;s work and ask what is overdue by text or voice note. Every amount stays exactly as it is in the books.</p>
             <ul className="product-languages" aria-label="Languages on WhatsApp">
@@ -109,7 +114,9 @@ export function ProductPage() {
             <p className="phone-head">Kaveri Electricals office</p>
             <div className="phone-msg" lang="hi">
               <p>अनिल जी, 3 बिल आपकी मंज़ूरी का इंतज़ार कर रहे हैं। कुल ₹2,84,150।</p>
-              <p className="phone-gloss" lang="en">Anil ji, 3 bills are waiting for your approval. ₹2,84,150 in all.</p>
+              <p className="phone-gloss" lang="en">
+                Anil ji, 3 bills are waiting for your approval. ₹2,84,150 in all.
+              </p>
             </div>
             <div className="phone-msg is-mine">
               <span className="phone-voice" aria-hidden="true">
@@ -125,7 +132,9 @@ export function ProductPage() {
             </div>
             <div className="phone-msg" lang="hi">
               <p>तीनों बिल बुक्स में दर्ज हो गए।</p>
-              <p className="phone-gloss" lang="en">All three bills are in the books.</p>
+              <p className="phone-gloss" lang="en">
+                All three bills are in the books.
+              </p>
             </div>
           </div>
         </section>

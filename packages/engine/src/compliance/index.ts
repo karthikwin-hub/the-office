@@ -29,8 +29,19 @@ export function complianceChecks(books: Books, obligations: Obligation[], asOf =
   const l = new Ledger(books, asOf);
   const p = profileOf(books);
   const fy = fyOf(asOf);
-  const paid = obligations.filter((o) => o.ruleId === "advance-tax" && o.period.startsWith(`${fy}-`) && o.state === "filed").reduce((a, o) => a + (o.amountPaise ?? 0), 0);
-  const all = [msmeCheck(l), advanceTaxCheck(l, p, paid), tdsGapCheck(l), itc180Check(l), rcmCheck(l), dpt3Check(l, p), thresholdCheck(l, p), foreignPaymentCheck(p, asOf)];
+  const paid = obligations
+    .filter((o) => o.ruleId === "advance-tax" && o.period.startsWith(`${fy}-`) && o.state === "filed")
+    .reduce((a, o) => a + (o.amountPaise ?? 0), 0);
+  const all = [
+    msmeCheck(l),
+    advanceTaxCheck(l, p, paid),
+    tdsGapCheck(l),
+    itc180Check(l),
+    rcmCheck(l),
+    dpt3Check(l, p),
+    thresholdCheck(l, p),
+    foreignPaymentCheck(p, asOf),
+  ];
   const order = { red: 0, amber: 1, green: 2 } as const;
   return all.filter((c): c is ComplianceCheck => c !== null).sort((a, b) => order[a.tone] - order[b.tone]);
 }
@@ -51,9 +62,21 @@ function makeView(books: Books, asOf: string): ComplianceView {
   const note: ComplianceView["note"] = [
     ...(late.length ? [{ text: `${late.length} item${late.length === 1 ? " is" : "s are"} late. ` }] : []),
     { text: `${week.length} due this week` },
-    ...(risk ? [{ text: ", and " }, { text: inrShort(risk), figureId: "compliance:at-risk", tone: "red" as const }, { text: " is at risk from late fees, interest and tax disallowed" }] : []),
+    ...(risk
+      ? [
+          { text: ", and " },
+          { text: inrShort(risk), figureId: "compliance:at-risk", tone: "red" as const },
+          { text: " is at risk from late fees, interest and tax disallowed" },
+        ]
+      : []),
     { text: "." },
-    ...(open[0] ? [{ text: ` Next: ${open.find((o) => o.state !== "late")?.title ?? open[0].title}, ${dateLabel((open.find((o) => o.state !== "late") ?? open[0]).dueOn)}.` }] : []),
+    ...(open[0]
+      ? [
+          {
+            text: ` Next: ${open.find((o) => o.state !== "late")?.title ?? open[0].title}, ${dateLabel((open.find((o) => o.state !== "late") ?? open[0]).dueOn)}.`,
+          },
+        ]
+      : []),
   ];
   return {
     asOf,
@@ -106,14 +129,21 @@ export function addEvent(books: Books, input: Pick<CompanyEvent, "kind" | "on" |
 
 export function checkMasterData(books: Books, text: string, asOf: string): MasterCheck[] {
   const fields = parseMasterData(text);
-  if (!Object.keys(fields).length) throw new ComplianceError("Nothing in the text looked like the MCA's company master data. Copy the whole page from \"View company or LLP master data\".");
+  if (!Object.keys(fields).length)
+    throw new ComplianceError('Nothing in the text looked like the MCA\'s company master data. Copy the whole page from "View company or LLP master data".');
   const p = profileOf(books);
   p.masterData = { checkedOn: asOf, fields };
   books.business.compliance = p;
   return masterChecks(books, p);
 }
 
-export function markFiled(books: Books, id: string, input: { filedOn: string; ack: string; proof?: { file: string; name: string } | null }, by: string, at: string): Obligation {
+export function markFiled(
+  books: Books,
+  id: string,
+  input: { filedOn: string; ack: string; proof?: { file: string; name: string } | null },
+  by: string,
+  at: string,
+): Obligation {
   const o = find(books, id, at.slice(0, 10));
   const rec = trackingFor(books, o);
   rec.filedOn = input.filedOn;
@@ -134,7 +164,13 @@ export function reopen(books: Books, id: string, by: string, at: string): Obliga
   return find(books, id, at.slice(0, 10));
 }
 
-export function assign(books: Books, id: string, input: { assignee: ComplianceEvent["assignee"]; progress?: ComplianceEvent["progress"] }, by: string, at: string): Obligation {
+export function assign(
+  books: Books,
+  id: string,
+  input: { assignee: ComplianceEvent["assignee"]; progress?: ComplianceEvent["progress"] },
+  by: string,
+  at: string,
+): Obligation {
   const rec = trackingFor(books, find(books, id, at.slice(0, 10)));
   rec.assignee = input.assignee;
   if (input.progress !== undefined) rec.progress = input.progress;
@@ -167,7 +203,17 @@ export function recordSrn(books: Books, id: string, srn: NonNullable<ComplianceE
 export function addManual(books: Books, input: { form: string; dueOn: string; description: string; authority: string }, by: string, at: string): Obligation {
   const n = books.compliance.filter((x) => x.source === "manual").length + 1;
   const id = `man-${at.slice(0, 10).replace(/-/g, "")}-${n}`;
-  books.compliance.push({ id, date: input.dueOn, form: input.form, description: input.description || input.form, authority: input.authority, status: "upcoming", source: "manual", updatedBy: by, updatedAt: at });
+  books.compliance.push({
+    id,
+    date: input.dueOn,
+    form: input.form,
+    description: input.description || input.form,
+    authority: input.authority,
+    status: "upcoming",
+    source: "manual",
+    updatedBy: by,
+    updatedAt: at,
+  });
   return find(books, id, at.slice(0, 10));
 }
 
@@ -189,13 +235,23 @@ export function complianceProposals(books: Books, asOf = books.business.asOf): S
       createdAt: `${asOf}T09:05:00+05:30`,
       title: c.proposal!.label,
       summary: c.summary,
-      evidence: c.rows.filter((r) => r.ref).slice(0, 4).map((r) => ({ label: r.label, ref: r.ref! })),
-      payload: { checkId: c.id, amountPaise: c.amountPaise, rows: c.rows.filter((r) => r.amountPaise).map((r) => r.label), ...(c.proposal!.setAside ? { setAside: c.proposal!.setAside } : {}) },
+      evidence: c.rows
+        .filter((r) => r.ref)
+        .slice(0, 4)
+        .map((r) => ({ label: r.label, ref: r.ref! })),
+      payload: {
+        checkId: c.id,
+        amountPaise: c.amountPaise,
+        rows: c.rows.filter((r) => r.amountPaise).map((r) => r.label),
+        ...(c.proposal!.setAside ? { setAside: c.proposal!.setAside } : {}),
+      },
       status: "pending" as const,
     }));
 }
 
 /** Items to remind about today: seven and two days ahead, on the day, and every week once late. */
 export function dueReminders(books: Books, asOf = books.business.asOf): Obligation[] {
-  return buildObligations(books, asOf).filter((o) => (o.state !== "filed" && o.state !== "snoozed" && [7, 2, 0].includes(o.daysLeft)) || (o.state === "late" && -o.daysLeft % 7 === 1));
+  return buildObligations(books, asOf).filter(
+    (o) => (o.state !== "filed" && o.state !== "snoozed" && [7, 2, 0].includes(o.daysLeft)) || (o.state === "late" && -o.daysLeft % 7 === 1),
+  );
 }

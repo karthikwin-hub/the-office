@@ -71,7 +71,9 @@ export function ErrorState({ error }: { error: unknown }) {
     <div className="page" data-ready="">
       <h1>{status === 404 ? "Not found" : "The books could not be opened"}</h1>
       <p className="page-lede">
-        {status === 404 ? "This page does not exist, or the record was removed." : `${(error as Error).message}. Reload the page; if it keeps happening, check that the office is running.`}
+        {status === 404
+          ? "This page does not exist, or the record was removed."
+          : `${(error as Error).message}. Reload the page; if it keeps happening, check that the office is running.`}
       </p>
       <p>
         <Link to="/">Back to the floor</Link>
@@ -91,7 +93,16 @@ export const longDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN
 export const time = (iso: string) => iso.slice(11, 16);
 export const count = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-IN")} ${n === 1 ? one : many}`;
 
-const UNITS: Record<string, [string, string]> = { NOS: ["", ""], PCS: ["piece", "pieces"], ROL: ["roll", "rolls"], BOX: ["box", "boxes"], PAC: ["pack", "packs"], MTR: ["m", "m"], SET: ["set", "sets"], KGS: ["kg", "kg"] };
+const UNITS: Record<string, [string, string]> = {
+  NOS: ["", ""],
+  PCS: ["piece", "pieces"],
+  ROL: ["roll", "rolls"],
+  BOX: ["box", "boxes"],
+  PAC: ["pack", "packs"],
+  MTR: ["m", "m"],
+  SET: ["set", "sets"],
+  KGS: ["kg", "kg"],
+};
 /** Quantities with the GST unit code spelled out: "571 rolls", "2,600 m". */
 export const quantity = (n: number, uqc: string) => {
   const u = UNITS[uqc.toUpperCase()];

@@ -95,7 +95,10 @@ export class OfficeExports {
       }
     }
     // Cancelled before it began (the download went), the part's generator never ran: the export is over all the same.
-    return new Response(streamOf(chunks(), () => pending.delete(id)), { headers: { "content-type": "application/octet-stream" } });
+    return new Response(
+      streamOf(chunks(), () => pending.delete(id)),
+      { headers: { "content-type": "application/octet-stream" } },
+    );
   }
 }
 

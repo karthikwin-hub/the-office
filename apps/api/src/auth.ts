@@ -63,8 +63,11 @@ export function needsRehash(hash: string): boolean {
 export async function verifyPassword({ hash, password }: { hash: string; password: string }): Promise<boolean> {
   const [scheme, iter, salt, want] = hash.split("$");
   const iterations = Number(iter);
-  if ((scheme !== CHAIN && scheme !== SINGLE) || !Number.isSafeInteger(iterations) || iterations < 1 || iterations > 10 * ITERATIONS || !salt || !want) return false;
-  const got = new Uint8Array(scheme === CHAIN ? await chained(password, unb64(salt), iterations) : await derive(enc.encode(password.normalize("NFKC")), unb64(salt), iterations));
+  if ((scheme !== CHAIN && scheme !== SINGLE) || !Number.isSafeInteger(iterations) || iterations < 1 || iterations > 10 * ITERATIONS || !salt || !want)
+    return false;
+  const got = new Uint8Array(
+    scheme === CHAIN ? await chained(password, unb64(salt), iterations) : await derive(enc.encode(password.normalize("NFKC")), unb64(salt), iterations),
+  );
   // An older, cheaper hash takes as long to check as a new one, so how fast a wrong password is refused
   // does not tell an address that has an account (old hash) from one that has none (a new hash is made).
   if (iterations < passwordWork.iterations) await chained(password, unb64(salt), passwordWork.iterations - iterations);
@@ -79,7 +82,13 @@ export async function verifyPassword({ hash, password }: { hash: string; passwor
 export const verificationRequired = (env: Pick<Env, "EMAIL_VERIFICATION">) => env.EMAIL_VERIFICATION !== "off";
 
 /** One plain message from the platform's address; false when mail is not set up here. */
-export async function sendMail(env: Pick<Env, "MAILER" | "MAIL_FROM" | "RESEND_API_KEY">, to: string, subject: string, body: string, fromName: string = BRAND.name): Promise<boolean> {
+export async function sendMail(
+  env: Pick<Env, "MAILER" | "MAIL_FROM" | "RESEND_API_KEY">,
+  to: string,
+  subject: string,
+  body: string,
+  fromName: string = BRAND.name,
+): Promise<boolean> {
   const send = mailSender(env);
   if (!send) return false;
   try {
@@ -156,7 +165,14 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
           env,
           user.email,
           `Someone tried to make an account with your address on ${BRAND.name}`,
-          [`Hello ${user.name},`, "", `Someone just tried to make a new ${BRAND.name} account with this email address. You already have one, so nothing changed.`, "", "If it was you, sign in with your password, or choose \"Forgotten your password?\" to set a new one.", "If it was not you, you need do nothing."].join("\n"),
+          [
+            `Hello ${user.name},`,
+            "",
+            `Someone just tried to make a new ${BRAND.name} account with this email address. You already have one, so nothing changed.`,
+            "",
+            'If it was you, sign in with your password, or choose "Forgotten your password?" to set a new one.',
+            "If it was not you, you need do nothing.",
+          ].join("\n"),
         );
       },
       sendResetPassword: async ({ user, url }) => {
@@ -164,7 +180,14 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
           env,
           user.email,
           `Reset your password for ${BRAND.name}`,
-          [`Hello ${user.name},`, "", "Open this link within an hour to choose a new password:", url, "", "If you did not ask for this, ignore this message; your password stays as it is."].join("\n"),
+          [
+            `Hello ${user.name},`,
+            "",
+            "Open this link within an hour to choose a new password:",
+            url,
+            "",
+            "If you did not ask for this, ignore this message; your password stays as it is.",
+          ].join("\n"),
         );
       },
     },
@@ -174,7 +197,14 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
       sendOnSignIn: verificationRequired(env),
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendMail(env, user.email, `Confirm your email for ${BRAND.name}`, [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join("\n"));
+        await sendMail(
+          env,
+          user.email,
+          `Confirm your email for ${BRAND.name}`,
+          [`Hello ${user.name},`, "", "Open this link to confirm your email address:", url, "", "If you did not make an account, ignore this message."].join(
+            "\n",
+          ),
+        );
       },
     },
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
@@ -197,7 +227,20 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
       }),
     },
     // Counts live in D1, so every isolate and every restart sees the same attempts.
-    rateLimit: { enabled: env.DATA_MODE === "live", storage: "database", window: 60, max: 30, customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/send-verification-email": { window: 600, max: 3 }, "/request-password-reset": { window: 600, max: 3 }, "/forget-password": { window: 600, max: 3 }, "/reset-password": { window: 600, max: 10 } } },
+    rateLimit: {
+      enabled: env.DATA_MODE === "live",
+      storage: "database",
+      window: 60,
+      max: 30,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 8 },
+        "/sign-up/email": { window: 3600, max: 10 },
+        "/send-verification-email": { window: 600, max: 3 },
+        "/request-password-reset": { window: 600, max: 3 },
+        "/forget-password": { window: 600, max: 3 },
+        "/reset-password": { window: 600, max: 10 },
+      },
+    },
   });
 }
 

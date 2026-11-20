@@ -68,7 +68,8 @@ export async function toOffice(env: Env, req: Request, caller: Caller, path?: st
   return env.Office.get(env.Office.idFromName(caller.officeId)).fetch(forwarded);
 }
 
-const internal = (path: string, body: unknown) => new Request(`https://office.internal${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const internal = (path: string, body: unknown) =>
+  new Request(`https://office.internal${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 /** Someone left an office (`userId`), or it closed (everyone): its open screens stop hearing it at once. Never fails the change itself. */
 async function closeLive(env: Env, officeId: string, userId?: string) {
@@ -116,7 +117,10 @@ export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
   if (plan.unrouted) console.log(JSON.stringify({ event: "meta.unrouted", entries: plan.unrouted }));
   let ok = true;
   for (const d of plan.deliveries) ok = (await toOffice(env, internal("/internal/social/meta", d.body), system(d.officeId))).ok && ok;
-  for (const o of plan.office) ok = (await toOffice(env, internal("/internal/whatsapp", { body: o.body, person: o.person, joined: o.joined, heading: o.heading }), system(o.officeId))).ok && ok;
+  for (const o of plan.office)
+    ok =
+      (await toOffice(env, internal("/internal/whatsapp", { body: o.body, person: o.person, joined: o.joined, heading: o.heading }), system(o.officeId))).ok &&
+      ok;
   const keys = env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID ? { token: env.WHATSAPP_TOKEN, phoneId: env.WHATSAPP_PHONE_NUMBER_ID, template: null } : null;
   if (keys) for (const r of plan.replies) await sendText(keys, r.to, r.text).catch(() => console.error("whatsapp reply failed"));
   return ok;
@@ -125,7 +129,12 @@ export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
 /** Short-lived public links to post pictures, for platforms that fetch media themselves. Signed for one office and one picture. */
 app.get("/media/:office/:id", async (c) => {
   const { office, id } = c.req.param();
-  if (!OFFICE_ID.test(office) || !c.env.SOCIAL_TOKEN_KEY || !(await verifyMedia(c.env.SOCIAL_TOKEN_KEY, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null))) return c.text("Not found", 404);
+  if (
+    !OFFICE_ID.test(office) ||
+    !c.env.SOCIAL_TOKEN_KEY ||
+    !(await verifyMedia(c.env.SOCIAL_TOKEN_KEY, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null))
+  )
+    return c.text("Not found", 404);
   const obj = await c.env.DOCS.get(mediaKey(office, id));
   if (!obj) return c.text("Not found", 404);
   return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, null), "cache-control": "public, max-age=600" } });
@@ -133,13 +142,22 @@ app.get("/media/:office/:id", async (c) => {
 
 /* ---------- The website chat: public, on the business's own site; the key decides the office ---------- */
 
-const CHAT_CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400" };
+const CHAT_CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
+  "access-control-max-age": "86400",
+};
 const WIDGET_KEY = /^w[a-z0-9]{8,40}$/;
 
 app.get("/w/:file", async (c) => {
   const key = c.req.param("file").replace(/\.js$/, "");
-  if (!WIDGET_KEY.test(key) || !(await cp(c.env).routeFor("widget", key))) return c.text("// This chat is not switched on.", 404, { "content-type": "text/javascript" });
-  return c.body(widgetScript(key, new URL(c.req.url).origin, c.env.TURNSTILE_SITE_KEY ?? null), 200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=300" });
+  if (!WIDGET_KEY.test(key) || !(await cp(c.env).routeFor("widget", key)))
+    return c.text("// This chat is not switched on.", 404, { "content-type": "text/javascript" });
+  return c.body(widgetScript(key, new URL(c.req.url).origin, c.env.TURNSTILE_SITE_KEY ?? null), 200, {
+    "content-type": "text/javascript; charset=utf-8",
+    "cache-control": "public, max-age=300",
+  });
 });
 
 app.options("/api/chat/:key", (c) => c.body(null, 204, CHAT_CORS));
@@ -166,7 +184,8 @@ app.get("/api/chat/:key", async (c) => {
   const visitor = c.req.query("visitor") ?? "";
   if (!WIDGET_KEY.test(key) || !ChatPost.shape.visitor.safeParse(visitor).success) return c.json(NOT_FOUND, 404, CHAT_CORS);
   const ip = c.req.header("cf-connecting-ip") ?? null;
-  if (await chatLimited(c.env.CHAT_LIMIT, [`poll:${key}:v:${visitor}`, ip ? `poll:${key}:ip:${ip}` : null])) return c.json({ error: "Too many requests. Wait a minute and try again." }, 429, CHAT_CORS);
+  if (await chatLimited(c.env.CHAT_LIMIT, [`poll:${key}:v:${visitor}`, ip ? `poll:${key}:ip:${ip}` : null]))
+    return c.json({ error: "Too many requests. Wait a minute and try again." }, 429, CHAT_CORS);
   const officeId = await cp(c.env).routeFor("widget", key);
   if (!officeId) return c.json(NOT_FOUND, 404, CHAT_CORS);
   const res = await toOffice(c.env, internal("/internal/chat-messages", { visitor }), system(officeId));
@@ -180,12 +199,18 @@ app.post("/api/chat/:key", async (c) => {
   const parsed = ChatPost.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Write a message to send." }, 400, CHAT_CORS);
   const ip = c.req.header("cf-connecting-ip") ?? null;
-  if (c.env.CHAT_LIMIT && !(await c.env.CHAT_LIMIT.limit({ key: `${key}:${ip ?? parsed.data.visitor}` })).success) return c.json({ error: "That is a lot of messages at once. Wait a minute and try again." }, 429, CHAT_CORS);
+  if (c.env.CHAT_LIMIT && !(await c.env.CHAT_LIMIT.limit({ key: `${key}:${ip ?? parsed.data.visitor}` })).success)
+    return c.json({ error: "That is a lot of messages at once. Wait a minute and try again." }, 429, CHAT_CORS);
   const live = c.env.DATA_MODE === "live";
   // Live without a secret the widget shows no box to tick, so say the chat is shut rather than blame the visitor.
   if (live && !c.env.TURNSTILE_SECRET) return c.json({ error: "The chat is not available just now. Write to the business another way." }, 503, CHAT_CORS);
-  if (!(await turnstileOk(c.env.TURNSTILE_SECRET, parsed.data.turnstile, ip, live))) return c.json({ error: "Tick the box to show you are a person, then send again." }, 403, CHAT_CORS);
-  const res = await toOffice(c.env, internal("/internal/chat", { visitor: parsed.data.visitor, text: parsed.data.text, name: parsed.data.name ?? null }), system(officeId));
+  if (!(await turnstileOk(c.env.TURNSTILE_SECRET, parsed.data.turnstile, ip, live)))
+    return c.json({ error: "Tick the box to show you are a person, then send again." }, 403, CHAT_CORS);
+  const res = await toOffice(
+    c.env,
+    internal("/internal/chat", { visitor: parsed.data.visitor, text: parsed.data.text, name: parsed.data.name ?? null }),
+    system(officeId),
+  );
   const body = await res.text();
   // The office keeps every message it takes; none for this visitor means it took no new conversation today.
   if (res.status === 200 && chatTookNothing(body)) return c.json({ error: CHAT_FULL }, 429, CHAT_CORS);
@@ -198,7 +223,8 @@ app.post("/api/chat/:key", async (c) => {
  * An invitation link carries its token after `#`, which browsers never send: the page reads it and posts it
  * here, so no request line, and no log of one, holds a token or tells whom it was for.
  */
-export const inviteLink = (env: Pick<Env, "BETTER_AUTH_URL">, token: string) => `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/#invite=${encodeURIComponent(token)}`;
+export const inviteLink = (env: Pick<Env, "BETTER_AUTH_URL">, token: string) =>
+  `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/#invite=${encodeURIComponent(token)}`;
 
 /** The sign-in page names the office and address an invitation is for, so the person makes the right account. Only the token's holder can ask. */
 app.post(ACCOUNT_ROUTES.peekInvitation, async (c) => {
@@ -245,7 +271,9 @@ app.post(ACCOUNT_ROUTES.consent, async (c) => {
 app.get(ACCOUNT_ROUTES.accountExport, async (c) => {
   const data = await new AccountRecords(c.env.DB).exportFor(c.get("user").id);
   if (!data) return c.json(NOT_FOUND, 404);
-  return new Response(JSON.stringify(data, null, 2), { headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="my-account.json"', "cache-control": "no-store" } });
+  return new Response(JSON.stringify(data, null, 2), {
+    headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="my-account.json"', "cache-control": "no-store" },
+  });
 });
 
 app.get(ACCOUNT_ROUTES.accountRequests, async (c) => c.json({ requests: await new AccountRecords(c.env.DB).requests(c.get("user").id) }));
@@ -268,7 +296,8 @@ app.delete(`${ACCOUNT_ROUTES.accountRequests}/:id`, async (c) => {
 
 app.post("/api/offices", async (c) => {
   const user = c.get("user");
-  if (verificationRequired(c.env) && !user.emailVerified) return c.json({ error: "Confirm your email address first. We sent you a link when you signed up." }, 403);
+  if (verificationRequired(c.env) && !user.emailVerified)
+    return c.json({ error: "Confirm your email address first. We sent you a link when you signed up." }, 403);
   const parsed = OpenOffice.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Give the business a name." }, 400);
   const made = await cp(c.env).createOffice({ name: parsed.data.name, owner: user, ingestDomain: c.env.INGEST_DOMAIN });
@@ -295,7 +324,8 @@ export const platformOwners = (env: Pick<Env, "PLATFORM_OWNERS">) =>
 
 const platformOnly = async (c: Ctx, next: () => Promise<void>) => {
   const user = c.get("user");
-  if (!platformOwners(c.env).has(user.email.toLowerCase())) return c.json({ error: "This console is for the people who run the platform. Businesses sign in at their own address." }, 403);
+  if (!platformOwners(c.env).has(user.email.toLowerCase()))
+    return c.json({ error: "This console is for the people who run the platform. Businesses sign in at their own address." }, 403);
   if (verificationRequired(c.env) && !user.emailVerified) return c.json({ error: "Confirm your email address first, then come back." }, 403);
   if (twoFactorMissing(user)) return c.json(TWO_FACTOR_NEEDED, 403);
   // Onboarding, owner invitations and suspending act on every business: a stale session only reads.
@@ -312,7 +342,14 @@ const ownerInviteMail = (env: Env, officeName: string, email: string, token: str
     env,
     email,
     `Your office for ${officeName} is ready`,
-    [`We have opened ${officeName} on ${BRAND.name}, with you as its owner: you approve the team's work, hire and invite your accountant.`, "", "Open this link to set up your account and step in. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
+    [
+      `We have opened ${officeName} on ${BRAND.name}, with you as its owner: you approve the team's work, hire and invite your accountant.`,
+      "",
+      "Open this link to set up your account and step in. It works once, for 14 days:",
+      link,
+      "",
+      "Sign in or make an account with this address.",
+    ].join("\n"),
   );
 };
 /** The people who run the platform do not own businesses on it from the console: they sign up like anyone else. */
@@ -381,7 +418,8 @@ app.get("/api/channels/:platform/callback", async (c) => {
   const state = platform.success && c.env.SOCIAL_TOKEN_KEY ? await readState(c.env.SOCIAL_TOKEN_KEY, platform.data, c.req.query("state") ?? null) : null;
   const user = c.get("user");
   const m = state && OFFICE_ID.test(state.officeId) ? await cp(c.env).membership(state.officeId, user.id) : null;
-  if (!state || !m || m.office.status !== "active" || m.role !== "owner" || twoFactorMissing(user) || state.by !== user.email) return c.redirect(`/settings?connect_error=${encodeURIComponent("That sign-in did not come from your office. Try again from Settings.")}#channels`);
+  if (!state || !m || m.office.status !== "active" || m.role !== "owner" || twoFactorMissing(user) || state.by !== user.email)
+    return c.redirect(`/settings?connect_error=${encodeURIComponent("That sign-in did not come from your office. Try again from Settings.")}#channels`);
   return toOffice(c.env, c.req.raw, { userId: user.id, name: user.name, email: user.email, role: m.role, officeId: m.office.id });
 });
 
@@ -394,7 +432,11 @@ app.use("/api/o/:office/*", async (c, next) => {
   const m = await cp(c.env).membership(id, user.id);
   if (!m) return c.json(NOT_FOUND, 404);
   const rest = new URL(c.req.url).pathname.slice(`/api/o/${id}`.length);
-  if (m.office.status === "deleting" && !(m.role === "owner" && (rest === "/office-admin" || rest === "/office-admin/restore" || rest === "/office-admin/export"))) return c.json(NOT_FOUND, 404);
+  if (
+    m.office.status === "deleting" &&
+    !(m.role === "owner" && (rest === "/office-admin" || rest === "/office-admin/restore" || rest === "/office-admin/export"))
+  )
+    return c.json(NOT_FOUND, 404);
   if (m.office.status === "suspended") return c.json({ error: "This office is suspended. Write to us to have it opened again." }, 423);
   if (m.role === "owner" && twoFactorMissing(user)) return c.json(TWO_FACTOR_NEEDED, 403);
   c.set("office", m.office);
@@ -419,7 +461,9 @@ app.get("/api/o/:office/files/:id", async (c) => {
   if (!/^(doc|proof)-[\w-]+(\.txt)?$/.test(id)) return c.json({ error: "File not found" }, 404);
   const obj = await c.env.DOCS.get(docKey(c.get("caller").officeId, id));
   if (!obj) return c.json({ error: "File not found" }, 404);
-  return new Response(obj.body, { headers: { ...fileHeaders(obj.httpMetadata?.contentType, obj.customMetadata?.filename ?? id), "cache-control": "private, max-age=3600" } });
+  return new Response(obj.body, {
+    headers: { ...fileHeaders(obj.httpMetadata?.contentType, obj.customMetadata?.filename ?? id), "cache-control": "private, max-age=3600" },
+  });
 });
 
 app.get("/api/o/:office/social/media/:id", async (c) => {
@@ -437,7 +481,12 @@ app.get("/api/o/:office/office-admin", async (c) => {
   const caller = c.get("caller");
   const plane = cp(c.env);
   const owner = caller.role === "owner";
-  const [members, invitations, audit, emailRoutes] = await Promise.all([plane.members(office.id), owner ? plane.invitations(office.id) : [], owner ? plane.auditTrail(office.id, 30) : [], plane.routesOf(office.id, "email")]);
+  const [members, invitations, audit, emailRoutes] = await Promise.all([
+    plane.members(office.id),
+    owner ? plane.invitations(office.id) : [],
+    owner ? plane.auditTrail(office.id, 30) : [],
+    plane.routesOf(office.id, "email"),
+  ]);
   const primary = ingestAddress(office.slug, c.env.INGEST_DOMAIN);
   return c.json({
     id: office.id,
@@ -479,7 +528,14 @@ app.post("/api/o/:office/office-admin/invitations", async (c) => {
     c.env,
     email,
     `${caller.name} invited you to ${office.name}`,
-    [`${caller.name} invited you to ${office.name} on ${BRAND.name}, ${what}.`, "", "Open this link to join. It works once, for 14 days:", link, "", "Sign in or make an account with this address."].join("\n"),
+    [
+      `${caller.name} invited you to ${office.name} on ${BRAND.name}, ${what}.`,
+      "",
+      "Open this link to join. It works once, for 14 days:",
+      link,
+      "",
+      "Sign in or make an account with this address.",
+    ].join("\n"),
     office.name,
   );
   return c.json({ email, link, emailed, expiresAt: iso(expiresAt) } satisfies InviteResult);
@@ -544,7 +600,11 @@ app.get("/api/o/:office/office-admin/export", async (c) => {
   } catch {
     // No execution context (tests): the download's own stream keeps the parts coming.
   }
-  const name = c.get("office").name.replace(/[^\w-]+/g, "-").slice(0, 40) || "office";
+  const name =
+    c
+      .get("office")
+      .name.replace(/[^\w-]+/g, "-")
+      .slice(0, 40) || "office";
   return new Response(body, { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="${name}-export.zip"` } });
 });
 
@@ -587,7 +647,15 @@ const authResults = (message: ForwardableEmailMessage) => message.headers?.get("
  */
 async function admitted(env: Env, officeId: string, kind: MailKind, mail: Inbound, envelope: string): Promise<boolean> {
   const bytes = mail.attachments.reduce((n, a) => n + a.content.byteLength, 0);
-  const body: MailAdmission = { kind, from: mail.from, envelope, subject: mail.subject, authenticated: mail.authenticated, envelopeSigned: envelopeProven(mail, envelope), bytes };
+  const body: MailAdmission = {
+    kind,
+    from: mail.from,
+    envelope,
+    subject: mail.subject,
+    authenticated: mail.authenticated,
+    envelopeSigned: envelopeProven(mail, envelope),
+    bytes,
+  };
   const res = await toOffice(env, internal("/internal/mail-admit", body), system(officeId));
   if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
   return ((await res.json()) as { admit?: boolean }).admit === true;
@@ -600,7 +668,14 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   if (support) {
     const mail = await parseInbound(message.raw, { results: authResults(message) });
     if (!(await admitted(env, support, "support", mail, message.from))) return;
-    const body: SupportMail = { from: mail.from ?? message.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, inReplyTo: mail.inReplyTo };
+    const body: SupportMail = {
+      from: mail.from ?? message.from,
+      name: mail.name,
+      subject: mail.subject,
+      text: mail.text,
+      messageId: mail.messageId,
+      inReplyTo: mail.inReplyTo,
+    };
     const res = await toOffice(env, internal("/internal/support-email", body), system(support));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
@@ -612,10 +687,20 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     const docs: InboundDocs["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
-      await env.DOCS.put(docKey(sales, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
+      await env.DOCS.put(docKey(sales, id), a.content, {
+        httpMetadata: { contentType: a.mimeType },
+        customMetadata: { filename: a.filename, by: mail.from ?? message.from },
+      });
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
-    const body: MailDocs & { envelope: string } = { from: mail.from, envelope: message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
+    const body: MailDocs & { envelope: string } = {
+      from: mail.from,
+      envelope: message.from,
+      subject: mail.subject,
+      docs,
+      skipped: mail.skipped,
+      authenticated: mail.authenticated,
+    };
     const res = await toOffice(env, internal("/internal/sales-email", body), system(sales));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
@@ -627,10 +712,24 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     const docs: AssistantInbound["docs"] = [];
     for (const a of mail.attachments) {
       const id = newDocId();
-      await env.DOCS.put(docKey(assistant, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
+      await env.DOCS.put(docKey(assistant, id), a.content, {
+        httpMetadata: { contentType: a.mimeType },
+        customMetadata: { filename: a.filename, by: mail.from ?? message.from },
+      });
       docs.push({ id, mimeType: a.mimeType, filename: a.filename });
     }
-    const body: AssistantInbound = { envelope: message.from, from: mail.from, name: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId, authenticated: mail.authenticated, envelopeSigned: envelopeProven(mail, message.from), docs, skipped: mail.skipped };
+    const body: AssistantInbound = {
+      envelope: message.from,
+      from: mail.from,
+      name: mail.name,
+      subject: mail.subject,
+      text: mail.text,
+      messageId: mail.messageId,
+      authenticated: mail.authenticated,
+      envelopeSigned: envelopeProven(mail, message.from),
+      docs,
+      skipped: mail.skipped,
+    };
     const res = await toOffice(env, internal("/internal/assistant-email", body), system(assistant));
     if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);
     return;
@@ -645,7 +744,10 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   const docs: InboundDocs["docs"] = [];
   for (const a of mail.attachments) {
     const id = newDocId();
-    await env.DOCS.put(docKey(officeId, id), a.content, { httpMetadata: { contentType: a.mimeType }, customMetadata: { filename: a.filename, by: mail.from ?? message.from } });
+    await env.DOCS.put(docKey(officeId, id), a.content, {
+      httpMetadata: { contentType: a.mimeType },
+      customMetadata: { filename: a.filename, by: mail.from ?? message.from },
+    });
     docs.push({ id, mimeType: a.mimeType, filename: a.filename });
   }
   const body: MailDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
@@ -747,7 +849,14 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
     if (due.length) {
       await env.DOCS.delete(due.map((o) => o.key));
       deleted += due.length;
-      await plane.auditMany([...new Set(due.map((o) => retainedOffice(o.key)).filter((id): id is string => id !== null))].map((officeId) => ({ officeId, actor: "system", action: "office.retained-deleted", detail: "the retention period of its books ended" })));
+      await plane.auditMany(
+        [...new Set(due.map((o) => retainedOffice(o.key)).filter((id): id is string => id !== null))].map((officeId) => ({
+          officeId,
+          actor: "system",
+          action: "office.retained-deleted",
+          detail: "the retention period of its books ended",
+        })),
+      );
       console.log(JSON.stringify({ event: "retained.deleted", count: due.length }));
     }
     if (!listed.truncated) break;
@@ -759,7 +868,11 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
 /** The nightly cron: deleted offices purged after 30 days, their copies in India deleted, then retained copies past their date. */
 export async function nightly(env: Env): Promise<void> {
   // Each step runs even when one before it fails, so one bad office cannot hold back the others' duties.
-  for (const [name, step] of [["purge", purgeDeleted], ["erase-backups", eraseBackups], ["sweep-retained", sweepRetained]] as const) {
+  for (const [name, step] of [
+    ["purge", purgeDeleted],
+    ["erase-backups", eraseBackups],
+    ["sweep-retained", sweepRetained],
+  ] as const) {
     try {
       await step(env);
     } catch (e) {

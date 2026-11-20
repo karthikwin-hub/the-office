@@ -43,7 +43,10 @@ function auditGstr1(l: Ledger, r: Extract<FiledReturn, { form: "GSTR-1" }>): Aud
           period: r.period,
           title: `Invoice ${inv.inum} to ${party.name} is missing from the ${r.status === "draft" ? "draft" : "filed"} GSTR-1`,
           explanation: `Your books have invoice ${inv.inum} dated ${dateLabel(book.date)} for ${inrShort(book.totals.totalPaise)}, with tax of ${inrShort(tax)}. It is not in the GSTR-1 ${r.status === "draft" ? "your accountant shared" : "that was filed"}. ${party.name} will not see it in their GSTR-2B and cannot claim the credit, and the tax is under-reported.`,
-          action: r.status === "draft" ? "Ask your accountant to add the invoice before filing." : "Ask your accountant to report it in the next GSTR-1 as an amendment.",
+          action:
+            r.status === "draft"
+              ? "Ask your accountant to add the invoice before filing."
+              : "Ask your accountant to report it in the next GSTR-1 as an amendment.",
           impactPaise: tax,
           evidence: [
             { label: `Invoice ${inv.inum}`, ref: { kind: "document", id: book.docId, region: "totals.total" } },
@@ -85,15 +88,43 @@ function auditGstr3b(l: Ledger, r: Extract<FiledReturn, { form: "GSTR-3B" }>): A
   const out = outwardFor(l, r.period);
   const itc = itcFor(l, r.period);
   const o = r.data.sup_details.osup_det;
-  const claimed = r.data.itc_elg.itc_avl.reduce((acc, x) => ({ i: acc.i + fromR2(x.iamt), c: acc.c + fromR2(x.camt), s: acc.s + fromR2(x.samt) }), { i: 0, c: 0, s: 0 });
+  const claimed = r.data.itc_elg.itc_avl.reduce((acc, x) => ({ i: acc.i + fromR2(x.iamt), c: acc.c + fromR2(x.camt), s: acc.s + fromR2(x.samt) }), {
+    i: 0,
+    c: 0,
+    s: 0,
+  });
   const comparisons: Comparison[] = [
-    { form: "GSTR-3B", line: "3.1(a) Outward taxable supplies, taxable value", booksPaise: out.taxablePaise, filedPaise: fromR2(o.txval), diffPaise: fromR2(o.txval) - out.taxablePaise },
+    {
+      form: "GSTR-3B",
+      line: "3.1(a) Outward taxable supplies, taxable value",
+      booksPaise: out.taxablePaise,
+      filedPaise: fromR2(o.txval),
+      diffPaise: fromR2(o.txval) - out.taxablePaise,
+    },
     { form: "GSTR-3B", line: "3.1(a) Output IGST", booksPaise: out.igstPaise, filedPaise: fromR2(o.iamt), diffPaise: fromR2(o.iamt) - out.igstPaise },
     { form: "GSTR-3B", line: "3.1(a) Output CGST", booksPaise: out.cgstPaise, filedPaise: fromR2(o.camt), diffPaise: fromR2(o.camt) - out.cgstPaise },
     { form: "GSTR-3B", line: "3.1(a) Output SGST", booksPaise: out.sgstPaise, filedPaise: fromR2(o.samt), diffPaise: fromR2(o.samt) - out.sgstPaise },
-    { form: "GSTR-3B", line: "4(A)(5) ITC claimed, IGST", booksPaise: itc.eligible.igstPaise, filedPaise: claimed.i, diffPaise: claimed.i - itc.eligible.igstPaise },
-    { form: "GSTR-3B", line: "4(A)(5) ITC claimed, CGST", booksPaise: itc.eligible.cgstPaise, filedPaise: claimed.c, diffPaise: claimed.c - itc.eligible.cgstPaise },
-    { form: "GSTR-3B", line: "4(A)(5) ITC claimed, SGST", booksPaise: itc.eligible.sgstPaise, filedPaise: claimed.s, diffPaise: claimed.s - itc.eligible.sgstPaise },
+    {
+      form: "GSTR-3B",
+      line: "4(A)(5) ITC claimed, IGST",
+      booksPaise: itc.eligible.igstPaise,
+      filedPaise: claimed.i,
+      diffPaise: claimed.i - itc.eligible.igstPaise,
+    },
+    {
+      form: "GSTR-3B",
+      line: "4(A)(5) ITC claimed, CGST",
+      booksPaise: itc.eligible.cgstPaise,
+      filedPaise: claimed.c,
+      diffPaise: claimed.c - itc.eligible.cgstPaise,
+    },
+    {
+      form: "GSTR-3B",
+      line: "4(A)(5) ITC claimed, SGST",
+      booksPaise: itc.eligible.sgstPaise,
+      filedPaise: claimed.s,
+      diffPaise: claimed.s - itc.eligible.sgstPaise,
+    },
   ];
   const findings: Finding[] = [];
   const outputGap = comparisons.slice(1, 4).reduce((a, c) => a + c.diffPaise, 0);
@@ -185,7 +216,9 @@ function audit26q(l: Ledger, r: Extract<FiledReturn, { form: "26Q" }>): Audit {
   }
   const filedTotal = r.data.deductions.reduce((a, d) => a + d.tdsPaise, 0);
   return {
-    comparisons: [{ form: "26Q", line: `TDS for ${quarterLabel(r.period)}`, booksPaise: expectedTotal, filedPaise: filedTotal, diffPaise: filedTotal - expectedTotal }],
+    comparisons: [
+      { form: "26Q", line: `TDS for ${quarterLabel(r.period)}`, booksPaise: expectedTotal, filedPaise: filedTotal, diffPaise: filedTotal - expectedTotal },
+    ],
     findings,
     matched: findings.length === 0,
   };
@@ -242,11 +275,17 @@ export function auditReport(l: Ledger, period?: string): AuditReport {
     period: selected,
     periods,
     note: !selected
-      ? [{ text: "Your accountant has not shared any filed returns yet. Import a GSTR-1, GSTR-3B or TDS return (Form 140 or 26Q) and the Auditor will check it against the books." }]
+      ? [
+          {
+            text: "Your accountant has not shared any filed returns yet. Import a GSTR-1, GSTR-3B or TDS return (Form 140 or 26Q) and the Auditor will check it against the books.",
+          },
+        ]
       : findings.length === 0
         ? [{ text: `Everything your accountant filed for ${periodLabel(selected)} matches the books.` }]
         : [
-            { text: `For ${periodLabel(selected)} the Auditor found ${findings.length} difference${findings.length === 1 ? "" : "s"} between the books and your accountant's returns, worth ` },
+            {
+              text: `For ${periodLabel(selected)} the Auditor found ${findings.length} difference${findings.length === 1 ? "" : "s"} between the books and your accountant's returns, worth `,
+            },
             { text: inrShort(impact), figureId: `audit:impact:${selected}`, tone: "red" },
             { text: ` in tax. Across all periods there are ${openTotal} open differences.` },
           ],

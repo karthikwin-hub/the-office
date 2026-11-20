@@ -97,4 +97,5 @@ export async function call<T>(f: Fetch, url: string, init: RequestInit & { json?
   return parsed as T;
 }
 
-export const notSetUp = (platform: string, names: string[]) => new PlatformError(`${platform} is not set up for this office yet: add ${names.join(" and ")} as Worker secrets.`, "not_set_up");
+export const notSetUp = (platform: string, names: string[]) =>
+  new PlatformError(`${platform} is not set up for this office yet: add ${names.join(" and ")} as Worker secrets.`, "not_set_up");

@@ -25,7 +25,11 @@ const WINDOWS_TZ: Record<string, string> = {
 };
 
 function unfold(text: string): string[] {
-  return text.replace(/\r\n?/g, "\n").replace(/\n[ \t]/g, "").split("\n").filter((l) => l.length > 0);
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n[ \t]/g, "")
+    .split("\n")
+    .filter((l) => l.length > 0);
 }
 
 function parseLine(line: string): Prop | null {
@@ -51,7 +55,11 @@ function parseLine(line: string): Prop | null {
 }
 
 // biome-ignore lint/suspicious/noShadowRestrictedNames: a local helper; the deprecated global unescape is not used here.
-const unescape = (v: string) => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
+const unescape = (v: string) =>
+  v
+    .replace(/\\n/gi, "\n")
+    .replace(/\\([,;\\])/g, "$1")
+    .trim();
 
 function zoneOf(tzid: string | undefined): string | null {
   if (!tzid) return null;
@@ -74,14 +82,28 @@ function parseWhen(p: Prop): When | null {
   }
   const dt = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z)?$/.exec(v);
   if (!dt) return null;
-  return { local: { y: +dt[1]!, m: +dt[2]!, d: +dt[3]!, h: +dt[4]!, mi: +dt[5]!, s: +(dt[6] ?? 0) }, tz: dt[7] ? "UTC" : (zoneOf(p.params.TZID) ?? IST), utc: Boolean(dt[7]), allDay: false };
+  return {
+    local: { y: +dt[1]!, m: +dt[2]!, d: +dt[3]!, h: +dt[4]!, mi: +dt[5]!, s: +(dt[6] ?? 0) },
+    tz: dt[7] ? "UTC" : (zoneOf(p.params.TZID) ?? IST),
+    utc: Boolean(dt[7]),
+    allDay: false,
+  };
 }
 
 /** How far a zone is ahead of UTC at an instant, in milliseconds. */
 function offsetAt(ms: number, tz: string): number {
   if (tz === "UTC") return 0;
   if (tz === IST) return 5.5 * 3600_000;
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(ms));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(ms));
   const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
   return Date.UTC(n("year"), n("month") - 1, n("day"), n("hour") % 24, n("minute"), n("second")) - Math.floor(ms / 1000) * 1000;
 }
@@ -112,7 +134,12 @@ function parseDuration(v: string): number {
 type Rule = { freq: string; interval: number; count: number | null; until: number | null; byDay: { n: number; day: number }[]; byMonthDay: number[] };
 
 function parseRule(v: string): Rule | null {
-  const kv = Object.fromEntries(v.split(";").map((p) => p.split("=") as [string, string]).map(([k, x]) => [k.toUpperCase(), x ?? ""]));
+  const kv = Object.fromEntries(
+    v
+      .split(";")
+      .map((p) => p.split("=") as [string, string])
+      .map(([k, x]) => [k.toUpperCase(), x ?? ""]),
+  );
   if (!kv.FREQ) return null;
   let until: number | null = null;
   if (kv.UNTIL) {
@@ -129,7 +156,11 @@ function parseRule(v: string): Rule | null {
     count: kv.COUNT ? Number(kv.COUNT) : null,
     until,
     byDay,
-    byMonthDay: kv.BYMONTHDAY ? kv.BYMONTHDAY.split(",").map(Number).filter((n) => n !== 0 && Math.abs(n) <= 31) : [],
+    byMonthDay: kv.BYMONTHDAY
+      ? kv.BYMONTHDAY.split(",")
+          .map(Number)
+          .filter((n) => n !== 0 && Math.abs(n) <= 31)
+      : [],
   };
 }
 
@@ -170,7 +201,10 @@ function* occurrences(start: When, rule: Rule, endMs: number): Generator<Local> 
           }
         }
       } else days = [s.d];
-      batch = days.filter((d) => d >= 1 && d <= dim).sort((a, b) => a - b).map((d) => ({ ...s, y, m, d }));
+      batch = days
+        .filter((d) => d >= 1 && d <= dim)
+        .sort((a, b) => a - b)
+        .map((d) => ({ ...s, y, m, d }));
     } else {
       yield s;
       return;
@@ -247,7 +281,14 @@ export function parseIcs(text: string, fromMs: number, toMsBound: number): { eve
     const location = unescape(first(e, "LOCATION")?.value ?? "") || null;
     const attendees = e.props
       .filter((p) => p.name === "ATTENDEE" || p.name === "ORGANIZER")
-      .map((p) => ({ email: p.value.replace(/^mailto:/i, "").trim().toLowerCase(), name: p.params.CN ? unescape(p.params.CN) : null, declined: (p.params.PARTSTAT ?? "").toUpperCase() === "DECLINED" }))
+      .map((p) => ({
+        email: p.value
+          .replace(/^mailto:/i, "")
+          .trim()
+          .toLowerCase(),
+        name: p.params.CN ? unescape(p.params.CN) : null,
+        declined: (p.params.PARTSTAT ?? "").toUpperCase() === "DECLINED",
+      }))
       .filter((a) => a.email.includes("@") && !a.declined)
       .map(({ email, name }) => ({ email, name }));
     const seen = new Set<string>();
@@ -265,7 +306,15 @@ export function parseIcs(text: string, fromMs: number, toMsBound: number): { eve
 
     const push = (ms: number) => {
       if (ms + Math.max(length, 1) <= fromMs || ms > toMsBound) return;
-      out.push({ id: `${uid}#${ms}`, title, start: new Date(ms).toISOString(), end: new Date(ms + length).toISOString(), allDay: start.allDay, location, attendees: people });
+      out.push({
+        id: `${uid}#${ms}`,
+        title,
+        start: new Date(ms).toISOString(),
+        end: new Date(ms + length).toISOString(),
+        allDay: start.allDay,
+        location,
+        attendees: people,
+      });
     };
 
     const rruleProp = first(e, "RRULE");

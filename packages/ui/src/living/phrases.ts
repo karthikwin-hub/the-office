@@ -114,6 +114,9 @@ export const PHRASES: Record<Topic, readonly Exchange[]> = {
 /** Fills a line's placeholders; a missing value leaves the placeholder's word out. */
 export function fill(line: string, values: Partial<Record<"a" | "b" | "drink" | "city" | "festival" | "day" | "span" | "feel", string>>): string {
   const out = line.replace(/\{(\w+)\}/g, (_, k: string) => values[k as keyof typeof values] ?? "");
-  const tidy = out.replace(/\s+([,.?!])/g, "$1").replace(/\s{2,}/g, " ").trim();
+  const tidy = out
+    .replace(/\s+([,.?!])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   return tidy.charAt(0).toUpperCase() + tidy.slice(1);
 }

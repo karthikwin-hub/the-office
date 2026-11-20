@@ -95,14 +95,27 @@ export function SocialRoomPanel({ report }: { report: SocialReport }) {
   const next = nextMonth(month);
   const current = report.calendars.find((c) => c.month === month && c.status !== "superseded");
   const upcoming = report.calendars.find((c) => c.month === next && c.status !== "superseded");
-  const byHand = report.posts.flatMap((p) => p.variants.filter((v) => v.status === "scheduled" && report.channels.find((c) => c.id === v.channelId)?.status !== "connected").map((v) => ({ post: p, v })));
+  const byHand = report.posts.flatMap((p) =>
+    p.variants
+      .filter((v) => v.status === "scheduled" && report.channels.find((c) => c.id === v.channelId)?.status !== "connected")
+      .map((v) => ({ post: p, v })),
+  );
   const drafts = report.posts.filter((p) => p.status !== "published" && !p.calendarId).concat(report.posts.filter((p) => p.status === "draft" && p.calendarId));
   const festivals = marketing.data?.calendar;
   const open = (id: string) => document.getElementById(`post-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
-      <Section title="Channels" aside={owner ? <Link to="/settings" hash="channels">Channel settings</Link> : null}>
+      <Section
+        title="Channels"
+        aside={
+          owner ? (
+            <Link to="/settings" hash="channels">
+              Channel settings
+            </Link>
+          ) : null
+        }
+      >
         <ChannelStrip
           channels={report.channels}
           busy={social.isPending}
@@ -120,12 +133,19 @@ export function SocialRoomPanel({ report }: { report: SocialReport }) {
           ) : null
         }
       >
-        {current ? <CalendarGrid calendar={current} pillars={report.voice.pillars} posts={report.posts} festivals={festivals} onOpen={open} /> : <p className="section-lede">No calendar for this month yet. Draft one and it comes to your desk to approve as a whole.</p>}
+        {current ? (
+          <CalendarGrid calendar={current} pillars={report.voice.pillars} posts={report.posts} festivals={festivals} onOpen={open} />
+        ) : (
+          <p className="section-lede">No calendar for this month yet. Draft one and it comes to your desk to approve as a whole.</p>
+        )}
         {upcoming ? <CalendarGrid calendar={upcoming} pillars={report.voice.pillars} posts={report.posts} festivals={festivals} onOpen={open} /> : null}
       </Section>
       {byHand.length ? (
         <Section title={`To post by hand (${byHand.length})`}>
-          <p className="section-lede">These channels are not connected, or the platform is limiting posts. Copy the text and pictures, post them, then paste the link so the results can be matched later.</p>
+          <p className="section-lede">
+            These channels are not connected, or the platform is limiting posts. Copy the text and pictures, post them, then paste the link so the results can
+            be matched later.
+          </p>
           {byHand.map(({ post, v }) => (
             <PublishingPackCard key={post.id + v.channelId} post={post} variant={v} report={report} />
           ))}
@@ -197,7 +217,15 @@ export function InboxThreads({ report, compact }: { report: SocialReport; compac
                 ) : null}
                 {m.replyBy && m.status === "open" ? (
                   <p className="message-window muted">
-                    WhatsApp allows a free reply until {new Date(m.replyBy).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}.
+                    WhatsApp allows a free reply until{" "}
+                    {new Date(m.replyBy).toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "numeric",
+                      month: "short",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    .
                   </p>
                 ) : null}
                 {m.draftReply ? (
@@ -227,7 +255,11 @@ export function SocialInboxView({ report, compact }: { report: SocialReport; com
 
 const POST = { draft: "Draft", scheduled: "Scheduled", published: "Published" } as const;
 const totalViews = (p: Post) => p.variants.reduce((a, v) => a + (v.metrics?.views ?? 0), 0);
-const channelsOf = (p: Post) => p.variants.filter((v) => v.status !== "skipped").map((v) => PLATFORM_NAMES[v.platform]).join(", ");
+const channelsOf = (p: Post) =>
+  p.variants
+    .filter((v) => v.status !== "skipped")
+    .map((v) => PLATFORM_NAMES[v.platform])
+    .join(", ");
 
 export function PostsView({ report }: { report: SocialReport }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -242,10 +274,26 @@ export function PostsView({ report }: { report: SocialReport }) {
         rowTone={(r) => ((report.checks[r.id] ?? []).some((c) => !c.ok) ? "red" : undefined)}
         columns={[
           { id: "a", header: "When", cell: (r) => `${shortDate(r.at)}, ${r.at.slice(11, 16)}`, sortBy: (r) => r.at },
-          { id: "t", header: "Post", cell: (r) => <button type="button" className="btn-link" onClick={() => setOpenId(r.id === openId ? null : r.id)} aria-expanded={r.id === openId}>{r.topic}</button>, sortBy: (r) => r.topic },
+          {
+            id: "t",
+            header: "Post",
+            cell: (r) => (
+              <button type="button" className="btn-link" onClick={() => setOpenId(r.id === openId ? null : r.id)} aria-expanded={r.id === openId}>
+                {r.topic}
+              </button>
+            ),
+            sortBy: (r) => r.topic,
+          },
           { id: "p", header: "Where", cell: channelsOf, secondary: true },
           { id: "s", header: "Status", cell: (r) => POST[r.status], sortBy: (r) => r.status },
-          { id: "v", header: "Views", cell: (r) => (totalViews(r) ? totalViews(r).toLocaleString("en-IN") : ""), sortBy: totalViews, numeric: true, secondary: true },
+          {
+            id: "v",
+            header: "Views",
+            cell: (r) => (totalViews(r) ? totalViews(r).toLocaleString("en-IN") : ""),
+            sortBy: totalViews,
+            numeric: true,
+            secondary: true,
+          },
         ]}
       />
       {opened ? <PostCard post={opened} report={report} editable={isOwner()} /> : null}
@@ -258,7 +306,10 @@ export function CalendarView({ report }: { report: SocialReport }) {
   const cals = report.calendars.filter((c) => c.status !== "superseded").sort((a, b) => (a.month < b.month ? 1 : -1));
   return (
     <Section title="Content calendar">
-      <p className="section-lede">One block per planned post, hatched by its pillar. An approved month lets a trusted Social Media Manager publish each post at its time, if it is unchanged and passes every check again then.</p>
+      <p className="section-lede">
+        One block per planned post, hatched by its pillar. An approved month lets a trusted Social Media Manager publish each post at its time, if it is
+        unchanged and passes every check again then.
+      </p>
       {cals.map((c) => (
         <CalendarGrid key={c.id} calendar={c} pillars={report.voice.pillars} posts={report.posts} festivals={marketing.data?.calendar} />
       ))}
@@ -318,7 +369,8 @@ export function SocialResultsView({ report }: { report: SocialReport }) {
           </div>
         </dl>
         <p className="table-note muted">
-          A lead counts when it came from a social channel or from a message the Social Media Manager passed on. Invoices count from the day the customer first got in touch
+          A lead counts when it came from a social channel or from a message the Social Media Manager passed on. Invoices count from the day the customer first
+          got in touch
           {f.partyIds.length ? (
             <>
               {": "}

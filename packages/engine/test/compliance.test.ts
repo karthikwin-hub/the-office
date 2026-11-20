@@ -103,8 +103,18 @@ describe("which filings apply", () => {
   });
 
   it("asks for DIR-3 KYC once every three financial years, by 30 June", () => {
-    expect(kycDue({ id: "d", name: "A", din: "01234567", designation: "Director", appointedOn: null, kycDoneOn: "2026-05-10", dscExpiresOn: null, mcaSigner: false }, AS_OF)).toBe("2029-06-30");
-    expect(kycDue({ id: "d", name: "A", din: "01234567", designation: "Director", appointedOn: null, kycDoneOn: "2026-02-10", dscExpiresOn: null, mcaSigner: false }, AS_OF)).toBe("2028-06-30");
+    expect(
+      kycDue(
+        { id: "d", name: "A", din: "01234567", designation: "Director", appointedOn: null, kycDoneOn: "2026-05-10", dscExpiresOn: null, mcaSigner: false },
+        AS_OF,
+      ),
+    ).toBe("2029-06-30");
+    expect(
+      kycDue(
+        { id: "d", name: "A", din: "01234567", designation: "Director", appointedOn: null, kycDoneOn: "2026-02-10", dscExpiresOn: null, mcaSigner: false },
+        AS_OF,
+      ),
+    ).toBe("2028-06-30");
   });
 
   it("charges MCA additional fees in bands of delay, and AOC-4 by the day", () => {
@@ -163,7 +173,10 @@ describe("checks from the books", () => {
   it("puts what the owner agreed into the cash plan: micro and small suppliers first, and advance tax set aside", () => {
     const o = new OfficeService(books(), { asOf: AS_OF });
     o.setHiring("compliance-officer", { hired: true });
-    const out = () => cashReport(o.ledger).weeks.flatMap((w) => w.items).filter((i) => i.direction === "out");
+    const out = () =>
+      cashReport(o.ledger)
+        .weeks.flatMap((w) => w.items)
+        .filter((i) => i.direction === "out");
     const before = out();
     expect(before.some((i) => i.label.includes("paid first"))).toBe(false);
     const msme = o.pending().find((s) => s.kind === "compliance_action" && s.payload.checkId === "msme")!;
@@ -181,7 +194,9 @@ describe("checks from the books", () => {
       const aside = tax.payload.setAside as { dueOn: string; amountPaise: number };
       o.decide(tax.id, { action: "approve" }, "Anil Kaveri");
       const cash = cashReport(o.ledger);
-      const shown = cash.weeks.flatMap((w) => w.items).some((i) => i.label.startsWith("Advance tax for") && i.amountPaise === aside.amountPaise && i.date === aside.dueOn);
+      const shown = cash.weeks
+        .flatMap((w) => w.items)
+        .some((i) => i.label.startsWith("Advance tax for") && i.amountPaise === aside.amountPaise && i.date === aside.dueOn);
       expect(shown || cash.assumptions.some((a) => a.includes("of advance tax is set aside for"))).toBe(true);
     }
   });
@@ -215,10 +230,18 @@ describe("tracking a filing", () => {
   it("marks an MCA form filed once its SRN is approved", () => {
     const b = books();
     const dir12 = buildObligations(b, AS_OF).find((o) => o.form === "DIR-12" && o.state !== "filed")!;
-    const sent = recordSrn(b, dir12.id, { number: "AB1234567", createdOn: "2026-11-01", challan: "", status: "resubmission", remarks: "Attach the consent", resubmitBy: "2026-11-15" }, "CS", AT);
+    const sent = recordSrn(
+      b,
+      dir12.id,
+      { number: "AB1234567", createdOn: "2026-11-01", challan: "", status: "resubmission", remarks: "Attach the consent", resubmitBy: "2026-11-15" },
+      "CS",
+      AT,
+    );
     expect(sent.state).not.toBe("filed");
     expect(sent.srn).toMatchObject({ status: "resubmission", resubmitBy: "2026-11-15" });
-    expect(recordSrn(b, dir12.id, { number: "AB1234567", createdOn: "2026-11-01", challan: "", status: "approved", remarks: "", resubmitBy: null }, "CS", AT).state).toBe("filed");
+    expect(
+      recordSrn(b, dir12.id, { number: "AB1234567", createdOn: "2026-11-01", challan: "", status: "approved", remarks: "", resubmitBy: null }, "CS", AT).state,
+    ).toBe("filed");
   });
 
   it("adds and removes an item by hand", () => {
@@ -239,7 +262,26 @@ describe("filings raised by events", () => {
   it("raises DIR-12 within 30 days when a director joins", () => {
     const b = books();
     const p = profile(b);
-    saveProfile(b, { ...p, directors: [...p.directors, { id: "dir-new", name: "Meera Iyer", din: "10999999", designation: "Director", appointedOn: "2026-11-02", kycDoneOn: null, dscExpiresOn: null, mcaSigner: false }] }, AS_OF);
+    saveProfile(
+      b,
+      {
+        ...p,
+        directors: [
+          ...p.directors,
+          {
+            id: "dir-new",
+            name: "Meera Iyer",
+            din: "10999999",
+            designation: "Director",
+            appointedOn: "2026-11-02",
+            kycDoneOn: null,
+            dscExpiresOn: null,
+            mcaSigner: false,
+          },
+        ],
+      },
+      AS_OF,
+    );
     const dir12 = buildObligations(b, AS_OF).filter((o) => o.form === "DIR-12" && o.state !== "filed");
     expect(dir12.some((o) => o.dueOn === "2026-12-02")).toBe(true);
   });
@@ -247,7 +289,14 @@ describe("filings raised by events", () => {
   it("raises CHG-1 for a new secured loan", () => {
     const b = books();
     const p = profile(b);
-    saveProfile(b, { ...p, loans: [...p.loans, { id: "loan-new", lender: "SBI", kind: "bank", amountPaise: 50_00_000_00, takenOn: "2026-11-01", secured: true, closedOn: null }] }, AS_OF);
+    saveProfile(
+      b,
+      {
+        ...p,
+        loans: [...p.loans, { id: "loan-new", lender: "SBI", kind: "bank", amountPaise: 50_00_000_00, takenOn: "2026-11-01", secured: true, closedOn: null }],
+      },
+      AS_OF,
+    );
     expect(buildObligations(b, AS_OF).some((o) => o.form === "CHG-1" && o.dueOn === "2026-12-01")).toBe(true);
   });
 });
@@ -304,10 +353,26 @@ describe("the books' edit log", () => {
     const o = new OfficeService(loadBooks(), { asOf: AS_OF, edits });
     const before = edits.count();
     const vendor = o.books.parties.find((p) => p.kind === "vendor")!;
-    const res = dispatch(o, { method: "PUT", path: ROUTES.partyMsme(vendor.id), query: new URLSearchParams(), body: { udyamCategory: "micro", udyamActivity: "manufacturing", writtenCreditDays: 30 }, role: "owner", user: { name: "Anil Kaveri", email: "anil@x.in" }, mode: "mock" });
+    const res = dispatch(o, {
+      method: "PUT",
+      path: ROUTES.partyMsme(vendor.id),
+      query: new URLSearchParams(),
+      body: { udyamCategory: "micro", udyamActivity: "manufacturing", writtenCreditDays: 30 },
+      role: "owner",
+      user: { name: "Anil Kaveri", email: "anil@x.in" },
+      mode: "mock",
+    });
     expect(res.status).toBe(200);
     const added = edits.all().slice(before);
-    expect(added.some((e) => e.coll === "parties" && e.recordId === vendor.id && e.by === "Anil Kaveri" && e.changes.some((c) => c.field === "writtenCreditDays" && c.after === 30))).toBe(true);
+    expect(
+      added.some(
+        (e) =>
+          e.coll === "parties" &&
+          e.recordId === vendor.id &&
+          e.by === "Anil Kaveri" &&
+          e.changes.some((c) => c.field === "writtenCreditDays" && c.after === 30),
+      ),
+    ).toBe(true);
     expect(verifyChain(edits.all())).toBe(true);
   });
 
@@ -320,7 +385,16 @@ describe("the books' edit log", () => {
 });
 
 describe("the compliance routes", () => {
-  const req = (o: OfficeService, method: string, path: string, body?: unknown, role: "owner" | "accountant" = "accountant") => dispatch(o, { method, path, query: new URLSearchParams(), body, role, user: { name: role === "owner" ? "Anil Kaveri" : "Rajesh Mehta", email: "x@y.in" }, mode: "mock" });
+  const req = (o: OfficeService, method: string, path: string, body?: unknown, role: "owner" | "accountant" = "accountant") =>
+    dispatch(o, {
+      method,
+      path,
+      query: new URLSearchParams(),
+      body,
+      role,
+      user: { name: role === "owner" ? "Anil Kaveri" : "Rajesh Mehta", email: "x@y.in" },
+      mode: "mock",
+    });
 
   it("marks filed and assigns, and every action goes into the audit trail", () => {
     const o = new OfficeService(loadBooks(), { asOf: AS_OF });

@@ -48,7 +48,11 @@ export function PostPreview({ variant: v, channel, facts, media, checks = [], at
         </h4>
         <span className="post-copy-status">
           {STATUS[v.status]}
-          {when ? <time dateTime={when}>{` ${new Date(when).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}`}</time> : null}
+          {when ? (
+            <time
+              dateTime={when}
+            >{` ${new Date(when).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}`}</time>
+          ) : null}
         </span>
       </header>
       {pics.length ? (
@@ -74,7 +78,13 @@ export function PostPreview({ variant: v, channel, facts, media, checks = [], at
           <label htmlFor={`${id}-text`} className="visually-hidden">
             Text for {PLATFORM_NAMES[v.platform]}
           </label>
-          <textarea id={`${id}-text`} className="input" rows={Math.min(14, draft.split("\n").length + 3)} value={draft} onChange={(e) => setDraft(e.target.value)} />
+          <textarea
+            id={`${id}-text`}
+            className="input"
+            rows={Math.min(14, draft.split("\n").length + 3)}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
           <div className="approval-actions">
             <button type="submit" className="btn btn-primary" disabled={busy || over || !draft.trim()}>
               Save for {PLATFORM_NAMES[v.platform]}
@@ -90,7 +100,13 @@ export function PostPreview({ variant: v, channel, facts, media, checks = [], at
             !s.figure ? (
               <span key={i}>{s.text}</span>
             ) : s.fact && factFigure(s.fact) ? (
-              <button key={i} type="button" className="figure figure-link" onClick={() => open(factFigure(s.fact!)!)} aria-label={`${s.text}: ${s.fact.label}. Show where this comes from`}>
+              <button
+                key={i}
+                type="button"
+                className="figure figure-link"
+                onClick={() => open(factFigure(s.fact!)!)}
+                aria-label={`${s.text}: ${s.fact.label}. Show where this comes from`}
+              >
                 {s.text}
               </button>
             ) : s.fact ? (
@@ -105,7 +121,14 @@ export function PostPreview({ variant: v, channel, facts, media, checks = [], at
           )}
         </p>
       )}
-      <div className="post-copy-meter" role="meter" aria-valuemin={0} aria-valuemax={rules.maxChars} aria-valuenow={n} aria-label={`Length for ${PLATFORM_NAMES[v.platform]}`}>
+      <div
+        className="post-copy-meter"
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={rules.maxChars}
+        aria-valuenow={n}
+        aria-label={`Length for ${PLATFORM_NAMES[v.platform]}`}
+      >
         <span className={over ? "is-over" : undefined} style={{ inlineSize: `${Math.min(100, (n / rules.maxChars) * 100)}%` }} />
       </div>
       <p className="post-copy-foot">

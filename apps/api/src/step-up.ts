@@ -13,7 +13,10 @@ import { z } from "zod";
  */
 
 /** What an owner without two-factor sign-in is told; the web app reads `code` and opens the enrolment. */
-export const TWO_FACTOR_NEEDED = { error: "Set up two-step sign-in for your account first. It keeps your business's books safe if your password leaks.", code: "two_factor_required" } as const;
+export const TWO_FACTOR_NEEDED = {
+  error: "Set up two-step sign-in for your account first. It keeps your business's books safe if your password leaks.",
+  code: "two_factor_required",
+} as const;
 
 /** True when this person must still turn two-factor sign-in on before acting as an owner. */
 export const twoFactorMissing = (user: { twoFactorEnabled: boolean }) => !user.twoFactorEnabled;
@@ -22,7 +25,10 @@ export const twoFactorMissing = (user: { twoFactorEnabled: boolean }) => !user.t
 export const FRESH_MS = 15 * 60 * 1000;
 
 /** What a stale session is told; the web app reads `code`, asks for the password or a code, and tries again. */
-export const STEP_UP_NEEDED = { error: "Confirm it is you: type your password or a code from your authenticator app, then try again.", code: "step_up_required" } as const;
+export const STEP_UP_NEEDED = {
+  error: "Confirm it is you: type your password or a code from your authenticator app, then try again.",
+  code: "step_up_required",
+} as const;
 
 /** Signed in within FRESH_MS, or confirmed with a password or code since. */
 export const isFresh = (s: { createdAt: Date | number; stepUpAt?: Date | number | null }, now = Date.now()) =>
@@ -41,12 +47,21 @@ type Counter = { key: string; count: number; lastRequest: number };
 async function takeTry(ctx: Ctx, key: string, retried = false): Promise<boolean> {
   const now = Date.now();
   const byKey = [{ field: "key", value: key }];
-  const took = await ctx.context.adapter.incrementOne({ model: "rateLimit", where: [...byKey, { field: "count", operator: "lt", value: STEP_UP_TRIES }, { field: "lastRequest", operator: "gt", value: now - FRESH_MS }], increment: { count: 1 } });
+  const took = await ctx.context.adapter.incrementOne({
+    model: "rateLimit",
+    where: [...byKey, { field: "count", operator: "lt", value: STEP_UP_TRIES }, { field: "lastRequest", operator: "gt", value: now - FRESH_MS }],
+    increment: { count: 1 },
+  });
   if (took) return true;
   const row = await ctx.context.adapter.findOne<Counter>({ model: "rateLimit", where: byKey });
   if (row && now - Number(row.lastRequest) < FRESH_MS) return false;
   if (row) {
-    const restarted = await ctx.context.adapter.incrementOne({ model: "rateLimit", where: [...byKey, { field: "lastRequest", operator: "lte", value: Number(row.lastRequest) }], increment: {}, set: { count: 1, lastRequest: now } });
+    const restarted = await ctx.context.adapter.incrementOne({
+      model: "rateLimit",
+      where: [...byKey, { field: "lastRequest", operator: "lte", value: Number(row.lastRequest) }],
+      increment: {},
+      set: { count: 1, lastRequest: now },
+    });
     if (restarted) return true;
   } else
     try {
@@ -83,18 +98,27 @@ export const stepUp = (mail: Mail) =>
     endpoints: {
       stepUp: createAuthEndpoint(
         "/step-up",
-        { method: "POST", body: z.object({ password: z.string().min(1).max(256).optional(), code: z.string().min(6).max(12).optional() }), use: [sessionMiddleware] },
+        {
+          method: "POST",
+          body: z.object({ password: z.string().min(1).max(256).optional(), code: z.string().min(6).max(12).optional() }),
+          use: [sessionMiddleware],
+        },
         async (ctx) => {
           const { session, user } = ctx.context.session;
           const { password, code } = ctx.body;
           const tally = `step-up:${user.id}`;
-          if (!(await takeTry(ctx, tally))) throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many wrong tries. Sign out, then sign in again to go on." });
+          if (!(await takeTry(ctx, tally)))
+            throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many wrong tries. Sign out, then sign in again to go on." });
           let ok = false;
           if ((user as { twoFactorEnabled?: boolean }).twoFactorEnabled) {
             // With two-factor on, only the second factor counts: a stolen cookie and a leaked password are not enough.
             if (!code) throw APIError.fromStatus("BAD_REQUEST", { message: "Type the code your authenticator app shows." });
-            const row = await ctx.context.adapter.findOne<{ secret: string; verified: boolean | null }>({ model: "twoFactor", where: [{ field: "userId", value: user.id }] });
-            if (row && row.verified !== false) ok = await createOTP(await totpSecret(ctx.context.secretConfig, row.secret), { digits: 6, period: 30 }).verify(code.replace(/\s+/g, ""));
+            const row = await ctx.context.adapter.findOne<{ secret: string; verified: boolean | null }>({
+              model: "twoFactor",
+              where: [{ field: "userId", value: user.id }],
+            });
+            if (row && row.verified !== false)
+              ok = await createOTP(await totpSecret(ctx.context.secretConfig, row.secret), { digits: 6, period: 30 }).verify(code.replace(/\s+/g, ""));
           } else if (password) {
             const login = (await ctx.context.internalAdapter.findAccounts(user.id)).find((a) => a.providerId === "credential" && a.password);
             ok = Boolean(login?.password) && (await ctx.context.password.verify({ hash: login!.password!, password }));
@@ -113,7 +137,8 @@ export const stepUp = (mail: Mail) =>
           handler: createAuthMiddleware(async (ctx) => {
             const signedIn = await getSessionFromCtx(ctx);
             if (!signedIn) return; // the second step of a sign-in: the plugin counts and locks those
-            if ((signedIn.user as { twoFactorEnabled?: boolean }).twoFactorEnabled) throw APIError.fromStatus("FORBIDDEN", { message: "Two-step sign-in is already on." });
+            if ((signedIn.user as { twoFactorEnabled?: boolean }).twoFactorEnabled)
+              throw APIError.fromStatus("FORBIDDEN", { message: "Two-step sign-in is already on." });
             if (ctx.request) enrolling.set(ctx.request, { email: signedIn.user.email, name: signedIn.user.name });
           }),
         },
@@ -129,9 +154,11 @@ export const stepUp = (mail: Mail) =>
             await mail(who.email, on ? "Two-step sign-in is now on for your account" : "Two-step sign-in was turned off for your account", [
               `Hello ${who.name},`,
               "",
-              on ? "Signing in to your account now asks for a code from an authenticator app as well as your password." : "Signing in to your account now asks only for your password.",
+              on
+                ? "Signing in to your account now asks for a code from an authenticator app as well as your password."
+                : "Signing in to your account now asks only for your password.",
               "",
-              "If this was not you, someone has your password: choose \"Forgotten your password?\" on the sign-in page at once, and write to us so we can reset two-step sign-in.",
+              'If this was not you, someone has your password: choose "Forgotten your password?" on the sign-in page at once, and write to us so we can reset two-step sign-in.',
             ]);
           }),
         },

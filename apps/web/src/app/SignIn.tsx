@@ -29,10 +29,24 @@ function clearResetUrl() {
  * An invitation link is looked up first: a used or expired one opens on Sign in, since the
  * person most likely already has an account, and a live one names its office and address.
  */
-export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: string | null; onInviteSpent?: () => void; staff?: { appAddress: string; appHref: string } }) {
+export function SignIn({
+  invite = null,
+  onInviteSpent,
+  staff,
+}: {
+  invite?: string | null;
+  onInviteSpent?: () => void;
+  staff?: { appAddress: string; appHref: string };
+}) {
   const qc = useQueryClient();
   const [reset] = useState(resetFromUrl);
-  const peek = useQuery({ queryKey: ["invitation", invite], queryFn: () => account.peekInvitation(invite!), enabled: Boolean(invite) && !reset, retry: false, staleTime: Infinity });
+  const peek = useQuery({
+    queryKey: ["invitation", invite],
+    queryFn: () => account.peekInvitation(invite!),
+    enabled: Boolean(invite) && !reset,
+    retry: false,
+    staleTime: Infinity,
+  });
   const invited = Boolean(invite) && !peek.isError;
   const [mode, setModeState] = useState<Mode>(reset ? "reset" : invite ? "sign-up" : "sign-in");
   const [name, setName] = useState("");
@@ -49,7 +63,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
     if (!peek.isError) return;
     onInviteSpent?.();
     setModeState((m) => (m === "sign-up" ? "sign-in" : m));
-    setNotice("That invitation link has already been used or has expired. If you have an account, sign in; to join an office for the first time, ask its owner for a new invitation.");
+    setNotice(
+      "That invitation link has already been used or has expired. If you have an account, sign in; to join an office for the first time, ask its owner for a new invitation.",
+    );
   }, [peek.isError]); // eslint-disable-line react-hooks/exhaustive-deps
   // A live one: the address it was sent to goes in the form.
   useEffect(() => {
@@ -64,7 +80,7 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
             /expired|invalid two factor cookie/i.test(e.message)
               ? "That took too long. Start again with your password."
               : /too many/i.test(e.message)
-                ? "Too many tries for this sign-in. Choose \"Start again\" and type your password once more."
+                ? 'Too many tries for this sign-in. Choose "Start again" and type your password once more.'
                 : backup
                   ? "That backup code is not right, or was already used."
                   : "That code is not right. Check the time on your phone, then try the newest code.",
@@ -85,7 +101,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
       }
       if (mode === "sign-in") {
         const signedIn = await account.signIn(email, password).catch((e: ApiError) => {
-          throw e.status === 403 && /verif/i.test(e.message) ? new Error(`Confirm your email address first: open the link we sent to ${email}. We have just sent it again.`) : e;
+          throw e.status === 403 && /verif/i.test(e.message)
+            ? new Error(`Confirm your email address first: open the link we sent to ${email}. We have just sent it again.`)
+            : e;
         });
         if (signedIn.twoFactorRedirect) return "second-step";
       } else {
@@ -100,7 +118,9 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
       if (done === "check-email") {
         setPassword("");
         setModeState("sign-in");
-        return setNotice(`We sent a link to ${email}. Open it to confirm your address; it signs you in${invited ? " and brings you back to the invitation" : ""}. If you already had an account with this address, the email says so instead.`);
+        return setNotice(
+          `We sent a link to ${email}. Open it to confirm your address; it signs you in${invited ? " and brings you back to the invitation" : ""}. If you already had an account with this address, the email says so instead.`,
+        );
       }
       if (done === "second-step") {
         setPassword("");
@@ -125,12 +145,16 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
       // Making an account for an address that already has one: sign in with it instead, keeping what was typed.
       if (mode === "sign-up" && /already exists/i.test(e.message)) {
         setModeState("sign-in");
-        setNotice(`There is already an account for ${email}. Sign in with its password${invited ? " to join the office" : ""}, or choose "Forgotten your password?".`);
+        setNotice(
+          `There is already an account for ${email}. Sign in with its password${invited ? " to join the office" : ""}, or choose "Forgotten your password?".`,
+        );
         submit.reset();
       }
       // Signing in with the invited address before an account was made for it: point to making one.
       else if (mode === "sign-in" && invited && peek.data && email.trim().toLowerCase() === peek.data.email.toLowerCase())
-        setNotice(`If you have not made an account for ${peek.data.email} yet, choose "Make an account": the invitation to ${peek.data.officeName} is waiting for it.`);
+        setNotice(
+          `If you have not made an account for ${peek.data.email} yet, choose "Make an account": the invitation to ${peek.data.officeName} is waiting for it.`,
+        );
     },
   });
   const setMode = (m: Mode) => {
@@ -150,39 +174,48 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
     mode === "two-factor"
       ? "Two-step sign-in"
       : mode === "forgot"
-      ? "Forgotten password"
-      : mode === "reset"
-        ? "Choose a new password"
-        : staff
-          ? "Platform console"
-          : invited && peek.data
-            ? `Join ${peek.data.officeName}`
-            : mode === "sign-in"
-              ? "Sign in"
-              : invited
-                ? "Join the office"
-                : "Make an account";
+        ? "Forgotten password"
+        : mode === "reset"
+          ? "Choose a new password"
+          : staff
+            ? "Platform console"
+            : invited && peek.data
+              ? `Join ${peek.data.officeName}`
+              : mode === "sign-in"
+                ? "Sign in"
+                : invited
+                  ? "Join the office"
+                  : "Make an account";
   const lede =
     mode === "two-factor"
       ? backup
         ? "Type one of the backup codes you saved when you turned on two-step sign-in. Each works once."
         : "Open your authenticator app and type the six-digit code it shows for this account."
       : mode === "forgot"
-      ? "Give the email address you sign in with. We will send a link to choose a new password."
-      : mode === "reset"
-        ? expired
-          ? "That link has expired or was already used. Links work for an hour, once."
-          : "At least 10 characters. Once it is changed, you are signed out everywhere else."
-        : staff
-          ? `For the people who run ${BRAND.name}: every business on the platform, onboarding and suspending. Sign in with your work account; businesses sign in at ${staff.appAddress}.`
-          : invited
-            ? peek.data
-              ? `You were invited to ${peek.data.officeName} as ${peek.data.role === "owner" ? "an owner" : "its accountant"}, at ${peek.data.email}. Make an account with that address, or sign in if you already have one.`
-              : "You were invited to an office. Sign in, or make an account with the address the invitation went to."
-            : mode === "sign-in"
-              ? "Welcome back."
-              : "Then open your office, or join one from an invitation link. Each business's books are seen only by the people in it.";
-  const action = mode === "two-factor" ? "Continue" : mode === "forgot" ? "Send the link" : mode === "reset" ? "Change the password" : mode === "sign-in" ? "Sign in" : "Make the account";
+        ? "Give the email address you sign in with. We will send a link to choose a new password."
+        : mode === "reset"
+          ? expired
+            ? "That link has expired or was already used. Links work for an hour, once."
+            : "At least 10 characters. Once it is changed, you are signed out everywhere else."
+          : staff
+            ? `For the people who run ${BRAND.name}: every business on the platform, onboarding and suspending. Sign in with your work account; businesses sign in at ${staff.appAddress}.`
+            : invited
+              ? peek.data
+                ? `You were invited to ${peek.data.officeName} as ${peek.data.role === "owner" ? "an owner" : "its accountant"}, at ${peek.data.email}. Make an account with that address, or sign in if you already have one.`
+                : "You were invited to an office. Sign in, or make an account with the address the invitation went to."
+              : mode === "sign-in"
+                ? "Welcome back."
+                : "Then open your office, or join one from an invitation link. Each business's books are seen only by the people in it.";
+  const action =
+    mode === "two-factor"
+      ? "Continue"
+      : mode === "forgot"
+        ? "Send the link"
+        : mode === "reset"
+          ? "Change the password"
+          : mode === "sign-in"
+            ? "Sign in"
+            : "Make the account";
 
   return (
     <main className="signin" id="main">
@@ -264,7 +297,16 @@ export function SignIn({ invite = null, onInviteSpent, staff }: { invite?: strin
             {mode === "reset" ? (
               <div className="field">
                 <label htmlFor="confirm">The new password again</label>
-                <input id="confirm" className="input" type="password" autoComplete="new-password" required minLength={10} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+                <input
+                  id="confirm"
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={10}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                />
               </div>
             ) : null}
             {mode === "sign-up" ? (

@@ -20,7 +20,16 @@ function Copies({ id, edit }: { id: string; edit?: boolean }) {
       <PostChecks checks={checks} />
       <div className="post-copies">
         {p.variants.map((v) => (
-          <PostPreview key={v.channelId} variant={v} channel={channel(v.channelId)} facts={p.facts} media={social.media} checks={checks} at={p.at} onSave={edit ? (t) => console.info("save", v.channelId, t) : undefined} />
+          <PostPreview
+            key={v.channelId}
+            variant={v}
+            channel={channel(v.channelId)}
+            facts={p.facts}
+            media={social.media}
+            checks={checks}
+            at={p.at}
+            onSave={edit ? (t) => console.info("save", v.channelId, t) : undefined}
+          />
         ))}
       </div>
     </div>
@@ -39,15 +48,30 @@ export const ChannelsForTheOwner: StoryObj = {
 
 const festivals = office.books.festivalCalendar;
 export const ApprovedMonth: StoryObj = {
-  render: () => <CalendarGrid calendar={social.calendars.find((c) => c.id === "cal-2026-11")!} pillars={social.voice.pillars} posts={social.posts} festivals={festivals} onOpen={(id) => console.info("open", id)} />,
+  render: () => (
+    <CalendarGrid
+      calendar={social.calendars.find((c) => c.id === "cal-2026-11")!}
+      pillars={social.voice.pillars}
+      posts={social.posts}
+      festivals={festivals}
+      onOpen={(id) => console.info("open", id)}
+    />
+  ),
 };
 export const DraftMonth: StoryObj = {
-  render: () => <CalendarGrid calendar={social.calendars.find((c) => c.id === "cal-2026-12")!} pillars={social.voice.pillars} posts={social.posts} festivals={festivals} />,
+  render: () => (
+    <CalendarGrid calendar={social.calendars.find((c) => c.id === "cal-2026-12")!} pillars={social.voice.pillars} posts={social.posts} festivals={festivals} />
+  ),
 };
 export const PhoneWidth: StoryObj = {
   render: () => (
     <div style={{ maxWidth: 380 }}>
-      <CalendarGrid calendar={social.calendars.find((c) => c.id === "cal-2026-11")!} pillars={social.voice.pillars} posts={social.posts} festivals={festivals} />
+      <CalendarGrid
+        calendar={social.calendars.find((c) => c.id === "cal-2026-11")!}
+        pillars={social.voice.pillars}
+        posts={social.posts}
+        festivals={festivals}
+      />
     </div>
   ),
   parameters: { viewport: { defaultViewport: "mobile1" } },

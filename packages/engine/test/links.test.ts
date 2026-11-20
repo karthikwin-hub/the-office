@@ -8,8 +8,26 @@ describe("a post marked as posted by hand", () => {
     const office = new OfficeService(structuredClone(loadBooks()));
     const post = office.books.posts.find((p) => p.variants.some((v) => v.status !== "published"))!;
     const variant = post.variants.find((v) => v.status !== "published")!;
-    const posted = (url: unknown) => dispatch(office, { method: "POST", path: `/api/social/posts/${post.id}/variants/${variant.channelId}/posted`, query: new URLSearchParams(), body: { url }, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });
-    for (const url of ["javascript:alert(document.cookie)", "JavaScript:alert(1)", "data:text/html,<script>alert(1)</script>", "vbscript:msgbox(1)", "http://www.instagram.com/p/abc", " https://www.instagram.com/p/abc", "file:///etc/passwd", "not a link"]) {
+    const posted = (url: unknown) =>
+      dispatch(office, {
+        method: "POST",
+        path: `/api/social/posts/${post.id}/variants/${variant.channelId}/posted`,
+        query: new URLSearchParams(),
+        body: { url },
+        role: "owner",
+        user: { name: "Anil Kulkarni", email: "a@x" },
+        mode: "mock",
+      });
+    for (const url of [
+      "javascript:alert(document.cookie)",
+      "JavaScript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "vbscript:msgbox(1)",
+      "http://www.instagram.com/p/abc",
+      " https://www.instagram.com/p/abc",
+      "file:///etc/passwd",
+      "not a link",
+    ]) {
       expect([url, posted(url).status]).toEqual([url, 400]);
       expect(variant.url ?? null).not.toBe(url);
     }

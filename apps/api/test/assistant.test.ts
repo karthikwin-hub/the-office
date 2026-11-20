@@ -15,7 +15,17 @@ function sqlStorage(): SqlStorage {
   } as unknown as SqlStorage;
 }
 
-const ICS = ["BEGIN:VCALENDAR", "X-WR-CALNAME:Work", "BEGIN:VEVENT", "UID:1", "DTSTART;TZID=Asia/Kolkata:20261104T110000", "DTEND;TZID=Asia/Kolkata:20261104T120000", "SUMMARY:Bank", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+const ICS = [
+  "BEGIN:VCALENDAR",
+  "X-WR-CALNAME:Work",
+  "BEGIN:VEVENT",
+  "UID:1",
+  "DTSTART;TZID=Asia/Kolkata:20261104T110000",
+  "DTEND;TZID=Asia/Kolkata:20261104T120000",
+  "SUMMARY:Bank",
+  "END:VEVENT",
+  "END:VCALENDAR",
+].join("\r\n");
 
 describe("the assistant on the server", () => {
   it("keeps each owner's record apart, in the office's own SQLite", () => {
@@ -57,7 +67,13 @@ describe("the assistant on the server", () => {
     expect(plain.body).toContain("Dear Ravi");
     const broken = { run: async () => ({ response: "not json" }) } as unknown as Ai;
     expect((await draftReply(broken, o, mail, "Anil")).body).toBe(plain.body);
-    const good = { run: async () => ({ response: { subject: "Re: Rates", body: "Dear Ravi, our rate card is attached. Regards, Anil", promise: "Send the rate card" } }) } as unknown as Ai;
-    expect(await draftReply(good, o, mail, "Anil")).toEqual({ subject: "Re: Rates", body: "Dear Ravi, our rate card is attached. Regards, Anil", promise: "Send the rate card" });
+    const good = {
+      run: async () => ({ response: { subject: "Re: Rates", body: "Dear Ravi, our rate card is attached. Regards, Anil", promise: "Send the rate card" } }),
+    } as unknown as Ai;
+    expect(await draftReply(good, o, mail, "Anil")).toEqual({
+      subject: "Re: Rates",
+      body: "Dear Ravi, our rate card is attached. Regards, Anil",
+      promise: "Send the rate card",
+    });
   });
 });

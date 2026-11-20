@@ -46,13 +46,45 @@ describe("WhatsApp: reading what people send", () => {
     expect(parseCommand("switch")).toEqual({ kind: "switch", n: null });
     expect(parseCommand("Switch 2")).toEqual({ kind: "switch", n: 2 });
     expect(parseCommand("बदलो 1")).toEqual({ kind: "switch", n: 1 });
-    expect(parseCommand("1 yes, 2 later 3 no")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "later" }, { n: 3, action: "reject" }] });
-    expect(parseCommand("1 haan 2 nahi 3 baad mein")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "reject" }, { n: 3, action: "later" }] });
-    expect(parseCommand("१ हाँ २ नहीं")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "reject" }] });
-    expect(parseCommand("1 हो, 2 नाही")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "reject" }] });
+    expect(parseCommand("1 yes, 2 later 3 no")).toEqual({
+      kind: "decide",
+      items: [
+        { n: 1, action: "approve" },
+        { n: 2, action: "later" },
+        { n: 3, action: "reject" },
+      ],
+    });
+    expect(parseCommand("1 haan 2 nahi 3 baad mein")).toEqual({
+      kind: "decide",
+      items: [
+        { n: 1, action: "approve" },
+        { n: 2, action: "reject" },
+        { n: 3, action: "later" },
+      ],
+    });
+    expect(parseCommand("१ हाँ २ नहीं")).toEqual({
+      kind: "decide",
+      items: [
+        { n: 1, action: "approve" },
+        { n: 2, action: "reject" },
+      ],
+    });
+    expect(parseCommand("1 हो, 2 नाही")).toEqual({
+      kind: "decide",
+      items: [
+        { n: 1, action: "approve" },
+        { n: 2, action: "reject" },
+      ],
+    });
     expect(parseCommand("all yes")).toEqual({ kind: "decide", items: [{ n: "all", action: "approve" }] });
     expect(parseCommand("sab haan")).toEqual({ kind: "decide", items: [{ n: "all", action: "approve" }] });
-    expect(parseCommand("1 2 yes")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }, { n: 2, action: "approve" }] });
+    expect(parseCommand("1 2 yes")).toEqual({
+      kind: "decide",
+      items: [
+        { n: 1, action: "approve" },
+        { n: 2, action: "approve" },
+      ],
+    });
     expect(parseCommand("1yes")).toEqual({ kind: "decide", items: [{ n: 1, action: "approve" }] });
     expect(parseCommand("3")).toEqual({ kind: "show", n: 3 });
     expect(parseCommand("Who owes me the most?")).toEqual({ kind: "ask", text: "Who owes me the most?" });
@@ -211,7 +243,9 @@ describe("WhatsApp: questions, voice and length", () => {
 
   it("keeps amounts, numbers and links through translation, or falls back to English", () => {
     const src = "Customers owe ₹59.9 lakh (https://office.example/?figure=ageing%3Atotal) in all; invoice KE/26-27/046 is 40 days late.";
-    expect(keepsFigures(src, "ग्राहकों पर कुल ₹59.9 लाख (https://office.example/?figure=ageing%3Atotal) बकाया है; इनवॉइस KE/26-27/046 को 40 दिन हो गए।")).toBe(true);
+    expect(keepsFigures(src, "ग्राहकों पर कुल ₹59.9 लाख (https://office.example/?figure=ageing%3Atotal) बकाया है; इनवॉइस KE/26-27/046 को 40 दिन हो गए।")).toBe(
+      true,
+    );
     expect(keepsFigures(src, "ग्राहकों पर कुल ₹60 लाख बकाया है; इनवॉइस KE/26-27/046 को 40 दिन हो गए।")).toBe(false);
     const parts = [{ text: "Hello." }, { text: src, translate: true }, { text: "Bill for ₹18,450", translate: true }];
     const out = applyTranslation(parts, ["ग्राहकों पर ₹59 लाख", "₹18,450 का बिल"]);

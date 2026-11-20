@@ -1,7 +1,37 @@
-import { ambientFrom, BRAND, checkPersonaNames, ImportCheck, IMPORT_MAX_BYTES, type JoinCode, type Platform, type StagedChange, PLATFORM_NAMES, Platform as PlatformEnum, ReadRequest, readPersonaNames, ROUTES, WhatsAppChange, type WhatsAppStatus } from "@office/contracts";
+import {
+  ambientFrom,
+  BRAND,
+  checkPersonaNames,
+  ImportCheck,
+  IMPORT_MAX_BYTES,
+  type JoinCode,
+  type Platform,
+  type StagedChange,
+  PLATFORM_NAMES,
+  Platform as PlatformEnum,
+  ReadRequest,
+  readPersonaNames,
+  ROUTES,
+  WhatsAppChange,
+  type WhatsAppStatus,
+} from "@office/contracts";
 import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
 import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
-import { digestChannel, dispatch, morningRound, nextMonth, OfficeService, RoutineError, routinesView, runNow, runOne, type ApiResult, type RoutineHost, type StepResult, type TextItem } from "@office/engine";
+import {
+  digestChannel,
+  dispatch,
+  morningRound,
+  nextMonth,
+  OfficeService,
+  RoutineError,
+  routinesView,
+  runNow,
+  runOne,
+  type ApiResult,
+  type RoutineHost,
+  type StepResult,
+  type TextItem,
+} from "@office/engine";
 import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedCopy } from "./backup";
 import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
@@ -26,7 +56,20 @@ import { BooksStore } from "./store";
 import { SqlRoutineLog } from "./routines";
 import { SqlCsStore } from "./customer/store";
 import { type AssistantInbound, draftReply, fetchCalendar, plainAddress, SqlAssistantStore } from "./assistant";
-import { countMail, forwardedByHand, MAIL_LIMITS, type MailAdmission, type MailDocs, type MailRate, MAIL_REFUSED, mailSenderOk, ownerOf, postsAlone, provenSender, salesSender } from "./inbound";
+import {
+  countMail,
+  forwardedByHand,
+  MAIL_LIMITS,
+  type MailAdmission,
+  type MailDocs,
+  type MailRate,
+  MAIL_REFUSED,
+  mailSenderOk,
+  ownerOf,
+  postsAlone,
+  provenSender,
+  salesSender,
+} from "./inbound";
 import { readSalesFile, salesReply, SqlSalesStore } from "./sales";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
@@ -59,7 +102,14 @@ const claimedCaller = (request: Request): Caller | null => {
 const userTag = (userId: string) => `user:${userId}`;
 /** The office itself (`system()` in caller.ts): only the Worker sends it, for mail, webhooks, export, purge and closing sockets. */
 const SYSTEM_USER = "system";
-const ROUTE_KIND: Partial<Record<Platform, RouteKind>> ={ facebook: "meta_page", instagram: "ig_account", threads: "threads", linkedin: "linkedin", x: "x", whatsapp: "wa_phone" };
+const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = {
+  facebook: "meta_page",
+  instagram: "ig_account",
+  threads: "threads",
+  linkedin: "linkedin",
+  x: "x",
+  whatsapp: "wa_phone",
+};
 
 /**
  * One Office per business, and the only writer of its books. It knows which office it is
@@ -211,7 +261,12 @@ export class Office extends Agent<Env> {
   }
 
   private social(): SocialHost {
-    return new SocialHost(this.office, this.vault, adaptersFor(this.env), { base: this.env.BETTER_AUTH_URL, officeId: this.officeId!, mediaSecret: this.env.SOCIAL_TOKEN_KEY, kv: (k, v) => this.kv(k, v) });
+    return new SocialHost(this.office, this.vault, adaptersFor(this.env), {
+      base: this.env.BETTER_AUTH_URL,
+      officeId: this.officeId!,
+      mediaSecret: this.env.SOCIAL_TOKEN_KEY,
+      kv: (k, v) => this.kv(k, v),
+    });
   }
 
   private kv(k: string, v?: string): string | null {
@@ -240,7 +295,16 @@ export class Office extends Agent<Env> {
 
   private open(books: OfficeService["books"]) {
     this.day = istDate();
-    this.office = new OfficeService(books, { asOf: this.day, ingestEmail: this.ingestEmail, routines: this.runs, conversations: this.conversations, assistant: this.assistantStore, sales: this.salesStore, edits: this.edits, backup: () => this.backupStatus() });
+    this.office = new OfficeService(books, {
+      asOf: this.day,
+      ingestEmail: this.ingestEmail,
+      routines: this.runs,
+      conversations: this.conversations,
+      assistant: this.assistantStore,
+      sales: this.salesStore,
+      edits: this.edits,
+      backup: () => this.backupStatus(),
+    });
     const saved = this.kv("settings");
     if (saved) this.office.updateSettings(JSON.parse(saved));
     this.social().reconcile();
@@ -339,7 +403,9 @@ export class Office extends Agent<Env> {
     const address = supportAddress(this.slug, this.env.INGEST_DOMAIN);
     if (hired && address) want.add(`support_email|${address}`);
     if (hired && cs.widget.enabled && cs.widget.key) want.add(`widget|${cs.widget.key}`);
-    for (const r of await plane.routesOf(this.officeId!)) if ((r.kind === "support_email" || r.kind === "widget") && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!))
+      if ((r.kind === "support_email" || r.kind === "widget") && !want.has(`${r.kind}|${r.externalId}`))
+        await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     for (const w of want) {
       const [kind, id] = w.split("|") as [RouteKind, string];
       await plane.claimRoute(this.officeId!, kind, id);
@@ -350,7 +416,13 @@ export class Office extends Agent<Env> {
   /** The website chat, as one visitor sees it: their messages and the replies that went out. */
   private chatMessages(visitor: string) {
     const t = this.conversations.threadByKey("web", visitor);
-    const messages = t && !t.test ? this.conversations.messages(t.id).filter((m) => m.direction === "in" || m.status === "sent").map((m) => ({ id: m.id, at: m.at, from: m.direction === "in" ? ("you" as const) : ("us" as const), text: m.text })) : [];
+    const messages =
+      t && !t.test
+        ? this.conversations
+            .messages(t.id)
+            .filter((m) => m.direction === "in" || m.status === "sent")
+            .map((m) => ({ id: m.id, at: m.at, from: m.direction === "in" ? ("you" as const) : ("us" as const), text: m.text }))
+        : [];
     return { messages, business: this.office.books.business.name || this.businessName };
   }
 
@@ -376,8 +448,17 @@ export class Office extends Agent<Env> {
     const after = count();
     const published = after.published - before.published;
     const failed = Math.max(0, after.failed - before.failed);
-    if (!published && !failed) return { outcome: "nothing", summary: effects.length ? "Posts were due, but none went out; they are held back or ready to post by hand." : "No post was due.", counts: { published: 0, failed: 0 } };
-    return { outcome: failed ? (published ? "partial" : "failed") : "ok", summary: `${published} ${published === 1 ? "post" : "posts"} published${failed ? `; ${failed} failed and will be retried or held for you` : ""}.`, counts: { published, failed } };
+    if (!published && !failed)
+      return {
+        outcome: "nothing",
+        summary: effects.length ? "Posts were due, but none went out; they are held back or ready to post by hand." : "No post was due.",
+        counts: { published: 0, failed: 0 },
+      };
+    return {
+      outcome: failed ? (published ? "partial" : "failed") : "ok",
+      summary: `${published} ${published === 1 ? "post" : "posts"} published${failed ? `; ${failed} failed and will be retried or held for you` : ""}.`,
+      counts: { published, failed },
+    };
   }
 
   /** What the routines need from this office: email, WhatsApp and the platforms. */
@@ -461,7 +542,8 @@ export class Office extends Agent<Env> {
     if (request.method === "POST" && path === "/internal/purge" && this.kv("office:purged")) return json({ purged: true });
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/purge") {
-      if (this.office && !this.env.SOCIAL_TOKEN_KEY) return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);
+      if (this.office && !this.env.SOCIAL_TOKEN_KEY)
+        return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);
       return json(await this.purge());
     }
     this.fresh();
@@ -528,7 +610,8 @@ export class Office extends Agent<Env> {
     if (post && (path === ROUTES.onboardingCheck || path === ROUTES.onboardingStage)) return this.onboarding(request, caller, path === ROUTES.onboardingStage);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
     const channel = /^\/api\/channels\/([a-z]+)\/(connect|callback)$/.exec(path);
-    if (request.method === "GET" && channel) return channel[2] === "connect" ? this.startConnect(channel[1]!, caller) : this.finishConnect(channel[1]!, url, caller);
+    if (request.method === "GET" && channel)
+      return channel[2] === "connect" ? this.startConnect(channel[1]!, caller) : this.finishConnect(channel[1]!, url, caller);
     const doc = /^\/api\/documents\/([^/]+)\/(read|scan)$/.exec(path);
     if (post && doc) return this.readStored(decodeURIComponent(doc[1]!), doc[2] as "read" | "scan", request);
     if (path === "/api/prefs") return this.prefs(request, caller);
@@ -563,7 +646,15 @@ export class Office extends Agent<Env> {
 
     let body: unknown;
     if (request.method !== "GET" && request.headers.get("content-type")?.includes("json")) body = await request.json().catch(() => undefined);
-    const res = dispatch(this.office, { method: request.method, path, query: url.searchParams, body, role: caller.role, user: { name: caller.name, email: caller.email }, mode: "live" });
+    const res = dispatch(this.office, {
+      method: request.method,
+      path,
+      query: url.searchParams,
+      body,
+      role: caller.role,
+      user: { name: caller.name, email: caller.email },
+      mode: "live",
+    });
     if (res.status !== 200) return json(res.body, res.status);
 
     if (/^\/api\/desk\/[^/]+$/.test(path) && post) {
@@ -623,7 +714,13 @@ export class Office extends Agent<Env> {
     if (this.office) {
       const at = new Date().toISOString();
       const keepUntil = retainedUntil(new Date());
-      const sealed = await sealedCopy(this.env.SOCIAL_TOKEN_KEY!, this.officeId!, { office: this.officeId, purgedAt: at, keepUntil, books: this.office.books, edits: this.edits.all() });
+      const sealed = await sealedCopy(this.env.SOCIAL_TOKEN_KEY!, this.officeId!, {
+        office: this.officeId,
+        purgedAt: at,
+        keepUntil,
+        books: this.office.books,
+        edits: this.edits.all(),
+      });
       await this.env.DOCS.put(retainedKey(this.officeId!, at), sealed, {
         httpMetadata: { contentType: "application/octet-stream" },
         customMetadata: { keepUntil, sealed: "OFB1", reason: "Companies Act s.128(5): books and their edit log are kept for eight years" },
@@ -656,7 +753,10 @@ export class Office extends Agent<Env> {
     if (!this.env.SOCIAL_TOKEN_KEY) return this.back({ connect_error: "Add SOCIAL_TOKEN_KEY as a Worker secret first, so sign-ins can be stored safely." });
     try {
       const { state, verifier } = await newState(this.env.SOCIAL_TOKEN_KEY, parsed.data, caller.email, this.officeId!);
-      return new Response(null, { status: 302, headers: { location: await adapter.authorizeUrl({ state, verifier, redirect: callbackUrl(this.env.BETTER_AUTH_URL, parsed.data) }) } });
+      return new Response(null, {
+        status: 302,
+        headers: { location: await adapter.authorizeUrl({ state, verifier, redirect: callbackUrl(this.env.BETTER_AUTH_URL, parsed.data) }) },
+      });
     } catch (e) {
       return this.back({ connect_error: e instanceof Error ? e.message : String(e) });
     }
@@ -674,7 +774,8 @@ export class Office extends Agent<Env> {
     const code = url.searchParams.get("code");
     const adapter = adaptersFor(this.env)[platform];
     const ch = this.office.books.channels.find((c) => c.platform === platform);
-    if (!state || state.officeId !== this.officeId || state.by !== caller.email || !code || !adapter || !ch || !this.spentStates.spend(state)) return this.back({ connect_error: "The sign-in expired or did not come from this office. Try again." });
+    if (!state || state.officeId !== this.officeId || state.by !== caller.email || !code || !adapter || !ch || !this.spentStates.spend(state))
+      return this.back({ connect_error: "The sign-in expired or did not come from this office. Try again." });
     try {
       const got = await adapter.exchange({ code, verifier: state.verifier, redirect: callbackUrl(this.env.BETTER_AUTH_URL, platform) });
       const claimed = await this.claimIds(platform, [got.tokens.account, ...Object.values(got.tokens.extra)]);
@@ -693,7 +794,9 @@ export class Office extends Agent<Env> {
   private routeIds(platform: Platform, ids: (string | null | undefined)[]): { kind: RouteKind; id: string }[] {
     const kind = ROUTE_KIND[platform];
     if (!kind) return [];
-    return ids.filter((id): id is string => Boolean(id) && /^[\w:.-]{1,120}$/.test(id!) && !(kind === "wa_phone" && id === this.env.WHATSAPP_PHONE_NUMBER_ID)).map((id) => ({ kind, id }));
+    return ids
+      .filter((id): id is string => Boolean(id) && /^[\w:.-]{1,120}$/.test(id!) && !(kind === "wa_phone" && id === this.env.WHATSAPP_PHONE_NUMBER_ID))
+      .map((id) => ({ kind, id }));
   }
 
   private async claimIds(platform: Platform, ids: (string | null | undefined)[]): Promise<boolean> {
@@ -719,7 +822,16 @@ export class Office extends Agent<Env> {
       const t = await this.vault.get(c.id);
       if (t) for (const r of this.routeIds(c.platform, [t.account, ...Object.values(t.extra)])) want.add(`${r.kind}|${r.id}`);
     }
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind !== "email" && r.kind !== "support_email" && r.kind !== "widget" && r.kind !== "assistant_email" && r.kind !== "sales_email" && !want.has(`${r.kind}|${r.externalId}`)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!))
+      if (
+        r.kind !== "email" &&
+        r.kind !== "support_email" &&
+        r.kind !== "widget" &&
+        r.kind !== "assistant_email" &&
+        r.kind !== "sales_email" &&
+        !want.has(`${r.kind}|${r.externalId}`)
+      )
+        await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     for (const w of want) {
       const [kind, id] = w.split("|") as [RouteKind, string];
       await plane.claimRoute(this.officeId!, kind, id);
@@ -737,7 +849,10 @@ export class Office extends Agent<Env> {
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `media-u${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`;
     if (!MEDIA_ID.test(id)) return json({ error: "Could not name the picture." }, 500);
-    await this.env.DOCS.put(mediaKey(this.officeId!, id), await file.arrayBuffer(), { httpMetadata: { contentType: file.type }, customMetadata: { by: caller.email } });
+    await this.env.DOCS.put(mediaKey(this.officeId!, id), await file.arrayBuffer(), {
+      httpMetadata: { contentType: file.type },
+      customMetadata: { by: caller.email },
+    });
     const skuId = String(form.get("skuId") ?? "");
     const asset = this.office.addMedia({
       id,
@@ -791,7 +906,9 @@ export class Office extends Agent<Env> {
       if (t) for (const id of [t.account, ...Object.values(t.extra)]) if (id) own.add(id);
     }
     const byPlatform = new Map(connected.map((c) => [PLATFORM_NAMES[c.platform], c.id]));
-    const delivered = parseMetaDelivery(body, own, Date.now(), (from) => people.has(from.replace(/\D/g, ""))).filter((m) => !m.externalId || !handled.has(m.externalId));
+    const delivered = parseMetaDelivery(body, own, Date.now(), (from) => people.has(from.replace(/\D/g, ""))).filter(
+      (m) => !m.externalId || !handled.has(m.externalId),
+    );
     const { customers, rest } = splitCustomerDms(delivered, this.office.hired(CS_AGENT));
     const desk = this.desk();
     for (const m of customers) await desk.receive(m).catch((e) => this.log("customer message failed", e));
@@ -812,7 +929,8 @@ export class Office extends Agent<Env> {
     const plane = this.plane();
     const address = assistantAddress(ingestAddress(this.slug, this.env.INGEST_DOMAIN));
     const hired = this.office.hired("executive-assistant");
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind === "assistant_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!))
+      if (r.kind === "assistant_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     if (hired && address) await plane.claimRoute(this.officeId!, "assistant_email", address);
   }
 
@@ -821,7 +939,8 @@ export class Office extends Agent<Env> {
     const plane = this.plane();
     const address = salesAddress(ingestAddress(this.slug, this.env.INGEST_DOMAIN));
     const hired = this.office.hired("marketplace-manager");
-    for (const r of await plane.routesOf(this.officeId!)) if (r.kind === "sales_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
+    for (const r of await plane.routesOf(this.officeId!))
+      if (r.kind === "sales_email" && (!hired || r.externalId !== address)) await plane.dropRoute(this.officeId!, r.kind, r.externalId);
     if (hired && address) await plane.claimRoute(this.officeId!, "sales_email", address);
   }
 
@@ -836,7 +955,10 @@ export class Office extends Agent<Env> {
     const sender = salesSender(members, mail);
     if (!sender) {
       for (const d of mail.docs) await this.env.DOCS.delete(docKey(this.officeId!, d.id));
-      this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.");
+      this.office.log(
+        "marketplace-manager",
+        "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.",
+      );
       return { outcome: "refused" };
     }
     let read = 0;
@@ -846,7 +968,11 @@ export class Office extends Agent<Env> {
       const r = await readSalesFile(this.office, { name: d.filename, bytes: await obj.arrayBuffer(), via: "email", sender });
       read += r.filter((i) => i.status === "read" || i.status === "payout").length;
     }
-    if (!mail.docs.length) this.office.log("marketplace-manager", `An email to the sales address had no report attached${mail.skipped.length ? ` (${mail.skipped.length} file${mail.skipped.length === 1 ? "" : "s"} it could not read)` : ""}. If the platform sends a link, download the report and forward it.`);
+    if (!mail.docs.length)
+      this.office.log(
+        "marketplace-manager",
+        `An email to the sales address had no report attached${mail.skipped.length ? ` (${mail.skipped.length} file${mail.skipped.length === 1 ? "" : "s"} it could not read)` : ""}. If the platform sends a link, download the report and forward it.`,
+      );
     return { outcome: "read", read };
   }
 
@@ -856,7 +982,8 @@ export class Office extends Agent<Env> {
     if (!this.office.hired("marketplace-manager")) return json({ error: "Hire the Marketplace Manager first." }, 409);
     const parsed = SalesUploadInput.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return json({ error: "Attach a CSV, XLSX or zip file." }, 400);
-    const bytes = parsed.data.encoding === "base64" ? Uint8Array.from(atob(parsed.data.content), (c) => c.charCodeAt(0)) : new TextEncoder().encode(parsed.data.content);
+    const bytes =
+      parsed.data.encoding === "base64" ? Uint8Array.from(atob(parsed.data.content), (c) => c.charCodeAt(0)) : new TextEncoder().encode(parsed.data.content);
     if (bytes.byteLength > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
     take(this.kv.bind(this), istDate(), "upload", bytes.byteLength);
     const id = newDocId();
@@ -881,7 +1008,13 @@ export class Office extends Agent<Env> {
     if (!this.vault.ready) return json({ error: "The office cannot keep secrets yet: SOCIAL_TOKEN_KEY is not set." }, 503);
     const r = await fetchCalendar(parsed.data.url, this.day);
     if ("error" in r) return json({ error: r.error }, 422);
-    await this.vault.put(this.calendarKey(caller.email), { access: parsed.data.url, refresh: null, expiresAt: null, account: caller.email.toLowerCase(), extra: {} });
+    await this.vault.put(this.calendarKey(caller.email), {
+      access: parsed.data.url,
+      refresh: null,
+      expiresAt: null,
+      account: caller.email.toLowerCase(),
+      extra: {},
+    });
     this.office.assistant.setCalendar(caller.email, r);
     return json(this.office.assistant.view(caller.email, sample));
   }
@@ -941,11 +1074,33 @@ export class Office extends Agent<Env> {
         : { from: plainAddress(mail.from) ?? "", fromName: mail.name, subject: mail.subject, text: mail.text, messageId: mail.messageId };
     // By hand, the proven owner vouches for what they forward; by a filter, the message speaks for its own sender.
     const authenticated = who.proven && Boolean(mail.authenticated);
-    if (!who.proven) this.office.log("executive-assistant", `Mail to the assistant's address said it was from ${owner.name} but could not be verified, so no reply was drafted${mail.docs.length && this.office.hired("accountant") ? "; its attachments wait on the desk" : ""}.`);
+    if (!who.proven)
+      this.office.log(
+        "executive-assistant",
+        `Mail to the assistant's address said it was from ${owner.name} but could not be verified, so no reply was drafted${mail.docs.length && this.office.hired("accountant") ? "; its attachments wait on the desk" : ""}.`,
+      );
     if (mail.docs.length && this.office.hired("accountant")) {
-      await this.receiveEmail({ from: original?.from ?? owner.email, subject: original?.subject ?? mail.subject, docs: mail.docs, skipped: mail.skipped, authenticated });
+      await this.receiveEmail({
+        from: original?.from ?? owner.email,
+        subject: original?.subject ?? mail.subject,
+        docs: mail.docs,
+        skipped: mail.skipped,
+        authenticated,
+      });
       if (!who.proven) return { outcome: "held" };
-      this.office.assistant.receiveMail(owner.email, { from: original?.from ?? owner.email, fromName: original?.fromName ?? null, replyTo: null, subject: original?.subject ?? mail.subject, text: (original?.text ?? mail.text).slice(0, 6000), messageId: original?.messageId ?? null }, null, "to_accountant");
+      this.office.assistant.receiveMail(
+        owner.email,
+        {
+          from: original?.from ?? owner.email,
+          fromName: original?.fromName ?? null,
+          replyTo: null,
+          subject: original?.subject ?? mail.subject,
+          text: (original?.text ?? mail.text).slice(0, 6000),
+          messageId: original?.messageId ?? null,
+        },
+        null,
+        "to_accountant",
+      );
       return { outcome: "to_accountant" };
     }
     if (!who.proven) {
@@ -953,11 +1108,27 @@ export class Office extends Agent<Env> {
       return { outcome: "unverified" };
     }
     if (!original || !original.from) {
-      this.office.assistant.receiveMail(owner.email, { from: owner.email, fromName: owner.name, replyTo: null, subject: mail.subject, text: mail.text.slice(0, 6000), messageId: null }, null, "noted");
+      this.office.assistant.receiveMail(
+        owner.email,
+        { from: owner.email, fromName: owner.name, replyTo: null, subject: mail.subject, text: mail.text.slice(0, 6000), messageId: null },
+        null,
+        "noted",
+      );
       return { outcome: "noted" };
     }
     const draft = await draftReply(this.env.AI ? this.eaAi : null, this.office, original, owner.name);
-    const r = this.office.assistant.receiveMail(owner.email, { from: original.from, fromName: original.fromName, replyTo: original.from, subject: original.subject, text: original.text.slice(0, 6000), messageId: original.messageId }, draft);
+    const r = this.office.assistant.receiveMail(
+      owner.email,
+      {
+        from: original.from,
+        fromName: original.fromName,
+        replyTo: original.from,
+        subject: original.subject,
+        text: original.text.slice(0, 6000),
+        messageId: original.messageId,
+      },
+      draft,
+    );
     return { outcome: "drafted", draft: r.draft?.id ?? null };
   }
 
@@ -972,7 +1143,14 @@ export class Office extends Agent<Env> {
       return;
     }
     try {
-      await send({ fromName: `${caller.name}, ${this.office.books.business.name || this.businessName}`, to: p.to, replyTo: caller.email, subject: p.subject, body: p.body, inReplyTo: p.inReplyTo ?? null });
+      await send({
+        fromName: `${caller.name}, ${this.office.books.business.name || this.businessName}`,
+        to: p.to,
+        replyTo: caller.email,
+        subject: p.subject,
+        body: p.body,
+        inReplyTo: p.inReplyTo ?? null,
+      });
       this.office.assistant.markSent(caller.email, item.id, { sentAt: new Date().toISOString() });
     } catch (e) {
       this.office.assistant.markSent(caller.email, item.id, { sendError: (e instanceof Error ? e.message : String(e)).slice(0, 300) });
@@ -995,7 +1173,9 @@ export class Office extends Agent<Env> {
 
   private sharedWaKeys(): WaKeys | null {
     const e = this.env;
-    return e.WHATSAPP_TOKEN && e.WHATSAPP_PHONE_NUMBER_ID ? { token: e.WHATSAPP_TOKEN, phoneId: e.WHATSAPP_PHONE_NUMBER_ID, template: e.WHATSAPP_TEMPLATE ?? null } : null;
+    return e.WHATSAPP_TOKEN && e.WHATSAPP_PHONE_NUMBER_ID
+      ? { token: e.WHATSAPP_TOKEN, phoneId: e.WHATSAPP_PHONE_NUMBER_ID, template: e.WHATSAPP_TEMPLATE ?? null }
+      : null;
   }
 
   /** An office's own WhatsApp number, if it connected one; otherwise the shared number. */
@@ -1020,7 +1200,12 @@ export class Office extends Agent<Env> {
         await this.env.DOCS.put(key, bytes, { httpMetadata: { contentType }, customMetadata: meta });
       },
       readImage: (id, image, auto) => this.readImage(id, image, auto),
-      ...(this.office.hired("marketplace-manager") ? { readSales: async (_id: string, name: string, bytes: ArrayBuffer) => salesReply(await readSalesFile(this.office, { name, bytes, via: "whatsapp", sender: null })) } : {}),
+      ...(this.office.hired("marketplace-manager")
+        ? {
+            readSales: async (_id: string, name: string, bytes: ArrayBuffer) =>
+              salesReply(await readSalesFile(this.office, { name, bytes, via: "whatsapp", sender: null })),
+          }
+        : {}),
       readItems: (id, items, auto) => this.readItems(id, items, auto),
     };
   }
@@ -1031,14 +1216,27 @@ export class Office extends Agent<Env> {
     const status = async (): Promise<WhatsAppStatus> => {
       const l = await dir.linkOfUser(caller.userId);
       const handle = this.office.books.channels.find((c) => c.platform === "whatsapp")?.handle ?? null;
-      return { available: Boolean(this.sharedWaKeys()), linked: Boolean(l), number: l ? maskPhone(l.phone) : null, linkedAt: l ? new Date(l.linkedAt).toISOString() : null, language: l?.language ?? "auto", digest: l?.digest ?? false, businessNumber: handle && /\d{6}/.test(handle.replace(/\D/g, "")) ? handle : null, template: Boolean(this.env.WHATSAPP_TEMPLATE) };
+      return {
+        available: Boolean(this.sharedWaKeys()),
+        linked: Boolean(l),
+        number: l ? maskPhone(l.phone) : null,
+        linkedAt: l ? new Date(l.linkedAt).toISOString() : null,
+        language: l?.language ?? "auto",
+        digest: l?.digest ?? false,
+        businessNumber: handle && /\d{6}/.test(handle.replace(/\D/g, "")) ? handle : null,
+        template: Boolean(this.env.WHATSAPP_TEMPLATE),
+      };
     };
     if (path === "/api/whatsapp/code" && request.method === "POST") {
       if (!this.sharedWaKeys()) return json({ error: "WhatsApp is not set up yet: add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID." }, 409);
       const c = await dir.newJoinCode(this.officeId!, caller.userId);
       const number = (await status()).businessNumber;
       const digits = number?.replace(/\D/g, "") ?? "";
-      return json({ ...c, businessNumber: number, link: digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`JOIN ${c.code}`)}` : null } satisfies JoinCode);
+      return json({
+        ...c,
+        businessNumber: number,
+        link: digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`JOIN ${c.code}`)}` : null,
+      } satisfies JoinCode);
     }
     if (path !== "/api/whatsapp") return json({ error: "Not found" }, 404);
     if (request.method === "GET") return json(await status());
@@ -1059,7 +1257,11 @@ export class Office extends Agent<Env> {
   private async withMembers(res: ApiResult) {
     const plane = this.plane();
     const [users, invited] = await Promise.all([plane.members(this.officeId!), plane.invitations(this.officeId!)]);
-    return { ...(res.body as object), users: users.map((u) => ({ name: u.name, email: u.email, role: u.role })), invited: invited.map((i) => ({ email: i.email, role: i.role })) };
+    return {
+      ...(res.body as object),
+      users: users.map((u) => ({ name: u.name, email: u.email, role: u.role })),
+      invited: invited.map((i) => ({ email: i.email, role: i.role })),
+    };
   }
 
   private async upload(request: Request, caller: Caller): Promise<Response> {
@@ -1075,7 +1277,10 @@ export class Office extends Agent<Env> {
     take(this.kv.bind(this), istDate(), "upload", file.size);
 
     const id = newDocId();
-    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), { httpMetadata: { contentType: isPdf ? "application/pdf" : file.type }, customMetadata: { filename: file.name, by: caller.email } });
+    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), {
+      httpMetadata: { contentType: isPdf ? "application/pdf" : file.type },
+      customMetadata: { filename: file.name, by: caller.email },
+    });
     this.office.receiveDocument({ id, file: fileUrl(this.officeId!, id), channel: "upload", from: null, pages: Number(form.get("pages") ?? 1) || 1 });
     const image = form.get("image") as File | string | null;
     if (parsed.data.items.length) return json(await this.readItems(id, parsed.data.items));
@@ -1099,7 +1304,10 @@ export class Office extends Agent<Env> {
     const files = await Promise.all(
       parsed.data.files.map(async (f) => {
         const id = newDocId();
-        await this.env.DOCS.put(docKey(this.officeId!, id), f.csv, { httpMetadata: { contentType: "text/csv; charset=utf-8" }, customMetadata: { filename: f.name, by: caller.email } });
+        await this.env.DOCS.put(docKey(this.officeId!, id), f.csv, {
+          httpMetadata: { contentType: "text/csv; charset=utf-8" },
+          customMetadata: { filename: f.name, by: caller.email },
+        });
         return { ...f, file: fileUrl(this.officeId!, id) };
       }),
     );
@@ -1118,7 +1326,12 @@ export class Office extends Agent<Env> {
     } catch (e) {
       const why = e instanceof QuotaError ? e.message : "The picture could not be read. Upload a clearer copy or the PDF.";
       if (!(e instanceof QuotaError)) this.log("vision read failed", e);
-      this.office.failDocument(id, e instanceof QuotaError ? "the office's reading for today is used up; read it again tomorrow." : "the picture could not be read. Upload a clearer copy or the PDF.");
+      this.office.failDocument(
+        id,
+        e instanceof QuotaError
+          ? "the office's reading for today is used up; read it again tomorrow."
+          : "the picture could not be read. Upload a clearer copy or the PDF.",
+      );
       const document = this.office.books.documents.find((d) => d.id === id)!;
       return { document, staged: null, message: why };
     }
@@ -1167,7 +1380,11 @@ export class Office extends Agent<Env> {
     }
     const members = a.kind === "sales" || a.kind === "assistant" ? await this.plane().members(this.officeId!) : [];
     const ok = mailSenderOk(a, { hired: (agent) => this.office.hired(agent), members });
-    if (ok === "refuse") this.office.log("marketplace-manager", "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.");
+    if (ok === "refuse")
+      this.office.log(
+        "marketplace-manager",
+        "Set aside an email to the sales address from someone outside the office and the platforms, or whose sender could not be verified.",
+      );
     if (ok !== "admit") return { admit: false };
     if (a.bytes > 0 && proven) {
       try {
@@ -1182,7 +1399,11 @@ export class Office extends Agent<Env> {
       const key = `mail:unproven-bytes:${istDate()}`;
       const used = Number(this.kv(key) ?? 0);
       if (used + a.bytes > MAIL_LIMITS.unprovenBytesDay) {
-        if (used <= MAIL_LIMITS.unprovenBytesDay) this.office.log("office-manager", "Set aside attachments from senders that could not be verified: today's allowance for them is used up. It starts again tomorrow.");
+        if (used <= MAIL_LIMITS.unprovenBytesDay)
+          this.office.log(
+            "office-manager",
+            "Set aside attachments from senders that could not be verified: today's allowance for them is used up. It starts again tomorrow.",
+          );
         this.kv(key, String(MAIL_LIMITS.unprovenBytesDay + 1));
         return { admit: false };
       }
@@ -1202,8 +1423,10 @@ export class Office extends Agent<Env> {
         if (obj) results.push(await this.readImage(d.id, await obj.arrayBuffer(), auto));
       }
     }
-    if (mail.skipped.length) this.office.log("accountant", `Left out ${mail.skipped.join(", ")} from ${mail.from ?? "an email"}: only PDFs and photos up to 10 MB are read.`);
-    if (!mail.docs.length && !mail.skipped.length) this.office.log("accountant", `An email from ${mail.from ?? "an unknown sender"} ("${mail.subject.slice(0, 80)}") had nothing attached.`);
+    if (mail.skipped.length)
+      this.office.log("accountant", `Left out ${mail.skipped.join(", ")} from ${mail.from ?? "an email"}: only PDFs and photos up to 10 MB are read.`);
+    if (!mail.docs.length && !mail.skipped.length)
+      this.office.log("accountant", `An email from ${mail.from ?? "an unknown sender"} ("${mail.subject.slice(0, 80)}") had nothing attached.`);
     this.commit();
     return { received: mail.docs.length, read: results.length };
   }
@@ -1217,7 +1440,16 @@ export class Office extends Agent<Env> {
     let failed = 0;
     for (const it of items) {
       if (it.kind !== "reminder" || it.status !== "approved") continue;
-      const p = it.payload as { to?: string; subject?: string; body?: string; partyId?: string; sentAt?: string; sendError?: string; attempts?: number; triedAt?: string };
+      const p = it.payload as {
+        to?: string;
+        subject?: string;
+        body?: string;
+        partyId?: string;
+        sentAt?: string;
+        sendError?: string;
+        attempts?: number;
+        triedAt?: string;
+      };
       if (p.sentAt) continue;
       const ref = { kind: "party" as const, id: p.partyId ?? null };
       p.attempts = (p.attempts ?? 0) + 1;
@@ -1263,7 +1495,12 @@ export class Office extends Agent<Env> {
     const at = new Date().toISOString();
     try {
       if (!this.env.SOCIAL_TOKEN_KEY) throw new Error("SOCIAL_TOKEN_KEY is not set, so the copy cannot be encrypted and was not sent.");
-      const body = await sealedCopy(this.env.SOCIAL_TOKEN_KEY, this.officeId!, { office: this.officeId, at, books: this.office.books, edits: this.edits.all() });
+      const body = await sealedCopy(this.env.SOCIAL_TOKEN_KEY, this.officeId!, {
+        office: this.officeId,
+        at,
+        books: this.office.books,
+        edits: this.edits.all(),
+      });
       await putObject(target, backupKey(this.officeId!, istDate()), body, "application/octet-stream");
       this.kv("backup:last", JSON.stringify({ at, error: null }));
     } catch (e) {
@@ -1294,7 +1531,10 @@ export class Office extends Agent<Env> {
     if (!isPdf && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PDF or a picture (PNG, JPEG or WebP)." }, 415);
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `proof-${crypto.randomUUID()}`;
-    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), { httpMetadata: { contentType: isPdf ? "application/pdf" : file.type }, customMetadata: { filename: file.name, by: caller.email } });
+    await this.env.DOCS.put(docKey(this.officeId!, id), await file.arrayBuffer(), {
+      httpMetadata: { contentType: isPdf ? "application/pdf" : file.type },
+      customMetadata: { filename: file.name, by: caller.email },
+    });
     return json({ file: fileUrl(this.officeId!, id), name: file.name.slice(0, 200) });
   }
 
@@ -1326,7 +1566,12 @@ export class Office extends Agent<Env> {
         try {
           const subject = pending.length ? `${name}: ${pending.length} waiting on your desk` : `${name} this morning`;
           // The agenda is this owner's own; nobody else's digest carries it.
-          await send({ fromName: `${name} · ${BRAND.name}`, to: o.email, subject, body: agenda ? `${body}\n\nYour next three days, from your assistant:\n\n${agenda}` : body });
+          await send({
+            fromName: `${name} · ${BRAND.name}`,
+            to: o.email,
+            subject,
+            body: agenda ? `${body}\n\nYour next three days, from your assistant:\n\n${agenda}` : body,
+          });
           emailed++;
         } catch (e) {
           failed++;
@@ -1336,8 +1581,18 @@ export class Office extends Agent<Env> {
     }
     this.office.log("office-manager", `Morning round: ${notes.length ? `${notes.join(" ")} ` : ""}${pending.length} waiting on your desk.`);
     const reached = emailed + onWhatsApp.size;
-    if (!reached && !failed) return { outcome: "nothing", summary: pending.length || notes.length ? "No owner could be reached: email is not set up and nobody gets it on WhatsApp." : "Nothing to report this morning.", counts: { email: 0, whatsapp: 0, waiting: pending.length } };
-    return { outcome: failed ? (reached ? "partial" : "failed") : "ok", summary: `Sent to ${reached} ${reached === 1 ? "owner" : "people"}${onWhatsApp.size ? `, ${onWhatsApp.size} on WhatsApp` : ""}${failed ? `; ${failed} could not be reached` : ""}. ${pending.length} waiting on the desk.`, counts: { email: emailed, whatsapp: onWhatsApp.size, waiting: pending.length, failed } };
+    if (!reached && !failed)
+      return {
+        outcome: "nothing",
+        summary:
+          pending.length || notes.length ? "No owner could be reached: email is not set up and nobody gets it on WhatsApp." : "Nothing to report this morning.",
+        counts: { email: 0, whatsapp: 0, waiting: pending.length },
+      };
+    return {
+      outcome: failed ? (reached ? "partial" : "failed") : "ok",
+      summary: `Sent to ${reached} ${reached === 1 ? "owner" : "people"}${onWhatsApp.size ? `, ${onWhatsApp.size} on WhatsApp` : ""}${failed ? `; ${failed} could not be reached` : ""}. ${pending.length} waiting on the desk.`,
+      counts: { email: emailed, whatsapp: onWhatsApp.size, waiting: pending.length, failed },
+    };
   }
 
   /** Everyone in this office who asked for the digest on WhatsApp gets it there if WhatsApp allows; returns who was reached. */
@@ -1352,12 +1607,25 @@ export class Office extends Agent<Env> {
       const how = digestChannel({ wantsWhatsApp: link.digest, lastAt: sessionFor(kv, link.phone).lastAt, now: Date.now(), template: Boolean(keys.template) });
       const heading = (await plane.officesOf(link.userId)).filter((o) => o.status === "active").length > 1 ? this.businessName : undefined;
       try {
-        if (how === "whatsapp") await sendText(keys, link.phone, `${await morningDigest(this.waDeps(keys), link.phone, link, link.language === "auto" ? null : link.language, heading)}${found}`);
-        else if (how === "template") await sendTemplate(keys, link.phone, `${heading ? `${heading}: ` : ""}${waiting} waiting on your desk${notes.length ? ` and ${notes.length} ${notes.length === 1 ? "note" : "notes"} from the routines` : ""}. Reply desk to see them.`);
+        if (how === "whatsapp")
+          await sendText(
+            keys,
+            link.phone,
+            `${await morningDigest(this.waDeps(keys), link.phone, link, link.language === "auto" ? null : link.language, heading)}${found}`,
+          );
+        else if (how === "template")
+          await sendTemplate(
+            keys,
+            link.phone,
+            `${heading ? `${heading}: ` : ""}${waiting} waiting on your desk${notes.length ? ` and ${notes.length} ${notes.length === 1 ? "note" : "notes"} from the routines` : ""}. Reply desk to see them.`,
+          );
         else continue;
         reached.add(link.userId);
       } catch (e) {
-        this.office.log("office-manager", `Could not send ${link.name} the morning digest on WhatsApp${e instanceof Error ? `: ${e.message}` : ""}. It went by email instead.`);
+        this.office.log(
+          "office-manager",
+          `Could not send ${link.name} the morning digest on WhatsApp${e instanceof Error ? `: ${e.message}` : ""}. It went by email instead.`,
+        );
       }
     }
     return reached;
@@ -1369,7 +1637,8 @@ export class Office extends Agent<Env> {
    */
   private async socialMorning(): Promise<StepResult> {
     const pulled = await this.social().pull();
-    if (pulled.metrics) this.office.log("social-media-manager", `Updated the results of ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"} from the platforms.`);
+    if (pulled.metrics)
+      this.office.log("social-media-manager", `Updated the results of ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"} from the platforms.`);
     const published = await this.publishNow();
     const month = nextMonth(this.day.slice(0, 7));
     const draft = Number(this.day.slice(8, 10)) >= 25 && !this.office.books.calendars.some((c) => c.month === month && c.status !== "superseded");
@@ -1381,7 +1650,17 @@ export class Office extends Agent<Env> {
       published.counts?.published ? `${published.counts.published} overdue ${published.counts.published === 1 ? "post" : "posts"} published` : "",
       draft ? "next month's calendar drafted for your desk" : "",
     ].filter(Boolean);
-    return parts.length ? { outcome: published.outcome === "failed" || published.outcome === "partial" ? "partial" : "ok", summary: `${parts.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()), counts: { metrics: pulled.metrics, messages: pulled.messages, published: published.counts?.published ?? 0, calendar: draft ? 1 : 0 } } : { outcome: "nothing", summary: "Nothing new from the platforms, and no post was overdue.", counts: { metrics: 0, messages: 0, published: 0, calendar: 0 } };
+    return parts.length
+      ? {
+          outcome: published.outcome === "failed" || published.outcome === "partial" ? "partial" : "ok",
+          summary: `${parts.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
+          counts: { metrics: pulled.metrics, messages: pulled.messages, published: published.counts?.published ?? 0, calendar: draft ? 1 : 0 },
+        }
+      : {
+          outcome: "nothing",
+          summary: "Nothing new from the platforms, and no post was overdue.",
+          counts: { metrics: 0, messages: 0, published: 0, calendar: 0 },
+        };
   }
 }
 

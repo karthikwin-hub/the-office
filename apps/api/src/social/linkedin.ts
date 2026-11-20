@@ -19,10 +19,18 @@ export function linkedin(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
   const rest = (t: Tokens) => ({ authorization: `Bearer ${t.access}`, "linkedin-version": linkedinVersion(), "x-restli-protocol-version": "2.0.0" });
 
   async function uploadImage(t: Tokens, url: string): Promise<string> {
-    const init = await call<{ value: { uploadUrl: string; image: string } }>(f, "https://api.linkedin.com/rest/images?action=initializeUpload", { method: "POST", headers: rest(t), json: { initializeUploadRequest: { owner: t.account } } });
+    const init = await call<{ value: { uploadUrl: string; image: string } }>(f, "https://api.linkedin.com/rest/images?action=initializeUpload", {
+      method: "POST",
+      headers: rest(t),
+      json: { initializeUploadRequest: { owner: t.account } },
+    });
     const img = await f(url);
     if (!img.ok) throw new PlatformError(`Could not read the picture to upload (${img.status})`, "retry");
-    const put = await f(init.value.uploadUrl, { method: "PUT", headers: { authorization: `Bearer ${t.access}`, "content-type": img.headers.get("content-type") ?? "image/jpeg" }, body: await img.arrayBuffer() });
+    const put = await f(init.value.uploadUrl, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${t.access}`, "content-type": img.headers.get("content-type") ?? "image/jpeg" },
+      body: await img.arrayBuffer(),
+    });
     if (!put.ok) throw new PlatformError(`LinkedIn did not take the picture (${put.status})`, put.status >= 500 ? "retry" : "final");
     return init.value.image;
   }
@@ -35,9 +43,24 @@ export function linkedin(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
     },
     async exchange({ code, redirect }) {
       const k = need();
-      const tok = await call<{ access_token: string; expires_in: number; refresh_token?: string }>(f, "https://www.linkedin.com/oauth/v2/accessToken", { method: "POST", form: { grant_type: "authorization_code", code, redirect_uri: redirect, client_id: k.id, client_secret: k.secret } });
-      const me = await call<{ sub: string; name?: string }>(f, "https://api.linkedin.com/v2/userinfo", { headers: { authorization: `Bearer ${tok.access_token}` } });
-      return { tokens: { access: tok.access_token, refresh: tok.refresh_token ?? null, expiresAt: Date.now() + tok.expires_in * 1000, account: `urn:li:person:${me.sub}`, extra: {} }, handle: me.name ?? "LinkedIn member", followers: null };
+      const tok = await call<{ access_token: string; expires_in: number; refresh_token?: string }>(f, "https://www.linkedin.com/oauth/v2/accessToken", {
+        method: "POST",
+        form: { grant_type: "authorization_code", code, redirect_uri: redirect, client_id: k.id, client_secret: k.secret },
+      });
+      const me = await call<{ sub: string; name?: string }>(f, "https://api.linkedin.com/v2/userinfo", {
+        headers: { authorization: `Bearer ${tok.access_token}` },
+      });
+      return {
+        tokens: {
+          access: tok.access_token,
+          refresh: tok.refresh_token ?? null,
+          expiresAt: Date.now() + tok.expires_in * 1000,
+          account: `urn:li:person:${me.sub}`,
+          extra: {},
+        },
+        handle: me.name ?? "LinkedIn member",
+        followers: null,
+      };
     },
     async publish(t, v, media) {
       const image = media.find((m) => m.kind === "image");

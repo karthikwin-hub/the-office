@@ -75,7 +75,10 @@ function Console({ you, businesses }: { you: { name: string; email: string }; bu
     return businesses.filter(
       (b) =>
         (filter === "all" || (filter === "waiting" ? waiting(b) : filter === "active" ? b.status === "active" && !waiting(b) : b.status === filter)) &&
-        (!s || [b.name, b.address ?? "", b.ingestEmail, ...b.owners.flatMap((o) => [o.name, o.email]), b.ownerInvite?.email ?? ""].some((t) => t.toLowerCase().includes(s))),
+        (!s ||
+          [b.name, b.address ?? "", b.ingestEmail, ...b.owners.flatMap((o) => [o.name, o.email]), b.ownerInvite?.email ?? ""].some((t) =>
+            t.toLowerCase().includes(s),
+          )),
     );
   }, [businesses, filter, search]);
 
@@ -96,7 +99,9 @@ function Console({ you, businesses }: { you: { name: string; email: string }; bu
       <main className="main page page-wide platform-page" id="main">
         <div className="page-head">
           <h1>Businesses on the platform</h1>
-          <p className="page-lede">Every office's account: who owns it, how many people are in it, and its status. Their books stay private to the people in each office.</p>
+          <p className="page-lede">
+            Every office's account: who owns it, how many people are in it, and its status. Their books stay private to the people in each office.
+          </p>
         </div>
 
         <dl className="platform-figures">
@@ -129,7 +134,14 @@ function Console({ you, businesses }: { you: { name: string; email: string }; bu
         <section className="section" aria-labelledby="all-businesses">
           <div className="section-head">
             <h2 id="all-businesses">{filter === "all" ? "All businesses" : `${shown.length} shown`}</h2>
-            <input className="input platform-search" type="search" placeholder="Search name, owner, address" aria-label="Search businesses" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input
+              className="input platform-search"
+              type="search"
+              placeholder="Search name, owner, address"
+              aria-label="Search businesses"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
           {shown.length ? (
             <div className="ledger-wrap">
@@ -157,7 +169,9 @@ function Console({ you, businesses }: { you: { name: string; email: string }; bu
               </table>
             </div>
           ) : (
-            <p className="ledger-empty muted">{businesses.length ? "No business matches." : "No businesses yet. Onboard the first one above, or wait for one to sign up."}</p>
+            <p className="ledger-empty muted">
+              {businesses.length ? "No business matches." : "No businesses yet. Onboard the first one above, or wait for one to sign up."}
+            </p>
           )}
         </section>
       </main>
@@ -188,15 +202,36 @@ function Onboard() {
       <div className="section-head">
         <h2 id="onboard">Onboard a business</h2>
       </div>
-      <p className="section-lede">Opens an empty office and emails its owner a link, good for 14 days. The owner makes an account with that address, steps in and runs the setup themselves. Businesses can also sign up on their own at {appAddress()}.</p>
+      <p className="section-lede">
+        Opens an empty office and emails its owner a link, good for 14 days. The owner makes an account with that address, steps in and runs the setup
+        themselves. Businesses can also sign up on their own at {appAddress()}.
+      </p>
       <form className="platform-onboard" onSubmit={onSubmit}>
         <div className="field">
           <label htmlFor="pb-name">Business name</label>
-          <input id="pb-name" className="input" required minLength={2} maxLength={80} placeholder="For example, Mehta Hardware" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            id="pb-name"
+            className="input"
+            required
+            minLength={2}
+            maxLength={80}
+            placeholder="For example, Mehta Hardware"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div className="field">
           <label htmlFor="pb-email">Owner's email</label>
-          <input id="pb-email" className="input" type="email" required maxLength={200} placeholder="name@business.in" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            id="pb-email"
+            className="input"
+            type="email"
+            required
+            maxLength={200}
+            placeholder="name@business.in"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
         <button type="submit" className="btn btn-primary" disabled={onboard.isPending || name.trim().length < 2 || !email.includes("@")}>
           {onboard.isPending ? "Opening" : "Open the office and invite"}
@@ -270,7 +305,9 @@ function Row({ b }: { b: PlatformBusiness }) {
         </td>
         <td>{b.lastEvent ? day(b.lastEvent) : "-"}</td>
         <td>
-          <span className={`platform-status is-${waiting(b) && b.status === "active" ? "waiting" : b.status}`}>{b.status === "active" ? (waiting(b) ? "Waiting for owner" : "Working") : b.status === "suspended" ? "Suspended" : "Being deleted"}</span>
+          <span className={`platform-status is-${waiting(b) && b.status === "active" ? "waiting" : b.status}`}>
+            {b.status === "active" ? (waiting(b) ? "Waiting for owner" : "Working") : b.status === "suspended" ? "Suspended" : "Being deleted"}
+          </span>
         </td>
         <td className="platform-actions">
           {b.status === "deleting" ? (
@@ -305,7 +342,12 @@ function Row({ b }: { b: PlatformBusiness }) {
       {error || invited || confirming ? (
         <tr className="platform-note">
           <td colSpan={7}>
-            {confirming ? <p className="muted">Everyone in {b.name} is shut out until it is opened again; its books, files and addresses stay as they are, and inbound email is refused meanwhile.</p> : null}
+            {confirming ? (
+              <p className="muted">
+                Everyone in {b.name} is shut out until it is opened again; its books, files and addresses stay as they are, and inbound email is refused
+                meanwhile.
+              </p>
+            ) : null}
             {error ? (
               <p className="form-error" role="alert">
                 {error.message}

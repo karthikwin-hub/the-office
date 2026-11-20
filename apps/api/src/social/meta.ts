@@ -1,6 +1,17 @@
 import type { PostMetrics, PostVariant, SocialMessage } from "@office/contracts";
 import type { IncomingMessage } from "@office/engine";
-import { type AppKeys, call, type ChannelAdapter, type Connected, type Fetch, notSetUp, PlatformError, type Pulled, type SignedMedia, type Tokens } from "./adapter";
+import {
+  type AppKeys,
+  call,
+  type ChannelAdapter,
+  type Connected,
+  type Fetch,
+  notSetUp,
+  PlatformError,
+  type Pulled,
+  type SignedMedia,
+  type Tokens,
+} from "./adapter";
 
 /**
  * Meta's four channels. Written against the Graph API as documented in 2025: check the versions and
@@ -11,7 +22,8 @@ const FB = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const IG = `https://graph.instagram.com/${GRAPH_VERSION}`;
 const TH = "https://graph.threads.net/v1.0";
 
-const qs = (o: Record<string, string | number | undefined>) => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined) as [string, string][]).toString();
+const qs = (o: Record<string, string | number | undefined>) =>
+  new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined) as [string, string][]).toString();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const zero = (): PostMetrics => ({ views: 0, likes: 0, comments: 0, saves: 0, shares: 0, clicks: 0, enquiries: 0 });
 const since = (iso: string) => Date.parse(iso) || 0;
@@ -22,7 +34,8 @@ async function waitForContainer(f: Fetch, url: string, tries = 6, gapMs = 2000):
     const s = await call<{ status_code?: string; status?: string; error_message?: string }>(f, url);
     const code = s.status_code ?? s.status;
     if (!code || code === "FINISHED" || code === "PUBLISHED") return;
-    if (code === "ERROR" || code === "EXPIRED") throw new PlatformError(`The platform could not use the picture${s.error_message ? `: ${s.error_message}` : ""}`, "final");
+    if (code === "ERROR" || code === "EXPIRED")
+      throw new PlatformError(`The platform could not use the picture${s.error_message ? `: ${s.error_message}` : ""}`, "final");
     await sleep(gapMs);
   }
   throw new PlatformError("The platform is still processing the picture", "retry", 120);
@@ -45,19 +58,35 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
     },
     async exchange({ code, redirect }): Promise<Connected> {
       const k = need();
-      const raw = await call<{ access_token?: string; user_id?: string | number; data?: { access_token: string; user_id: string | number }[] }>(f, "https://api.instagram.com/oauth/access_token", {
-        method: "POST",
-        form: { client_id: k.id, client_secret: k.secret, grant_type: "authorization_code", redirect_uri: redirect, code: code.replace(/#_$/, "") },
-      });
+      const raw = await call<{ access_token?: string; user_id?: string | number; data?: { access_token: string; user_id: string | number }[] }>(
+        f,
+        "https://api.instagram.com/oauth/access_token",
+        {
+          method: "POST",
+          form: { client_id: k.id, client_secret: k.secret, grant_type: "authorization_code", redirect_uri: redirect, code: code.replace(/#_$/, "") },
+        },
+      );
       const short = raw.access_token ?? raw.data?.[0]?.access_token;
       if (!short) throw new PlatformError("Instagram did not return a token", "final");
       const long = await longLived(short);
-      const me = await call<{ user_id?: string; id: string; username: string; followers_count?: number }>(f, `${IG}/me?${qs({ fields: "user_id,username,followers_count", access_token: long.access_token })}`);
-      const tokens: Tokens = { access: long.access_token, refresh: null, expiresAt: long.expires_in ? Date.now() + long.expires_in * 1000 : null, account: String(me.user_id ?? me.id), extra: { username: me.username } };
+      const me = await call<{ user_id?: string; id: string; username: string; followers_count?: number }>(
+        f,
+        `${IG}/me?${qs({ fields: "user_id,username,followers_count", access_token: long.access_token })}`,
+      );
+      const tokens: Tokens = {
+        access: long.access_token,
+        refresh: null,
+        expiresAt: long.expires_in ? Date.now() + long.expires_in * 1000 : null,
+        account: String(me.user_id ?? me.id),
+        extra: { username: me.username },
+      };
       return { tokens, handle: `@${me.username}`, followers: me.followers_count ?? null };
     },
     async refresh(t) {
-      const r = await call<{ access_token: string; expires_in?: number }>(f, `https://graph.instagram.com/refresh_access_token?${qs({ grant_type: "ig_refresh_token", access_token: t.access })}`);
+      const r = await call<{ access_token: string; expires_in?: number }>(
+        f,
+        `https://graph.instagram.com/refresh_access_token?${qs({ grant_type: "ig_refresh_token", access_token: t.access })}`,
+      );
       return { ...t, access: r.access_token, expiresAt: r.expires_in ? Date.now() + r.expires_in * 1000 : t.expiresAt };
     },
     async publish(t, v: PostVariant, media: SignedMedia[]) {
@@ -66,21 +95,45 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
       const at = { access_token: t.access };
       let creation: string;
       if (images.length === 1) {
-        creation = (await call<{ id: string }>(f, `${IG}/${t.account}/media`, { method: "POST", form: { ...at, image_url: images[0]!.url, caption: v.text, ...(images[0]!.alt ? { alt_text: images[0]!.alt } : {}) } })).id;
+        creation = (
+          await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
+            method: "POST",
+            form: { ...at, image_url: images[0]!.url, caption: v.text, ...(images[0]!.alt ? { alt_text: images[0]!.alt } : {}) },
+          })
+        ).id;
       } else {
         const children: string[] = [];
-        for (const m of images) children.push((await call<{ id: string }>(f, `${IG}/${t.account}/media`, { method: "POST", form: { ...at, image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) } })).id);
-        creation = (await call<{ id: string }>(f, `${IG}/${t.account}/media`, { method: "POST", form: { ...at, media_type: "CAROUSEL", children: children.join(","), caption: v.text } })).id;
+        for (const m of images)
+          children.push(
+            (
+              await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
+                method: "POST",
+                form: { ...at, image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) },
+              })
+            ).id,
+          );
+        creation = (
+          await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
+            method: "POST",
+            form: { ...at, media_type: "CAROUSEL", children: children.join(","), caption: v.text },
+          })
+        ).id;
       }
       await waitForContainer(f, `${IG}/${creation}?${qs({ fields: "status_code", access_token: t.access })}`, 6, opts.gapMs ?? 2000);
       const done = await call<{ id: string }>(f, `${IG}/${t.account}/media_publish`, { method: "POST", form: { ...at, creation_id: creation } });
-      const link = await call<{ permalink?: string }>(f, `${IG}/${done.id}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({ permalink: undefined }));
+      const link = await call<{ permalink?: string }>(f, `${IG}/${done.id}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({
+        permalink: undefined,
+      }));
       return { externalId: done.id, url: link.permalink ?? null };
     },
     async reply(t, to: SocialMessage, text) {
       if (!to.externalId) throw new PlatformError("This comment has no Instagram id", "final");
       if (to.kind === "dm") {
-        const r = await call<{ message_id?: string }>(f, `${IG}/${t.account}/messages`, { method: "POST", json: { recipient: { id: to.threadId }, message: { text } }, headers: { authorization: `Bearer ${t.access}` } });
+        const r = await call<{ message_id?: string }>(f, `${IG}/${t.account}/messages`, {
+          method: "POST",
+          json: { recipient: { id: to.threadId }, message: { text } },
+          headers: { authorization: `Bearer ${t.access}` },
+        });
         return { externalId: r.message_id ?? null };
       }
       const r = await call<{ id: string }>(f, `${IG}/${to.externalId}/replies`, { method: "POST", form: { access_token: t.access, message: text } });
@@ -91,12 +144,30 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
       const metrics: Pulled["metrics"] = [];
       for (const id of externalIds) {
         try {
-          const c = await call<{ data: { id: string; text: string; username?: string; timestamp: string; from?: { id: string } }[] }>(f, `${IG}/${id}/comments?${qs({ fields: "id,text,username,timestamp,from", access_token: t.access })}`);
+          const c = await call<{ data: { id: string; text: string; username?: string; timestamp: string; from?: { id: string } }[] }>(
+            f,
+            `${IG}/${id}/comments?${qs({ fields: "id,text,username,timestamp,from", access_token: t.access })}`,
+          );
           for (const x of c.data) {
             if (since(x.timestamp) <= since(from) || x.from?.id === t.account || x.username === t.extra.username) continue;
-            messages.push({ id: `ig-${x.id}`, externalId: x.id, platform: "Instagram", channelId: "", kind: "comment", author: x.username ? `@${x.username}` : "Someone on Instagram", at: new Date(x.timestamp).toISOString(), rating: null, text: x.text, postId: null, threadId: id });
+            messages.push({
+              id: `ig-${x.id}`,
+              externalId: x.id,
+              platform: "Instagram",
+              channelId: "",
+              kind: "comment",
+              author: x.username ? `@${x.username}` : "Someone on Instagram",
+              at: new Date(x.timestamp).toISOString(),
+              rating: null,
+              text: x.text,
+              postId: null,
+              threadId: id,
+            });
           }
-          const ins = await call<{ data: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] }>(f, `${IG}/${id}/insights?${qs({ metric: "views,likes,comments,saved,shares", access_token: t.access })}`);
+          const ins = await call<{ data: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] }>(
+            f,
+            `${IG}/${id}/insights?${qs({ metric: "views,likes,comments,saved,shares", access_token: t.access })}`,
+          );
           const m = zero();
           for (const d of ins.data) {
             const n = d.total_value?.value ?? d.values?.[0]?.value ?? 0;
@@ -131,29 +202,55 @@ export function facebook(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
     },
     async exchange({ code, redirect }): Promise<Connected> {
       const k = need();
-      const short = await call<{ access_token: string }>(f, `${FB}/oauth/access_token?${qs({ client_id: k.id, client_secret: k.secret, redirect_uri: redirect, code })}`);
-      const long = await call<{ access_token: string }>(f, `${FB}/oauth/access_token?${qs({ grant_type: "fb_exchange_token", client_id: k.id, client_secret: k.secret, fb_exchange_token: short.access_token })}`);
-      const pages = await call<{ data: { id: string; name: string; access_token: string; followers_count?: number }[] }>(f, `${FB}/me/accounts?${qs({ fields: "id,name,access_token,followers_count", access_token: long.access_token })}`);
+      const short = await call<{ access_token: string }>(
+        f,
+        `${FB}/oauth/access_token?${qs({ client_id: k.id, client_secret: k.secret, redirect_uri: redirect, code })}`,
+      );
+      const long = await call<{ access_token: string }>(
+        f,
+        `${FB}/oauth/access_token?${qs({ grant_type: "fb_exchange_token", client_id: k.id, client_secret: k.secret, fb_exchange_token: short.access_token })}`,
+      );
+      const pages = await call<{ data: { id: string; name: string; access_token: string; followers_count?: number }[] }>(
+        f,
+        `${FB}/me/accounts?${qs({ fields: "id,name,access_token,followers_count", access_token: long.access_token })}`,
+      );
       const page = pages.data[0];
       if (!page) throw new PlatformError("This Facebook account manages no Page. Create the business Page first, or give this account a role on it.", "final");
       // A Page token from a long-lived user token does not expire.
-      return { tokens: { access: page.access_token, refresh: null, expiresAt: null, account: page.id, extra: { page: page.id } }, handle: page.name, followers: page.followers_count ?? null };
+      return {
+        tokens: { access: page.access_token, refresh: null, expiresAt: null, account: page.id, extra: { page: page.id } },
+        handle: page.name,
+        followers: page.followers_count ?? null,
+      };
     },
     async publish(t, v, media) {
       const images = media.filter((m) => m.kind === "image");
       const base = { access_token: t.access };
       let id: string;
       if (images.length === 1) {
-        const r = await call<{ id: string; post_id?: string }>(f, `${FB}/${t.account}/photos`, { method: "POST", form: { ...base, url: images[0]!.url, caption: v.text, ...(images[0]!.alt ? { alt_text_custom: images[0]!.alt } : {}) } });
+        const r = await call<{ id: string; post_id?: string }>(f, `${FB}/${t.account}/photos`, {
+          method: "POST",
+          form: { ...base, url: images[0]!.url, caption: v.text, ...(images[0]!.alt ? { alt_text_custom: images[0]!.alt } : {}) },
+        });
         id = r.post_id ?? r.id;
       } else if (images.length > 1) {
         const attached: string[] = [];
-        for (const m of images.slice(0, 10)) attached.push((await call<{ id: string }>(f, `${FB}/${t.account}/photos`, { method: "POST", form: { ...base, url: m.url, published: "false", ...(m.alt ? { alt_text_custom: m.alt } : {}) } })).id);
+        for (const m of images.slice(0, 10))
+          attached.push(
+            (
+              await call<{ id: string }>(f, `${FB}/${t.account}/photos`, {
+                method: "POST",
+                form: { ...base, url: m.url, published: "false", ...(m.alt ? { alt_text_custom: m.alt } : {}) },
+              })
+            ).id,
+          );
         const form: Record<string, string> = { ...base, message: v.text };
         attached.forEach((a, i) => (form[`attached_media[${i}]`] = JSON.stringify({ media_fbid: a })));
         id = (await call<{ id: string }>(f, `${FB}/${t.account}/feed`, { method: "POST", form })).id;
       } else {
-        id = (await call<{ id: string }>(f, `${FB}/${t.account}/feed`, { method: "POST", form: { ...base, message: v.text, ...(v.link ? { link: v.link } : {}) } })).id;
+        id = (
+          await call<{ id: string }>(f, `${FB}/${t.account}/feed`, { method: "POST", form: { ...base, message: v.text, ...(v.link ? { link: v.link } : {}) } })
+        ).id;
       }
       return { externalId: id, url: `https://www.facebook.com/${id}` };
     },
@@ -167,12 +264,22 @@ export function facebook(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
       const metrics: Pulled["metrics"] = [];
       for (const id of externalIds) {
         try {
-          const p = await call<{ shares?: { count: number }; reactions?: { summary: { total_count: number } }; comments?: { summary: { total_count: number } } }>(f, `${FB}/${id}?${qs({ fields: "shares,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)", access_token: t.access })}`);
+          const p = await call<{
+            shares?: { count: number };
+            reactions?: { summary: { total_count: number } };
+            comments?: { summary: { total_count: number } };
+          }>(
+            f,
+            `${FB}/${id}?${qs({ fields: "shares,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)", access_token: t.access })}`,
+          );
           const m = zero();
           m.likes = p.reactions?.summary.total_count ?? 0;
           m.comments = p.comments?.summary.total_count ?? 0;
           m.shares = p.shares?.count ?? 0;
-          const ins = await call<{ data: { name: string; values: { value: number }[] }[] }>(f, `${FB}/${id}/insights?${qs({ metric: "post_impressions_unique,post_clicks", access_token: t.access })}`).catch(() => ({ data: [] }));
+          const ins = await call<{ data: { name: string; values: { value: number }[] }[] }>(
+            f,
+            `${FB}/${id}/insights?${qs({ metric: "post_impressions_unique,post_clicks", access_token: t.access })}`,
+          ).catch(() => ({ data: [] }));
           for (const d of ins.data) {
             if (d.name === "post_impressions_unique") m.views = d.values[0]?.value ?? 0;
             if (d.name === "post_clicks") m.clicks = d.values[0]?.value ?? 0;
@@ -211,27 +318,50 @@ export function threads(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?: 
     },
     async exchange({ code, redirect }) {
       const k = need();
-      const short = await call<{ access_token: string; user_id: string | number }>(f, "https://graph.threads.net/oauth/access_token", { method: "POST", form: { client_id: k.id, client_secret: k.secret, grant_type: "authorization_code", redirect_uri: redirect, code } });
-      const long = await call<{ access_token: string; expires_in?: number }>(f, `https://graph.threads.net/access_token?${qs({ grant_type: "th_exchange_token", client_secret: k.secret, access_token: short.access_token })}`);
+      const short = await call<{ access_token: string; user_id: string | number }>(f, "https://graph.threads.net/oauth/access_token", {
+        method: "POST",
+        form: { client_id: k.id, client_secret: k.secret, grant_type: "authorization_code", redirect_uri: redirect, code },
+      });
+      const long = await call<{ access_token: string; expires_in?: number }>(
+        f,
+        `https://graph.threads.net/access_token?${qs({ grant_type: "th_exchange_token", client_secret: k.secret, access_token: short.access_token })}`,
+      );
       const me = await call<{ id: string; username: string }>(f, `${TH}/me?${qs({ fields: "id,username", access_token: long.access_token })}`);
-      return { tokens: { access: long.access_token, refresh: null, expiresAt: long.expires_in ? Date.now() + long.expires_in * 1000 : null, account: me.id, extra: { username: me.username } }, handle: `@${me.username}`, followers: null };
+      return {
+        tokens: {
+          access: long.access_token,
+          refresh: null,
+          expiresAt: long.expires_in ? Date.now() + long.expires_in * 1000 : null,
+          account: me.id,
+          extra: { username: me.username },
+        },
+        handle: `@${me.username}`,
+        followers: null,
+      };
     },
     async refresh(t) {
-      const r = await call<{ access_token: string; expires_in?: number }>(f, `https://graph.threads.net/refresh_access_token?${qs({ grant_type: "th_refresh_token", access_token: t.access })}`);
+      const r = await call<{ access_token: string; expires_in?: number }>(
+        f,
+        `https://graph.threads.net/refresh_access_token?${qs({ grant_type: "th_refresh_token", access_token: t.access })}`,
+      );
       return { ...t, access: r.access_token, expiresAt: r.expires_in ? Date.now() + r.expires_in * 1000 : t.expiresAt };
     },
     async publish(t, v, media) {
       const images = media.filter((m) => m.kind === "image").slice(0, 20);
       let id: string;
       if (!images.length) id = await create(t, { media_type: "TEXT", text: v.text });
-      else if (images.length === 1) id = await create(t, { media_type: "IMAGE", image_url: images[0]!.url, text: v.text, ...(images[0]!.alt ? { alt_text: images[0]!.alt } : {}) });
+      else if (images.length === 1)
+        id = await create(t, { media_type: "IMAGE", image_url: images[0]!.url, text: v.text, ...(images[0]!.alt ? { alt_text: images[0]!.alt } : {}) });
       else {
         const children: string[] = [];
-        for (const m of images) children.push(await create(t, { media_type: "IMAGE", image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) }));
+        for (const m of images)
+          children.push(await create(t, { media_type: "IMAGE", image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) }));
         id = await create(t, { media_type: "CAROUSEL", children: children.join(","), text: v.text });
       }
       const done = await publishContainer(t, id, images.length > 0);
-      const link = await call<{ permalink?: string }>(f, `${TH}/${done}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({ permalink: undefined }));
+      const link = await call<{ permalink?: string }>(f, `${TH}/${done}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({
+        permalink: undefined,
+      }));
       return { externalId: done, url: link.permalink ?? null };
     },
     async reply(t, to, text) {
@@ -244,12 +374,30 @@ export function threads(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?: 
       const metrics: Pulled["metrics"] = [];
       for (const id of externalIds) {
         try {
-          const r = await call<{ data: { id: string; text?: string; username?: string; timestamp: string }[] }>(f, `${TH}/${id}/replies?${qs({ fields: "id,text,username,timestamp", access_token: t.access })}`);
+          const r = await call<{ data: { id: string; text?: string; username?: string; timestamp: string }[] }>(
+            f,
+            `${TH}/${id}/replies?${qs({ fields: "id,text,username,timestamp", access_token: t.access })}`,
+          );
           for (const x of r.data) {
             if (!x.text || since(x.timestamp) <= since(from) || x.username === t.extra.username) continue;
-            messages.push({ id: `th-${x.id}`, externalId: x.id, platform: "Threads", channelId: "", kind: "comment", author: x.username ? `@${x.username}` : "Someone on Threads", at: new Date(x.timestamp).toISOString(), rating: null, text: x.text, postId: null, threadId: id });
+            messages.push({
+              id: `th-${x.id}`,
+              externalId: x.id,
+              platform: "Threads",
+              channelId: "",
+              kind: "comment",
+              author: x.username ? `@${x.username}` : "Someone on Threads",
+              at: new Date(x.timestamp).toISOString(),
+              rating: null,
+              text: x.text,
+              postId: null,
+              threadId: id,
+            });
           }
-          const ins = await call<{ data: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] }>(f, `${TH}/${id}/insights?${qs({ metric: "views,likes,replies,reposts,quotes,shares", access_token: t.access })}`);
+          const ins = await call<{ data: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] }>(
+            f,
+            `${TH}/${id}/insights?${qs({ metric: "views,likes,replies,reposts,quotes,shares", access_token: t.access })}`,
+          );
           const m = zero();
           for (const d of ins.data) {
             const n = d.total_value?.value ?? d.values?.[0]?.value ?? 0;
@@ -280,7 +428,11 @@ export function whatsapp(keys: { token: string; phoneId: string; template: strin
     return keys;
   };
   const send = (t: Tokens, body: Record<string, unknown>) =>
-    call<{ messages?: { id: string }[] }>(f, `${FB}/${t.account}/messages`, { method: "POST", json: { messaging_product: "whatsapp", recipient_type: "individual", ...body }, headers: { authorization: `Bearer ${t.access}` } });
+    call<{ messages?: { id: string }[] }>(f, `${FB}/${t.account}/messages`, {
+      method: "POST",
+      json: { messaging_product: "whatsapp", recipient_type: "individual", ...body },
+      headers: { authorization: `Bearer ${t.access}` },
+    });
   return {
     platform: "whatsapp",
     async authorizeUrl({ state, redirect }) {
@@ -289,8 +441,22 @@ export function whatsapp(keys: { token: string; phoneId: string; template: strin
     },
     async exchange() {
       const k = need();
-      const n = await call<{ id: string; display_phone_number?: string; verified_name?: string }>(f, `${FB}/${k.phoneId}?${qs({ fields: "display_phone_number,verified_name" })}`, { headers: { authorization: `Bearer ${k.token}` } });
-      return { tokens: { access: k.token, refresh: null, expiresAt: null, account: n.id, extra: { ...(k.template ? { template: k.template } : {}), templateLanguage: "en" } }, handle: n.display_phone_number ?? n.verified_name ?? "WhatsApp Business", followers: null };
+      const n = await call<{ id: string; display_phone_number?: string; verified_name?: string }>(
+        f,
+        `${FB}/${k.phoneId}?${qs({ fields: "display_phone_number,verified_name" })}`,
+        { headers: { authorization: `Bearer ${k.token}` } },
+      );
+      return {
+        tokens: {
+          access: k.token,
+          refresh: null,
+          expiresAt: null,
+          account: n.id,
+          extra: { ...(k.template ? { template: k.template } : {}), templateLanguage: "en" },
+        },
+        handle: n.display_phone_number ?? n.verified_name ?? "WhatsApp Business",
+        followers: null,
+      };
     },
     async publish() {
       throw new PlatformError("WhatsApp posts go out as broadcasts or by hand as a Status", "final");
@@ -298,7 +464,12 @@ export function whatsapp(keys: { token: string; phoneId: string; template: strin
     async reply(t, to, text) {
       if (!to.threadId) throw new PlatformError("No phone number to reply to", "final");
       if (to.replyBy && Date.parse(to.replyBy) < Date.now()) throw new PlatformError("WhatsApp's 24-hour reply window has closed", "final");
-      const r = await send(t, { to: to.threadId, type: "text", text: { preview_url: false, body: text }, ...(to.externalId ? { context: { message_id: to.externalId } } : {}) });
+      const r = await send(t, {
+        to: to.threadId,
+        type: "text",
+        text: { preview_url: false, body: text },
+        ...(to.externalId ? { context: { message_id: to.externalId } } : {}),
+      });
       return { externalId: r.messages?.[0]?.id ?? null };
     },
     async broadcast(t, { template, language, text, audience }) {
@@ -307,7 +478,28 @@ export function whatsapp(keys: { token: string; phoneId: string; template: strin
       let failed = 0;
       for (const to of audience) {
         try {
-          await send(t, { to, type: "template", template: { name: template, language: { code: language }, components: [{ type: "body", parameters: [{ type: "text", text: text.replace(/\s*\n\s*/g, " · ").replace(/\s{4,}/g, " ").slice(0, 1024) }] }] } });
+          await send(t, {
+            to,
+            type: "template",
+            template: {
+              name: template,
+              language: { code: language },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    {
+                      type: "text",
+                      text: text
+                        .replace(/\s*\n\s*/g, " · ")
+                        .replace(/\s{4,}/g, " ")
+                        .slice(0, 1024),
+                    },
+                  ],
+                },
+              ],
+            },
+          });
           sent++;
         } catch (e) {
           if (e instanceof PlatformError && (e.kind === "rate_limited" || e.kind === "expired")) throw e;

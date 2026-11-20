@@ -62,7 +62,11 @@ export async function sortVoice(ai: Ai, transcript: string, business: string): P
     });
     const j = modelJson(answer) as Partial<VoiceIntent>;
     if (!j || !["invoice", "quote", "expense", "question"].includes(String(j.kind))) return fallback;
-    return { kind: j.kind as VoiceIntent["kind"], party: typeof j.party === "string" && j.party.trim() ? j.party.trim() : null, english: typeof j.english === "string" && j.english.trim() ? j.english.trim() : transcript };
+    return {
+      kind: j.kind as VoiceIntent["kind"],
+      party: typeof j.party === "string" && j.party.trim() ? j.party.trim() : null,
+      english: typeof j.english === "string" && j.english.trim() ? j.english.trim() : transcript,
+    };
   } catch {
     return fallback;
   }
@@ -74,7 +78,10 @@ export async function toEnglish(ai: Ai, text: string): Promise<string> {
   try {
     const answer = await run(TEXT_MODEL, {
       messages: [
-        { role: "system", content: 'Translate the message into plain English. Keep numbers, amounts and names exactly as written. Answer only with JSON: {"english": "..."}' },
+        {
+          role: "system",
+          content: 'Translate the message into plain English. Keep numbers, amounts and names exactly as written. Answer only with JSON: {"english": "..."}',
+        },
         { role: "user", content: text },
       ],
       max_tokens: 300,

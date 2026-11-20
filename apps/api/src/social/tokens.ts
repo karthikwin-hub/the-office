@@ -56,7 +56,9 @@ export class TokenVault {
     sql.exec("CREATE TABLE IF NOT EXISTS social_tokens (channel_id TEXT PRIMARY KEY, sealed TEXT NOT NULL, updated_at INTEGER NOT NULL)");
     const cols = sql.exec<{ name: string }>("PRAGMA table_info(social_tokens)").toArray();
     if (!cols.some((c) => c.name === "key_version")) sql.exec("ALTER TABLE social_tokens ADD COLUMN key_version INTEGER NOT NULL DEFAULT 0");
-    this.keys = secret ? new Map([[0, subkey(secret, "tokens", "AES-GCM")], ...(officeId ? ([[KEY_VERSION, subkey(secret, "tokens", "AES-GCM", officeId)]] as const) : [])]) : null;
+    this.keys = secret
+      ? new Map([[0, subkey(secret, "tokens", "AES-GCM")], ...(officeId ? ([[KEY_VERSION, subkey(secret, "tokens", "AES-GCM", officeId)]] as const) : [])])
+      : null;
   }
 
   get ready(): boolean {
@@ -82,7 +84,9 @@ export class TokenVault {
 
   async get(channelId: string): Promise<Tokens | null> {
     if (!this.keys) return null;
-    const row = this.sql.exec<{ sealed: string; key_version: number }>("SELECT sealed, key_version FROM social_tokens WHERE channel_id = ?", channelId).toArray()[0];
+    const row = this.sql
+      .exec<{ sealed: string; key_version: number }>("SELECT sealed, key_version FROM social_tokens WHERE channel_id = ?", channelId)
+      .toArray()[0];
     if (!row) return null;
     const key = this.keys.get(row.key_version);
     if (!key) return null;

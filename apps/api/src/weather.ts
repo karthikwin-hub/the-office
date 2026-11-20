@@ -26,8 +26,12 @@ export function skyFrom(symbol: string): Sky {
 
 const round = (n: number) => Math.round(n * 10) / 10;
 
-export async function weatherFor(where: Where | undefined, opts: { fetcher: typeof fetch; cache: CacheLike | null; userAgent: string; now?: number }): Promise<Weather | null> {
-  const lat = Number(where?.latitude), lon = Number(where?.longitude);
+export async function weatherFor(
+  where: Where | undefined,
+  opts: { fetcher: typeof fetch; cache: CacheLike | null; userAgent: string; now?: number },
+): Promise<Weather | null> {
+  const lat = Number(where?.latitude),
+    lon = Number(where?.longitude);
   if (!where || !Number.isFinite(lat) || !Number.isFinite(lon) || where.latitude === undefined || where.longitude === undefined) return null;
   const city = typeof where.city === "string" && where.city.trim() ? where.city.trim().slice(0, 60) : null;
   const url = `${MET_URL}?lat=${round(lat)}&lon=${round(lon)}`;
@@ -41,7 +45,18 @@ export async function weatherFor(where: Where | undefined, opts: { fetcher: type
       res = new Response(body, { headers: { "content-type": "application/json", "cache-control": `max-age=${HOUR}` } });
       await opts.cache?.put(key, res.clone());
     }
-    const data = (await res.json()) as { properties?: { timeseries?: { time?: string; data?: { instant?: { details?: { air_temperature?: number } }; next_1_hours?: { summary?: { symbol_code?: string } }; next_6_hours?: { summary?: { symbol_code?: string } } } }[] } };
+    const data = (await res.json()) as {
+      properties?: {
+        timeseries?: {
+          time?: string;
+          data?: {
+            instant?: { details?: { air_temperature?: number } };
+            next_1_hours?: { summary?: { symbol_code?: string } };
+            next_6_hours?: { summary?: { symbol_code?: string } };
+          };
+        }[];
+      };
+    };
     const now = opts.now ?? Date.now();
     const series = data.properties?.timeseries ?? [];
     const slot = series.find((s) => s.time && Date.parse(s.time) + HOUR * 1000 > now) ?? series[0];

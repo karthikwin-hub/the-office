@@ -82,7 +82,15 @@ describe("reminders that failed", () => {
   it("are tried again an hour later, at most three times", () => {
     const o = new OfficeService(loadBooks(), { asOf: "2026-11-04" });
     const now = Date.now();
-    const base = { agentId: "credit-controller", kind: "reminder" as const, createdAt: "2026-11-04T09:00:00+05:30", title: "r", summary: "", evidence: [], status: "approved" as const };
+    const base = {
+      agentId: "credit-controller",
+      kind: "reminder" as const,
+      createdAt: "2026-11-04T09:00:00+05:30",
+      title: "r",
+      summary: "",
+      evidence: [],
+      status: "approved" as const,
+    };
     o.books.staged.push(
       { ...base, id: "r1", payload: { sendError: "x", attempts: 1, triedAt: new Date(now - 2 * 3600_000).toISOString() } },
       { ...base, id: "r2", payload: { sendError: "x", attempts: 1, triedAt: new Date(now - 60_000).toISOString() } },

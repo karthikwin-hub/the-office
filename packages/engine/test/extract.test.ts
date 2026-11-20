@@ -40,7 +40,9 @@ describe("parsing", () => {
  */
 describe("evaluation set", () => {
   const bills = books.bills.map((b) => ({ kind: "purchase_bill" as const, rec: b, doc: books.documents.find((d) => d.id === b.docId)! }));
-  const invoices = books.invoices.filter((_, i) => i % 5 === 0).map((v) => ({ kind: "sales_invoice" as const, rec: v, doc: books.documents.find((d) => d.id === v.docId)! }));
+  const invoices = books.invoices
+    .filter((_, i) => i % 5 === 0)
+    .map((v) => ({ kind: "sales_invoice" as const, rec: v, doc: books.documents.find((d) => d.id === v.docId)! }));
   const ctx = { ...books, bills: [], invoices: [] };
 
   it.each([...bills, ...invoices].map((x) => [x.doc.id, x] as const))("%s reads exactly", async (_id, { kind, rec, doc }) => {
@@ -120,7 +122,10 @@ describe("intake", () => {
     fresh.bills = fresh.bills.filter((b) => b !== small && b !== large);
     const office = new OfficeService(fresh);
     const checked = office.books.agents.find((a) => a.agentId === "accountant")!.accuracy.checked;
-    for (const [id, b] of [["doc-u0010", small], ["doc-u0011", large]] as const) {
+    for (const [id, b] of [
+      ["doc-u0010", small],
+      ["doc-u0011", large],
+    ] as const) {
       office.receiveDocument({ id, file: "/x.pdf", channel: "upload", from: null, pages: 1 });
       office.read(id, await read(fresh.documents.find((d) => d.id === b.docId)!.file));
     }
@@ -182,8 +187,23 @@ describe("model reading", () => {
       date: { value: bill.date, item: null },
       partyName: { value: party.name, item: null },
       partyGstin: { value: party.gstin, item: at(party.gstin!) },
-      lines: bill.lines.map((l) => ({ description: l.description, hsn: l.hsn, qty: l.qty, unit: l.unit, rate: rupees(l.ratePaise), taxable: rupees(l.taxablePaise), gstRate: l.gstRate, tax: rupees(l.cgstPaise + l.sgstPaise + l.igstPaise) })),
-      totals: { taxable: { value: rupees(bill.totals.taxablePaise) }, cgst: { value: rupees(bill.totals.cgstPaise) }, sgst: { value: rupees(bill.totals.sgstPaise) }, roundOff: { value: rupees(bill.totals.roundOffPaise) }, total: { value: rupees(bill.totals.totalPaise), item: totalItem } },
+      lines: bill.lines.map((l) => ({
+        description: l.description,
+        hsn: l.hsn,
+        qty: l.qty,
+        unit: l.unit,
+        rate: rupees(l.ratePaise),
+        taxable: rupees(l.taxablePaise),
+        gstRate: l.gstRate,
+        tax: rupees(l.cgstPaise + l.sgstPaise + l.igstPaise),
+      })),
+      totals: {
+        taxable: { value: rupees(bill.totals.taxablePaise) },
+        cgst: { value: rupees(bill.totals.cgstPaise) },
+        sgst: { value: rupees(bill.totals.sgstPaise) },
+        roundOff: { value: rupees(bill.totals.roundOffPaise) },
+        total: { value: rupees(bill.totals.totalPaise), item: totalItem },
+      },
     });
     const ctx = { ...books, bills: [], invoices: [] };
     const good = fromModel(answer(items.findLastIndex((i) => i.str === rupees(bill.totals.totalPaise))), items, ctx);

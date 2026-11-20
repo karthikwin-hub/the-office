@@ -1,6 +1,16 @@
 import type { Region, Totals } from "@office/contracts";
 import { z } from "zod";
-import { checkExtraction, directionOf, type ExtractContext, type Extraction, type ExtractedLine, gstinValid, parseAmount, parseDate, type TextItem } from "./extract";
+import {
+  checkExtraction,
+  directionOf,
+  type ExtractContext,
+  type Extraction,
+  type ExtractedLine,
+  gstinValid,
+  parseAmount,
+  parseDate,
+  type TextItem,
+} from "./extract";
 import { pctOf } from "./money";
 
 /**
@@ -51,13 +61,30 @@ export const MODEL_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { description: { type: "string" }, hsn: { type: "string" }, qty: { type: "number" }, unit: { type: "string" }, rate: { type: "string" }, taxable: { type: "string" }, gstRate: { type: "number" }, tax: { type: "string" }, item: { type: "integer" } },
+        properties: {
+          description: { type: "string" },
+          hsn: { type: "string" },
+          qty: { type: "number" },
+          unit: { type: "string" },
+          rate: { type: "string" },
+          taxable: { type: "string" },
+          gstRate: { type: "number" },
+          tax: { type: "string" },
+          item: { type: "integer" },
+        },
         required: ["description", "taxable"],
       },
     },
     totals: {
       type: "object",
-      properties: { taxable: { $ref: "#/$defs/cited" }, cgst: { $ref: "#/$defs/cited" }, sgst: { $ref: "#/$defs/cited" }, igst: { $ref: "#/$defs/cited" }, roundOff: { $ref: "#/$defs/cited" }, total: { $ref: "#/$defs/cited" } },
+      properties: {
+        taxable: { $ref: "#/$defs/cited" },
+        cgst: { $ref: "#/$defs/cited" },
+        sgst: { $ref: "#/$defs/cited" },
+        igst: { $ref: "#/$defs/cited" },
+        roundOff: { $ref: "#/$defs/cited" },
+        total: { $ref: "#/$defs/cited" },
+      },
       required: ["taxable", "total"],
     },
   },
@@ -105,10 +132,14 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
   // The page's "Bill to" block or GSTIN order outranks the model, which can swap buyer and seller.
   const kind = (items.length ? directionOf(items, ctx) : null) ?? m.kind ?? "purchase_bill";
   const own = new Set([ctx.business.gstin, ...(ctx.business.otherGstins ?? [])].filter(Boolean));
-  const read = str(m.partyGstin)?.toUpperCase().replace(/^GSTIN[:\s]*/, "") ?? null;
+  const read =
+    str(m.partyGstin)
+      ?.toUpperCase()
+      .replace(/^GSTIN[:\s]*/, "") ?? null;
   // Our own GSTIN is never the other side.
   const gstin = read && own.has(read) ? null : read;
-  const party = (gstin && ctx.parties.find((p) => p.gstin === gstin)) || ctx.parties.find((p) => p.name.toLowerCase() === str(m.partyName)?.toLowerCase()) || null;
+  const party =
+    (gstin && ctx.parties.find((p) => p.gstin === gstin)) || ctx.parties.find((p) => p.name.toLowerCase() === str(m.partyName)?.toLowerCase()) || null;
   const partyState = gstin?.slice(0, 2) ?? party?.stateCode ?? null;
   const placeOfSupply = kind === "purchase_bill" ? ctx.business.stateCode : (partyState ?? ctx.business.stateCode);
   const intra = (kind === "purchase_bill" ? (partyState ?? ctx.business.stateCode) : placeOfSupply) === ctx.business.stateCode;
@@ -144,7 +175,14 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
   });
 
   const t = m.totals;
-  const totals: Totals = { taxablePaise: money(t.taxable.value), cgstPaise: money(t.cgst?.value), sgstPaise: money(t.sgst?.value), igstPaise: money(t.igst?.value), roundOffPaise: money(t.roundOff?.value), totalPaise: money(t.total.value) };
+  const totals: Totals = {
+    taxablePaise: money(t.taxable.value),
+    cgstPaise: money(t.cgst?.value),
+    sgstPaise: money(t.sgst?.value),
+    igstPaise: money(t.igst?.value),
+    roundOffPaise: money(t.roundOff?.value),
+    totalPaise: money(t.total.value),
+  };
   cite("totals.taxable", "Taxable value", t.taxable);
   cite("totals.cgst", "CGST", t.cgst);
   cite("totals.sgst", "SGST", t.sgst);
@@ -173,8 +211,20 @@ export function fromModel(answer: unknown, items: TextItem[], ctx: ExtractContex
   out.checks = checkExtraction(out, ctx);
   out.checks.push(
     items.length
-      ? { key: "grounded", label: "Every figure found on the page", ok: ungrounded === 0, detail: ungrounded ? `${ungrounded} value${ungrounded === 1 ? " was" : "s were"} not where the model said; compare with the page.` : "Each value was matched to the text it came from." }
-      : { key: "grounded", label: "Figures can be highlighted", ok: false, detail: "Read from an image by the vision model, so nothing can be highlighted. Compare with the page before approving." },
+      ? {
+          key: "grounded",
+          label: "Every figure found on the page",
+          ok: ungrounded === 0,
+          detail: ungrounded
+            ? `${ungrounded} value${ungrounded === 1 ? " was" : "s were"} not where the model said; compare with the page.`
+            : "Each value was matched to the text it came from.",
+        }
+      : {
+          key: "grounded",
+          label: "Figures can be highlighted",
+          ok: false,
+          detail: "Read from an image by the vision model, so nothing can be highlighted. Compare with the page before approving.",
+        },
   );
   return out;
 }

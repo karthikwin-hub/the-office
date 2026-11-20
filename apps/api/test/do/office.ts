@@ -11,7 +11,9 @@ export async function person(name: string): Promise<Person> {
   const id = `user-${Date.now().toString(36)}-${++n}`;
   const email = `${id}@the-office.test`;
   const at = Date.now();
-  await env.DB.prepare("INSERT INTO user (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)").bind(id, name, email, at, at).run();
+  await env.DB.prepare("INSERT INTO user (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)")
+    .bind(id, name, email, at, at)
+    .run();
   return { id, name, email };
 }
 
@@ -28,7 +30,13 @@ export async function openOffice(name = `Test office ${++n}`) {
 
 export const LEGACY_NAME = "__ps_name";
 
-export const callerFor = (officeId: string, p: Person, role: Caller["role"] = "owner"): Caller => ({ userId: p.id, name: p.name, email: p.email, role, officeId });
+export const callerFor = (officeId: string, p: Person, role: Caller["role"] = "owner"): Caller => ({
+  userId: p.id,
+  name: p.name,
+  email: p.email,
+  role,
+  officeId,
+});
 
 /** A request to an office's Durable Object as the Worker sends it: the path within the office and who is asking, sealed. */
 export async function asCaller(caller: Caller | null, path: string, init: RequestInit = {}): Promise<Request> {

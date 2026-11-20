@@ -43,7 +43,15 @@ export function LedgerTable<T>({ rows, columns, rowKey, caption, showCaption, in
       })),
     [columns],
   );
-  const table = useReactTable({ data: rows, columns: defs, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getRowId: (r) => rowKey(r) });
+  const table = useReactTable({
+    data: rows,
+    columns: defs,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getRowId: (r) => rowKey(r),
+  });
   const hasFooter = columns.some((c) => c.footer !== undefined);
   const all = table.getRowModel().rows;
   const shown = limit && !expanded ? all.slice(0, limit) : all;
@@ -61,7 +69,12 @@ export function LedgerTable<T>({ rows, columns, rowKey, caption, showCaption, in
                 const c = h.column.columnDef.meta as LedgerColumn<T>;
                 const sorted = h.column.getIsSorted();
                 return (
-                  <th key={h.id} scope="col" className={`${c.numeric ? "num" : ""}${c.secondary ? " secondary" : ""}`} aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : h.column.getCanSort() ? "none" : undefined}>
+                  <th
+                    key={h.id}
+                    scope="col"
+                    className={`${c.numeric ? "num" : ""}${c.secondary ? " secondary" : ""}`}
+                    aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : h.column.getCanSort() ? "none" : undefined}
+                  >
                     {h.column.getCanSort() ? (
                       <button type="button" onClick={h.column.getToggleSortingHandler()}>
                         {c.header}

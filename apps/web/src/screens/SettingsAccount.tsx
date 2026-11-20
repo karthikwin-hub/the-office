@@ -20,7 +20,8 @@ export function AccountSettings() {
   return (
     <Section title="Your account">
       <p className="section-lede">
-        This is about you, {me.data?.user.email ?? "your account"}, not the business. The business's books belong to it; an owner exports them under Office. See the <a href="/legal/privacy">privacy notice</a> for what we keep and why.
+        This is about you, {me.data?.user.email ?? "your account"}, not the business. The business's books belong to it; an owner exports them under Office. See
+        the <a href="/legal/privacy">privacy notice</a> for what we keep and why.
       </p>
       <div className="approval-actions">
         <button type="button" className="btn" onClick={() => download.mutate()} disabled={download.isPending}>
@@ -34,7 +35,9 @@ export function AccountSettings() {
       {confirming ? (
         <div className="promotion" role="alertdialog" aria-label="Delete my account">
           <p>
-            <strong>Delete your account now?</strong> You leave every office you are in and can no longer sign in; this cannot be undone. An office only you are in is deleted with it, and nobody can restore it. If you are the only owner of an office others work in, make one of them an owner first. Your name stays in the books where you approved or recorded something, because the business must keep those records.
+            <strong>Delete your account now?</strong> You leave every office you are in and can no longer sign in; this cannot be undone. An office only you are
+            in is deleted with it, and nobody can restore it. If you are the only owner of an office others work in, make one of them an owner first. Your name
+            stays in the books where you approved or recorded something, because the business must keep those records.
           </p>
           <div className="approval-actions">
             <button type="button" className="btn btn-primary" onClick={() => remove.mutate()} disabled={remove.isPending}>

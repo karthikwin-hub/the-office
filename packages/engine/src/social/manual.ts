@@ -12,7 +12,11 @@ export function publishingPack(books: Books, postId: string, channelId: string):
   const media = books.media.filter((m) => v.mediaIds.includes(m.id));
   const name = PLATFORM_NAMES[v.platform];
   const steps = [
-    media.length ? `Save the ${media.length === 1 ? "picture" : `${media.length} pictures`} to your phone.` : RULES[v.platform].media.required ? `${name} needs a picture: add one before posting.` : "No picture is needed.",
+    media.length
+      ? `Save the ${media.length === 1 ? "picture" : `${media.length} pictures`} to your phone.`
+      : RULES[v.platform].media.required
+        ? `${name} needs a picture: add one before posting.`
+        : "No picture is needed.",
     `Open ${name}${ch.handle ? ` as ${ch.handle}` : ""} and start a new ${v.platform === "whatsapp" ? "Status update" : "post"}.`,
     "Copy the text below and paste it in.",
     ...(media.some((m) => m.alt) && v.platform !== "whatsapp" ? ["Paste each picture's description into its alt text setting."] : []),
@@ -34,7 +38,13 @@ const HEADERS: Record<keyof PostMetrics | "url" | "id", RegExp> = {
   enquiries: /^(enquiries|messages|conversations started)$/i,
 };
 
-const norm = (u: string) => u.trim().replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+const norm = (u: string) =>
+  u
+    .trim()
+    .replace(/^https?:\/\/(www\.)?/, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
 
 /**
  * Reads a metrics export from Instagram, Facebook, LinkedIn or X and attaches the numbers to the posts
@@ -62,7 +72,15 @@ export function importMetrics(books: Books, content: string): { matched: number;
       unmatched++;
       continue;
     }
-    v.metrics = { views: num(r, "views"), likes: num(r, "likes"), comments: num(r, "comments"), saves: num(r, "saves"), shares: num(r, "shares"), clicks: num(r, "clicks"), enquiries: num(r, "enquiries") };
+    v.metrics = {
+      views: num(r, "views"),
+      likes: num(r, "likes"),
+      comments: num(r, "comments"),
+      saves: num(r, "saves"),
+      shares: num(r, "shares"),
+      clicks: num(r, "clicks"),
+      enquiries: num(r, "enquiries"),
+    };
     matched++;
   }
   return { matched, unmatched };

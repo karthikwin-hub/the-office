@@ -1,5 +1,18 @@
 import type { IngestResult, Role, StagedChange } from "@office/contracts";
-import { addToList, deskParts, detectLanguage, handleWhatsApp, noteQuoteRequest, type OfficeService, parseCommand, phrase, render, type TextItem, type WaPart, type WaSession } from "@office/engine";
+import {
+  addToList,
+  deskParts,
+  detectLanguage,
+  handleWhatsApp,
+  noteQuoteRequest,
+  type OfficeService,
+  parseCommand,
+  phrase,
+  render,
+  type TextItem,
+  type WaPart,
+  type WaSession,
+} from "@office/engine";
 import { docKey, fileUrl } from "../keys";
 import type { Fetch } from "../social/adapter";
 import type { WaIncoming } from "../social/webhooks";
@@ -56,7 +69,8 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
   const opts = { base: deps.base, fixedLanguage, office: deps.officeId };
   let parts: WaPart[] = [];
   let decided: StagedChange[] = [];
-  const mark = (language = session.language) => (session = { ...session, language: fixedLanguage ?? language, lastAt: m.at, seen: [...session.seen, m.id].slice(-200) });
+  const mark = (language = session.language) =>
+    (session = { ...session, language: fixedLanguage ?? language, lastAt: m.at, seen: [...session.seen, m.id].slice(-200) });
   const listed = (staged: StagedChange | null): WaPart[] => {
     if (!staged || staged.status !== "pending") return [];
     const added = addToList(session, staged);
@@ -98,7 +112,10 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
         const id = deps.newDocId();
         await deps.store(docKey(deps.officeId, id), file.bytes, type, { filename: m.media.filename ?? `whatsapp-${id}`, by: link.email });
         deps.office.receiveDocument({ id, file: fileUrl(deps.officeId, id), channel: "whatsapp", from: link.name, pages: 1 });
-        if (type === "application/pdf") parts = [{ text: "Got the PDF. The Accountant reads it the next time the office is open in a browser, and it will wait on your desk.", translate: true }];
+        if (type === "application/pdf")
+          parts = [
+            { text: "Got the PDF. The Accountant reads it the next time the office is open in a browser, and it will wait on your desk.", translate: true },
+          ];
         else {
           const r = await deps.readImage(id, file.bytes, false);
           parts = r.staged?.status === "pending" ? listed(r.staged) : [{ text: phrase("unreadable", session.language) }];
@@ -118,7 +135,13 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
         const intent = await sortVoice(deps.ai, heard.text, deps.office.books.business.name);
         const language = fixedLanguage ?? heard.language ?? detectLanguage(heard.text) ?? session.language;
         if (intent.kind === "question" || person.role !== "owner") {
-          const turn = handleWhatsApp(deps.office, person, session, { id: m.id, text: heard.text, at: m.at, heard: true, english: intent.english, language }, opts);
+          const turn = handleWhatsApp(
+            deps.office,
+            person,
+            session,
+            { id: m.id, text: heard.text, at: m.at, heard: true, english: intent.english, language },
+            opts,
+          );
           session = turn.session;
           parts = turn.parts;
           decided = turn.decided;
@@ -135,12 +158,16 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
             deps.office.receiveDocument({ id, file: fileUrl(deps.officeId, id), channel: "whatsapp", from: link.name, pages: 1 });
             const b = deps.office.books.business;
             const header =
-              intent.kind === "invoice" ? `Tax invoice from ${b.legalName} GSTIN ${b.gstin} to ${intent.party ?? "the customer"}` : `Bill from ${intent.party ?? "a supplier"} to ${b.legalName} GSTIN ${b.gstin}`;
+              intent.kind === "invoice"
+                ? `Tax invoice from ${b.legalName} GSTIN ${b.gstin} to ${intent.party ?? "the customer"}`
+                : `Bill from ${intent.party ?? "a supplier"} to ${b.legalName} GSTIN ${b.gstin}`;
             const items = [header, `Date ${dmy(deps.office.asOf)}`, intent.english, heard.text].map(line);
             const r = await deps.readItems(id, items, false);
             if (r.staged) r.staged.summary = `From a voice note: "${heard.text}". ${r.staged.summary}`;
             const onDesk = listed(r.staged);
-            parts = onDesk.length ? [echo, ...onDesk] : [echo, { text: "I could not make a draft from that. Say who it is for, what, how many and at what rate.", translate: true }];
+            parts = onDesk.length
+              ? [echo, ...onDesk]
+              : [echo, { text: "I could not make a draft from that. Say who it is for, what, how many and at what rate.", translate: true }];
           }
         }
       }
@@ -171,6 +198,12 @@ export async function morningDigest(
   saveSession(deps.kv, phone, d.session);
   // An owner's own agenda, short; only they get it.
   const agenda = person.role === "owner" ? deps.office.assistant.briefing(person.email, true) : null;
-  const text = render(await translateParts(deps.ai, agenda ? [...d.parts, { text: `\n${agenda}\nReply "agenda" to see it again.`, translate: true }] : d.parts, d.session.language));
+  const text = render(
+    await translateParts(
+      deps.ai,
+      agenda ? [...d.parts, { text: `\n${agenda}\nReply "agenda" to see it again.`, translate: true }] : d.parts,
+      d.session.language,
+    ),
+  );
   return heading ? `*${heading}*\n${text}` : text;
 }

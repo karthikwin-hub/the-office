@@ -54,8 +54,19 @@ const handler = http.all("/api/*", async ({ request }) => {
     const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
     const { readSheets, SheetError } = await import("@office/engine/sheets");
     try {
-      const imports = getOffice().sales.receive({ file: body.file, sheets: await readSheets(body.file, bytes), hash, via: "upload", sender: USERS.owner.email });
-      return HttpResponse.json({ imports, message: imports.map((i) => `${i.status === "needs_mapping" ? `${i.file} is in a layout I have not seen; confirm its columns below.` : `${i.formatName}: ${i.note}`}`).join("\n") });
+      const imports = getOffice().sales.receive({
+        file: body.file,
+        sheets: await readSheets(body.file, bytes),
+        hash,
+        via: "upload",
+        sender: USERS.owner.email,
+      });
+      return HttpResponse.json({
+        imports,
+        message: imports
+          .map((i) => `${i.status === "needs_mapping" ? `${i.file} is in a layout I have not seen; confirm its columns below.` : `${i.formatName}: ${i.note}`}`)
+          .join("\n"),
+      });
     } catch (e) {
       return HttpResponse.json({ error: e instanceof SheetError ? e.message : "The file could not be opened. Send it as CSV or XLSX." }, { status: 422 });
     }
@@ -72,7 +83,10 @@ const handler = http.all("/api/*", async ({ request }) => {
     const result = office.read(id, parsed.data.items);
     if (!result.staged && !parsed.data.items.length) {
       office.failDocument(id, "it is a scan or photo. In the live office the vision model reads these.");
-      return HttpResponse.json({ ...result, message: "This is a scan or photo. In the live office the vision model reads these; the mockup reads PDFs with text only." });
+      return HttpResponse.json({
+        ...result,
+        message: "This is a scan or photo. In the live office the vision model reads these; the mockup reads PDFs with text only.",
+      });
     }
     return HttpResponse.json(result);
   }
@@ -95,12 +109,23 @@ const handler = http.all("/api/*", async ({ request }) => {
     if (role !== "owner") return HttpResponse.json({ error: "Only the owner can add pictures." }, { status: 403 });
     const form = await request.formData();
     const file = form.get("file");
-    if (!(file instanceof File) || !/^image\/(png|jpe?g|webp)$/.test(file.type)) return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture." }, { status: 415 });
-    const asset = getOffice().addMedia({ id: `media-u${Date.now().toString(36)}`, url: URL.createObjectURL(file), kind: "image", alt: String(form.get("alt") ?? ""), skuId: (form.get("skuId") as string | null) || null, rights: form.get("rights") === "generated" ? "generated" : "own", width: Number(form.get("width")) || null, height: Number(form.get("height")) || null });
+    if (!(file instanceof File) || !/^image\/(png|jpe?g|webp)$/.test(file.type))
+      return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture." }, { status: 415 });
+    const asset = getOffice().addMedia({
+      id: `media-u${Date.now().toString(36)}`,
+      url: URL.createObjectURL(file),
+      kind: "image",
+      alt: String(form.get("alt") ?? ""),
+      skuId: (form.get("skuId") as string | null) || null,
+      rights: form.get("rights") === "generated" ? "generated" : "own",
+      width: Number(form.get("width")) || null,
+      height: Number(form.get("height")) || null,
+    });
     return HttpResponse.json(asset);
   }
   if (url.pathname === "/api/me") return mockMe(role, USERS, getOffice());
-  if (url.pathname.startsWith("/api/platform")) return (await mockPlatform(request, url.pathname)) ?? HttpResponse.json({ error: "Not found" }, { status: 404 });
+  if (url.pathname.startsWith("/api/platform"))
+    return (await mockPlatform(request, url.pathname)) ?? HttpResponse.json({ error: "Not found" }, { status: 404 });
   const more = await mockMore(request, url.pathname, role, getOffice());
   if (more) return more;
   if (url.pathname.startsWith("/api/office-admin")) return (await mockOfficeAdmin(request, url.pathname, role, getOffice(), USERS))!;

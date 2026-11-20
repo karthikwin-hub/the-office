@@ -4,7 +4,16 @@ import { newSession, type WaSession } from "@office/engine";
 /** The Office's key-value table; numbers live only here and in D1, never in logs. */
 export type Kv = (k: string, v?: string) => string | null;
 /** One person's phone, linked once for every office they belong to; replies go to the office they last chose. */
-export type Link = { phone: string; userId: string; email: string; name: string; activeOfficeId: string | null; language: "auto" | WaLanguage; digest: boolean; linkedAt: number };
+export type Link = {
+  phone: string;
+  userId: string;
+  email: string;
+  name: string;
+  activeOfficeId: string | null;
+  language: "auto" | WaLanguage;
+  digest: boolean;
+  linkedAt: number;
+};
 /** The person behind a message, as the office they are talking to sees them. */
 export type WaPerson = { phone: string; userId: string; name: string; email: string; role: Role; language: "auto" | WaLanguage; digest: boolean };
 
@@ -22,9 +31,28 @@ export const FAILURE_WINDOW_MS = 3600_000;
 /** WhatsApp gives numbers as digits with the country code; keep only the digits. */
 export const normalisePhone = (p: string) => p.replace(/\D/g, "");
 
-type LinkDb = { phone: string; user_id: string; email: string; name: string; active_office_id: string | null; language: string; digest: number; linked_at: number };
-const toLink = (r: LinkDb): Link => ({ phone: r.phone, userId: r.user_id, email: r.email, name: r.name, activeOfficeId: r.active_office_id, language: r.language as Link["language"], digest: Boolean(r.digest), linkedAt: r.linked_at });
-const LINK_SELECT = "SELECT l.phone, l.user_id, u.email, u.name, l.active_office_id, l.language, l.digest, l.linked_at FROM wa_link l JOIN `user` u ON u.id = l.user_id";
+type LinkDb = {
+  phone: string;
+  user_id: string;
+  email: string;
+  name: string;
+  active_office_id: string | null;
+  language: string;
+  digest: number;
+  linked_at: number;
+};
+const toLink = (r: LinkDb): Link => ({
+  phone: r.phone,
+  userId: r.user_id,
+  email: r.email,
+  name: r.name,
+  activeOfficeId: r.active_office_id,
+  language: r.language as Link["language"],
+  digest: Boolean(r.digest),
+  linkedAt: r.linked_at,
+});
+const LINK_SELECT =
+  "SELECT l.phone, l.user_id, u.email, u.name, l.active_office_id, l.language, l.digest, l.linked_at FROM wa_link l JOIN `user` u ON u.id = l.user_id";
 
 /**
  * Who is on WhatsApp, across every office on the shared number. A phone belongs to one
@@ -37,13 +65,20 @@ export class WaDirectory {
   ) {}
 
   /** A new code for this person in this office, replacing any they had: eight characters, shown as "K7QD-M3XP". */
-  async newJoinCode(officeId: string, userId: string, random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): Promise<{ code: string; expiresAt: string }> {
+  async newJoinCode(
+    officeId: string,
+    userId: string,
+    random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n)),
+  ): Promise<{ code: string; expiresAt: string }> {
     const at = this.now();
     const expiresAt = at + CODE_TTL_MS;
     await this.db.prepare("DELETE FROM wa_code WHERE user_id = ? OR expires_at < ?").bind(userId, at).run();
     for (let i = 0; i < 20; i++) {
       const code = makeJoinCode(random);
-      const r = await this.db.prepare("INSERT INTO wa_code (code, office_id, user_id, expires_at) VALUES (?, ?, ?, ?) ON CONFLICT (code) DO NOTHING").bind(code, officeId, userId, expiresAt).run();
+      const r = await this.db
+        .prepare("INSERT INTO wa_code (code, office_id, user_id, expires_at) VALUES (?, ?, ?, ?) ON CONFLICT (code) DO NOTHING")
+        .bind(code, officeId, userId, expiresAt)
+        .run();
       if (r.meta.changes) return { code: showJoinCode(code), expiresAt: new Date(expiresAt).toISOString() };
     }
     throw new Error("Could not make a code");
@@ -66,23 +101,36 @@ export class WaDirectory {
     if (!fresh && tries.failures >= MAX_FAILURES) return { error: "tooMany" };
     if ((all?.failures ?? 0) >= MAX_FAILURES_ALL) return { error: "paused" };
     const wanted = readJoinCode(code);
-    const c = wanted ? await this.db.prepare("SELECT office_id, user_id FROM wa_code WHERE code = ? AND expires_at > ?").bind(wanted, at).first<{ office_id: string; user_id: string }>() : null;
-    const member = c && (!onlyOffice || c.office_id === onlyOffice) ? await this.db.prepare("SELECT 1 FROM membership WHERE office_id = ? AND user_id = ?").bind(c.office_id, c.user_id).first() : null;
+    const c = wanted
+      ? await this.db
+          .prepare("SELECT office_id, user_id FROM wa_code WHERE code = ? AND expires_at > ?")
+          .bind(wanted, at)
+          .first<{ office_id: string; user_id: string }>()
+      : null;
+    const member =
+      c && (!onlyOffice || c.office_id === onlyOffice)
+        ? await this.db.prepare("SELECT 1 FROM membership WHERE office_id = ? AND user_id = ?").bind(c.office_id, c.user_id).first()
+        : null;
     if (!c || !member) {
       // A number already linked is a known person mistyping; only strangers count towards the platform's limit.
       const stranger = !(await this.linkByPhone(number));
       await this.db.batch([
         this.db
-          .prepare("INSERT INTO wa_attempt (phone, failures, window_start) VALUES (?, 1, ?) ON CONFLICT (phone) DO UPDATE SET failures = CASE WHEN ? THEN 1 ELSE failures + 1 END, window_start = CASE WHEN ? THEN ? ELSE window_start END")
+          .prepare(
+            "INSERT INTO wa_attempt (phone, failures, window_start) VALUES (?, 1, ?) ON CONFLICT (phone) DO UPDATE SET failures = CASE WHEN ? THEN 1 ELSE failures + 1 END, window_start = CASE WHEN ? THEN ? ELSE window_start END",
+          )
           .bind(number, at, fresh ? 1 : 0, fresh ? 1 : 0, at),
         ...(stranger
           ? [
-              this.db.prepare("INSERT INTO wa_attempt_all (window_start, failures) VALUES (?, 1) ON CONFLICT (window_start) DO UPDATE SET failures = failures + 1").bind(hour),
+              this.db
+                .prepare("INSERT INTO wa_attempt_all (window_start, failures) VALUES (?, 1) ON CONFLICT (window_start) DO UPDATE SET failures = failures + 1")
+                .bind(hour),
               this.db.prepare("DELETE FROM wa_attempt_all WHERE window_start < ?").bind(hour),
             ]
           : []),
       ]);
-      if (stranger && (all?.failures ?? 0) + 1 === MAX_FAILURES_ALL) console.log(JSON.stringify({ event: "wa.join.paused", until: new Date(hour + FAILURE_WINDOW_MS).toISOString() }));
+      if (stranger && (all?.failures ?? 0) + 1 === MAX_FAILURES_ALL)
+        console.log(JSON.stringify({ event: "wa.join.paused", until: new Date(hour + FAILURE_WINDOW_MS).toISOString() }));
       return { error: "badCode" };
     }
     const previous = await this.linkOfUser(c.user_id);
@@ -91,7 +139,9 @@ export class WaDirectory {
       this.db.prepare("DELETE FROM wa_code WHERE code = ?").bind(wanted),
       this.db.prepare("DELETE FROM wa_attempt WHERE phone = ?").bind(number),
       // In the office's audit trail, so a link the person did not make can be seen and undone.
-      this.db.prepare("INSERT INTO audit (office_id, actor, action, detail, at) SELECT ?, email, 'whatsapp.linked', ?, ? FROM `user` WHERE id = ?").bind(c.office_id, `${maskPhone(number)}${replaced}`, at, c.user_id),
+      this.db
+        .prepare("INSERT INTO audit (office_id, actor, action, detail, at) SELECT ?, email, 'whatsapp.linked', ?, ? FROM `user` WHERE id = ?")
+        .bind(c.office_id, `${maskPhone(number)}${replaced}`, at, c.user_id),
       // One phone per person and one person per phone: a new link replaces either old one.
       this.db.prepare("DELETE FROM wa_link WHERE (user_id = ? AND phone != ?) OR (phone = ? AND user_id != ?)").bind(c.user_id, number, number, c.user_id),
       this.db
@@ -115,7 +165,10 @@ export class WaDirectory {
 
   /** The linked phones of people in this office, for its morning digest. */
   async linksIn(officeId: string): Promise<(Link & { role: Role })[]> {
-    const { results } = await this.db.prepare(`${LINK_SELECT.replace("SELECT ", "SELECT m.role, ")} JOIN membership m ON m.user_id = l.user_id WHERE m.office_id = ?`).bind(officeId).all<LinkDb & { role: Role }>();
+    const { results } = await this.db
+      .prepare(`${LINK_SELECT.replace("SELECT ", "SELECT m.role, ")} JOIN membership m ON m.user_id = l.user_id WHERE m.office_id = ?`)
+      .bind(officeId)
+      .all<LinkDb & { role: Role }>();
     return results.map((r) => ({ ...toLink(r), role: r.role }));
   }
 
@@ -131,7 +184,10 @@ export class WaDirectory {
     const l = await this.linkOfUser(userId);
     if (!l) return null;
     const next = { ...l, ...change };
-    await this.db.prepare("UPDATE wa_link SET language = ?, digest = ? WHERE phone = ?").bind(next.language, next.digest ? 1 : 0, l.phone).run();
+    await this.db
+      .prepare("UPDATE wa_link SET language = ?, digest = ? WHERE phone = ?")
+      .bind(next.language, next.digest ? 1 : 0, l.phone)
+      .run();
     return next;
   }
 
@@ -141,7 +197,10 @@ export class WaDirectory {
 
   /** A phone linked before offices shared one number: kept for the same person if they are still in that office. */
   async importLegacy(officeId: string, old: { phone: string; email: string; language: Link["language"]; digest: boolean; linkedAt: string }): Promise<boolean> {
-    const u = await this.db.prepare("SELECT u.id FROM `user` u JOIN membership m ON m.user_id = u.id WHERE lower(u.email) = ? AND m.office_id = ?").bind(old.email.trim().toLowerCase(), officeId).first<{ id: string }>();
+    const u = await this.db
+      .prepare("SELECT u.id FROM `user` u JOIN membership m ON m.user_id = u.id WHERE lower(u.email) = ? AND m.office_id = ?")
+      .bind(old.email.trim().toLowerCase(), officeId)
+      .first<{ id: string }>();
     if (!u) return false;
     const r = await this.db
       .prepare("INSERT INTO wa_link (phone, user_id, active_office_id, language, digest, linked_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING")
@@ -152,7 +211,11 @@ export class WaDirectory {
 
   async unlink(userId: string): Promise<Link | null> {
     const l = await this.linkOfUser(userId);
-    if (l) await this.db.batch([this.db.prepare("DELETE FROM wa_link WHERE user_id = ?").bind(userId), this.db.prepare("DELETE FROM wa_code WHERE user_id = ?").bind(userId)]);
+    if (l)
+      await this.db.batch([
+        this.db.prepare("DELETE FROM wa_link WHERE user_id = ?").bind(userId),
+        this.db.prepare("DELETE FROM wa_code WHERE user_id = ?").bind(userId),
+      ]);
     return l;
   }
 }

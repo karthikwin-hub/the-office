@@ -1,4 +1,14 @@
-import { CHANNEL_NAME, type ColumnMapping, FIELD_LABEL, type OnlineSalesReport, REQUIRED_FIELDS, SALES_CHANNELS, type SalesChannel, type SalesField, type SalesImport } from "@office/contracts";
+import {
+  CHANNEL_NAME,
+  type ColumnMapping,
+  FIELD_LABEL,
+  type OnlineSalesReport,
+  REQUIRED_FIELDS,
+  SALES_CHANNELS,
+  type SalesChannel,
+  type SalesField,
+  type SalesImport,
+} from "@office/contracts";
 import { inrShort } from "@office/engine";
 import { Amount, CoveringNote, LedgerTable } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -8,9 +18,23 @@ import { q, useChange } from "../api/queries";
 import { count, isOwner, Register, Section, shortDate } from "../screens/common";
 
 /** Each channel keeps one colour across the page, from the skin's own series colours. */
-const SERIES = ["var(--series-1, #2f5f8f)", "var(--series-2, #c9962c)", "var(--series-3, #2f7a5a)", "var(--series-4, #8e2f5a)", "var(--series-5, #5d4a8a)", "var(--series-6, #b8452e)"];
+const SERIES = [
+  "var(--series-1, #2f5f8f)",
+  "var(--series-2, #c9962c)",
+  "var(--series-3, #2f7a5a)",
+  "var(--series-4, #8e2f5a)",
+  "var(--series-5, #5d4a8a)",
+  "var(--series-6, #b8452e)",
+];
 const pctText = (p: number | null) => (p === null ? "New" : `${p >= 0 ? "+" : "−"}${Math.abs(p)}%`);
-const STATUS: Record<SalesImport["status"], string> = { read: "Read", needs_mapping: "Waiting for you", duplicate: "Seen before", unreadable: "Could not read", payout: "Payout read", dropped: "Not read" };
+const STATUS: Record<SalesImport["status"], string> = {
+  read: "Read",
+  needs_mapping: "Waiting for you",
+  duplicate: "Seen before",
+  unreadable: "Could not read",
+  payout: "Payout read",
+  dropped: "Not read",
+};
 const VIA: Record<SalesImport["via"], string> = { email: "Email", whatsapp: "WhatsApp", upload: "Upload" };
 
 export function OnlineSalesView({ report, compact }: { report: OnlineSalesReport; compact?: boolean }) {
@@ -26,7 +50,11 @@ export function OnlineSalesView({ report, compact }: { report: OnlineSalesReport
               { label: "Orders", value: report.totals.orders.toLocaleString("en-IN") },
               { label: "Average order", value: inrShort(report.totals.aovPaise) },
               { label: "Returns", value: `${report.totals.returnsPct}%`, ...(report.totals.returnsPct >= 10 ? { tone: "red" as const } : {}) },
-              { label: "Against the period before", value: pctText(report.totals.vsPreviousPct), ...(report.totals.vsPreviousPct !== null && report.totals.vsPreviousPct < 0 ? { tone: "red" as const } : {}) },
+              {
+                label: "Against the period before",
+                value: pctText(report.totals.vsPreviousPct),
+                ...(report.totals.vsPreviousPct !== null && report.totals.vsPreviousPct < 0 ? { tone: "red" as const } : {}),
+              },
             ]}
           />
           <Section title="By channel">
@@ -36,11 +64,35 @@ export function OnlineSalesView({ report, compact }: { report: OnlineSalesReport
               rowKey={(r) => r.channel}
               initialSort={{ id: "g", desc: true }}
               columns={[
-                { id: "n", header: "Channel", cell: (r) => <span className="os-channel"><i style={{ background: colour.get(r.channel) }} aria-hidden="true" />{r.name}</span>, sortBy: (r) => r.name },
+                {
+                  id: "n",
+                  header: "Channel",
+                  cell: (r) => (
+                    <span className="os-channel">
+                      <i style={{ background: colour.get(r.channel) }} aria-hidden="true" />
+                      {r.name}
+                    </span>
+                  ),
+                  sortBy: (r) => r.name,
+                },
                 // A platform that reports only totals by product (Myntra) gives units but no orders.
-                { id: "o", header: "Orders", cell: (r) => (r.orders || !r.units ? r.orders.toLocaleString("en-IN") : <span title={`${r.name} reports totals by product, not orders`}>–</span>), sortBy: (r) => r.orders, numeric: true },
+                {
+                  id: "o",
+                  header: "Orders",
+                  cell: (r) =>
+                    r.orders || !r.units ? r.orders.toLocaleString("en-IN") : <span title={`${r.name} reports totals by product, not orders`}>–</span>,
+                  sortBy: (r) => r.orders,
+                  numeric: true,
+                },
                 { id: "g", header: "Sales", cell: (r) => <Amount paise={r.grossPaise} rupees />, sortBy: (r) => r.grossPaise, numeric: true },
-                { id: "a", header: "Average order", cell: (r) => (r.orders ? <Amount paise={r.aovPaise} rupees /> : "–"), sortBy: (r) => r.aovPaise, numeric: true, secondary: true },
+                {
+                  id: "a",
+                  header: "Average order",
+                  cell: (r) => (r.orders ? <Amount paise={r.aovPaise} rupees /> : "–"),
+                  sortBy: (r) => r.aovPaise,
+                  numeric: true,
+                  secondary: true,
+                },
                 { id: "r", header: "Returns", cell: (r) => `${r.returnsPct}%`, sortBy: (r) => r.returnsPct, numeric: true },
                 { id: "c", header: "Cancelled", cell: (r) => r.cancelled.toLocaleString("en-IN"), sortBy: (r) => r.cancelled, numeric: true, secondary: true },
                 { id: "v", header: "Change", cell: (r) => pctText(r.vsPreviousPct), sortBy: (r) => r.vsPreviousPct ?? 0, numeric: true, secondary: true },
@@ -62,10 +114,25 @@ export function OnlineSalesView({ report, compact }: { report: OnlineSalesReport
                 { id: "ch", header: "Sold on", cell: (r) => r.channels.map((c) => CHANNEL_NAME[c]).join(", "), secondary: true },
                 { id: "u", header: "Units", cell: (r) => r.units.toLocaleString("en-IN"), sortBy: (r) => r.units, numeric: true },
                 { id: "g", header: "Sales", cell: (r) => <Amount paise={r.grossPaise} rupees />, sortBy: (r) => r.grossPaise, numeric: true },
-                { id: "r", header: "Returned", cell: (r) => (r.returnedUnits ? `${r.returnedUnits.toLocaleString("en-IN")} (${r.returnsPct}%)` : "–"), sortBy: (r) => r.returnsPct, numeric: true },
+                {
+                  id: "r",
+                  header: "Returned",
+                  cell: (r) => (r.returnedUnits ? `${r.returnedUnits.toLocaleString("en-IN")} (${r.returnsPct}%)` : "–"),
+                  sortBy: (r) => r.returnsPct,
+                  numeric: true,
+                },
               ]}
             />
-            {!compact && report.unsold.length ? <p className="muted">Not sold online in this period: {report.unsold.slice(0, 8).map((s) => s.name).join(", ")}{report.unsold.length > 8 ? ` and ${report.unsold.length - 8} more` : ""}.</p> : null}
+            {!compact && report.unsold.length ? (
+              <p className="muted">
+                Not sold online in this period:{" "}
+                {report.unsold
+                  .slice(0, 8)
+                  .map((s) => s.name)
+                  .join(", ")}
+                {report.unsold.length > 8 ? ` and ${report.unsold.length - 8} more` : ""}.
+              </p>
+            ) : null}
           </Section>
           {compact ? null : (
             <div className="os-places">
@@ -113,7 +180,11 @@ function Weeks({ report, colour }: { report: OnlineSalesReport; colour: Map<Sale
       <ol className="os-weeks" aria-label="Online sales in each of the last eight weeks">
         {report.weeks.map((w) => (
           <li key={w.week}>
-            <span className="os-week-bar" style={{ height: `${Math.round((w.totalPaise / max) * 100)}%` }} title={`Week of ${w.label}: ${inrShort(w.totalPaise)}`}>
+            <span
+              className="os-week-bar"
+              style={{ height: `${Math.round((w.totalPaise / max) * 100)}%` }}
+              title={`Week of ${w.label}: ${inrShort(w.totalPaise)}`}
+            >
               {report.channels.map((c) =>
                 w.byChannel[c.channel] ? <span key={c.channel} style={{ flexGrow: w.byChannel[c.channel], background: colour.get(c.channel) }} /> : null,
               )}
@@ -164,7 +235,13 @@ function Payouts({ report }: { report: OnlineSalesReport }) {
 export function MarketplacePanel({ preview }: { preview?: boolean }) {
   const res = useQuery(q.onlineSales());
   const r = res.data;
-  if (preview) return <p className="muted">Once hired, this room reads the sales and settlement reports Amazon, Flipkart, Meesho, Blinkit and the other apps send you, and shows what sold where. It has its own email address, and takes files on WhatsApp too.</p>;
+  if (preview)
+    return (
+      <p className="muted">
+        Once hired, this room reads the sales and settlement reports Amazon, Flipkart, Meesho, Blinkit and the other apps send you, and shows what sold where.
+        It has its own email address, and takes files on WhatsApp too.
+      </p>
+    );
   if (res.error) return <p className="form-error">{res.error.message}</p>;
   if (!r) return <p className="loading">Counting online sales</p>;
   return (
@@ -182,12 +259,19 @@ function Sources({ report }: { report: OnlineSalesReport }) {
     <Section title="Sending reports in">
       {report.address ? (
         <p>
-          Email reports to <strong className="ea-address">{report.address}</strong>, or send them to the office on WhatsApp. Mail from the platforms and from people in the office is read; anything else is set aside.
+          Email reports to <strong className="ea-address">{report.address}</strong>, or send them to the office on WhatsApp. Mail from the platforms and from
+          people in the office is read; anything else is set aside.
         </p>
       ) : null}
       <ul className="ea-steps">
-        <li>Amazon: the tax report (MTR, B2C and B2B) from Reports → Tax Document Library, or the transaction report from Payments → Reports, with its fees and transfers; not both for the same month, or the orders count twice. Settlement reports from Payments too.</li>
-        <li>Flipkart: the Sales Report from Reports in Seller Hub. Meesho: the GST reports, sales and returns. Myntra: the monthly P&amp;L report from the Partner Portal; it gives totals by product, so Myntra shows sales but no order count.</li>
+        <li>
+          Amazon: the tax report (MTR, B2C and B2B) from Reports → Tax Document Library, or the transaction report from Payments → Reports, with its fees and
+          transfers; not both for the same month, or the orders count twice. Settlement reports from Payments too.
+        </li>
+        <li>
+          Flipkart: the Sales Report from Reports in Seller Hub. Meesho: the GST reports, sales and returns. Myntra: the monthly P&amp;L report from the Partner
+          Portal; it gives totals by product, so Myntra shows sales but no order count.
+        </li>
         <li>Blinkit, Zepto, Instamart and others: any sales sheet they send. A new layout is confirmed once; after that it is read on its own.</li>
         <li>If a platform sends only a link to its portal, download the file and forward it.</li>
       </ul>
@@ -229,7 +313,11 @@ function Upload() {
       <button type="button" className="btn" disabled={change.isPending} onClick={() => input.current?.click()}>
         {change.isPending ? "Reading it" : "Upload a report"}
       </button>
-      {message ? <p aria-live="polite" className="os-message">{message}</p> : null}
+      {message ? (
+        <p aria-live="polite" className="os-message">
+          {message}
+        </p>
+      ) : null}
       {change.error ? <p className="form-error">{change.error.message}</p> : null}
     </div>
   );
@@ -356,7 +444,12 @@ function Imports({ imports }: { imports: SalesImport[] }) {
                   header: "",
                   cell: (r: SalesImport) =>
                     r.status === "read" || r.status === "payout" ? (
-                      <button type="button" className="btn-link" disabled={change.isPending} onClick={() => window.confirm(`Remove ${r.file} and the sales read from it?`) && change.mutate(() => api.removeSales(r.id))}>
+                      <button
+                        type="button"
+                        className="btn-link"
+                        disabled={change.isPending}
+                        onClick={() => window.confirm(`Remove ${r.file} and the sales read from it?`) && change.mutate(() => api.removeSales(r.id))}
+                      >
                         Remove
                       </button>
                     ) : null,

@@ -108,7 +108,10 @@ export function onStepUp(ask: () => Promise<boolean>): () => void {
 }
 async function confirmedAgain(res: Response): Promise<boolean> {
   if (res.status !== 403 || !confirmIdentity) return false;
-  const body = (await res.clone().json().catch(() => ({}))) as { code?: string };
+  const body = (await res
+    .clone()
+    .json()
+    .catch(() => ({}))) as { code?: string };
   return body.code === "step_up_required" && confirmIdentity();
 }
 
@@ -161,7 +164,12 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown; q
 }
 
 async function auth<T = unknown>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api/auth/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}), credentials: "include" });
+  const res = await fetch(`/api/auth/${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+    credentials: "include",
+  });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
     throw new ApiError(res.status, err.message ?? (res.status === 401 ? "That email and password do not match." : res.statusText));
@@ -175,7 +183,8 @@ export const account = {
   /** With two-factor sign-in on, the password alone signs no one in: the answer asks for the second step. */
   signIn: (email: string, password: string) => auth<{ twoFactorRedirect?: boolean }>("sign-in/email", { email, password, rememberMe: true }),
   /** Where addresses are confirmed, this signs no one in (`token` is null) and answers the same for an address that has an account: the emailed link signs in. */
-  signUp: (name: string, email: string, password: string) => auth<{ token: string | null }>("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
+  signUp: (name: string, email: string, password: string) =>
+    auth<{ token: string | null }>("sign-up/email", { name, email, password, callbackURL: location.pathname + location.search }),
   signOut: () => auth("sign-out"),
   resendVerification: (email: string) => auth("send-verification-email", { email, callbackURL: location.pathname + location.search }),
   /** The link in the email comes back here with `?reset-password=1&token=…`, or `&error=INVALID_TOKEN` once it has expired. */
@@ -187,7 +196,8 @@ export const account = {
   peekInvitation: (token: string) => call<InvitationPeek>(ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: { token } }),
   restoreOffice: (id: string) => call<{ ok: true }>(`/api/o/${encodeURIComponent(id)}${ROUTES.officeRestore.slice("/api".length)}`, { method: "POST" }),
   acceptInvitation: (token: string) => call<{ officeId: string; role: Session["role"] }>(ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: { token } }),
-  consent: (documents: { document: "terms" | "privacy"; version: string }[]) => call<{ ok: true }>(ACCOUNT_ROUTES.consent, { method: "POST", body: { documents } }),
+  consent: (documents: { document: "terms" | "privacy"; version: string }[]) =>
+    call<{ ok: true }>(ACCOUNT_ROUTES.consent, { method: "POST", body: { documents } }),
   exportMine: () => download(ACCOUNT_ROUTES.accountExport, "my-account.json"),
   requests: () => call<{ requests: RightsRequestView[] }>(ACCOUNT_ROUTES.accountRequests),
   /** Deletes the account at once; a stale sign-in is asked for the password or a code first. */
@@ -254,13 +264,19 @@ export const api = {
   trace: (figureId: string) => call<Trace>(ROUTES.trace(figureId)),
   documents: () => call<Document[]>(ROUTES.documents),
   unread: () => call<Document[]>(ROUTES.unread),
-  importReturn: (body: { content: string; filedOn?: string }) => call<{ form: string; period: string; summary: string; findings: number }>(ROUTES.importReturn, { method: "POST", body }),
+  importReturn: (body: { content: string; filedOn?: string }) =>
+    call<{ form: string; period: string; summary: string; findings: number }>(ROUTES.importReturn, { method: "POST", body }),
   checkImport: (body: ImportCheck) => call<ImportPreview>(ROUTES.onboardingCheck, { method: "POST", body }),
   stageImport: (body: ImportCheck) => call<{ preview: ImportPreview; item: StagedChange }>(ROUTES.onboardingStage, { method: "POST", body }),
   readDocument: (id: string, items: TextItem[]) => call<IngestResult>(ROUTES.readDocument(id), { method: "POST", body: { items } }),
   /** A page with no text, pictured in the browser, for the vision model. Live office only. */
   scanDocument: async (id: string, image: Blob): Promise<IngestResult> => {
-    const res = await fetch(officePath(`/api/documents/${encodeURIComponent(id)}/scan`), { method: "POST", body: image, headers: { "content-type": image.type }, credentials: "include" });
+    const res = await fetch(officePath(`/api/documents/${encodeURIComponent(id)}/scan`), {
+      method: "POST",
+      body: image,
+      headers: { "content-type": image.type },
+      credentials: "include",
+    });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(res.status, err.error ?? res.statusText);
@@ -293,13 +309,15 @@ export const api = {
   saveWhatsApp: (c: Partial<Pick<WhatsAppStatus, "language" | "digest">>) => call<WhatsAppStatus>(ROUTES.whatsapp, { method: "PUT", body: c }),
   unlinkWhatsApp: () => call<WhatsAppStatus>(ROUTES.whatsapp, { method: "DELETE" }),
   whatsappDemo: (m: { text?: string; voice?: string }) => call<WhatsAppDemoReply>(ROUTES.whatsappDemo, { method: "POST", body: m }),
-  editVariant: (postId: string, channelId: string, edit: { text?: string; link?: string | null; mediaIds?: string[] }) => call<Post>(ROUTES.socialVariant(postId, channelId), { method: "PUT", body: edit }),
+  editVariant: (postId: string, channelId: string, edit: { text?: string; link?: string | null; mediaIds?: string[] }) =>
+    call<Post>(ROUTES.socialVariant(postId, channelId), { method: "PUT", body: edit }),
   markPosted: (postId: string, channelId: string, url: string) => call<Post>(ROUTES.socialPosted(postId, channelId), { method: "POST", body: { url } }),
   pack: (postId: string, channelId: string) => call<PublishingPack>(ROUTES.socialPack(postId, channelId)),
   importMetrics: (content: string) => call<{ matched: number; unmatched: number }>(ROUTES.socialMetricsImport, { method: "POST", body: { content } }),
   draftCalendar: (month: string) => call<StagedChange>(ROUTES.socialCalendarDraft, { method: "POST", body: { month } }),
   saveVoice: (voice: BrandVoice) => call<BrandVoice>(ROUTES.socialVoice, { method: "PUT", body: voice }),
-  setupChannel: (id: string, change: { handle?: string; mode?: "manual"; postingHours?: { from: string; to: string } }) => call<Channel>(ROUTES.socialChannel(id), { method: "POST", body: change }),
+  setupChannel: (id: string, change: { handle?: string; mode?: "manual"; postingHours?: { from: string; to: string } }) =>
+    call<Channel>(ROUTES.socialChannel(id), { method: "POST", body: change }),
   /** Live: the platform's sign-in page, and back to Settings. Mockups: connects at once. */
   connectChannel: async (platform: string): Promise<Channel | null> => {
     if (isLive) {
@@ -314,14 +332,17 @@ export const api = {
   runRoutine: (id: string) => call<RoutineRun>(ROUTES.runRoutine(id), { method: "POST" }),
   onlineSales: (from?: string, to?: string) => call<OnlineSalesReport>(ROUTES.onlineSales, { query: { from, to } }),
   salesImport: (id: string) => call<{ import: SalesImport; headers: string[]; sample: string[][]; mapping: ColumnMapping }>(ROUTES.salesImport(id)),
-  mapSales: (id: string, channel: SalesChannel, mapping: ColumnMapping) => call<SalesImport>(ROUTES.salesMapping(id), { method: "PUT", body: { channel, mapping } }),
+  mapSales: (id: string, channel: SalesChannel, mapping: ColumnMapping) =>
+    call<SalesImport>(ROUTES.salesMapping(id), { method: "PUT", body: { channel, mapping } }),
   removeSales: (id: string) => call<OnlineSalesReport>(ROUTES.salesImport(id), { method: "DELETE" }),
-  uploadSales: (file: string, content: string, encoding: "text" | "base64") => call<{ imports: SalesImport[]; message: string }>(ROUTES.salesUpload, { method: "POST", body: { file, content, encoding } }),
+  uploadSales: (file: string, content: string, encoding: "text" | "base64") =>
+    call<{ imports: SalesImport[]; message: string }>(ROUTES.salesUpload, { method: "POST", body: { file, content, encoding } }),
   assistant: () => call<AssistantView>(ROUTES.assistant),
   setCalendar: (url: string) => call<AssistantView>(ROUTES.assistantCalendar, { method: "PUT", body: { url } }),
   dropCalendar: () => call<AssistantView>(ROUTES.assistantCalendar, { method: "DELETE" }),
   addTask: (title: string, due: string | null) => call<AssistantView>(ROUTES.assistantTasks, { method: "POST", body: { title, due } }),
-  changeTask: (id: string, change: { status?: "open" | "done"; due?: string | null; snoozedUntil?: string | null }) => call<AssistantView>(ROUTES.assistantTask(id), { method: "PATCH", body: change }),
+  changeTask: (id: string, change: { status?: "open" | "done"; due?: string | null; snoozedUntil?: string | null }) =>
+    call<AssistantView>(ROUTES.assistantTask(id), { method: "PATCH", body: change }),
   customers: () => call<CustomerDeskView>(ROUTES.customers),
   thread: (id: string) => call<CsThreadView>(ROUTES.customerThread(id)),
   replyThread: (id: string, text: string) => call<CsThreadView>(ROUTES.customerReply(id), { method: "POST", body: { text } }),
@@ -353,22 +374,32 @@ export const compliance = {
   audit: () => call<{ entries: LogEntry[] }>(ROUTES.complianceAudit),
   saveProfile: (p: ComplianceProfile) => call<ComplianceView>(ROUTES.complianceProfile, { method: "PUT", body: p }),
   checkMaster: (text: string) => call<{ rows: MasterCheck[] }>(ROUTES.complianceMaster, { method: "POST", body: { text } }),
-  addEvent: (e: Pick<CompanyEvent, "kind" | "on" | "detail"> & { privatePlacement?: boolean; foreign?: boolean }) => call<ComplianceView>(ROUTES.complianceEvents, { method: "POST", body: e }),
-  addManual: (m: { form: string; dueOn: string; description?: string; authority?: string }) => call<Obligation>(ROUTES.complianceManual, { method: "POST", body: m }),
+  addEvent: (e: Pick<CompanyEvent, "kind" | "on" | "detail"> & { privatePlacement?: boolean; foreign?: boolean }) =>
+    call<ComplianceView>(ROUTES.complianceEvents, { method: "POST", body: e }),
+  addManual: (m: { form: string; dueOn: string; description?: string; authority?: string }) =>
+    call<Obligation>(ROUTES.complianceManual, { method: "POST", body: m }),
   removeManual: (id: string) => call<{ removed: string }>(ROUTES.complianceItem(id), { method: "DELETE" }),
   pack: (id: string) => call<FilingPack>(ROUTES.compliancePack(id)),
   paper: (id: string) => call<Paper>(ROUTES.compliancePaper(id)),
-  markFiled: (id: string, f: { filedOn: string; ack: string; proof?: { file: string; name: string } | null }) => call<Obligation>(ROUTES.complianceFiled(id), { method: "POST", body: f }),
+  markFiled: (id: string, f: { filedOn: string; ack: string; proof?: { file: string; name: string } | null }) =>
+    call<Obligation>(ROUTES.complianceFiled(id), { method: "POST", body: f }),
   reopen: (id: string) => call<Obligation>(ROUTES.complianceFiled(id), { method: "DELETE" }),
-  assign: (id: string, a: { assignee: Assignee | null; progress?: "preparing" | "ready" | null }) => call<Obligation>(ROUTES.complianceAssign(id), { method: "POST", body: a }),
+  assign: (id: string, a: { assignee: Assignee | null; progress?: "preparing" | "ready" | null }) =>
+    call<Obligation>(ROUTES.complianceAssign(id), { method: "POST", body: a }),
   snooze: (id: string, s: { until: string | null; reason: string }) => call<Obligation>(ROUTES.complianceSnooze(id), { method: "POST", body: s }),
-  srn: (id: string, s: { number: string; createdOn: string; challan: string; status: SrnStatus; remarks: string; resubmitBy: string | null }) => call<Obligation>(ROUTES.complianceSrn(id), { method: "POST", body: s }),
+  srn: (id: string, s: { number: string; createdOn: string; challan: string; status: SrnStatus; remarks: string; resubmitBy: string | null }) =>
+    call<Obligation>(ROUTES.complianceSrn(id), { method: "POST", body: s }),
   /** The challan, acknowledgement or approval, kept with the office's files. Mockups keep only the name. */
   uploadProof: async (file: File): Promise<{ file: string; name: string }> => {
     if (!isLive) return call(ROUTES.complianceProof, { method: "POST", body: { name: file.name } });
     const form = new FormData();
     form.set("file", file);
-    const res = await fetch(officePath(ROUTES.complianceProof), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    const res = await fetch(officePath(ROUTES.complianceProof), {
+      method: "POST",
+      body: form,
+      headers: { "x-office-as": viewingAs() },
+      credentials: "include",
+    });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(res.status, err.error ?? res.statusText);
@@ -376,7 +407,8 @@ export const compliance = {
     return res.json() as Promise<{ file: string; name: string }>;
   },
   booksRecord: () => call<BooksRecordView>(ROUTES.booksRecord),
-  edits: (opts: { coll?: string; record?: string; limit?: number } = {}) => call<{ entries: BookEdit[] }>(ROUTES.booksEdits, { query: { coll: opts.coll, record: opts.record, limit: opts.limit ? String(opts.limit) : undefined } }),
+  edits: (opts: { coll?: string; record?: string; limit?: number } = {}) =>
+    call<{ entries: BookEdit[] }>(ROUTES.booksEdits, { query: { coll: opts.coll, record: opts.record, limit: opts.limit ? String(opts.limit) : undefined } }),
   auditorStatement: (fy?: string) => call<Paper>(ROUTES.auditorStatement, { query: { fy } }),
 };
 

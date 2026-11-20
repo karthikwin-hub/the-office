@@ -41,7 +41,13 @@ export class BooksStore {
         seen.add(key);
         const json = JSON.stringify(v);
         if (this.written.get(key) === json) return;
-        this.sql.exec("INSERT INTO book_rows (coll, id, ord, json) VALUES (?, ?, ?, ?) ON CONFLICT (coll, id) DO UPDATE SET ord = excluded.ord, json = excluded.json", coll, id, ord, json);
+        this.sql.exec(
+          "INSERT INTO book_rows (coll, id, ord, json) VALUES (?, ?, ?, ?) ON CONFLICT (coll, id) DO UPDATE SET ord = excluded.ord, json = excluded.json",
+          coll,
+          id,
+          ord,
+          json,
+        );
         this.written.set(key, json);
         changed++;
       });

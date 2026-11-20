@@ -31,7 +31,10 @@ export function salesSender(members: Set<string>, mail: { from: string | null; a
  * owner and is authenticated. By a Gmail filter, the envelope is the owner's (`anil+caf_=…@gmail.com`)
  * and their mail provider signed the message. A forwarding header is never believed: anyone can write one.
  */
-export function ownerOf<T extends { email: string }>(owners: T[], mail: { from: string | null; envelope: string; authenticated?: boolean; envelopeSigned?: boolean }): { owner: T; proven: boolean } | null {
+export function ownerOf<T extends { email: string }>(
+  owners: T[],
+  mail: { from: string | null; envelope: string; authenticated?: boolean; envelopeSigned?: boolean },
+): { owner: T; proven: boolean } | null {
   const from = plainAddress(mail.from);
   const envelope = plainAddress(mail.envelope);
   const byHand = owners.find((o) => o.email.toLowerCase() === from);
@@ -46,7 +49,8 @@ export function ownerOf<T extends { email: string }>(owners: T[], mail: { from: 
  * Whether the owner forwarded this by hand, so the "Forwarded message" in its text is theirs to vouch
  * for: `From:` is the owner's and proven. A forged owner `From:` that their Gmail filter passed on is not.
  */
-export const forwardedByHand = (owner: { email: string }, mail: { from: string | null; authenticated?: boolean }) => Boolean(mail.authenticated) && plainAddress(mail.from) === owner.email.toLowerCase();
+export const forwardedByHand = (owner: { email: string }, mail: { from: string | null; authenticated?: boolean }) =>
+  Boolean(mail.authenticated) && plainAddress(mail.from) === owner.email.toLowerCase();
 
 /**
  * How much mail the office takes. Proven senders: per address and per domain in an hour, and all of
@@ -64,10 +68,15 @@ export type MailRefusal = "sender" | "domain" | "office" | "unproven";
  * first refusal of its kind in the hour, so the team log says so once rather than for every message.
  */
 export function countMail(state: MailRate | null, hour: string, proven: string | null): { state: MailRate; refused: MailRefusal | null; first: boolean } {
-  const s: MailRate = state?.hour === hour && state.domains ? { ...state, senders: { ...state.senders }, domains: { ...state.domains } } : { hour, proven: 0, unproven: 0, senders: {}, domains: {} };
+  const s: MailRate =
+    state?.hour === hour && state.domains
+      ? { ...state, senders: { ...state.senders }, domains: { ...state.domains } }
+      : { hour, proven: 0, unproven: 0, senders: {}, domains: {} };
   if (!proven) {
     s.unproven++;
-    return s.unproven > MAIL_LIMITS.unprovenHour ? { state: s, refused: "unproven", first: s.unproven === MAIL_LIMITS.unprovenHour + 1 } : { state: s, refused: null, first: false };
+    return s.unproven > MAIL_LIMITS.unprovenHour
+      ? { state: s, refused: "unproven", first: s.unproven === MAIL_LIMITS.unprovenHour + 1 }
+      : { state: s, refused: null, first: false };
   }
   if (s.proven >= MAIL_LIMITS.provenHour) {
     s.proven++;
@@ -87,17 +96,28 @@ export function countMail(state: MailRate | null, hour: string, proven: string |
 /** The team-log line, once an hour, for mail set aside by a limit. */
 export const MAIL_REFUSED: Record<MailRefusal, (sender: string) => string> = {
   sender: (who) => `Set aside mail from ${who}: more than ${MAIL_LIMITS.perSenderHour} emails in an hour. Their mail is taken again next hour.`,
-  domain: (who) => `Set aside mail from ${who.split("@")[1] ?? who}: more than ${MAIL_LIMITS.perDomainHour} emails from that domain in an hour. Its mail is taken again next hour.`,
+  domain: (who) =>
+    `Set aside mail from ${who.split("@")[1] ?? who}: more than ${MAIL_LIMITS.perDomainHour} emails from that domain in an hour. Its mail is taken again next hour.`,
   office: () => `Set aside incoming mail: the office took ${MAIL_LIMITS.provenHour} emails this hour. Mail is taken again next hour.`,
-  unproven: () => `Set aside mail from senders that could not be verified: more than ${MAIL_LIMITS.unprovenHour} this hour. Such mail is taken again next hour.`,
+  unproven: () =>
+    `Set aside mail from senders that could not be verified: more than ${MAIL_LIMITS.unprovenHour} this hour. Such mail is taken again next hour.`,
 };
 
 /** The address Cloudflare proved for a message: `From:` when authenticated, else a proven forwarding envelope. */
-export const provenSender = (a: Pick<MailAdmission, "from" | "envelope" | "authenticated" | "envelopeSigned">) => (a.authenticated ? plainAddress(a.from) : a.envelopeSigned ? plainAddress(a.envelope) : null);
+export const provenSender = (a: Pick<MailAdmission, "from" | "envelope" | "authenticated" | "envelopeSigned">) =>
+  a.authenticated ? plainAddress(a.from) : a.envelopeSigned ? plainAddress(a.envelope) : null;
 
 export type MailKind = "email" | "sales" | "assistant" | "support";
 /** What the Worker asks the office before it stores anything of a message. */
-export type MailAdmission = { kind: MailKind; from: string | null; envelope: string; subject: string; authenticated: boolean; envelopeSigned: boolean; bytes: number };
+export type MailAdmission = {
+  kind: MailKind;
+  from: string | null;
+  envelope: string;
+  subject: string;
+  authenticated: boolean;
+  envelopeSigned: boolean;
+  bytes: number;
+};
 
 /**
  * Whether a message's sender may leave anything in the office. Bills and support mail are taken
@@ -106,7 +126,10 @@ export type MailAdmission = { kind: MailKind; from: string | null; envelope: str
  * is, or claims to be, an owner's, and Google's proven forwarding confirmations; the rest is
  * dropped quietly, as before.
  */
-export function mailSenderOk(a: MailAdmission, office: { hired: (agent: string) => boolean; members: { email: string; role: string }[] }): "admit" | "refuse" | "drop" {
+export function mailSenderOk(
+  a: MailAdmission,
+  office: { hired: (agent: string) => boolean; members: { email: string; role: string }[] },
+): "admit" | "refuse" | "drop" {
   if (a.kind === "email" || a.kind === "support") return "admit";
   if (a.kind === "sales") {
     if (!office.hired("marketplace-manager")) return "drop";
@@ -114,5 +137,10 @@ export function mailSenderOk(a: MailAdmission, office: { hired: (agent: string) 
   }
   if (!office.hired("executive-assistant")) return "drop";
   if (fromGoogleForwarding(a) && gmailConfirmation(a.from ?? a.envelope, a.subject, "")) return "admit";
-  return ownerOf(office.members.filter((m) => m.role === "owner"), a) ? "admit" : "drop";
+  return ownerOf(
+    office.members.filter((m) => m.role === "owner"),
+    a,
+  )
+    ? "admit"
+    : "drop";
 }

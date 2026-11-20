@@ -20,7 +20,8 @@ describe("the sky over the Lived-in office", () => {
 
   it("has the sun below the horizon at midnight, east in the morning and west in the evening", () => {
     expect(sunAt(ist("2026-11-18T00:00:00"), ...PUNE).el).toBeLessThan(-6);
-    const morning = sunAt(ist("2026-11-18T08:00:00"), ...PUNE), evening = sunAt(ist("2026-11-18T16:30:00"), ...PUNE);
+    const morning = sunAt(ist("2026-11-18T08:00:00"), ...PUNE),
+      evening = sunAt(ist("2026-11-18T16:30:00"), ...PUNE);
     expect(morning.az).toBeGreaterThan(90);
     expect(morning.az).toBeLessThan(180);
     expect(evening.az).toBeGreaterThan(180);
@@ -43,7 +44,8 @@ describe("the sky over the Lived-in office", () => {
   });
 
   it("paints a dark sky at night and a light one at noon, and lights the lamps only after dusk", () => {
-    const night = skyColours(-20).top.reduce((a, b) => a + b, 0), noon = skyColours(50).top.reduce((a, b) => a + b, 0);
+    const night = skyColours(-20).top.reduce((a, b) => a + b, 0),
+      noon = skyColours(50).top.reduce((a, b) => a + b, 0);
     expect(night).toBeLessThan(noon / 3);
     expect(daylight(-20)).toBe(0);
     expect(daylight(30)).toBe(1);
@@ -59,13 +61,22 @@ describe("the sky over the Lived-in office", () => {
   it("prints the sundial's hours round the lamp post, morning on one side and afternoon on the other", () => {
     const marks = sundialMarks(istParts(Date.parse("2026-11-18T06:00:00Z")).day, ...PUNE);
     expect(marks.length).toBeGreaterThanOrEqual(9);
-    const nine = marks.find((m) => m.hour === 9)!, three = marks.find((m) => m.hour === 15)!;
+    const nine = marks.find((m) => m.hour === 9)!,
+      three = marks.find((m) => m.hour === 15)!;
     expect(Math.sign(nine.dx)).not.toBe(Math.sign(three.dx));
   });
 });
 
 describe("walking about the floor", () => {
-  const rooms: RoomStatus[] = AGENTS.map((a) => ({ agentId: a.id, hired: true, trustLevel: "trainee", status: "idle", now: "", todayCount: 0, waitingCount: 0 }));
+  const rooms: RoomStatus[] = AGENTS.map((a) => ({
+    agentId: a.id,
+    hired: true,
+    trustLevel: "trainee",
+    status: "idle",
+    now: "",
+    todayCount: 0,
+    waitingCount: 0,
+  }));
   const L = layoutFrom(planFor(rooms, { wholeFloor: true, layout: "wide" }));
 
   it("lays out reception and every room of the whole floor", () => {
@@ -75,17 +86,24 @@ describe("walking about the floor", () => {
   });
 
   it("never walks anyone through a wall: every route stays in rooms, doorways and the corridor", () => {
-    const places: V2[][] = [...L.order.map((id) => exitPath(L, id)), ...L.order.map((id) => outsideDoor(L, id)), corridorSpot(L, L.deskStand), ...L.teaSpots.map((p) => corridorSpot(L, p))];
+    const places: V2[][] = [
+      ...L.order.map((id) => exitPath(L, id)),
+      ...L.order.map((id) => outsideDoor(L, id)),
+      corridorSpot(L, L.deskStand),
+      ...L.teaSpots.map((p) => corridorSpot(L, p)),
+    ];
     let checked = 0;
     for (const a of places) {
       for (const b of places) {
         const pts = route(a, b);
         for (let i = 1; i < pts.length; i++) {
-          const [x0, z0] = pts[i - 1]!, [x1, z1] = pts[i]!;
+          const [x0, z0] = pts[i - 1]!,
+            [x1, z1] = pts[i]!;
           const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.25));
           for (let k = 0; k <= n; k++) {
             const p: V2 = [x0 + ((x1 - x0) * k) / n, z0 + ((z1 - z0) * k) / n];
-            if (!walkable(L, p)) throw new Error(`a route from ${JSON.stringify(a[0])} to ${JSON.stringify(b[0])} crosses a wall at ${p.map((v) => v.toFixed(2))}`);
+            if (!walkable(L, p))
+              throw new Error(`a route from ${JSON.stringify(a[0])} to ${JSON.stringify(b[0])} crosses a wall at ${p.map((v) => v.toFixed(2))}`);
             checked++;
           }
         }

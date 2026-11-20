@@ -66,7 +66,18 @@ const statusText: Record<RoomStatus["status"], string> = { working: "Working", i
  * room; the only motion is a document travelling from the entrance to its desk.
  * By default only staffed rooms are drawn, and the vacancies share one alcove.
  */
-export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hiring", renderHiringLink, wholeFloor = false, layout, texture = DEFAULT_SKIN.texture, overlay, nameFor }: FloorPlanProps) {
+export function FloorPlan({
+  rooms,
+  arriving = [],
+  renderLink,
+  hiringHref = "/hiring",
+  renderHiringLink,
+  wholeFloor = false,
+  layout,
+  texture = DEFAULT_SKIN.texture,
+  overlay,
+  nameFor,
+}: FloorPlanProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState(Infinity);
   useLayoutEffect(() => {
@@ -90,7 +101,12 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
   const mode = layout ?? (room >= Math.min(760, plans.wide.width) ? "wide" : "narrow");
   const plan = plans[mode];
   const byId = new Map(rooms.map((r) => [r.agentId, r]));
-  const pct = (r: Rect) => ({ left: `${(r.x / plan.width) * 100}%`, top: `${(r.y / plan.height) * 100}%`, width: `${(r.w / plan.width) * 100}%`, height: `${(r.h / plan.height) * 100}%` });
+  const pct = (r: Rect) => ({
+    left: `${(r.x / plan.width) * 100}%`,
+    top: `${(r.y / plan.height) * 100}%`,
+    width: `${(r.w / plan.width) * 100}%`,
+    height: `${(r.h / plan.height) * 100}%`,
+  });
   const link =
     renderLink ??
     ((agentId: string, className: string, children: ReactNode, label: string) => (
@@ -107,7 +123,11 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
     ));
 
   return (
-    <div ref={ref} className={`floor-plan floor-plan-${mode}`} style={{ aspectRatio: `${plan.width} / ${plan.height}`, maxWidth: plan.narrow ? `${NARROW_MAX}px` : `${plan.width}px` }}>
+    <div
+      ref={ref}
+      className={`floor-plan floor-plan-${mode}`}
+      style={{ aspectRatio: `${plan.width} / ${plan.height}`, maxWidth: plan.narrow ? `${NARROW_MAX}px` : `${plan.width}px` }}
+    >
       <svg viewBox={`0 0 ${plan.width} ${plan.height}`} aria-hidden="true" className="floor-plan-drawing">
         <defs>
           <pattern id={textureId} width={texture.size} height={texture.size} patternUnits="userSpaceOnUse">
@@ -125,7 +145,9 @@ export function FloorPlan({ rooms, arriving = [], renderLink, hiringHref = "/hir
             </g>
           );
         })}
-        {plan.alcove ? <rect x={plan.alcove.x} y={plan.alcove.y} width={plan.alcove.w} height={plan.alcove.h} className="room-wall room-not_hired room-alcove" /> : null}
+        {plan.alcove ? (
+          <rect x={plan.alcove.x} y={plan.alcove.y} width={plan.alcove.w} height={plan.alcove.h} className="room-wall room-not_hired room-alcove" />
+        ) : null}
         <rect x={plan.building.x} y={plan.building.y} width={plan.building.w} height={plan.building.h} className="building-wall" />
         {plan.rooms.map(({ agentId, door }) => {
           const s = byId.get(agentId);
@@ -217,7 +239,8 @@ function Furniture({ rect, reception }: { rect: Rect; reception: boolean }) {
       </g>
     );
   }
-  const w = 34, h = 13;
+  const w = 34,
+    h = 13;
   const x = rect.x + rect.w - w - 12;
   const y = rect.y + rect.h - h - 12;
   return (

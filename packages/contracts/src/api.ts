@@ -61,7 +61,14 @@ export const OfficeView = z.object({
   log: z.array(LogEntry),
   deskCount: z.number().int(),
   /** How each arrived: the Lived-in office sends an email in as a paper plane and a WhatsApp as a ringing phone. */
-  arriving: z.array(z.object({ docId: z.string(), agentId: z.string(), label: z.string(), channel: z.enum(["email", "upload", "whatsapp", "import", "generated", "social"]).optional() })),
+  arriving: z.array(
+    z.object({
+      docId: z.string(),
+      agentId: z.string(),
+      label: z.string(),
+      channel: z.enum(["email", "upload", "whatsapp", "import", "generated", "social"]).optional(),
+    }),
+  ),
   /** The desk's decisions in the last day, newest first, so the Lived-in office can stamp or crumple the right sheet. */
   decided: z.array(z.object({ id: z.string(), agentId: z.string(), status: z.enum(["approved", "rejected"]), at: IsoDateTime })).optional(),
 });
@@ -123,7 +130,15 @@ export const SalesReport = z.object({
   totals: z.object({ taxablePaise: Paise, taxPaise: Paise, invoices: z.number().int(), customers: z.number().int(), marginPaise: Paise }),
   bySku: z.array(SkuSalesRow),
   byCustomer: z.array(
-    z.object({ partyId: z.string(), name: z.string(), city: z.string(), invoices: z.number().int(), taxablePaise: Paise, sharePct: z.number(), figureId: z.string() }),
+    z.object({
+      partyId: z.string(),
+      name: z.string(),
+      city: z.string(),
+      invoices: z.number().int(),
+      taxablePaise: Paise,
+      sharePct: z.number(),
+      figureId: z.string(),
+    }),
   ),
   byMonth: z.array(z.object({ month: z.string(), taxablePaise: Paise, figureId: z.string() })),
 });
@@ -185,7 +200,9 @@ export const GstReport = z.object({
     notIn2b: z.array(z.object({ billId: z.string(), number: z.string(), vendor: z.string(), date: IsoDate, taxPaise: Paise, docId: z.string() })),
   }),
   payable: z.object({ igstPaise: Paise, cgstPaise: Paise, sgstPaise: Paise, totalPaise: Paise }),
-  filings: z.array(z.object({ form: z.string(), period: z.string(), status: z.enum(["draft", "filed", "not_started"]), dueOn: IsoDate, filedOn: IsoDate.nullable() })),
+  filings: z.array(
+    z.object({ form: z.string(), period: z.string(), status: z.enum(["draft", "filed", "not_started"]), dueOn: IsoDate, filedOn: IsoDate.nullable() }),
+  ),
   periods: z.array(z.string()),
 });
 export type GstReport = z.infer<typeof GstReport>;
@@ -277,7 +294,14 @@ export const MarketingReport = z.object({
   note: Note,
   campaigns: z.array(Campaign.extend({ skuNames: z.array(z.string()), returnMultiple: z.number().nullable() })),
   slowMovers: z.array(
-    z.object({ skuId: z.string(), name: z.string(), onHand: z.number().int(), soldLast60: z.number().int(), daysOfStock: z.number().int().nullable(), stockValuePaise: Paise }),
+    z.object({
+      skuId: z.string(),
+      name: z.string(),
+      onHand: z.number().int(),
+      soldLast60: z.number().int(),
+      daysOfStock: z.number().int().nullable(),
+      stockValuePaise: Paise,
+    }),
   ),
   prices: z.array(
     z.object({
@@ -297,10 +321,30 @@ export const PostCheck = z.object({ key: z.string(), label: z.string(), ok: z.bo
 export type PostCheck = z.infer<typeof PostCheck>;
 
 export const SocialPerformance = z.object({
-  byChannel: z.array(z.object({ channelId: z.string(), platform: Platform, posts: z.number().int(), views: z.number(), engagements: z.number(), rate: z.number(), enquiries: z.number() })),
+  byChannel: z.array(
+    z.object({
+      channelId: z.string(),
+      platform: Platform,
+      posts: z.number().int(),
+      views: z.number(),
+      engagements: z.number(),
+      rate: z.number(),
+      enquiries: z.number(),
+    }),
+  ),
   byPillar: z.array(z.object({ pillarId: z.string(), name: z.string(), posts: z.number().int(), views: z.number(), rate: z.number() })),
   /** From posts to invoices: leads that came from social, their quotes, and what those customers were invoiced since. */
-  funnel: z.object({ posts: z.number().int(), views: z.number(), clicks: z.number(), enquiries: z.number(), leads: z.number().int(), quotes: z.number().int(), invoicedPaise: Paise, partyIds: z.array(z.string()), leadIds: z.array(z.string()) }),
+  funnel: z.object({
+    posts: z.number().int(),
+    views: z.number(),
+    clicks: z.number(),
+    enquiries: z.number(),
+    leads: z.number().int(),
+    quotes: z.number().int(),
+    invoicedPaise: Paise,
+    partyIds: z.array(z.string()),
+    leadIds: z.array(z.string()),
+  }),
   best: z.array(z.object({ postId: z.string(), channelId: z.string(), reason: z.string() })),
   experiment: z.string(),
 });
@@ -333,10 +377,24 @@ export const PublishingPack = z.object({
 });
 export type PublishingPack = z.infer<typeof PublishingPack>;
 
-export const VariantEdit = z.object({ text: z.string().min(1).max(5000).optional(), link: z.string().refine(isUrl, "Invalid url").nullable().optional(), mediaIds: z.array(z.string()).max(10).optional() });
+export const VariantEdit = z.object({
+  text: z.string().min(1).max(5000).optional(),
+  link: z.string().refine(isUrl, "Invalid url").nullable().optional(),
+  mediaIds: z.array(z.string()).max(10).optional(),
+});
 /** The link to a post made by hand. The app shows it as a link, so only https: (never javascript: or data:). */
-export const MarkPosted = z.object({ url: z.string().max(500).refine(isUrl, "Invalid url").regex(/^https:\/\//i, "Paste the https:// link to the post.") });
-export const ChannelSetup = z.object({ handle: z.string().min(1).max(100).optional(), mode: z.enum(["connected", "manual"]).optional(), postingHours: z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }).optional() });
+export const MarkPosted = z.object({
+  url: z
+    .string()
+    .max(500)
+    .refine(isUrl, "Invalid url")
+    .regex(/^https:\/\//i, "Paste the https:// link to the post."),
+});
+export const ChannelSetup = z.object({
+  handle: z.string().min(1).max(100).optional(),
+  mode: z.enum(["connected", "manual"]).optional(),
+  postingHours: z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }).optional(),
+});
 export const MetricsImport = z.object({ content: z.string().min(1).max(2_000_000) });
 
 export const OperationsReport = z.object({
@@ -356,7 +414,9 @@ export const OperationsReport = z.object({
       stockValuePaise: Paise,
     }),
   ),
-  purchaseOrders: z.array(z.object({ id: z.string(), number: z.string(), vendor: z.string(), date: IsoDate, status: z.string(), lines: z.number().int(), totalPaise: Paise })),
+  purchaseOrders: z.array(
+    z.object({ id: z.string(), number: z.string(), vendor: z.string(), date: IsoDate, status: z.string(), lines: z.number().int(), totalPaise: Paise }),
+  ),
   rfqs: z.array(Rfq.extend({ recommended: z.string(), reason: z.string() })),
   compliance: z.array(ComplianceEvent.extend({ daysLeft: z.number().int() })),
 });
@@ -438,12 +498,35 @@ export const ComplianceView = z.object({
 });
 export type ComplianceView = z.infer<typeof ComplianceView>;
 
-export const ComplianceFiling = z.object({ filedOn: IsoDate, ack: z.string().trim().max(80).default(""), proof: z.object({ file: z.string().max(500), name: z.string().max(200) }).nullable().optional() }).strict();
+export const ComplianceFiling = z
+  .object({
+    filedOn: IsoDate,
+    ack: z.string().trim().max(80).default(""),
+    proof: z
+      .object({ file: z.string().max(500), name: z.string().max(200) })
+      .nullable()
+      .optional(),
+  })
+  .strict();
 export const ComplianceAssign = z.object({ assignee: Assignee.nullable(), progress: z.enum(["preparing", "ready"]).nullable().optional() }).strict();
 export const ComplianceSnooze = z.object({ until: IsoDate.nullable(), reason: z.string().trim().max(300).default("") }).strict();
-export const ComplianceManual = z.object({ form: z.string().trim().min(1).max(60), dueOn: IsoDate, description: z.string().trim().max(300).default(""), authority: z.string().trim().max(60).default("Other") }).strict();
+export const ComplianceManual = z
+  .object({
+    form: z.string().trim().min(1).max(60),
+    dueOn: IsoDate,
+    description: z.string().trim().max(300).default(""),
+    authority: z.string().trim().max(60).default("Other"),
+  })
+  .strict();
 export const ComplianceSrn = z
-  .object({ number: z.string().trim().min(1).max(20), createdOn: IsoDate, challan: z.string().trim().max(40).default(""), status: SrnStatus, remarks: z.string().trim().max(1000).default(""), resubmitBy: IsoDate.nullable().default(null) })
+  .object({
+    number: z.string().trim().min(1).max(20),
+    createdOn: IsoDate,
+    challan: z.string().trim().max(40).default(""),
+    status: SrnStatus,
+    remarks: z.string().trim().max(1000).default(""),
+    resubmitBy: IsoDate.nullable().default(null),
+  })
   .strict();
 export const MasterDataPaste = z.object({ text: z.string().min(20).max(20_000) }).strict();
 export const EventInput = CompanyEvent.pick({ kind: true, on: true, detail: true, privatePlacement: true, foreign: true }).strict();
@@ -452,7 +535,12 @@ export const ProfileInput = ComplianceProfile;
 export const PartyMsme = z
   .object({
     udyamCategory: z.enum(["micro", "small", "medium", "none"]),
-    udyamNumber: z.string().trim().toUpperCase().regex(/^(UDYAM-[A-Z]{2}-\d{2}-\d{7})?$/).default(""),
+    udyamNumber: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^(UDYAM-[A-Z]{2}-\d{2}-\d{7})?$/)
+      .default(""),
     udyamActivity: z.enum(["manufacturing", "services", "trading"]).nullable().default(null),
     writtenCreditDays: z.number().int().min(0).max(365).nullable().default(null),
     related: z.boolean().default(false),
@@ -560,7 +648,17 @@ export const AuditReport = z.object({
   period: z.string(),
   periods: z.array(z.string()),
   note: Note,
-  returns: z.array(z.object({ id: z.string(), form: z.string(), period: z.string(), status: z.string(), filedOn: IsoDate.nullable(), sharedOn: IsoDate.nullable(), matched: z.boolean() })),
+  returns: z.array(
+    z.object({
+      id: z.string(),
+      form: z.string(),
+      period: z.string(),
+      status: z.string(),
+      filedOn: IsoDate.nullable(),
+      sharedOn: IsoDate.nullable(),
+      matched: z.boolean(),
+    }),
+  ),
   comparisons: z.array(Comparison),
   findings: z.array(Finding),
 });
@@ -677,7 +775,10 @@ export const WhatsAppStatus = z.object({
   template: z.boolean(),
 });
 export type WhatsAppStatus = z.infer<typeof WhatsAppStatus>;
-export const WhatsAppChange = z.object({ language: z.union([z.literal("auto"), WaLanguage]), digest: z.boolean() }).partial().strict();
+export const WhatsAppChange = z
+  .object({ language: z.union([z.literal("auto"), WaLanguage]), digest: z.boolean() })
+  .partial()
+  .strict();
 /** JOIN codes: eight characters with nothing to misread (no 0 or O, no 1, I or L), shown as two fours, "K7QD-M3XP". */
 export const JOIN_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const JOIN_CODE_LENGTH = 8;
@@ -689,7 +790,8 @@ export function makeJoinCode(random: (n: number) => Uint8Array): string {
   const below = 256 - (256 % JOIN_CODE_ALPHABET.length);
   for (;;) {
     let code = "";
-    while (code.length < JOIN_CODE_LENGTH) for (const b of random(JOIN_CODE_LENGTH)) if (b < below && code.length < JOIN_CODE_LENGTH) code += JOIN_CODE_ALPHABET[b % JOIN_CODE_ALPHABET.length];
+    while (code.length < JOIN_CODE_LENGTH)
+      for (const b of random(JOIN_CODE_LENGTH)) if (b < below && code.length < JOIN_CODE_LENGTH) code += JOIN_CODE_ALPHABET[b % JOIN_CODE_ALPHABET.length];
     if (/\d/.test(code)) return code;
   }
 }
@@ -699,7 +801,12 @@ export function readJoinCode(text: string): string | null {
   return code.length === JOIN_CODE_LENGTH && [...code].every((ch) => JOIN_CODE_ALPHABET.includes(ch)) ? code : null;
 }
 export const showJoinCode = (code: string) => `${code.slice(0, 4)}-${code.slice(4)}`;
-export const JoinCode = z.object({ code: z.string().regex(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/), expiresAt: IsoDateTime, businessNumber: z.string().nullable(), link: z.string().nullable() });
+export const JoinCode = z.object({
+  code: z.string().regex(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/),
+  expiresAt: IsoDateTime,
+  businessNumber: z.string().nullable(),
+  link: z.string().nullable(),
+});
 export type JoinCode = z.infer<typeof JoinCode>;
 /** The demo phone on the mock site: a typed message, or one of the sample voice notes. */
 export const WhatsAppDemoMessage = z.object({ text: z.string().max(2000).optional(), voice: z.string().optional() });
@@ -715,11 +822,45 @@ export const OfficeStatus = z.enum(["active", "suspended", "deleting"]);
 /** An office's own address is `<subdomain>.<APP_DOMAIN>`: lower-case letters, digits and inner hyphens, 2 to 32 long. */
 export const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
 /** Labels that are ours, never an office's: `app` signs businesses in, `console` is the platform owners', `demo` is the sample office. */
-export const RESERVED_SUBDOMAINS = new Set(["console", "demo", "www", "app", "api", "admin", "auth", "mail", "email", "in", "help", "support", "status", "docs", "blog", "static", "cdn", "assets", "media", "dev", "staging", "test"]);
+export const RESERVED_SUBDOMAINS = new Set([
+  "console",
+  "demo",
+  "www",
+  "app",
+  "api",
+  "admin",
+  "auth",
+  "mail",
+  "email",
+  "in",
+  "help",
+  "support",
+  "status",
+  "docs",
+  "blog",
+  "static",
+  "cdn",
+  "assets",
+  "media",
+  "dev",
+  "staging",
+  "test",
+]);
 export const subdomainProblem = (label: string): string | null =>
-  !SUBDOMAIN.test(label) ? "Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit." : RESERVED_SUBDOMAINS.has(label) ? `"${label}" is kept for the product itself; choose another.` : null;
+  !SUBDOMAIN.test(label)
+    ? "Use 2 to 32 lower-case letters, digits or hyphens, starting and ending with a letter or digit."
+    : RESERVED_SUBDOMAINS.has(label)
+      ? `"${label}" is kept for the product itself; choose another.`
+      : null;
 
-export const OfficeSummary = z.object({ id: z.string(), name: z.string(), role: Role, status: OfficeStatus, locale: OfficeLocale, subdomain: z.string().nullable().default(null) });
+export const OfficeSummary = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: Role,
+  status: OfficeStatus,
+  locale: OfficeLocale,
+  subdomain: z.string().nullable().default(null),
+});
 export type OfficeSummary = z.infer<typeof OfficeSummary>;
 /** Who is signed in and which offices they can open. Nothing about any office's books. */
 export const Me = z.object({

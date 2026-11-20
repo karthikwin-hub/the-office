@@ -45,8 +45,28 @@ function recorder(routes: [RegExp, (r: Recorded) => Response | object][]) {
 }
 
 const tokens: Tokens = { access: "tok", refresh: null, expiresAt: null, account: "1784", extra: { username: "kaveri" } };
-const variant = (over: Partial<PostVariant> = {}): PostVariant => ({ channelId: "ch-instagram", platform: "instagram", text: "Diwali lights in stock", mediaIds: [], link: null, status: "scheduled", externalId: null, url: null, publishedAt: null, error: null, approvedHash: null, metrics: null, ...over });
-const picture = { id: "media-u1", url: "https://office.example/media/media-u1?exp=1&sig=s", kind: "image" as const, alt: "Ceiling fan, white", contentType: "image/jpeg" };
+const variant = (over: Partial<PostVariant> = {}): PostVariant => ({
+  channelId: "ch-instagram",
+  platform: "instagram",
+  text: "Diwali lights in stock",
+  mediaIds: [],
+  link: null,
+  status: "scheduled",
+  externalId: null,
+  url: null,
+  publishedAt: null,
+  error: null,
+  approvedHash: null,
+  metrics: null,
+  ...over,
+});
+const picture = {
+  id: "media-u1",
+  url: "https://office.example/media/media-u1?exp=1&sig=s",
+  kind: "image" as const,
+  alt: "Ceiling fan, white",
+  contentType: "image/jpeg",
+};
 
 describe("tokens at rest", () => {
   it("round-trips and refuses a row moved to another channel", async () => {
@@ -132,7 +152,9 @@ describe("Meta webhooks", () => {
     // Every byte of the guess is read whether or not an early one is wrong: a counting secret sees the same reads for both.
     const reads = (guess: string) => {
       let n = 0;
-      const secret = new Proxy(new TextEncoder().encode("verify-token-1"), { get: (t, k) => (typeof k === "string" && /^\d+$/.test(k) && n++, Reflect.get(t, k)) });
+      const secret = new Proxy(new TextEncoder().encode("verify-token-1"), {
+        get: (t, k) => (typeof k === "string" && /^\d+$/.test(k) && n++, Reflect.get(t, k)),
+      });
       const enc = TextEncoder.prototype.encode;
       TextEncoder.prototype.encode = function (this: TextEncoder, v?: string) {
         return v === "verify-token-1" ? (secret as unknown as Uint8Array) : enc.call(this, v);
@@ -148,9 +170,60 @@ describe("Meta webhooks", () => {
   });
 
   it("reads Instagram comments, Page comments and WhatsApp messages, and drops our own", () => {
-    const ig = { object: "instagram", entry: [{ id: "1784", time: 1793000000, changes: [{ field: "comments", value: { id: "c1", text: "Price of the 4 ft LED batten?", from: { id: "99", username: "sunil" }, media: { id: "m1" } } }, { field: "comments", value: { id: "c2", text: "Thanks!", from: { id: "1784", username: "kaveri" } } }] }] };
-    const fb = { object: "page", entry: [{ id: "55", changes: [{ field: "feed", value: { item: "comment", verb: "add", comment_id: "p_c9", post_id: "55_1", message: "Do you deliver to Chakan?", from: { id: "7", name: "Ravi Patil" }, created_time: 1793000100 } }] }] };
-    const wa = { object: "whatsapp_business_account", entry: [{ id: "w", changes: [{ field: "messages", value: { contacts: [{ wa_id: "919800000001", profile: { name: "Asha" } }], messages: [{ id: "wamid.1", from: "919800000001", timestamp: "1793000200", type: "text", text: { body: "Is the 1.5 ton AC stabiliser available?" } }] } }] }] };
+    const ig = {
+      object: "instagram",
+      entry: [
+        {
+          id: "1784",
+          time: 1793000000,
+          changes: [
+            { field: "comments", value: { id: "c1", text: "Price of the 4 ft LED batten?", from: { id: "99", username: "sunil" }, media: { id: "m1" } } },
+            { field: "comments", value: { id: "c2", text: "Thanks!", from: { id: "1784", username: "kaveri" } } },
+          ],
+        },
+      ],
+    };
+    const fb = {
+      object: "page",
+      entry: [
+        {
+          id: "55",
+          changes: [
+            {
+              field: "feed",
+              value: {
+                item: "comment",
+                verb: "add",
+                comment_id: "p_c9",
+                post_id: "55_1",
+                message: "Do you deliver to Chakan?",
+                from: { id: "7", name: "Ravi Patil" },
+                created_time: 1793000100,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const wa = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "w",
+          changes: [
+            {
+              field: "messages",
+              value: {
+                contacts: [{ wa_id: "919800000001", profile: { name: "Asha" } }],
+                messages: [
+                  { id: "wamid.1", from: "919800000001", timestamp: "1793000200", type: "text", text: { body: "Is the 1.5 ton AC stabiliser available?" } },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
     const own = new Set(["1784"]);
     const got = [...parseMetaDelivery(ig, own), ...parseMetaDelivery(fb, own), ...parseMetaDelivery(wa, own)];
     expect(got.map((m) => [m.id, m.platform, m.kind, m.author])).toEqual([
@@ -242,12 +315,19 @@ describe("adapters against recorded responses", () => {
   });
 
   it("Instagram: says what to set up when the app keys are missing", async () => {
-    await expect(instagram(null).authorizeUrl({ state: "s", redirect: "r", verifier: "v" })).rejects.toMatchObject({ kind: "not_set_up", message: expect.stringContaining("INSTAGRAM_APP_ID") });
+    await expect(instagram(null).authorizeUrl({ state: "s", redirect: "r", verifier: "v" })).rejects.toMatchObject({
+      kind: "not_set_up",
+      message: expect.stringContaining("INSTAGRAM_APP_ID"),
+    });
   });
 
   it("Facebook: a text post with its link goes to the Page feed", async () => {
     const { f, calls } = recorder([[/POST .*\/55\/feed$/, () => ({ id: "55_77" })]]);
-    const r = await facebook(keys, f).publish({ ...tokens, account: "55" }, variant({ platform: "facebook", link: "https://kaveri.in/?utm_source=facebook" }), []);
+    const r = await facebook(keys, f).publish(
+      { ...tokens, account: "55" },
+      variant({ platform: "facebook", link: "https://kaveri.in/?utm_source=facebook" }),
+      [],
+    );
     expect(r).toEqual({ externalId: "55_77", url: "https://www.facebook.com/55_77" });
     expect(new URLSearchParams(calls[0]!.body).get("link")).toBe("https://kaveri.in/?utm_source=facebook");
   });
@@ -279,16 +359,28 @@ describe("adapters against recorded responses", () => {
     const t = { ...tokens, account: "phone-1", extra: { template: "festive_offer", templateLanguage: "en" } };
     const msg = { id: "wa-1", threadId: "919800000001", externalId: "wamid.1", replyBy: new Date(Date.now() + 3600_000).toISOString() } as SocialMessage;
     expect(await wa.reply(t, msg, "Yes, in stock.")).toEqual({ externalId: "wamid.out" });
-    expect(JSON.parse(calls[0]!.body)).toMatchObject({ messaging_product: "whatsapp", to: "919800000001", type: "text", text: { body: "Yes, in stock." }, context: { message_id: "wamid.1" } });
+    expect(JSON.parse(calls[0]!.body)).toMatchObject({
+      messaging_product: "whatsapp",
+      to: "919800000001",
+      type: "text",
+      text: { body: "Yes, in stock." },
+      context: { message_id: "wamid.1" },
+    });
     expect(calls[0]!.headers.get("authorization")).toBe("Bearer tok");
     await expect(wa.reply(t, { ...msg, replyBy: new Date(Date.now() - 1000).toISOString() }, "Late")).rejects.toMatchObject({ kind: "final" });
     const sent = await wa.broadcast!(t, { template: "festive_offer", language: "en", text: "Line one\nLine two", audience: ["919800000001", "919800000002"] });
     expect(sent).toEqual({ sent: 2, failed: 0 });
-    expect(JSON.parse(calls[1]!.body).template).toMatchObject({ name: "festive_offer", language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text: "Line one · Line two" }] }] });
+    expect(JSON.parse(calls[1]!.body).template).toMatchObject({
+      name: "festive_offer",
+      language: { code: "en" },
+      components: [{ type: "body", parameters: [{ type: "text", text: "Line one · Line two" }] }],
+    });
   });
 
   it("LinkedIn: posts as the member with the current version header, escaping its markup", async () => {
-    const { f, calls } = recorder([[/POST https:\/\/api\.linkedin\.com\/rest\/posts$/, () => new Response(null, { status: 201, headers: { "x-restli-id": "urn:li:share:7" } })]]);
+    const { f, calls } = recorder([
+      [/POST https:\/\/api\.linkedin\.com\/rest\/posts$/, () => new Response(null, { status: 201, headers: { "x-restli-id": "urn:li:share:7" } })],
+    ]);
     const r = await linkedin(keys, f).publish({ ...tokens, account: "urn:li:person:abc" }, variant({ platform: "linkedin", text: "Wiring (new) #safety" }), []);
     expect(r).toEqual({ externalId: "urn:li:share:7", url: "https://www.linkedin.com/feed/update/urn:li:share:7/" });
     expect(calls[0]!.headers.get("linkedin-version")).toBe(linkedinVersion());
@@ -320,7 +412,18 @@ describe("publishing from the Office", () => {
     const kv = new Map<string, string>();
     let now = Date.parse("2026-11-05T13:05:00Z");
     const fake = { platform: "instagram", publish: async () => ({ externalId: "m-1", url: "https://www.instagram.com/p/m1/" }), ...adapter } as ChannelAdapter;
-    const host = new SocialHost(office, vault, { instagram: fake }, { base: "https://o.example", officeId: "off_a", mediaSecret: SECRET, kv: (k, v) => (v === undefined ? (kv.get(k) ?? null) : (kv.set(k, v), v)), now: () => now });
+    const host = new SocialHost(
+      office,
+      vault,
+      { instagram: fake },
+      {
+        base: "https://o.example",
+        officeId: "off_a",
+        mediaSecret: SECRET,
+        kv: (k, v) => (v === undefined ? (kv.get(k) ?? null) : (kv.set(k, v), v)),
+        now: () => now,
+      },
+    );
     return { office, host, kv, tick: (ms: number) => (now += ms) };
   };
 

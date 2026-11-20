@@ -43,7 +43,12 @@ function PlanGlyph({ side, stroke }: { side: number; stroke: number }) {
     <g fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="square">
       <rect x={x} y={x} width={side} height={side} />
       <path d={`M${p(0)} ${p(11)}H${p(9)}M${p(13)} ${p(11)}H${p(22)}M${p(11)} ${p(0)}V${p(8)}M${p(11)} ${p(14)}V${p(22)}`} />
-      <path d={`M${p(14.2)} ${p(16.4)}Q${p(15.4)} ${p(18.6)} ${p(16.9)} ${p(19.4)}L${p(20)} ${p(14)}`} strokeLinecap="round" strokeLinejoin="round" strokeWidth={stroke * 0.95} />
+      <path
+        d={`M${p(14.2)} ${p(16.4)}Q${p(15.4)} ${p(18.6)} ${p(16.9)} ${p(19.4)}L${p(20)} ${p(14)}`}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={stroke * 0.95}
+      />
     </g>
   );
 }
@@ -52,7 +57,17 @@ function PlanGlyph({ side, stroke }: { side: number; stroke: number }) {
  * The company seal every Indian bill carries, made the product's mark. The ink is seeded per visit,
  * so no two impressions match; the tilt is the hand that pressed it.
  */
-export function Seal({ variant = "full", date, press = false, pressKey, className, label, ring = [BRAND.name, BRAND.maker], word = "Approved", sign = "Authorised signatory" }: SealProps) {
+export function Seal({
+  variant = "full",
+  date,
+  press = false,
+  pressKey,
+  className,
+  label,
+  ring = [BRAND.name, BRAND.maker],
+  word = "Approved",
+  sign = "Authorised signatory",
+}: SealProps) {
   const id = useId().replace(/:/g, "");
   const [hand] = useState(() => ({ seed: Math.floor(Math.random() * 997), tilt: Math.random() * 8 - 4 }));
   const presses = typeof pressKey === "number" ? pressKey : 0;

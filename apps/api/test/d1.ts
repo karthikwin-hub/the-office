@@ -4,7 +4,8 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 
 const MIGRATIONS = join(import.meta.dirname, "..", "migrations");
 
-const value = (v: unknown): SQLInputValue => (v === undefined ? null : typeof v === "boolean" ? (v ? 1 : 0) : v instanceof Date ? v.getTime() : (v as SQLInputValue));
+const value = (v: unknown): SQLInputValue =>
+  v === undefined ? null : typeof v === "boolean" ? (v ? 1 : 0) : v instanceof Date ? v.getTime() : (v as SQLInputValue);
 
 /** Enough of D1 over Node's SQLite for the control plane and Better Auth, with the real migrations applied. */
 export function d1(opts: { migrate?: boolean } = {}): D1Database & { sqlite: DatabaseSync } {
@@ -49,13 +50,19 @@ export function d1(opts: { migrate?: boolean } = {}): D1Database & { sqlite: Dat
     },
     dump: async () => new ArrayBuffer(0),
   };
-  if (opts.migrate !== false) for (const f of readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) db.exec(readFileSync(join(MIGRATIONS, f), "utf8"));
+  if (opts.migrate !== false)
+    for (const f of readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith(".sql"))
+      .sort())
+      db.exec(readFileSync(join(MIGRATIONS, f), "utf8"));
   return api as unknown as D1Database & { sqlite: DatabaseSync };
 }
 
 /** A person straight into the user table, for tests that do not need to sign in. */
 export function addUser(db: D1Database & { sqlite: DatabaseSync }, u: { id: string; name: string; email: string; verified?: boolean }) {
   const at = Date.now();
-  db.sqlite.prepare("INSERT INTO `user` (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)").run(u.id, u.name, u.email, u.verified === false ? 0 : 1, at, at);
+  db.sqlite
+    .prepare("INSERT INTO `user` (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(u.id, u.name, u.email, u.verified === false ? 0 : 1, at, at);
   return { id: u.id, name: u.name, email: u.email, emailVerified: u.verified !== false };
 }

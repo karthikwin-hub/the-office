@@ -45,7 +45,13 @@ export async function signedMedia(secret: string, base: string, officeId: string
         : /^https?:/.test(m.url)
           ? m.url
           : `${root}${m.url}`;
-      return { id: m.id, url, kind: m.kind, alt: m.alt, contentType: stored ? (m.kind === "video" ? "video/mp4" : "image/jpeg") : (TYPES[ext] ?? "application/octet-stream") };
+      return {
+        id: m.id,
+        url,
+        kind: m.kind,
+        alt: m.alt,
+        contentType: stored ? (m.kind === "video" ? "video/mp4" : "image/jpeg") : (TYPES[ext] ?? "application/octet-stream"),
+      };
     }),
   );
 }

@@ -6,7 +6,13 @@ type Person = { name: string; email: string };
 const OFFICE_ID = "kaveri-electricals";
 const day = 24 * 3600_000;
 
-let state: { status: OfficeAdmin["status"]; purgeAt: string | null; members: OfficeAdmin["members"]; invitations: OfficeAdmin["invitations"]; audit: OfficeAdmin["audit"] } | null = null;
+let state: {
+  status: OfficeAdmin["status"];
+  purgeAt: string | null;
+  members: OfficeAdmin["members"];
+  invitations: OfficeAdmin["invitations"];
+  audit: OfficeAdmin["audit"];
+} | null = null;
 
 function seed(users: Record<Role, Person>) {
   const at = (days: number) => new Date(Date.parse("2026-11-04T10:00:00+05:30") - days * day).toISOString();
@@ -40,7 +46,13 @@ export function mockMe(role: Role, users: Record<Role, Person>, office: OfficeSe
 }
 
 /** The owner's Office section, in memory: invitations, roles and deletion work, and nothing leaves the page. */
-export async function mockOfficeAdmin(request: Request, path: string, role: Role, office: OfficeService, users: Record<Role, Person>): Promise<Response | null> {
+export async function mockOfficeAdmin(
+  request: Request,
+  path: string,
+  role: Role,
+  office: OfficeService,
+  users: Record<Role, Person>,
+): Promise<Response | null> {
   if (!path.startsWith("/api/office-admin")) return null;
   const s = seed(users);
   const me = role === "owner" ? "u-anil" : "u-rajesh";
@@ -65,7 +77,9 @@ export async function mockOfficeAdmin(request: Request, path: string, role: Role
   if (path === "/api/office-admin" && request.method === "GET") return HttpResponse.json(view());
   if (ownerOnly && path !== "/api/office-admin/leave") return ownerOnly;
   if (path === "/api/office-admin/invitations" && request.method === "POST") {
-    const email = String((body as { email?: string }).email ?? "").trim().toLowerCase();
+    const email = String((body as { email?: string }).email ?? "")
+      .trim()
+      .toLowerCase();
     const r: Role = (body as { role?: Role }).role === "owner" ? "owner" : "accountant";
     if (!/^\S+@\S+\.\S+$/.test(email)) return HttpResponse.json({ error: "Enter the email address to invite." }, { status: 400 });
     if (s.members.some((m) => m.email === email)) return HttpResponse.json({ error: `${email} is already in this office.` }, { status: 409 });
@@ -88,26 +102,33 @@ export async function mockOfficeAdmin(request: Request, path: string, role: Role
     const owners = s.members.filter((m) => m.role === "owner").length;
     if (request.method === "PUT") {
       const r: Role = (body as { role?: Role }).role === "owner" ? "owner" : "accountant";
-      if (target.role === "owner" && r !== "owner" && owners === 1) return HttpResponse.json({ error: "The office needs an owner. Make someone else the owner first." }, { status: 409 });
+      if (target.role === "owner" && r !== "owner" && owners === 1)
+        return HttpResponse.json({ error: "The office needs an owner. Make someone else the owner first." }, { status: 409 });
       target.role = r;
       log("member.role", `${target.email} is now ${r}`);
       return HttpResponse.json({ ok: true });
     }
     if (request.method === "DELETE") {
-      if (target.role === "owner" && owners === 1) return HttpResponse.json({ error: "The only owner cannot leave. Hand the office to someone first, or delete it." }, { status: 409 });
+      if (target.role === "owner" && owners === 1)
+        return HttpResponse.json({ error: "The only owner cannot leave. Hand the office to someone first, or delete it." }, { status: 409 });
       s.members = s.members.filter((m) => m !== target);
       log("member.removed", target.email);
       return HttpResponse.json({ ok: true });
     }
   }
-  if (path === "/api/office-admin/leave" && request.method === "POST") return HttpResponse.json({ error: "The sample office keeps both of its people." }, { status: 409 });
-  if (path === "/api/office-admin/transfer" && request.method === "POST") return HttpResponse.json({ error: "The sample office stays with its owner." }, { status: 409 });
+  if (path === "/api/office-admin/leave" && request.method === "POST")
+    return HttpResponse.json({ error: "The sample office keeps both of its people." }, { status: 409 });
+  if (path === "/api/office-admin/transfer" && request.method === "POST")
+    return HttpResponse.json({ error: "The sample office stays with its owner." }, { status: 409 });
   if (path === "/api/office-admin/export" && request.method === "GET") {
     log("office.exported", "books only");
-    return new HttpResponse(JSON.stringify({ office: OFFICE_ID, exportedAt: now, books: office.books }, null, 2), { headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="Kaveri-Electricals-export.json"' } });
+    return new HttpResponse(JSON.stringify({ office: OFFICE_ID, exportedAt: now, books: office.books }, null, 2), {
+      headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="Kaveri-Electricals-export.json"' },
+    });
   }
   if (path === "/api/office-admin" && request.method === "DELETE") {
-    if (String((body as { confirm?: string }).confirm ?? "").trim() !== office.books.business.name) return HttpResponse.json({ error: `Type ${office.books.business.name} to delete the office.` }, { status: 400 });
+    if (String((body as { confirm?: string }).confirm ?? "").trim() !== office.books.business.name)
+      return HttpResponse.json({ error: `Type ${office.books.business.name} to delete the office.` }, { status: 400 });
     s.status = "deleting";
     s.purgeAt = new Date(Date.now() + 30 * day).toISOString();
     log("office.deleting");

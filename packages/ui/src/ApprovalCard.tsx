@@ -94,19 +94,32 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
               {k === "subject" ? (
                 <input id={`${id}-${k}`} className="input" defaultValue={v} onChange={(e) => setEdits((x) => ({ ...x, [k]: e.target.value }))} />
               ) : (
-                <textarea id={`${id}-${k}`} className="input" rows={Math.min(14, v.split("\n").length + 2)} defaultValue={v} onChange={(e) => setEdits((x) => ({ ...x, [k]: e.target.value }))} />
+                <textarea
+                  id={`${id}-${k}`}
+                  className="input"
+                  rows={Math.min(14, v.split("\n").length + 2)}
+                  defaultValue={v}
+                  onChange={(e) => setEdits((x) => ({ ...x, [k]: e.target.value }))}
+                />
               )}
             </div>
           ))}
           {handoff ? (
             <div className="approval-save">
               <label className="check">
-                <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} /> Save as one of your answers, so the agent can send it next time
+                <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} /> Save as one of your answers, so the agent can send it next
+                time
               </label>
               {save ? (
                 <div className="field">
                   <label htmlFor={`${id}-save`}>What the answer is about</label>
-                  <input id={`${id}-save`} className="input" value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="For example: Delivery to Pune" />
+                  <input
+                    id={`${id}-save`}
+                    className="input"
+                    value={saveTitle}
+                    onChange={(e) => setSaveTitle(e.target.value)}
+                    placeholder="For example: Delivery to Pune"
+                  />
                 </div>
               ) : null}
             </div>
@@ -129,7 +142,13 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
               <button
                 type="button"
                 className="btn-link"
-                onClick={() => (e.ref.kind === "document" && e.ref.id ? openDocument(e.ref.id, e.ref.region) : e.ref.kind === "figure" && e.ref.id ? open(e.ref.id) : undefined)}
+                onClick={() =>
+                  e.ref.kind === "document" && e.ref.id
+                    ? openDocument(e.ref.id, e.ref.region)
+                    : e.ref.kind === "figure" && e.ref.id
+                      ? open(e.ref.id)
+                      : undefined
+                }
                 disabled={!(e.ref.kind === "document" || e.ref.kind === "figure") || !e.ref.id}
               >
                 {e.label}
@@ -157,7 +176,14 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
         >
           <div className="field">
             <label htmlFor={`${id}-why`}>Why are you rejecting this?</label>
-            <input id={`${id}-why`} className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="The agent learns from your reason" autoFocus />
+            <input
+              id={`${id}-why`}
+              className="input"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="The agent learns from your reason"
+              autoFocus
+            />
           </div>
           <div className="approval-actions">
             <button type="submit" className="btn" disabled={busy}>

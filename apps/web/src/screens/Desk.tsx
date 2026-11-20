@@ -89,7 +89,8 @@ export function DeskScreen() {
       ) : null}
       {decide.error ? <p className="form-error">{(decide.error as Error).message}</p> : null}
       <p className="desk-foot muted">
-        Every approval without changes counts toward that agent's next trust level. The Office Manager emails you this list each morning at the digest time set in settings.
+        Every approval without changes counts toward that agent's next trust level. The Office Manager emails you this list each morning at the digest time set
+        in settings.
       </p>
     </Page>
   );

@@ -7,7 +7,18 @@ import { AgeingView, CashView, GstView, SalesView, TdsView } from "../reports/ac
 import { CalendarView, PostsView, SocialInboxView, SocialResultsView } from "../reports/social";
 import { ComplianceView } from "../reports/compliance";
 import { OnlineSalesView } from "../reports/online";
-import { CampaignsView, FestivalsView, OrdersView, PayrollView, PipelineView, PricesView, QuotesView, ReordersView, SlowStockView, StockView } from "../reports/teams";
+import {
+  CampaignsView,
+  FestivalsView,
+  OrdersView,
+  PayrollView,
+  PipelineView,
+  PricesView,
+  QuotesView,
+  ReordersView,
+  SlowStockView,
+  StockView,
+} from "../reports/teams";
 import { Page, PageHead, theAgent } from "./common";
 
 type Tab = { id: string; label: string; agent: string; render: () => { ready: boolean; error?: unknown; node: ReactNode } };
@@ -27,7 +38,9 @@ function useTabs(team: string): Tab[] {
   const op = useQuery({ ...q.operations(), enabled: team === "operations" });
   const pe = useQuery({ ...q.people(), enabled: team === "people" });
   const cm = useQuery({ ...q.compliance(), enabled: team === "operations" });
-  const r = <T,>(x: { data?: T; error: unknown }, f: (d: T) => ReactNode) => () => ({ ready: Boolean(x.data), error: x.error, node: x.data ? f(x.data) : null });
+  const r =
+    <T,>(x: { data?: T; error: unknown }, f: (d: T) => ReactNode) =>
+    () => ({ ready: Boolean(x.data), error: x.error, node: x.data ? f(x.data) : null });
 
   switch (team) {
     case "accounts":
@@ -132,7 +145,11 @@ export function BoardroomScreen() {
           ) : null}
           {content.node}
           <p className="board-keeper muted">
-            Kept by <Link to="/rooms/$agentId" params={{ agentId: agent.id }}>{theAgent(agent.id)}</Link>.
+            Kept by{" "}
+            <Link to="/rooms/$agentId" params={{ agentId: agent.id }}>
+              {theAgent(agent.id)}
+            </Link>
+            .
           </p>
         </div>
       </div>

@@ -34,15 +34,20 @@ const TOPICS: [HumanTopic, RegExp][] = [
   ["legal", /\b(lawyer|advocate|legal|court|consumer (forum|court)|police|fir|sue|suing|legal notice|vakil)\b|वकील|अदालत|पुलिस/i],
   ["refund", /\b(refund|money back|return (my|the) money|reimburse|chargeback|paisa wapas|paise wapas)\b|पैसे वापस|रिफंड/i],
   ["cancellation", /\bcancel(?!led|ed)|\bcancellation\b|रद्द/i],
-  ["complaint", /\b(complain|complaint|worst|terrible|horrible|cheat|cheated|fraud|scam|damaged|broken|defective|wrong (item|product)|disappointed|unacceptable)\b|शिकायत|खराब|धोखा/i],
+  [
+    "complaint",
+    /\b(complain|complaint|worst|terrible|horrible|cheat|cheated|fraud|scam|damaged|broken|defective|wrong (item|product)|disappointed|unacceptable)\b|शिकायत|खराब|धोखा/i,
+  ],
   ["negotiation", /\b(discount|cheaper|best price|lower (the )?price|reduce (the )?(price|rate)|negotiat|kam karo|rate kam|last price)\b|छूट|कम करो/i],
   ["anger", /\b(idiot|stupid|nonsense|useless|pathetic|shame|bloody|wtf|f+u+c+k+)\b/i],
 ];
 
 const GREETING = /^(hi+|hello+|hey+|namaste|namaskar|good (morning|afternoon|evening)|hii+|helo|yo)[\s!.,]*$/i;
 const THANKS = /^(thanks?|thank you|thx|ty|ok(ay)?( thanks?)?|great|perfect|dhanyavad|shukriya|धन्यवाद|शुक्रिया)[\s!.,]*$/i;
-const ORDER_Q = /\b(order|delivery|deliver|shipped|dispatch|dispatched|tracking|track|parcel|courier|consignment|where is my|status|kab aayega|kab milega)\b|ऑर्डर|डिलीवरी/i;
-const BALANCE_Q = /\b(how much (do|does|did)? ?(i|we|you|my company|our company) (still )?owe|what (do|does) (i|we) owe|outstanding|balance|dues?|pending (amount|payment|invoice)|my (bill|invoice)s?|statement|kitna baaki|payment due)\b|बकाया/i;
+const ORDER_Q =
+  /\b(order|delivery|deliver|shipped|dispatch|dispatched|tracking|track|parcel|courier|consignment|where is my|status|kab aayega|kab milega)\b|ऑर्डर|डिलीवरी/i;
+const BALANCE_Q =
+  /\b(how much (do|does|did)? ?(i|we|you|my company|our company) (still )?owe|what (do|does) (i|we) owe|outstanding|balance|dues?|pending (amount|payment|invoice)|my (bill|invoice)s?|statement|kitna baaki|payment due)\b|बकाया/i;
 const FACT_Q: [FactKey, RegExp][] = [
   ["hours", /\b(hours|open|close|closing|timing|timings|what time|kab khul|sunday|holiday)\b|समय|खुल/i],
   ["address", /\b(address|location|where are you|located|directions|map|shop kaha|kahan hai)\b|पता/i],
@@ -50,7 +55,13 @@ const FACT_Q: [FactKey, RegExp][] = [
   ["returns", /\b(return policy|returns?|exchange|replace|replacement|warranty)\b/i],
   ["payments", /\b(pay by|payment (method|option)s?|upi|gpay|phonepe|paytm|card|cash on delivery|cod|neft|cheque)\b/i],
 ];
-export const FACT_NAMES: Record<FactKey, string> = { hours: "opening hours", address: "address", delivery: "delivery", returns: "returns", payments: "payment methods" };
+export const FACT_NAMES: Record<FactKey, string> = {
+  hours: "opening hours",
+  address: "address",
+  delivery: "delivery",
+  returns: "returns",
+  payments: "payment methods",
+};
 
 const words = (s: string) =>
   s
@@ -59,7 +70,36 @@ const words = (s: string) =>
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length > 2 && !STOP.has(w));
-const STOP = new Set(["the", "and", "you", "your", "for", "are", "can", "what", "how", "is", "do", "does", "have", "has", "with", "this", "that", "please", "kya", "hai", "aap", "mujhe", "will", "would", "there", "any", "get", "about"]);
+const STOP = new Set([
+  "the",
+  "and",
+  "you",
+  "your",
+  "for",
+  "are",
+  "can",
+  "what",
+  "how",
+  "is",
+  "do",
+  "does",
+  "have",
+  "has",
+  "with",
+  "this",
+  "that",
+  "please",
+  "kya",
+  "hai",
+  "aap",
+  "mujhe",
+  "will",
+  "would",
+  "there",
+  "any",
+  "get",
+  "about",
+]);
 
 /** The owner's answers that best match a message, by shared words with the title and example questions. */
 export function scoreAnswers(text: string, answers: CannedAnswer[], limit = 5): { answer: CannedAnswer; score: number }[] {
@@ -68,13 +108,15 @@ export function scoreAnswers(text: string, answers: CannedAnswer[], limit = 5): 
   return answers
     .filter((a) => a.enabled)
     .map((a) => {
-      const best = Math.max(...[a.title, ...a.examples].map((e) => {
-        const w = new Set(words(e));
-        if (!w.size) return 0;
-        let hit = 0;
-        for (const x of q) if (w.has(x)) hit++;
-        return hit / Math.max(Math.min(q.size, w.size), 1);
-      }));
+      const best = Math.max(
+        ...[a.title, ...a.examples].map((e) => {
+          const w = new Set(words(e));
+          if (!w.size) return 0;
+          let hit = 0;
+          for (const x of q) if (w.has(x)) hit++;
+          return hit / Math.max(Math.min(q.size, w.size), 1);
+        }),
+      );
       return { answer: a, score: best };
     })
     .filter((s) => s.score > 0)
@@ -131,19 +173,27 @@ export const decisive = (c: Classification) => c.confidence >= 0.85 || c.intent 
 export const MIN_CONFIDENCE = 0.6;
 
 /** What the model is asked. It picks from fixed choices; it never writes what the customer reads. */
-export function classifierPrompt(business: string, text: string, recent: string[], candidates: CannedAnswer[], facts: BusinessFacts): { system: string; user: string } {
+export function classifierPrompt(
+  business: string,
+  text: string,
+  recent: string[],
+  candidates: CannedAnswer[],
+  facts: BusinessFacts,
+): { system: string; user: string } {
   const factKeys = (Object.keys(FACT_NAMES) as FactKey[]).filter((k) => facts[k]);
   return {
     system: [
       `You sort messages that customers send to ${business}, a small business. You never answer them yourself.`,
-      "Reply with JSON only: {\"intent\": one of order_status, balance, answer, fact, greeting, thanks, human, sensitive, other; \"answerId\": the id of the matching saved answer or null; \"fact\": one of " +
+      'Reply with JSON only: {"intent": one of order_status, balance, answer, fact, greeting, thanks, human, sensitive, other; "answerId": the id of the matching saved answer or null; "fact": one of ' +
         `${factKeys.join(", ") || "none"} or null; "orderNumber": the order number the customer gives, or null; "topic": one of refund, complaint, legal, anger, negotiation, cancellation, or null; "confidence": 0 to 1; "summary": one sentence saying what the customer wants}.`,
       "Use sensitive with a topic for refunds, complaints, legal threats, anger, price negotiation and cancellations. Use human when they ask for a person in any language.",
       "Use answer only when one saved answer fully answers the message. Use other for anything else, including questions unrelated to this business.",
     ].join("\n"),
     user: [
       recent.length ? `Earlier in this conversation:\n${recent.map((r) => `- ${r.slice(0, 200)}`).join("\n")}` : "",
-      candidates.length ? `Saved answers:\n${candidates.map((c) => `- ${c.id}: ${c.title}${c.examples.length ? ` (for example: ${c.examples.slice(0, 3).join("; ")})` : ""}`).join("\n")}` : "Saved answers: none",
+      candidates.length
+        ? `Saved answers:\n${candidates.map((c) => `- ${c.id}: ${c.title}${c.examples.length ? ` (for example: ${c.examples.slice(0, 3).join("; ")})` : ""}`).join("\n")}`
+        : "Saved answers: none",
       `Message:\n${text.slice(0, 1500)}`,
     ]
       .filter(Boolean)
@@ -172,7 +222,8 @@ export function parseClassification(raw: unknown, rules: Classification, candida
   const fact = typeof o.fact === "string" && o.fact in FACT_NAMES && facts[o.fact as FactKey] ? (o.fact as FactKey) : null;
   const topic = TOPIC_SET.has(o.topic as HumanTopic) ? (o.topic as HumanTopic) : null;
   const confidence = typeof o.confidence === "number" && o.confidence >= 0 && o.confidence <= 1 ? o.confidence : 0.5;
-  const orderNumber = typeof o.orderNumber === "string" && /^[A-Za-z0-9#-]{3,20}$/.test(o.orderNumber) ? o.orderNumber.replace(/^#/, "").toUpperCase() : rules.orderNumber;
+  const orderNumber =
+    typeof o.orderNumber === "string" && /^[A-Za-z0-9#-]{3,20}$/.test(o.orderNumber) ? o.orderNumber.replace(/^#/, "").toUpperCase() : rules.orderNumber;
   const summary = typeof o.summary === "string" && o.summary.trim() ? o.summary.trim().slice(0, 200) : rules.summary;
   const fixed: Classification = { intent, answerId, fact, orderNumber, topic, confidence, summary, method: "model" };
   if (intent === "answer" && !answerId) return { ...fixed, intent: "other", confidence: Math.min(confidence, 0.4) };

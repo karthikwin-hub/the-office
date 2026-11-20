@@ -25,7 +25,10 @@ export class BooksOrderSource implements OrderSource {
   forContact(who: { phone?: string | null; email?: string | null; partyId?: string | null }) {
     const email = who.email?.toLowerCase();
     return this.books.orders
-      .filter((o) => (who.partyId && o.partyId === who.partyId) || (who.phone && o.phone && samePhone(o.phone, who.phone)) || (email && o.email.toLowerCase() === email))
+      .filter(
+        (o) =>
+          (who.partyId && o.partyId === who.partyId) || (who.phone && o.phone && samePhone(o.phone, who.phone)) || (email && o.email.toLowerCase() === email),
+      )
       .sort((a, b) => (a.placedOn < b.placedOn ? 1 : -1));
   }
 }
@@ -37,29 +40,75 @@ export function orderBelongsTo(o: Order, who: { phone?: string | null; email?: s
   return Boolean(who.email && o.email && o.email.toLowerCase() === who.email.toLowerCase());
 }
 
-export const STATUS_WORDS: Record<OrderStatus, string> = { received: "received", packed: "packed and ready to go", dispatched: "on its way", delivered: "delivered", cancelled: "cancelled" };
+export const STATUS_WORDS: Record<OrderStatus, string> = {
+  received: "received",
+  packed: "packed and ready to go",
+  dispatched: "on its way",
+  delivered: "delivered",
+  cancelled: "cancelled",
+};
 
 const HEADERS: Record<string, keyof Order | "placed" | "expected"> = {
-  number: "number", order: "number", "order number": "number", "order no": "number", "order id": "number",
-  customer: "customer", name: "customer", "customer name": "customer",
-  phone: "phone", mobile: "phone", "phone number": "phone", whatsapp: "phone",
-  email: "email", "e-mail": "email",
-  items: "items", item: "items", products: "items", description: "items",
-  status: "status", state: "status",
-  placed: "placed", date: "placed", "order date": "placed", "placed on": "placed",
-  expected: "expected", "expected on": "expected", "delivery date": "expected", eta: "expected",
-  tracking: "tracking", "tracking link": "tracking", awb: "tracking", "tracking number": "tracking",
-  note: "note", notes: "note",
+  number: "number",
+  order: "number",
+  "order number": "number",
+  "order no": "number",
+  "order id": "number",
+  customer: "customer",
+  name: "customer",
+  "customer name": "customer",
+  phone: "phone",
+  mobile: "phone",
+  "phone number": "phone",
+  whatsapp: "phone",
+  email: "email",
+  "e-mail": "email",
+  items: "items",
+  item: "items",
+  products: "items",
+  description: "items",
+  status: "status",
+  state: "status",
+  placed: "placed",
+  date: "placed",
+  "order date": "placed",
+  "placed on": "placed",
+  expected: "expected",
+  "expected on": "expected",
+  "delivery date": "expected",
+  eta: "expected",
+  tracking: "tracking",
+  "tracking link": "tracking",
+  awb: "tracking",
+  "tracking number": "tracking",
+  note: "note",
+  notes: "note",
 };
 
 const STATUS_ALIASES: Record<string, OrderStatus> = {
-  new: "received", received: "received", placed: "received", confirmed: "received", processing: "received", pending: "received",
-  packed: "packed", ready: "packed",
-  shipped: "dispatched", dispatched: "dispatched", "in transit": "dispatched", "out for delivery": "dispatched", sent: "dispatched",
-  delivered: "delivered", completed: "delivered", done: "delivered", fulfilled: "delivered",
-  cancelled: "cancelled", canceled: "cancelled", refunded: "cancelled",
+  new: "received",
+  received: "received",
+  placed: "received",
+  confirmed: "received",
+  processing: "received",
+  pending: "received",
+  packed: "packed",
+  ready: "packed",
+  shipped: "dispatched",
+  dispatched: "dispatched",
+  "in transit": "dispatched",
+  "out for delivery": "dispatched",
+  sent: "dispatched",
+  delivered: "delivered",
+  completed: "delivered",
+  done: "delivered",
+  fulfilled: "delivered",
+  cancelled: "cancelled",
+  canceled: "cancelled",
+  refunded: "cancelled",
 };
-export const statusFrom = (s: string): OrderStatus | null => STATUS_ALIASES[s.trim().toLowerCase()] ?? (OrderStatus.safeParse(s.trim().toLowerCase()).success ? (s.trim().toLowerCase() as OrderStatus) : null);
+export const statusFrom = (s: string): OrderStatus | null =>
+  STATUS_ALIASES[s.trim().toLowerCase()] ?? (OrderStatus.safeParse(s.trim().toLowerCase()).success ? (s.trim().toLowerCase() as OrderStatus) : null);
 
 /** Accepts 2026-11-05, 05/11/2026 and 5-11-2026, Indian order. */
 function dateFrom(s: string): string | null {
@@ -74,7 +123,7 @@ export function importOrders(books: Books, content: string, today: string, link:
   const rows = parseCsv(content).filter((r) => r.some((c) => c.trim()));
   if (rows.length < 2) throw new Error("The file needs a header row and at least one order.");
   const cols = rows[0]!.map((h) => HEADERS[h.trim().toLowerCase()] ?? null);
-  if (!cols.includes("number")) throw new Error("No order number column. Name one of the columns \"Order number\".");
+  if (!cols.includes("number")) throw new Error('No order number column. Name one of the columns "Order number".');
   const out: OrdersImportResult = { added: 0, updated: 0, skipped: [] };
   const now = new Date().toISOString();
   for (const [i, r] of rows.slice(1).entries()) {
@@ -122,7 +171,9 @@ export function importOrders(books: Books, content: string, today: string, link:
 
 /** "order 1042 dispatched https://track…" from an owner on WhatsApp. */
 export function parseOrderCommand(text: string): { number: string; status: OrderStatus; tracking: string | null } | null {
-  const m = /^\s*order\s+#?([A-Za-z0-9-]{2,40})\s+(new|received|placed|packed|ready|shipped|dispatched|sent|delivered|done|cancelled|canceled)\b\s*(.*)$/i.exec(text);
+  const m = /^\s*order\s+#?([A-Za-z0-9-]{2,40})\s+(new|received|placed|packed|ready|shipped|dispatched|sent|delivered|done|cancelled|canceled)\b\s*(.*)$/i.exec(
+    text,
+  );
   if (!m) return null;
   const status = statusFrom(m[2]!);
   return status ? { number: norm(m[1]!), status, tracking: m[3]!.trim().slice(0, 500) || null } : null;

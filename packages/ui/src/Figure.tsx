@@ -18,7 +18,12 @@ export function Figure({ figureId, tone, children, label }: FigureProps) {
   const cls = `figure${tone ? ` figure-${tone}` : ""}`;
   if (!figureId) return <span className={cls}>{children}</span>;
   return (
-    <button type="button" className={`${cls} figure-link`} onClick={() => open(figureId)} aria-label={label ? `${label}: show where this comes from` : undefined}>
+    <button
+      type="button"
+      className={`${cls} figure-link`}
+      onClick={() => open(figureId)}
+      aria-label={label ? `${label}: show where this comes from` : undefined}
+    >
       {children}
     </button>
   );

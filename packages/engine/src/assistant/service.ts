@@ -1,4 +1,13 @@
-import { type AssistantDoc, type AssistantMail, type AssistantView, assistantAddress, type CalEvent, type Decision, type StagedChange, type Task } from "@office/contracts";
+import {
+  type AssistantDoc,
+  type AssistantMail,
+  type AssistantView,
+  assistantAddress,
+  type CalEvent,
+  type Decision,
+  type StagedChange,
+  type Task,
+} from "@office/contracts";
 import { addDays } from "../dates";
 import { inr } from "../money";
 import type { OfficeService } from "../office";
@@ -51,7 +60,11 @@ export function figureCheck(office: OfficeService, text: string, partyId: string
     const ok = unit ? [...known].some((k) => Math.abs(k - paise) <= paise * 0.05) : near(paise);
     if (!ok) issues.push(`${m[0].trim()} is not an invoice, bill or balance in the books.`);
   }
-  const numbers = new Set([...office.books.invoices.map((i) => i.number.toLowerCase()), ...office.books.bills.map((b) => b.number.toLowerCase()), ...office.books.quotes.map((q) => q.number.toLowerCase())]);
+  const numbers = new Set([
+    ...office.books.invoices.map((i) => i.number.toLowerCase()),
+    ...office.books.bills.map((b) => b.number.toLowerCase()),
+    ...office.books.quotes.map((q) => q.number.toLowerCase()),
+  ]);
   for (const m of text.matchAll(/\b(?:invoice|bill|inv|quotation|quote)\s*(?:no\.?|number|#)?\s*([A-Z0-9][A-Z0-9/-]*\d[A-Z0-9/-]*)/gi)) {
     if (!numbers.has(m[1]!.toLowerCase())) issues.push(`${m[1]} is not an invoice, bill or quotation number in the books.`);
   }
@@ -67,10 +80,18 @@ export function replyTemplate(office: OfficeService, mail: Pick<AssistantMail, "
   if (party?.kind === "customer") {
     const owed = openInvoices(office.ledger).filter((o) => o.partyId === party.id);
     const total = owed.reduce((s, o) => s + o.outstandingPaise, 0);
-    if (/payment|outstanding|balance|statement|due/i.test(mail.text) && total > 0) lines.push("", `For your records, our books show ₹${inr(total)} open on ${owed.length === 1 ? `invoice ${owed[0]!.number}` : `${owed.length} invoices: ${owed.map((o) => o.number).join(", ")}`}.`);
+    if (/payment|outstanding|balance|statement|due/i.test(mail.text) && total > 0)
+      lines.push(
+        "",
+        `For your records, our books show ₹${inr(total)} open on ${owed.length === 1 ? `invoice ${owed[0]!.number}` : `${owed.length} invoices: ${owed.map((o) => o.number).join(", ")}`}.`,
+      );
   }
   lines.push("", `I will come back to you on this by ${by}.`, "", "Regards,", ownerName, office.books.business.name);
-  return { subject: /^re:/i.test(mail.subject) ? mail.subject : `Re: ${mail.subject || "your email"}`, body: lines.join("\n"), promise: `Reply to ${mail.fromName ?? mail.from} about ${mail.subject || "their email"}` };
+  return {
+    subject: /^re:/i.test(mail.subject) ? mail.subject : `Re: ${mail.subject || "your email"}`,
+    body: lines.join("\n"),
+    promise: `Reply to ${mail.fromName ?? mail.from} about ${mail.subject || "their email"}`,
+  };
 }
 
 /** The Executive Assistant: one private record per owner, kept apart from the books. */
@@ -97,7 +118,9 @@ export class AssistantService {
 
   drafts(owner: string): StagedChange[] {
     if (!this.hired) return [];
-    return this.load(owner).drafts.filter((d) => d.status === "pending").sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return this.load(owner)
+      .drafts.filter((d) => d.status === "pending")
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
   decidedDrafts(owner: string): StagedChange[] {
     return this.load(owner).drafts.filter((d) => d.status !== "pending");
@@ -110,7 +133,13 @@ export class AssistantService {
       hired: this.hired,
       owner: ownerKey(owner),
       address: assistantAddress(this.office.settings().ingestEmail),
-      calendar: { connected: Boolean(doc.calendar), label: doc.calendar?.label ?? null, fetchedAt: doc.calendar?.fetchedAt ?? null, error: doc.calendar?.error ?? null, events: doc.calendar?.events.length ?? 0 },
+      calendar: {
+        connected: Boolean(doc.calendar),
+        label: doc.calendar?.label ?? null,
+        fetchedAt: doc.calendar?.fetchedAt ?? null,
+        error: doc.calendar?.error ?? null,
+        events: doc.calendar?.events.length ?? 0,
+      },
       forwarding: fwd ? (JSON.parse(fwd) as AssistantView["forwarding"]) : null,
       days: this.hired ? buildAgenda(this.office, doc, ownerKey(owner), { drafts: this.drafts(owner).length, now }) : [],
       tasks: doc.tasks.sort((a, b) => (a.status !== b.status ? (a.status === "open" ? -1 : 1) : (a.due ?? "9999") < (b.due ?? "9999") ? -1 : 1)),
@@ -123,7 +152,8 @@ export class AssistantService {
   setCalendar(owner: string, r: { events: CalEvent[]; label: string | null } | { error: string }) {
     const doc = this.load(owner);
     const at = new Date().toISOString();
-    if ("error" in r) doc.calendar = { label: doc.calendar?.label ?? null, events: doc.calendar?.events ?? [], fetchedAt: doc.calendar?.fetchedAt ?? null, error: r.error };
+    if ("error" in r)
+      doc.calendar = { label: doc.calendar?.label ?? null, events: doc.calendar?.events ?? [], fetchedAt: doc.calendar?.fetchedAt ?? null, error: r.error };
     else doc.calendar = { label: r.label, events: r.events, fetchedAt: at, error: null };
     this.save(owner, doc);
   }
@@ -135,7 +165,16 @@ export class AssistantService {
 
   addTask(owner: string, input: { title: string; due?: string | null }, source: Task["source"] = "you"): Task {
     const doc = this.load(owner);
-    const task: Task = { id: newId("task"), title: input.title.trim().slice(0, 200), due: input.due ?? null, status: "open", source, createdAt: new Date().toISOString(), doneAt: null, snoozedUntil: null };
+    const task: Task = {
+      id: newId("task"),
+      title: input.title.trim().slice(0, 200),
+      due: input.due ?? null,
+      status: "open",
+      source,
+      createdAt: new Date().toISOString(),
+      doneAt: null,
+      snoozedUntil: null,
+    };
     doc.tasks.unshift(task);
     doc.tasks = doc.tasks.filter((t) => t.status === "open" || (t.doneAt && Date.now() - Date.parse(t.doneAt) < 14 * 86_400_000)).slice(0, 200);
     this.save(owner, doc);
@@ -161,15 +200,22 @@ export class AssistantService {
     const r = parseReminder(text, this.office.asOf);
     if (r) {
       this.addTask(owner, r, "whatsapp");
-      const when = r.due ? new Date(`${r.due}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" }) : null;
+      const when = r.due
+        ? new Date(`${r.due}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })
+        : null;
       return `Noted: ${r.title}${when ? `, for ${when}` : ""}. It will be in your morning brief. Send "done ${r.title.split(" ").slice(0, 2).join(" ").toLowerCase()}" when it is done.`;
     }
     const d = parseDone(text);
     if (d) {
       const doc = this.load(owner);
-      const words = d.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+      const words = d
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
       const open = doc.tasks.filter((t) => t.status === "open");
-      const hit = open.find((t) => t.title.toLowerCase() === d.toLowerCase()) ?? open.find((t) => words.length > 0 && words.every((w) => t.title.toLowerCase().includes(w)));
+      const hit =
+        open.find((t) => t.title.toLowerCase() === d.toLowerCase()) ??
+        open.find((t) => words.length > 0 && words.every((w) => t.title.toLowerCase().includes(w)));
       if (!hit) return null;
       this.changeTask(owner, hit.id, { status: "done" });
       return `Marked done: ${hit.title}.`;
@@ -186,7 +232,12 @@ export class AssistantService {
    * An email the owner forwarded. A reply is drafted for their own desk, checked against the books;
    * a bill or invoice is left to the Accountant by the host, which says so with `outcome`.
    */
-  receiveMail(owner: string, mail: Omit<AssistantMail, "id" | "outcome" | "note" | "at"> & { at?: string }, draft: DraftText | null, outcome: AssistantMail["outcome"] = "drafted"): { mail: AssistantMail; draft: StagedChange | null } {
+  receiveMail(
+    owner: string,
+    mail: Omit<AssistantMail, "id" | "outcome" | "note" | "at"> & { at?: string },
+    draft: DraftText | null,
+    outcome: AssistantMail["outcome"] = "drafted",
+  ): { mail: AssistantMail; draft: StagedChange | null } {
     const doc = this.load(owner);
     const rec: AssistantMail = { ...mail, id: newId("mail"), at: mail.at ?? istNow(), outcome, note: "" };
     let card: StagedChange | null = null;
@@ -199,9 +250,23 @@ export class AssistantService {
         kind: "email_reply",
         createdAt: rec.at,
         title: `Reply to ${rec.fromName ?? rec.replyTo}: ${rec.subject || "(no subject)"}`.slice(0, 160),
-        summary: issues.length ? `Check before sending: ${issues.join(" ")}` : `A reply to the email you forwarded${party ? `, from ${party.name}` : ""}. It goes from the office in your name, with replies coming to you.`,
-        evidence: [{ label: "The email you forwarded", ref: { kind: "email", id: rec.id } }, ...(party ? [{ label: party.name, ref: { kind: "party" as const, id: party.id } }] : [])],
-        payload: { to: rec.replyTo, subject: draft.subject, body: draft.body, inReplyTo: rec.messageId, mailId: rec.id, quoted: rec.text.slice(0, 1500), promise: draft.promise ?? null, checks: issues.map((label) => ({ label, ok: false })) },
+        summary: issues.length
+          ? `Check before sending: ${issues.join(" ")}`
+          : `A reply to the email you forwarded${party ? `, from ${party.name}` : ""}. It goes from the office in your name, with replies coming to you.`,
+        evidence: [
+          { label: "The email you forwarded", ref: { kind: "email", id: rec.id } },
+          ...(party ? [{ label: party.name, ref: { kind: "party" as const, id: party.id } }] : []),
+        ],
+        payload: {
+          to: rec.replyTo,
+          subject: draft.subject,
+          body: draft.body,
+          inReplyTo: rec.messageId,
+          mailId: rec.id,
+          quoted: rec.text.slice(0, 1500),
+          promise: draft.promise ?? null,
+          checks: issues.map((label) => ({ label, ok: false })),
+        },
         status: "pending",
       };
       doc.drafts.unshift(card);
@@ -285,9 +350,24 @@ export class AssistantService {
     const owed = openInvoices(this.office.ledger).sort((x, y) => y.outstandingPaise - x.outstandingPaise);
     const big = customers.find((c) => c.id === owed[0]?.partyId) ?? customers[0];
     const other = customers.find((c) => c !== big) ?? customers[1];
-    const ev = (day: number, from: string, to: string, title: string, who: { email: string; name: string | null }[] = [], location: string | null = null): CalEvent => {
+    const ev = (
+      day: number,
+      from: string,
+      to: string,
+      title: string,
+      who: { email: string; name: string | null }[] = [],
+      location: string | null = null,
+    ): CalEvent => {
       const date = addDays(this.office.asOf, day);
-      return { id: `sample-${day}-${from}`, title, start: new Date(`${date}T${from}:00+05:30`).toISOString(), end: new Date(`${date}T${to}:00+05:30`).toISOString(), allDay: false, location, attendees: [{ email: ownerKey(owner), name: null }, ...who] };
+      return {
+        id: `sample-${day}-${from}`,
+        title,
+        start: new Date(`${date}T${from}:00+05:30`).toISOString(),
+        end: new Date(`${date}T${to}:00+05:30`).toISOString(),
+        allDay: false,
+        location,
+        attendees: [{ email: ownerKey(owner), name: null }, ...who],
+      };
     };
     const with_ = (p: typeof big) => (p ? [{ email: p.contact.email.toLowerCase(), name: p.contact.name }] : []);
     return [
@@ -330,9 +410,23 @@ export function readForward(text: string): { from: string; name: string | null; 
   const who = head.from ?? "";
   const email = /<([^>\s]+@[^>\s]+)>/.exec(who)?.[1] ?? /([^\s<>"]+@[^\s<>"]+)/.exec(who)?.[1];
   if (!email) return null;
-  const name = who.replace(/<[^>]*>/, "").replace(/["*]/g, "").trim() || null;
-  const body = lines.slice(i).map((l) => l.replace(/^> ?/, "")).join("\n").trim();
-  return { from: email.toLowerCase(), name: name && name.toLowerCase() !== email.toLowerCase() ? name : null, subject: head.subject ?? "", body: body.slice(0, 6000), note };
+  const name =
+    who
+      .replace(/<[^>]*>/, "")
+      .replace(/["*]/g, "")
+      .trim() || null;
+  const body = lines
+    .slice(i)
+    .map((l) => l.replace(/^> ?/, ""))
+    .join("\n")
+    .trim();
+  return {
+    from: email.toLowerCase(),
+    name: name && name.toLowerCase() !== email.toLowerCase() ? name : null,
+    subject: head.subject ?? "",
+    body: body.slice(0, 6000),
+    note,
+  };
 }
 
 /** The demo's assistant: hired, with a sample week, two tasks and one forwarded email drafted for the desk. */
@@ -346,6 +440,13 @@ export function seedSampleAssistant(office: OfficeService, owner: { name: string
   const customer = openInvoices(office.ledger).sort((a, b) => b.daysOverdue - a.daysOverdue)[0];
   const party = customer ? office.ledger.findParty(customer.partyId) : office.books.parties.find((p) => p.kind === "customer");
   if (!party) return;
-  const mail = { from: party.contact.email, fromName: party.contact.name, replyTo: party.contact.email, subject: "Statement of account", text: `Dear Sir,\n\nPlease share our statement of account and confirm what is outstanding. We are closing our books for the month.\n\nRegards,\n${party.contact.name}\n${party.name}`, messageId: null };
+  const mail = {
+    from: party.contact.email,
+    fromName: party.contact.name,
+    replyTo: party.contact.email,
+    subject: "Statement of account",
+    text: `Dear Sir,\n\nPlease share our statement of account and confirm what is outstanding. We are closing our books for the month.\n\nRegards,\n${party.contact.name}\n${party.name}`,
+    messageId: null,
+  };
   ea.receiveMail(owner.email, mail, replyTemplate(office, mail, owner.name));
 }

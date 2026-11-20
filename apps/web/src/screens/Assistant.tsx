@@ -6,13 +6,25 @@ import { api } from "../api/client";
 import { q, useChange } from "../api/queries";
 import { count, isOwner, Section, shortDate } from "./common";
 
-const ist = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+const ist = (iso: string) =>
+  new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
 const KIND_LABEL: Record<AgendaItem["kind"], string> = { event: "Meeting", task: "To do", office: "The office", focus: "Free time" };
 
 /** The Executive Assistant's room: one owner's next three days, their tasks, and how their calendar and email reach it. */
 export function AssistantPanel({ preview }: { preview?: boolean }) {
-  if (!isOwner()) return <p className="muted">The assistant works for each owner on their own. Their calendar, emails and tasks are not shown to anyone else, the accountant included.</p>;
-  if (preview) return <p className="muted">Once hired, this room plans your next three days from your calendar, your tasks and what the office needs from you, and drafts replies to the emails you forward to it. Only you see it.</p>;
+  if (!isOwner())
+    return (
+      <p className="muted">
+        The assistant works for each owner on their own. Their calendar, emails and tasks are not shown to anyone else, the accountant included.
+      </p>
+    );
+  if (preview)
+    return (
+      <p className="muted">
+        Once hired, this room plans your next three days from your calendar, your tasks and what the office needs from you, and drafts replies to the emails you
+        forward to it. Only you see it.
+      </p>
+    );
   return <AssistantRoom />;
 }
 
@@ -35,7 +47,11 @@ function AssistantRoom() {
 function Agenda({ days, connected }: { days: AgendaDay[]; connected: boolean }) {
   return (
     <Section title="Your next three days">
-      {connected ? null : <p className="section-lede">Give the assistant your calendar below and your meetings appear here, with a brief from the books before each meeting with a customer or supplier.</p>}
+      {connected ? null : (
+        <p className="section-lede">
+          Give the assistant your calendar below and your meetings appear here, with a brief from the books before each meeting with a customer or supplier.
+        </p>
+      )}
       <div className="ea-days">
         {days.map((d, n) => (
           <section key={d.date} className={`ea-day${n === 0 ? " ea-today" : ""}`} aria-label={d.label}>
@@ -85,7 +101,12 @@ function Tasks({ tasks }: { tasks: Task[] }) {
           {open.map((t) => (
             <li key={t.id}>
               <label>
-                <input type="checkbox" checked={false} disabled={change.isPending} onChange={() => change.mutate(() => api.changeTask(t.id, { status: "done" }))} />
+                <input
+                  type="checkbox"
+                  checked={false}
+                  disabled={change.isPending}
+                  onChange={() => change.mutate(() => api.changeTask(t.id, { status: "done" }))}
+                />
                 <span>{t.title}</span>
               </label>
               <span className="muted">
@@ -108,7 +129,14 @@ function Tasks({ tasks }: { tasks: Task[] }) {
       >
         <label htmlFor="ea-task">New task</label>
         <div className="row">
-          <input id="ea-task" className="input" maxLength={200} placeholder="Send the revised quote to Mehta Builders" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            id="ea-task"
+            className="input"
+            maxLength={200}
+            placeholder="Send the revised quote to Mehta Builders"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
           <input aria-label="Due on" className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
           <button type="submit" className="btn" disabled={change.isPending || !title.trim()}>
             Add
@@ -134,7 +162,12 @@ function Tasks({ tasks }: { tasks: Task[] }) {
   );
 }
 
-const OUTCOME: Record<AssistantView["mail"][number]["outcome"], string> = { drafted: "Reply drafted", to_accountant: "Passed to the Accountant", to_customer_service: "Passed to Customer Service", noted: "Kept" };
+const OUTCOME: Record<AssistantView["mail"][number]["outcome"], string> = {
+  drafted: "Reply drafted",
+  to_accountant: "Passed to the Accountant",
+  to_customer_service: "Passed to Customer Service",
+  noted: "Kept",
+};
 
 function Mail({ v }: { v: AssistantView }) {
   if (!v.mail.length) return null;
@@ -153,7 +186,8 @@ function Mail({ v }: { v: AssistantView }) {
       </ul>
       {v.mail.some((m) => m.outcome === "drafted") ? (
         <p className="muted">
-          Drafted replies wait on <Link to="/desk">your desk</Link>. You can change them before they go; they leave from the office's address in your name, and answers come back to you.
+          Drafted replies wait on <Link to="/desk">your desk</Link>. You can change them before they go; they leave from the office's address in your name, and
+          answers come back to you.
         </p>
       ) : null}
     </Section>
@@ -182,9 +216,15 @@ function CalendarLink({ v }: { v: AssistantView }) {
         <>
           <ol className="ea-steps">
             <li>
-              Open <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer">Google Calendar settings</a> on a computer.
+              Open{" "}
+              <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer">
+                Google Calendar settings
+              </a>{" "}
+              on a computer.
             </li>
-            <li>Under <em>Settings for my calendars</em>, choose your calendar, then <em>Integrate calendar</em>.</li>
+            <li>
+              Under <em>Settings for my calendars</em>, choose your calendar, then <em>Integrate calendar</em>.
+            </li>
             <li>
               Copy the <em>Secret address in iCal format</em> and paste it here. Outlook and Apple calendars give a similar private link.
             </li>
@@ -197,14 +237,26 @@ function CalendarLink({ v }: { v: AssistantView }) {
             }}
           >
             <label htmlFor="ea-cal">Secret address</label>
-            <input id="ea-cal" className="input" type="url" inputMode="url" autoComplete="off" placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <input
+              id="ea-cal"
+              className="input"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
             <div className="row">
               <button type="submit" className="btn btn-primary" disabled={change.isPending || !url.trim()}>
                 {change.isPending ? "Reading it" : "Read my calendar"}
               </button>
             </div>
           </form>
-          <p className="muted">The address is kept encrypted and only read by the office. Anyone with it can see your calendar, so do not share it elsewhere; you can make a new one in Google at any time.</p>
+          <p className="muted">
+            The address is kept encrypted and only read by the office. Anyone with it can see your calendar, so do not share it elsewhere; you can make a new
+            one in Google at any time.
+          </p>
         </>
       )}
       {change.error ? <p className="form-error">{change.error.message}</p> : null}
@@ -217,18 +269,30 @@ function Forwarding({ v }: { v: AssistantView }) {
   return (
     <Section title="Emails for the assistant">
       <p>
-        Forward an email to <strong className="ea-address">{v.address}</strong> and a reply is drafted for your desk. A bill or invoice goes to the Accountant. Only mail from your own address is read.
+        Forward an email to <strong className="ea-address">{v.address}</strong> and a reply is drafted for your desk. A bill or invoice goes to the Accountant.
+        Only mail from your own address is read.
       </p>
       <details>
         <summary>Forward automatically from Gmail</summary>
         <ol className="ea-steps">
-          <li>In Gmail, open Settings, then <em>Forwarding and POP/IMAP</em>, and add the address above.</li>
+          <li>
+            In Gmail, open Settings, then <em>Forwarding and POP/IMAP</em>, and add the address above.
+          </li>
           <li>Gmail sends a confirmation code to the assistant; it appears here. Enter it in Gmail.</li>
-          <li>Make a filter (for example, mail from your customers' domains) and choose <em>Forward it to</em> the assistant.</li>
+          <li>
+            Make a filter (for example, mail from your customers' domains) and choose <em>Forward it to</em> the assistant.
+          </li>
         </ol>
         {v.forwarding ? (
           <p className="ea-code">
-            Gmail's confirmation code{v.forwarding.code ? <>: <strong>{v.forwarding.code}</strong></> : " arrived"}
+            Gmail's confirmation code
+            {v.forwarding.code ? (
+              <>
+                : <strong>{v.forwarding.code}</strong>
+              </>
+            ) : (
+              " arrived"
+            )}
             {v.forwarding.link ? (
               <>
                 {" "}

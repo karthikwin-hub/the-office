@@ -1,4 +1,14 @@
-import { type BusinessFacts, type CannedAnswer, CS_CHANNEL_NAMES, type CsMessage, type CsThreadView, type CustomerDeskView, type FactKey, type Order, type OrderStatus } from "@office/contracts";
+import {
+  type BusinessFacts,
+  type CannedAnswer,
+  CS_CHANNEL_NAMES,
+  type CsMessage,
+  type CsThreadView,
+  type CustomerDeskView,
+  type FactKey,
+  type Order,
+  type OrderStatus,
+} from "@office/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../api/client";
@@ -17,7 +27,17 @@ const FACTS: { key: FactKey | "humanContact"; label: string; hint: string }[] = 
 ];
 
 const STATUSES: OrderStatus[] = ["received", "packed", "dispatched", "delivered", "cancelled"];
-const GROUND: Record<string, string> = { answer: "Your saved answer", fact: "Your business facts", order: "Their order", balance: "Their invoices", verify: "Asked who they are", greeting: "Courtesy", holding: "Holding reply", owner: "You", none: "" };
+const GROUND: Record<string, string> = {
+  answer: "Your saved answer",
+  fact: "Your business facts",
+  order: "Their order",
+  balance: "Their invoices",
+  verify: "Asked who they are",
+  greeting: "Courtesy",
+  holding: "Holding reply",
+  owner: "You",
+  none: "",
+};
 
 /** The Customer Service agent's desk: its conversations, what it answers from, and where customers reach it. */
 export function CustomerServicePanel({ preview }: { preview?: boolean }) {
@@ -46,7 +66,13 @@ function Conversations({ d, readOnly }: { d: CustomerDeskView; readOnly: boolean
         <ul className="cs-threads">
           {d.threads.map((t) => (
             <li key={t.id}>
-              <button type="button" className="cs-thread-row" aria-current={open === t.id} aria-expanded={open === t.id} onClick={() => setOpen(open === t.id ? null : t.id)}>
+              <button
+                type="button"
+                className="cs-thread-row"
+                aria-current={open === t.id}
+                aria-expanded={open === t.id}
+                onClick={() => setOpen(open === t.id ? null : t.id)}
+              >
                 <span className="cs-thread-name">{t.name}</span>
                 <span className="muted">
                   {CS_CHANNEL_NAMES[t.channel]}, {shortDate(t.lastAt)} {ist(t.lastAt)}
@@ -91,7 +117,11 @@ function Thread({ id, readOnly }: { id: string; readOnly: boolean }) {
   const v = t.data;
   return (
     <div className="cs-conversation">
-      {v.thread.verifiedContact ? <p className="muted">Confirmed as {v.thread.verifiedContact}.</p> : <p className="muted">The agent has not confirmed who this is, so it tells them nothing about orders or accounts.</p>}
+      {v.thread.verifiedContact ? (
+        <p className="muted">Confirmed as {v.thread.verifiedContact}.</p>
+      ) : (
+        <p className="muted">The agent has not confirmed who this is, so it tells them nothing about orders or accounts.</p>
+      )}
       <Messages messages={v.messages} />
       {v.pending.length ? <p className="cs-waiting">Waiting on your desk: {v.pending.join("; ")}</p> : null}
       {readOnly ? null : (
@@ -165,7 +195,9 @@ function Facts({ facts, readOnly }: { facts: BusinessFacts; readOnly: boolean })
   const dirty = FACTS.some((f) => draft[f.key] !== facts[f.key]);
   return (
     <Section title="Business facts">
-      <p className="section-lede">The agent answers these questions word for word from what you write here. Leave one empty and it hands that question to you.</p>
+      <p className="section-lede">
+        The agent answers these questions word for word from what you write here. Leave one empty and it hands that question to you.
+      </p>
       <form
         className="cs-form"
         onSubmit={(e) => {
@@ -176,7 +208,16 @@ function Facts({ facts, readOnly }: { facts: BusinessFacts; readOnly: boolean })
         {FACTS.map((f) => (
           <div key={f.key}>
             <label htmlFor={`fact-${f.key}`}>{f.label}</label>
-            <textarea id={`fact-${f.key}`} className="input" rows={2} maxLength={600} placeholder={f.hint} value={draft[f.key]} readOnly={readOnly} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
+            <textarea
+              id={`fact-${f.key}`}
+              className="input"
+              rows={2}
+              maxLength={600}
+              placeholder={f.hint}
+              value={draft[f.key]}
+              readOnly={readOnly}
+              onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+            />
           </div>
         ))}
         {readOnly ? null : (
@@ -198,7 +239,15 @@ function Answers({ answers, readOnly }: { answers: CannedAnswer[]; readOnly: boo
   const change = useChange();
   const [form, setForm] = useState(blank);
   const [editing, setEditing] = useState<string | null>(null);
-  const body = (f: typeof blank, enabled = true) => ({ title: f.title.trim(), examples: f.examples.split("\n").map((x) => x.trim()).filter(Boolean), answer: f.answer.trim(), enabled });
+  const body = (f: typeof blank, enabled = true) => ({
+    title: f.title.trim(),
+    examples: f.examples
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean),
+    answer: f.answer.trim(),
+    enabled,
+  });
   const submit = () => {
     const b = body(form, editing ? (answers.find((a) => a.id === editing)?.enabled ?? true) : true);
     if (!b.title || !b.answer) return;
@@ -221,7 +270,12 @@ function Answers({ answers, readOnly }: { answers: CannedAnswer[]; readOnly: boo
             {a.examples.length ? <p className="muted">Asked as: {a.examples.map((x) => `"${x}"`).join(", ")}</p> : null}
             {readOnly ? null : (
               <div className="row">
-                <button type="button" className="btn btn-quiet" onClick={() => change.mutate(() => api.saveAnswer(a.id, { title: a.title, examples: a.examples, answer: a.answer, enabled: !a.enabled }))} disabled={change.isPending}>
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  onClick={() => change.mutate(() => api.saveAnswer(a.id, { title: a.title, examples: a.examples, answer: a.answer, enabled: !a.enabled }))}
+                  disabled={change.isPending}
+                >
                   {a.enabled ? "Turn off" : "Turn on"}
                 </button>
                 <button
@@ -251,11 +305,25 @@ function Answers({ answers, readOnly }: { answers: CannedAnswer[]; readOnly: boo
           }}
         >
           <label htmlFor="ans-title">{editing ? "Change the answer" : "Add an answer"}</label>
-          <input id="ans-title" className="input" maxLength={120} placeholder="Short name, for example GST invoice" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input
+            id="ans-title"
+            className="input"
+            maxLength={120}
+            placeholder="Short name, for example GST invoice"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
           <label htmlFor="ans-examples">How customers ask it, one per line</label>
           <textarea id="ans-examples" className="input" rows={3} value={form.examples} onChange={(e) => setForm({ ...form, examples: e.target.value })} />
           <label htmlFor="ans-answer">Your answer</label>
-          <textarea id="ans-answer" className="input" rows={3} maxLength={2000} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} />
+          <textarea
+            id="ans-answer"
+            className="input"
+            rows={3}
+            maxLength={2000}
+            value={form.answer}
+            onChange={(e) => setForm({ ...form, answer: e.target.value })}
+          />
           <div className="row">
             <button type="submit" className="btn" disabled={change.isPending || !form.title.trim() || !form.answer.trim()}>
               {editing ? "Save the answer" : "Add the answer"}
@@ -290,7 +358,10 @@ function Orders({ readOnly }: { readOnly: boolean }) {
   const list: Order[] = orders.data?.orders ?? [];
   return (
     <Section title={`Orders (${list.length})`}>
-      <p className="section-lede">What the agent tells customers who ask where their order is. It shows an order only to the phone or email on it. Update one from WhatsApp too: "order 1042 dispatched" and the tracking link.</p>
+      <p className="section-lede">
+        What the agent tells customers who ask where their order is. It shows an order only to the phone or email on it. Update one from WhatsApp too: "order
+        1042 dispatched" and the tracking link.
+      </p>
       {list.length ? (
         <table className="ledger">
           <thead>
@@ -316,7 +387,13 @@ function Orders({ readOnly }: { readOnly: boolean }) {
                   {readOnly ? (
                     o.status
                   ) : (
-                    <select className="input" aria-label={`Status of ${o.number}`} value={o.status} disabled={change.isPending} onChange={(e) => change.mutate(() => api.saveOrder(o.id, { status: e.target.value as OrderStatus }))}>
+                    <select
+                      className="input"
+                      aria-label={`Status of ${o.number}`}
+                      value={o.status}
+                      disabled={change.isPending}
+                      onChange={(e) => change.mutate(() => api.saveOrder(o.id, { status: e.target.value as OrderStatus }))}
+                    >
                       {STATUSES.map((s) => (
                         <option key={s} value={s}>
                           {s}
@@ -338,21 +415,76 @@ function Orders({ readOnly }: { readOnly: boolean }) {
             className="cs-form"
             onSubmit={(e) => {
               e.preventDefault();
-              change.mutate(() => api.addOrder({ number: form.number, customer: form.customer, phone: form.phone, email: form.email, items: form.items, expectedOn: form.expectedOn || null }), { onSuccess: () => setForm(newOrder) });
+              change.mutate(
+                () =>
+                  api.addOrder({
+                    number: form.number,
+                    customer: form.customer,
+                    phone: form.phone,
+                    email: form.email,
+                    items: form.items,
+                    expectedOn: form.expectedOn || null,
+                  }),
+                { onSuccess: () => setForm(newOrder) },
+              );
             }}
           >
             <label htmlFor="ord-number">Add an order</label>
             <div className="row">
-              <input id="ord-number" className="input" placeholder="Order number" required maxLength={40} value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
-              <input className="input" aria-label="Customer" placeholder="Customer" required maxLength={120} value={form.customer} onChange={(e) => setForm({ ...form, customer: e.target.value })} />
+              <input
+                id="ord-number"
+                className="input"
+                placeholder="Order number"
+                required
+                maxLength={40}
+                value={form.number}
+                onChange={(e) => setForm({ ...form, number: e.target.value })}
+              />
+              <input
+                className="input"
+                aria-label="Customer"
+                placeholder="Customer"
+                required
+                maxLength={120}
+                value={form.customer}
+                onChange={(e) => setForm({ ...form, customer: e.target.value })}
+              />
             </div>
             <div className="row">
-              <input className="input" aria-label="Phone" placeholder="Phone" maxLength={30} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <input className="input" aria-label="Email" placeholder="Email" type="email" maxLength={200} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <input
+                className="input"
+                aria-label="Phone"
+                placeholder="Phone"
+                maxLength={30}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+              <input
+                className="input"
+                aria-label="Email"
+                placeholder="Email"
+                type="email"
+                maxLength={200}
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
             </div>
             <div className="row">
-              <input className="input" aria-label="Items" placeholder="Items" maxLength={500} value={form.items} onChange={(e) => setForm({ ...form, items: e.target.value })} />
-              <input className="input" aria-label="Expected on" type="date" value={form.expectedOn} onChange={(e) => setForm({ ...form, expectedOn: e.target.value })} />
+              <input
+                className="input"
+                aria-label="Items"
+                placeholder="Items"
+                maxLength={500}
+                value={form.items}
+                onChange={(e) => setForm({ ...form, items: e.target.value })}
+              />
+              <input
+                className="input"
+                aria-label="Expected on"
+                type="date"
+                value={form.expectedOn}
+                onChange={(e) => setForm({ ...form, expectedOn: e.target.value })}
+              />
             </div>
             <div className="row">
               <button type="submit" className="btn" disabled={change.isPending || !form.number.trim() || !form.customer.trim()}>
@@ -373,7 +505,9 @@ function Orders({ readOnly }: { readOnly: boolean }) {
                 change.mutate(() => api.importOrders(content), {
                   onSuccess: (r) => {
                     const x = r as Awaited<ReturnType<typeof api.importOrders>>;
-                    setImported(`${count(x.added, "order")} added, ${x.updated} updated${x.skipped.length ? `; skipped: ${x.skipped.slice(0, 3).join("; ")}` : ""}.`);
+                    setImported(
+                      `${count(x.added, "order")} added, ${x.updated} updated${x.skipped.length ? `; skipped: ${x.skipped.slice(0, 3).join("; ")}` : ""}.`,
+                    );
                   },
                 });
                 e.target.value = "";
@@ -397,10 +531,21 @@ function Channels({ d, readOnly }: { d: CustomerDeskView; readOnly: boolean }) {
       <dl className="cs-form">
         <dt>WhatsApp</dt>
         <dd>
-          Customers who message your own WhatsApp Business number are answered here. Connect the number under Settings, Channels; the office's shared number is never used for customers. {d.whatsappThisMonth} replies this month; Meta does not charge for the first 1,000 conversations a business answers each month.
+          Customers who message your own WhatsApp Business number are answered here. Connect the number under Settings, Channels; the office's shared number is
+          never used for customers. {d.whatsappThisMonth} replies this month; Meta does not charge for the first 1,000 conversations a business answers each
+          month.
         </dd>
         <dt>Email</dt>
-        <dd>{d.supportEmail ? <>Forward your customer email to <strong>{d.supportEmail}</strong>, or give customers this address. Replies come from the office with this address to answer to.</> : "Hire the agent to get a support address."}</dd>
+        <dd>
+          {d.supportEmail ? (
+            <>
+              Forward your customer email to <strong>{d.supportEmail}</strong>, or give customers this address. Replies come from the office with this address
+              to answer to.
+            </>
+          ) : (
+            "Hire the agent to get a support address."
+          )}
+        </dd>
         <dt>Website chat</dt>
         <dd>
           {d.widget.enabled ? "On." : "Off."}{" "}
@@ -420,7 +565,13 @@ function Channels({ d, readOnly }: { d: CustomerDeskView; readOnly: boolean }) {
           <label htmlFor="cs-retention">Keep conversations for</label>
         </dt>
         <dd>
-          <select id="cs-retention" className="input" value={d.retentionMonths} disabled={readOnly || change.isPending} onChange={(e) => change.mutate(() => api.saveCsSettings(Number(e.target.value)))}>
+          <select
+            id="cs-retention"
+            className="input"
+            value={d.retentionMonths}
+            disabled={readOnly || change.isPending}
+            onChange={(e) => change.mutate(() => api.saveCsSettings(Number(e.target.value)))}
+          >
             {[3, 6, 12, 24, 36].map((m) => (
               <option key={m} value={m}>
                 {m} months

@@ -99,7 +99,14 @@ export function computeGstr1(l: Ledger, period: string, gstin: string = l.books.
     for (const line of inv.lines) {
       add(byRate.get(line.gstRate) ?? byRate.set(line.gstRate, zero()).get(line.gstRate)!, line);
       const key = `${line.hsn}|${line.unit}|${String(line.gstRate).padStart(3, "0")}`;
-      const h = hsn.get(key) ?? { hsn: line.hsn, uqc: line.unit, rt: line.gstRate, desc: line.skuId ? l.sku(line.skuId).category : line.description, qty: 0, ...zero() };
+      const h = hsn.get(key) ?? {
+        hsn: line.hsn,
+        uqc: line.unit,
+        rt: line.gstRate,
+        desc: line.skuId ? l.sku(line.skuId).category : line.description,
+        qty: 0,
+        ...zero(),
+      };
       h.qty += line.qty;
       add(h, line);
       hsn.set(key, h);
@@ -120,7 +127,17 @@ export function computeGstr1(l: Ledger, period: string, gstin: string = l.books.
       } else {
         for (const [rt, v] of rates) {
           const key = `${inter ? "INTER" : "INTRA"}|${inv.placeOfSupply}|${String(rt).padStart(3, "0")}`;
-          const row = b2cs.get(key) ?? { sply_ty: inter ? ("INTER" as const) : ("INTRA" as const), pos: inv.placeOfSupply, typ: "OE", rt, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+          const row = b2cs.get(key) ?? {
+            sply_ty: inter ? ("INTER" as const) : ("INTRA" as const),
+            pos: inv.placeOfSupply,
+            typ: "OE",
+            rt,
+            txval: 0,
+            iamt: 0,
+            camt: 0,
+            samt: 0,
+            csamt: 0,
+          };
           row.txval = r2(Math.round(row.txval * 100) + v.taxablePaise);
           row.iamt = r2(Math.round(row.iamt * 100) + v.igstPaise);
           row.camt = r2(Math.round(row.camt * 100) + v.cgstPaise);
@@ -139,9 +156,9 @@ export function computeGstr1(l: Ledger, period: string, gstin: string = l.books.
       rchrg: inv.reverseCharge ? "Y" : "N",
       inv_typ: "R",
       itms: rates.map(([rt, v]) => ({
-          num: rt * 100 + 1,
-          itm_det: { rt, txval: r2(v.taxablePaise), iamt: r2(v.igstPaise), camt: r2(v.cgstPaise), samt: r2(v.sgstPaise), csamt: 0 },
-        })),
+        num: rt * 100 + 1,
+        itm_det: { rt, txval: r2(v.taxablePaise), iamt: r2(v.igstPaise), camt: r2(v.cgstPaise), samt: r2(v.sgstPaise), csamt: 0 },
+      })),
     });
     rows.set(party.gstin, list);
   }

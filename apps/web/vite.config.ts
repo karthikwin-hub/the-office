@@ -5,7 +5,13 @@ import react from "@vitejs/plugin-react";
 import { marked } from "marked";
 
 /** The legal pages are written in docs/legal and become HTML at build time, so the app serves the same text the lawyer reviewed. */
-const LEGAL_FILES = { terms: "terms.md", privacy: "privacy-notice.md", subprocessors: "subprocessors.md", "data-processing": "data-processing.md", "ai-notice": "customer-notice-template.md" };
+const LEGAL_FILES = {
+  terms: "terms.md",
+  privacy: "privacy-notice.md",
+  subprocessors: "subprocessors.md",
+  "data-processing": "data-processing.md",
+  "ai-notice": "customer-notice-template.md",
+};
 
 function legalPages(): Plugin {
   const id = "virtual:legal";

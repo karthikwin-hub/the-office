@@ -29,7 +29,15 @@ describe("the edit log in the office's SQLite", () => {
     const sql = sqlStorage();
     const o = new OfficeService(loadBooks(), { asOf: AS_OF, edits: new SqlEditLog(sql) });
     expect(new SqlEditLog(sql).count()).toBe(1);
-    const res = dispatch(o, { method: "POST", path: ROUTES.complianceFiled("gstr1:2026-10"), query: new URLSearchParams(), body: { filedOn: AS_OF, ack: "AA2711" }, role: "accountant", user: { name: "Rajesh Mehta", email: "r@m.in" }, mode: "live" });
+    const res = dispatch(o, {
+      method: "POST",
+      path: ROUTES.complianceFiled("gstr1:2026-10"),
+      query: new URLSearchParams(),
+      body: { filedOn: AS_OF, ack: "AA2711" },
+      role: "accountant",
+      user: { name: "Rajesh Mehta", email: "r@m.in" },
+      mode: "live",
+    });
     expect(res.status).toBe(200);
     const log = new SqlEditLog(sql);
     const entries = log.all();
@@ -53,7 +61,15 @@ describe("the edit log in the office's SQLite", () => {
 });
 
 describe("the daily copy in India", () => {
-  const env = (over: Partial<Env> = {}) => ({ INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.amazonaws.com/", INDIA_BACKUP_BUCKET: "office-books-in", INDIA_BACKUP_REGION: "ap-south-1", INDIA_BACKUP_ACCESS_KEY_ID: "AKIDEXAMPLE", INDIA_BACKUP_SECRET_ACCESS_KEY: "test-secret-key", ...over }) as Env;
+  const env = (over: Partial<Env> = {}) =>
+    ({
+      INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.amazonaws.com/",
+      INDIA_BACKUP_BUCKET: "office-books-in",
+      INDIA_BACKUP_REGION: "ap-south-1",
+      INDIA_BACKUP_ACCESS_KEY_ID: "AKIDEXAMPLE",
+      INDIA_BACKUP_SECRET_ACCESS_KEY: "test-secret-key",
+      ...over,
+    }) as Env;
   afterEach(() => (vi.unstubAllGlobals(), vi.restoreAllMocks()));
 
   it("is skipped until all five settings are there", () => {
@@ -74,7 +90,12 @@ describe("the daily copy in India", () => {
 
   it("seals each copy with a fresh data key wrapped by the office's own key, and the restore tool opens it", async () => {
     const secret = "backup-test-root-key-not-a-real-one";
-    const books = { office: "off_kaveri2345678abcd", at: "2026-11-04T21:30:00.000Z", books: { business: { name: "Kaveri Electricals", gstin: "29ABCDE1234F1Z5" } }, edits: [{ seq: 1, by: "Anil" }] };
+    const books = {
+      office: "off_kaveri2345678abcd",
+      at: "2026-11-04T21:30:00.000Z",
+      books: { business: { name: "Kaveri Electricals", gstin: "29ABCDE1234F1Z5" } },
+      edits: [{ seq: 1, by: "Anil" }],
+    };
     const sealed = await sealedCopy(secret, books.office, books);
     const text = new TextDecoder("latin1").decode(sealed);
     expect(text).not.toContain("Kaveri");
@@ -92,7 +113,10 @@ describe("the daily copy in India", () => {
     await expect(openBackup(secret, changed)).rejects.toThrow();
     // A header moved onto another office's copy fails: it is bound into the ciphertext, and the data key to the office.
     const other = await sealedCopy(secret, "off_shah234567890abcd", books);
-    const swapped = new Uint8Array([...sealed.subarray(0, 8 + new DataView(sealed.buffer).getUint32(4)), ...other.subarray(8 + new DataView(other.buffer).getUint32(4))]);
+    const swapped = new Uint8Array([
+      ...sealed.subarray(0, 8 + new DataView(sealed.buffer).getUint32(4)),
+      ...other.subarray(8 + new DataView(other.buffer).getUint32(4)),
+    ]);
     await expect(openBackup(secret, swapped)).rejects.toThrow();
   });
 
@@ -113,10 +137,24 @@ describe("the daily copy in India", () => {
     expect(h["x-amz-date"]).toBe("20261104T213000Z");
 
     const signed = "content-type;host;x-amz-content-sha256;x-amz-date";
-    const canonical = ["PUT", "/office-books-in/kaveri/2026-11-04.json.gz", "", "content-type:application/gzip", "host:s3.ap-south-1.amazonaws.com", `x-amz-content-sha256:${payload}`, "x-amz-date:20261104T213000Z", "", signed, payload].join("\n");
+    const canonical = [
+      "PUT",
+      "/office-books-in/kaveri/2026-11-04.json.gz",
+      "",
+      "content-type:application/gzip",
+      "host:s3.ap-south-1.amazonaws.com",
+      `x-amz-content-sha256:${payload}`,
+      "x-amz-date:20261104T213000Z",
+      "",
+      signed,
+      payload,
+    ].join("\n");
     const scope = "20261104/ap-south-1/s3/aws4_request";
     const toSign = ["AWS4-HMAC-SHA256", "20261104T213000Z", scope, createHash("sha256").update(canonical).digest("hex")].join("\n");
-    const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>((key, part) => createHmac("sha256", key).update(part).digest(), Buffer.from("AWS4test-secret-key"));
+    const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>(
+      (key, part) => createHmac("sha256", key).update(part).digest(),
+      Buffer.from("AWS4test-secret-key"),
+    );
     const signature = createHmac("sha256", k).update(toSign).digest("hex");
     expect(h.authorization).toBe(`AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/${scope}, SignedHeaders=${signed}, Signature=${signature}`);
   });
@@ -125,7 +163,9 @@ describe("the daily copy in India", () => {
     const seen: { url: string; init: RequestInit }[] = [];
     vi.stubGlobal("fetch", async (url: URL, init: RequestInit) => {
       seen.push({ url: String(url), init });
-      return new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/2026-11-04.json.gz</Key></Contents><Contents><Key>kaveri/a&amp;b</Key></Contents><NextContinuationToken>1/x=</NextContinuationToken></ListBucketResult>");
+      return new Response(
+        "<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/2026-11-04.json.gz</Key></Contents><Contents><Key>kaveri/a&amp;b</Key></Contents><NextContinuationToken>1/x=</NextContinuationToken></ListBucketResult>",
+      );
     });
     const page = await listObjects(backupTarget(env())!, "kaveri/", "0/y=", new Date("2026-11-04T21:30:00Z"));
     expect(page).toEqual({ keys: ["kaveri/2026-11-04.json.gz", "kaveri/a&b"], truncated: true, next: "1/x=" });
@@ -134,21 +174,45 @@ describe("the daily copy in India", () => {
     expect(url).toBe(`https://s3.ap-south-1.amazonaws.com/office-books-in?${qs}`);
     const h = init.headers as Record<string, string>;
     const empty = createHash("sha256").update("").digest("hex");
-    const canonical = ["GET", "/office-books-in", qs, "host:s3.ap-south-1.amazonaws.com", `x-amz-content-sha256:${empty}`, "x-amz-date:20261104T213000Z", "", "host;x-amz-content-sha256;x-amz-date", empty].join("\n");
+    const canonical = [
+      "GET",
+      "/office-books-in",
+      qs,
+      "host:s3.ap-south-1.amazonaws.com",
+      `x-amz-content-sha256:${empty}`,
+      "x-amz-date:20261104T213000Z",
+      "",
+      "host;x-amz-content-sha256;x-amz-date",
+      empty,
+    ].join("\n");
     const scope = "20261104/ap-south-1/s3/aws4_request";
     const toSign = ["AWS4-HMAC-SHA256", "20261104T213000Z", scope, createHash("sha256").update(canonical).digest("hex")].join("\n");
-    const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>((key, part) => createHmac("sha256", key).update(part).digest(), Buffer.from("AWS4test-secret-key"));
+    const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>(
+      (key, part) => createHmac("sha256", key).update(part).digest(),
+      Buffer.from("AWS4test-secret-key"),
+    );
     expect(h.authorization).toContain(`Signature=${createHmac("sha256", k).update(toSign).digest("hex")}`);
 
     // A store that says there is more without a token for it still says there is more.
-    vi.stubGlobal("fetch", async () => new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/1</Key></Contents></ListBucketResult>"));
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/1</Key></Contents></ListBucketResult>"),
+    );
     expect(await listObjects(backupTarget(env())!, "kaveri/")).toEqual({ keys: ["kaveri/1"], truncated: true, next: null });
   });
 
   it("deletes in one request with the body's MD5, and fails when the store keeps any key", async () => {
     // Workers have MD5 in WebCrypto for this; Node does not, so the test lends it Node's.
     const digest = crypto.subtle.digest.bind(crypto.subtle);
-    vi.spyOn(crypto.subtle, "digest").mockImplementation(async (alg, data) => (alg === "MD5" ? new Uint8Array(createHash("md5").update(new Uint8Array(data as ArrayBuffer)).digest()).buffer : digest(alg, data)));
+    vi.spyOn(crypto.subtle, "digest").mockImplementation(async (alg, data) =>
+      alg === "MD5"
+        ? new Uint8Array(
+            createHash("md5")
+              .update(new Uint8Array(data as ArrayBuffer))
+              .digest(),
+          ).buffer
+        : digest(alg, data),
+    );
     const seen: { url: string; init: RequestInit }[] = [];
     let answer = "<DeleteResult></DeleteResult>";
     vi.stubGlobal("fetch", async (url: URL, init: RequestInit) => (seen.push({ url: String(url), init }), new Response(answer)));
@@ -157,11 +221,18 @@ describe("the daily copy in India", () => {
     expect(url).toBe("https://s3.ap-south-1.amazonaws.com/office-books-in?delete=");
     expect(init.method).toBe("POST");
     const body = new Uint8Array(init.body as ArrayBuffer);
-    expect(new TextDecoder().decode(body)).toContain("<Quiet>true</Quiet><Object><Key>kaveri/1.json.gz</Key></Object><Object><Key>kaveri/&lt;2&gt;</Key></Object>");
+    expect(new TextDecoder().decode(body)).toContain(
+      "<Quiet>true</Quiet><Object><Key>kaveri/1.json.gz</Key></Object><Object><Key>kaveri/&lt;2&gt;</Key></Object>",
+    );
     expect((init.headers as Record<string, string>)["content-md5"]).toBe(createHash("md5").update(body).digest("base64"));
     answer = "<DeleteResult><Error><Key>kaveri/1.json.gz</Key><Code>AccessDenied</Code></Error></DeleteResult>";
     await expect(deleteObjects(backupTarget(env())!, ["kaveri/1.json.gz"])).rejects.toThrow(/AccessDenied/);
-    await expect(deleteObjects(backupTarget(env())!, Array.from({ length: 1001 }, (_, i) => `k${i}`))).rejects.toThrow(/1,000/);
+    await expect(
+      deleteObjects(
+        backupTarget(env())!,
+        Array.from({ length: 1001 }, (_, i) => `k${i}`),
+      ),
+    ).rejects.toThrow(/1,000/);
   });
 
   it("says why when the store refuses", async () => {

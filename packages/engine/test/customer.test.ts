@@ -1,7 +1,20 @@
 import type { TrustLevel } from "@office/contracts";
 import { loadBooks, sampleCustomerService } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
-import { classifyRules, converse, decisive, dispatch, handleWhatsApp, type Inbound, newSession, OfficeService, parseClassification, parseOrderCommand, render, WEB_THREADS_PER_DAY } from "../src";
+import {
+  classifyRules,
+  converse,
+  decisive,
+  dispatch,
+  handleWhatsApp,
+  type Inbound,
+  newSession,
+  OfficeService,
+  parseClassification,
+  parseOrderCommand,
+  render,
+  WEB_THREADS_PER_DAY,
+} from "../src";
 
 const ASOF = "2026-11-04";
 
@@ -17,7 +30,11 @@ function office(trustLevel: TrustLevel = "trusted") {
 const wa = (text: string, key = "919489305653"): Inbound => ({ channel: "whatsapp", key, name: "Rakesh Sharma", text, at: new Date().toISOString() });
 const web = (text: string, key = "visitor-test-000000000001"): Inbound => ({ channel: "web", key, name: "Website visitor", text });
 const say = (o: OfficeService, m: Inbound) => o.customers.receive(m, o.customers.prepare(m).rules);
-const lastOut = (o: OfficeService, threadId: string) => o.customers.threadView(threadId).messages.filter((m) => m.direction === "out").at(-1);
+const lastOut = (o: OfficeService, threadId: string) =>
+  o.customers
+    .threadView(threadId)
+    .messages.filter((m) => m.direction === "out")
+    .at(-1);
 const cards = (o: OfficeService, kind: string) => o.books.staged.filter((s) => s.kind === kind && s.status === "pending");
 
 describe("reading a customer's message", () => {
@@ -37,7 +54,9 @@ describe("reading a customer's message", () => {
   it("keeps the rules' call on sensitive topics and drops answers the model made up", () => {
     const { setup } = sampleCustomerService(ASOF);
     const rules = classifyRules("I want a refund", setup.answers, setup.facts);
-    expect(parseClassification({ intent: "answer", answerId: "ans-gst-invoice", confidence: 0.99, summary: "x" }, rules, setup.answers, setup.facts).intent).toBe("sensitive");
+    expect(
+      parseClassification({ intent: "answer", answerId: "ans-gst-invoice", confidence: 0.99, summary: "x" }, rules, setup.answers, setup.facts).intent,
+    ).toBe("sensitive");
     const plain = classifyRules("hmm, something about wires", setup.answers, setup.facts);
     const invented = parseClassification({ intent: "answer", answerId: "ans-made-up", confidence: 0.95, summary: "x" }, plain, setup.answers, setup.facts);
     expect(invented.answerId).toBeNull();
@@ -187,7 +206,11 @@ describe("what only the owner answers", () => {
     say(o, wa("Two coils were damaged and I want a refund"));
     const card = cards(o, "handoff")[0]!;
     o.customers.takeEffects();
-    o.decide(card.id, { action: "approve", edits: { reply: "Sorry about that. Send a photo and we will replace them tomorrow.", saveAs: "Damaged goods" } }, "Asha");
+    o.decide(
+      card.id,
+      { action: "approve", edits: { reply: "Sorry about that. Send a photo and we will replace them tomorrow.", saveAs: "Damaged goods" } },
+      "Asha",
+    );
     const sent = o.customers.takeEffects().filter((e) => e.kind === "send");
     expect(sent.at(-1)).toMatchObject({ channel: "whatsapp", to: "919489305653" });
     expect(o.books.customerService.answers.some((a) => a.title === "Damaged goods")).toBe(true);
@@ -250,9 +273,10 @@ describe("trust", () => {
 
 describe("the owner on WhatsApp", () => {
   const owner = { name: "Asha Kulkarni", email: "asha@kaveri.test", role: "owner" as const };
-  const turn = (o: OfficeService, text: string, who: { name: string; email: string; role: "owner" | "accountant" } = owner) => handleWhatsApp(o, who, newSession(), { id: `m-${Math.random()}`, text, at: new Date().toISOString() }, { base: "https://office.test" });
+  const turn = (o: OfficeService, text: string, who: { name: string; email: string; role: "owner" | "accountant" } = owner) =>
+    handleWhatsApp(o, who, newSession(), { id: `m-${Math.random()}`, text, at: new Date().toISOString() }, { base: "https://office.test" });
 
-  it("answers a handed-over customer with \"reply N\", and updates an order with \"order N status\"", () => {
+  it('answers a handed-over customer with "reply N", and updates an order with "order N status"', () => {
     const o = office();
     say(o, wa("I want a refund for the damaged coils"));
     const ref = (cards(o, "handoff")[0]!.payload as { ref: number }).ref;
@@ -266,14 +290,19 @@ describe("the owner on WhatsApp", () => {
   });
 
   it("reads an owner's order update", () => {
-    expect(parseOrderCommand("order 1042 dispatched https://track.example/1")).toMatchObject({ number: "1042", status: "dispatched", tracking: "https://track.example/1" });
+    expect(parseOrderCommand("order 1042 dispatched https://track.example/1")).toMatchObject({
+      number: "1042",
+      status: "dispatched",
+      tracking: "https://track.example/1",
+    });
     expect(parseOrderCommand("order so-1043 shipped")).toMatchObject({ number: "SO-1043", status: "dispatched", tracking: null });
     expect(parseOrderCommand("hello")).toBeNull();
   });
 });
 
 describe("changing facts and orders", () => {
-  const send = (o: OfficeService, path: string, body: unknown) => dispatch(o, { method: "PUT", path, query: new URLSearchParams(), body, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });
+  const send = (o: OfficeService, path: string, body: unknown) =>
+    dispatch(o, { method: "PUT", path, query: new URLSearchParams(), body, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });
 
   it("changes only the fields a change names", () => {
     const o = office();

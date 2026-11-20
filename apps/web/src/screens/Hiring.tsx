@@ -10,7 +10,10 @@ export function HiringScreen() {
   const owner = isOwner();
   const states = hiring.data?.agents ?? [];
   const byTeam = (hired: boolean) =>
-    TEAMS.map((t) => ({ team: t, states: AGENTS.filter((a) => a.team === t.id).flatMap((a) => states.filter((s) => s.agentId === a.id && s.hired === hired)) })).filter((g) => g.states.length);
+    TEAMS.map((t) => ({
+      team: t,
+      states: AGENTS.filter((a) => a.team === t.id).flatMap((a) => states.filter((s) => s.agentId === a.id && s.hired === hired)),
+    })).filter((g) => g.states.length);
   const staff = byTeam(true);
   const vacancies = byTeam(false);
   const open = vacancies.reduce((n, g) => n + g.states.length, 0);

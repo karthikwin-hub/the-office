@@ -26,7 +26,15 @@ const asOf = "2026-11-05";
 const fresh = () => new OfficeService(emptyBooks({ owner: "Nisha Rao", email: "nisha@example.in", asOf }), { asOf, ingestEmail: "bills@example.in" });
 const call = (office: OfficeService, path: string, method = "GET", body?: unknown) => {
   const [p, qs] = path.split("?");
-  const req: ApiRequest = { method, path: p!, query: new URLSearchParams(qs), body, role: "owner", user: { name: "Nisha Rao", email: "nisha@example.in" }, mode: "live" };
+  const req: ApiRequest = {
+    method,
+    path: p!,
+    query: new URLSearchParams(qs),
+    body,
+    role: "owner",
+    user: { name: "Nisha Rao", email: "nisha@example.in" },
+    mode: "live",
+  };
   return dispatch(office, req);
 };
 
@@ -83,7 +91,14 @@ describe("a new, empty office", () => {
 
   it("the owner fills in the business once, and the GSTIN sets the state and PAN", () => {
     const o = fresh();
-    const business = { ...o.books.business, name: "Rao Hardware", legalName: "Rao Hardware LLP", gstin: "29ABCDE1234F1Z5", address: "12 MG Road, Bengaluru", asOf: "2020-01-01" };
+    const business = {
+      ...o.books.business,
+      name: "Rao Hardware",
+      legalName: "Rao Hardware LLP",
+      gstin: "29ABCDE1234F1Z5",
+      address: "12 MG Road, Bengaluru",
+      asOf: "2020-01-01",
+    };
     const res = call(o, ROUTES.settings, "PUT", { business });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(o.books.business).toMatchObject({ name: "Rao Hardware", gstin: "29ABCDE1234F1Z5", stateCode: "29", pan: "ABCDE1234F", asOf });
@@ -93,7 +108,8 @@ describe("a new, empty office", () => {
 
   it("hiring the rest of the team keeps every room working", () => {
     const o = fresh();
-    for (const a of AGENTS) if (a.id !== "office-manager" && a.id !== "accountant") expect(call(o, ROUTES.hire(a.id), "POST", { hired: true }).status).toBe(200);
+    for (const a of AGENTS)
+      if (a.id !== "office-manager" && a.id !== "accountant") expect(call(o, ROUTES.hire(a.id), "POST", { hired: true }).status).toBe(200);
     OfficeView.parse(o.officeView());
     for (const a of AGENTS) AgentRoomView.parse(o.agentRoom(a.id));
     o.runTrusted();

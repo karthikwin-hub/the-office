@@ -28,7 +28,16 @@ function r2() {
   const obj = (key: string) => {
     const v = m.get(key);
     if (!v) return null;
-    return { key, size: v.bytes.byteLength, httpMetadata: v.httpMetadata, customMetadata: v.customMetadata, get body() { return new Blob([v.bytes]).stream(); }, arrayBuffer: async () => v.bytes.slice().buffer };
+    return {
+      key,
+      size: v.bytes.byteLength,
+      httpMetadata: v.httpMetadata,
+      customMetadata: v.customMetadata,
+      get body() {
+        return new Blob([v.bytes]).stream();
+      },
+      arrayBuffer: async () => v.bytes.slice().buffer,
+    };
   };
   const bucket = {
     map: m,
@@ -38,7 +47,10 @@ function r2() {
     get: async (key: string) => obj(key),
     head: async (key: string) => obj(key),
     delete: async (keys: string | string[]) => void [keys].flat().forEach((k) => m.delete(k)),
-    list: async ({ prefix = "" }: { prefix?: string } = {}) => ({ objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => obj(k)!), truncated: false }),
+    list: async ({ prefix = "" }: { prefix?: string } = {}) => ({
+      objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => obj(k)!),
+      truncated: false,
+    }),
   };
   return bucket;
 }
@@ -54,7 +66,13 @@ function indiaStore() {
   const state = { keys, deletes, refuse: false, fetch: async (_u: URL | string, _i?: RequestInit) => new Response() };
   const digest = crypto.subtle.digest.bind(crypto.subtle);
   vi.spyOn(crypto.subtle, "digest").mockImplementation(async (alg, data) =>
-    alg === "MD5" ? new Uint8Array(createHash("md5").update(new Uint8Array(data as ArrayBuffer)).digest()).buffer : digest(alg, data),
+    alg === "MD5"
+      ? new Uint8Array(
+          createHash("md5")
+            .update(new Uint8Array(data as ArrayBuffer))
+            .digest(),
+        ).buffer
+      : digest(alg, data),
   );
   state.fetch = async (u: URL | string, init?: RequestInit) => {
     const url = new URL(String(u));
@@ -66,7 +84,9 @@ function indiaStore() {
       const all = [...keys].filter((k) => k.startsWith(prefix)).sort();
       const page = all.slice(0, 1000);
       const more = all.length > 1000;
-      return new Response(`<ListBucketResult><IsTruncated>${more}</IsTruncated>${page.map((k) => `<Contents><Key>${k}</Key></Contents>`).join("")}${more ? "<NextContinuationToken>t</NextContinuationToken>" : ""}</ListBucketResult>`);
+      return new Response(
+        `<ListBucketResult><IsTruncated>${more}</IsTruncated>${page.map((k) => `<Contents><Key>${k}</Key></Contents>`).join("")}${more ? "<NextContinuationToken>t</NextContinuationToken>" : ""}</ListBucketResult>`,
+      );
     }
     if (init?.method === "POST" && url.searchParams.has("delete")) {
       const body = new Uint8Array(init.body as ArrayBuffer);
@@ -147,12 +167,27 @@ type World = ReturnType<typeof makeEnv>;
 type Person = { cookie: string; id: string; email: string; name: string; uri?: string };
 
 const call = (w: World, who: Person | null, path: string, init: RequestInit = {}) =>
-  app.request(`${BASE}${path}`, { ...init, headers: { origin: BASE, ...(init.body && typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}), ...(init.headers as Record<string, string>) } }, w.env);
+  app.request(
+    `${BASE}${path}`,
+    {
+      ...init,
+      headers: {
+        origin: BASE,
+        ...(init.body && typeof init.body === "string" ? { "content-type": "application/json" } : {}),
+        ...(who ? { cookie: who.cookie } : {}),
+        ...(init.headers as Record<string, string>),
+      },
+    },
+    w.env,
+  );
 
 async function signUp(w: World, name: string, email: string): Promise<Person> {
   const res = await call(w, null, "/api/auth/sign-up/email", { method: "POST", body: JSON.stringify({ name, email, password: "a-long-password-1" }) });
   expect(res.status).toBe(200);
-  const cookie = (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  const cookie = (res.headers as unknown as { getSetCookie(): string[] })
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
   const meRes = await call(w, { cookie } as Person, ACCOUNT_ROUTES.me);
   if (meRes.status !== 200) throw new Error(`me ${meRes.status} ${await meRes.text()} cookie=${cookie.replace(/=[^;]+/g, "=…")}`);
   const me = (await meRes.json()) as { user: { id: string } };
@@ -161,7 +196,11 @@ async function signUp(w: World, name: string, email: string): Promise<Person> {
 
 /** Owners need two-factor sign-in before anything owner-only; this turns it on and keeps the new session. */
 async function twoStep(w: World, who: Person): Promise<Person> {
-  const enrolled = await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), who.cookie, "a-long-password-1");
+  const enrolled = await enrolTwoFactor(
+    (path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }),
+    who.cookie,
+    "a-long-password-1",
+  );
   Object.assign(who, { cookie: enrolled.cookie, uri: enrolled.uri });
   return who;
 }
@@ -197,11 +236,28 @@ const inOffice = (office: string, path: string) => path.replace(/^\/api\//, `/ap
 
 function signedMeta(body: unknown) {
   const raw = JSON.stringify(body);
-  return { body: raw, headers: { "content-type": "application/json", "x-hub-signature-256": `sha256=${createHmac("sha256", META_SECRET).update(raw).digest("hex")}` } };
+  return {
+    body: raw,
+    headers: { "content-type": "application/json", "x-hub-signature-256": `sha256=${createHmac("sha256", META_SECRET).update(raw).digest("hex")}` },
+  };
 }
 const waText = (from: string, text: string, phoneId = SHARED) => ({
   object: "whatsapp_business_account",
-  entry: [{ id: "waba-1", changes: [{ field: "messages", value: { metadata: { phone_number_id: phoneId }, contacts: [{ wa_id: from, profile: { name: "x" } }], messages: [{ id: `wamid.${Math.random()}`, from, timestamp: "1793000200", type: "text", text: { body: text } }] } }] }],
+  entry: [
+    {
+      id: "waba-1",
+      changes: [
+        {
+          field: "messages",
+          value: {
+            metadata: { phone_number_id: phoneId },
+            contacts: [{ wa_id: from, profile: { name: "x" } }],
+            messages: [{ id: `wamid.${Math.random()}`, from, timestamp: "1793000200", type: "text", text: { body: text } }],
+          },
+        },
+      ],
+    },
+  ],
 });
 
 let graph: ReturnType<typeof vi.fn>;
@@ -210,7 +266,10 @@ beforeEach(() => {
   vi.stubGlobal("fetch", graph);
 });
 afterEach(() => (vi.unstubAllGlobals(), vi.restoreAllMocks()));
-const repliesTo = (phone: string) => graph.mock.calls.filter(([, init]) => String((init as RequestInit | undefined)?.body ?? "").includes(phone)).map(([, init]) => JSON.parse(String((init as RequestInit).body)).text?.body as string);
+const repliesTo = (phone: string) =>
+  graph.mock.calls
+    .filter(([, init]) => String((init as RequestInit | undefined)?.body ?? "").includes(phone))
+    .map(([, init]) => JSON.parse(String((init as RequestInit).body)).text?.body as string);
 
 describe("accounts and offices", () => {
   it("shows each person only the offices they are in", async () => {
@@ -236,7 +295,10 @@ describe("accounts and offices", () => {
     const res = await call(w, p, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Anything" }) });
     expect(res.status).toBe(403);
     // Making an account now signs no one in; the link in the email does.
-    const made = await call(w, null, "/api/auth/sign-up/email", { method: "POST", body: JSON.stringify({ name: "Other Person", email: "other@person.test", password: "a-long-password-1" }) });
+    const made = await call(w, null, "/api/auth/sign-up/email", {
+      method: "POST",
+      body: JSON.stringify({ name: "Other Person", email: "other@person.test", password: "a-long-password-1" }),
+    });
     expect(await made.json()).toMatchObject({ token: null });
     expect(w.sent.some((m) => m.to === "other@person.test")).toBe(true);
   });
@@ -252,12 +314,16 @@ describe("accounts and offices", () => {
 describe("a forgotten password", () => {
   /** The plain-text body of a message the Worker sent, decoded from base64. */
   const bodyOf = (raw: string) => Buffer.from(raw.split("\r\n\r\n").slice(1).join("").replace(/\s+/g, ""), "base64").toString("utf8");
-  const signIn = (w: World, email: string, password: string) => call(w, null, "/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email, password }) });
+  const signIn = (w: World, email: string, password: string) =>
+    call(w, null, "/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email, password }) });
 
   it("sends a link that sets a new password once, and signs the old sessions out", async () => {
     const w = makeEnv();
     const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
-    const asked = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: anil.email, redirectTo: `${BASE}/?reset-password=1` }) });
+    const asked = await call(w, null, "/api/auth/request-password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email: anil.email, redirectTo: `${BASE}/?reset-password=1` }),
+    });
     expect(asked.status).toBe(200);
     const mail = w.sent.filter((m) => m.to === anil.email).pop()!;
     const link = /https?:\/\/\S+\/api\/auth\/reset-password\/\S+/.exec(bodyOf(mail.raw))![0];
@@ -280,7 +346,10 @@ describe("a forgotten password", () => {
 
   it("answers the same for an address with no account, and sends nothing", async () => {
     const w = makeEnv();
-    const res = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: "nobody@nowhere.test", redirectTo: `${BASE}/?reset-password=1` }) });
+    const res = await call(w, null, "/api/auth/request-password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email: "nobody@nowhere.test", redirectTo: `${BASE}/?reset-password=1` }),
+    });
     expect(res.status).toBe(200);
     expect(w.sent).toEqual([]);
   });
@@ -288,7 +357,10 @@ describe("a forgotten password", () => {
   it("will not send the link on to another site", async () => {
     const w = makeEnv();
     const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
-    const res = await call(w, null, "/api/auth/request-password-reset", { method: "POST", body: JSON.stringify({ email: anil.email, redirectTo: "https://evil.test/?reset-password=1" }) });
+    const res = await call(w, null, "/api/auth/request-password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email: anil.email, redirectTo: "https://evil.test/?reset-password=1" }),
+    });
     expect(res.status).toBe(403);
     expect(w.sent.filter((m) => m.to === anil.email)).toEqual([]);
   });
@@ -312,18 +384,26 @@ describe("one office cannot reach another", () => {
 
   it("sends each owner's requests only to their own office, whatever the request claims", async () => {
     const { w, anil, bina, A, B } = await twoOffices();
-    const res = await call(w, bina, `${inOffice(B, ROUTES.desk)}?officeId=${A}&office=${A}`, { headers: { "x-office-as": A, "x-partykit-room": A, [CALLER_HEADER]: JSON.stringify({ officeId: A, role: "owner" }) } });
+    const res = await call(w, bina, `${inOffice(B, ROUTES.desk)}?officeId=${A}&office=${A}`, {
+      headers: { "x-office-as": A, "x-partykit-room": A, [CALLER_HEADER]: JSON.stringify({ officeId: A, role: "owner" }) },
+    });
     expect(await res.json()).toEqual({ office: B, path: ROUTES.desk });
     await call(w, bina, inOffice(B, ROUTES.settings), { method: "PUT", body: JSON.stringify({ officeId: A }) });
     await call(w, anil, inOffice(A, ROUTES.desk));
     for (const s of w.seen) expect([s.stub, s.room, s.caller.officeId]).toEqual([s.stub, s.stub, s.stub]);
-    expect(w.seen.map((s) => [s.stub, s.caller.email])).toEqual([[B, bina.email], [B, bina.email], [A, anil.email]]);
+    expect(w.seen.map((s) => [s.stub, s.caller.email])).toEqual([
+      [B, bina.email],
+      [B, bina.email],
+      [A, anil.email],
+    ]);
   });
 
   it("seals every caller it sends to an office, and never passes on a caller or seal the browser sent", async () => {
     const { w, anil, A } = await twoOffices();
     const forged = JSON.stringify({ userId: "system", name: "x", email: "x@x", role: "owner", officeId: A });
-    await call(w, anil, `${inOffice(A, ROUTES.desk)}`, { headers: { [CALLER_HEADER]: forged, [CALLER_SEAL_HEADER]: "forged-seal-forged-seal-forged-seal-forged" } });
+    await call(w, anil, `${inOffice(A, ROUTES.desk)}`, {
+      headers: { [CALLER_HEADER]: forged, [CALLER_SEAL_HEADER]: "forged-seal-forged-seal-forged-seal-forged" },
+    });
     await (await call(w, anil, inOffice(A, ROUTES.officeExport))).arrayBuffer();
     expect(w.seen.map((s) => [s.path, s.caller.userId, s.sealed])).toEqual([
       ["/api/desk", anil.id, true],
@@ -334,7 +414,8 @@ describe("one office cannot reach another", () => {
 
   it("refuses ids that are not office ids, and offices that do not exist", async () => {
     const { w, anil } = await twoOffices();
-    for (const id of ["..", "%2e%2e", "off_AAAAAAAAAAAAAAAA", "off_short", "kaveri", "off_aaaaaaaaaaaaaaaa"]) expect((await call(w, anil, `/api/o/${id}/desk`)).status).toBe(404);
+    for (const id of ["..", "%2e%2e", "off_AAAAAAAAAAAAAAAA", "off_short", "kaveri", "off_aaaaaaaaaaaaaaaa"])
+      expect((await call(w, anil, `/api/o/${id}/desk`)).status).toBe(404);
     expect((await call(w, anil, "/api/desk")).status).toBe(404);
     expect(w.seen).toEqual([]);
   });
@@ -384,11 +465,20 @@ describe("one office cannot reach another", () => {
     expect(await cp.claimRoute(A, "meta_page", "page-a")).toBe(true);
     expect(await cp.claimRoute(B, "meta_page", "page-b")).toBe(true);
     expect(await cp.claimRoute(B, "meta_page", "page-a")).toBe(false);
-    const entry = (id: string) => ({ id, changes: [{ field: "feed", value: { item: "comment", verb: "add", comment_id: `${id}_c`, message: "hi", from: { id: "7", name: "R" } } }] });
-    const res = await call(w, null, "/api/hooks/meta", { method: "POST", ...signedMeta({ object: "page", entry: [entry("page-a"), entry("page-b"), entry("page-z")] }) });
+    const entry = (id: string) => ({
+      id,
+      changes: [{ field: "feed", value: { item: "comment", verb: "add", comment_id: `${id}_c`, message: "hi", from: { id: "7", name: "R" } } }],
+    });
+    const res = await call(w, null, "/api/hooks/meta", {
+      method: "POST",
+      ...signedMeta({ object: "page", entry: [entry("page-a"), entry("page-b"), entry("page-z")] }),
+    });
     expect(res.status).toBe(200);
     const got = w.seen.map((s) => [s.stub, s.path, (JSON.parse(s.body) as { entry: { id: string }[] }).entry.map((e) => e.id)]);
-    expect(got).toEqual([[A, "/internal/social/meta", ["page-a"]], [B, "/internal/social/meta", ["page-b"]]]);
+    expect(got).toEqual([
+      [A, "/internal/social/meta", ["page-a"]],
+      [B, "/internal/social/meta", ["page-b"]],
+    ]);
     expect((await call(w, null, "/api/hooks/meta", { method: "POST", body: "{}", headers: { "x-hub-signature-256": "sha256=00" } })).status).toBe(401);
   });
 
@@ -397,14 +487,38 @@ describe("one office cannot reach another", () => {
     const admin = (await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { ingestEmail: string };
     expect(admin.ingestEmail).toMatch(/^kaveri-electricals-[a-z2-9]{4}@in\.the-office\.test$/);
     const mail = (to: string) => {
-      const raw = ["From: Supplier <bills@supplier.test>", `To: ${to}`, "Subject: Bill", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", "Content-Type: text/plain", "", "Attached.", "--b", 'Content-Type: application/pdf; name="bill.pdf"', 'Content-Disposition: attachment; filename="bill.pdf"', "Content-Transfer-Encoding: base64", "", btoa("%PDF-1.4 a bill"), "--b--", ""].join("\r\n");
-      return { from: "bills@supplier.test", to, raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage & { setReject: ReturnType<typeof vi.fn> };
+      const raw = [
+        "From: Supplier <bills@supplier.test>",
+        `To: ${to}`,
+        "Subject: Bill",
+        "MIME-Version: 1.0",
+        'Content-Type: multipart/mixed; boundary="b"',
+        "",
+        "--b",
+        "Content-Type: text/plain",
+        "",
+        "Attached.",
+        "--b",
+        'Content-Type: application/pdf; name="bill.pdf"',
+        'Content-Disposition: attachment; filename="bill.pdf"',
+        "Content-Transfer-Encoding: base64",
+        "",
+        btoa("%PDF-1.4 a bill"),
+        "--b--",
+        "",
+      ].join("\r\n");
+      return { from: "bills@supplier.test", to, raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage & {
+        setReject: ReturnType<typeof vi.fn>;
+      };
     };
     const good = mail(admin.ingestEmail.toUpperCase());
     await receiveEmail(good, w.env);
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
     expect(w.docs.map.size).toBe(1);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/email"]]);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+      [A, "/internal/mail-admit"],
+      [A, "/internal/email"],
+    ]);
     const stray = mail("someone-else@in.the-office.test");
     await receiveEmail(stray, w.env);
     expect(stray.setReject).toHaveBeenCalled();
@@ -414,10 +528,40 @@ describe("one office cannot reach another", () => {
   it("sends mail to a support address to that office's Customer Service agent, not its bills", async () => {
     const { w, cp, A } = await twoOffices();
     await cp.claimRoute(A, "support_email", "kaveri.help@in.the-office.test");
-    const raw = ["From: Mandar Joshi <mandar@joshi.test>", "To: kaveri.help@in.the-office.test", "Subject: Damaged coils", "Message-ID: <m1@joshi.test>", "In-Reply-To: <csm-1@the-office.test>", "Content-Type: text/plain", "", "Two coils were damaged.", "", "On Mon, 2 Nov 2026 at 10:00, Kaveri wrote:", "> earlier", ""].join("\r\n");
-    await receiveEmail({ from: "mandar@joshi.test", to: "Kaveri.Help@in.the-office.test", raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/support-email"]]);
-    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ from: "mandar@joshi.test", name: "Mandar Joshi", subject: "Damaged coils", messageId: "<m1@joshi.test>", inReplyTo: "<csm-1@the-office.test>" });
+    const raw = [
+      "From: Mandar Joshi <mandar@joshi.test>",
+      "To: kaveri.help@in.the-office.test",
+      "Subject: Damaged coils",
+      "Message-ID: <m1@joshi.test>",
+      "In-Reply-To: <csm-1@the-office.test>",
+      "Content-Type: text/plain",
+      "",
+      "Two coils were damaged.",
+      "",
+      "On Mon, 2 Nov 2026 at 10:00, Kaveri wrote:",
+      "> earlier",
+      "",
+    ].join("\r\n");
+    await receiveEmail(
+      {
+        from: "mandar@joshi.test",
+        to: "Kaveri.Help@in.the-office.test",
+        raw: new Response(raw).body!,
+        setReject: vi.fn(),
+      } as unknown as ForwardableEmailMessage,
+      w.env,
+    );
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+      [A, "/internal/mail-admit"],
+      [A, "/internal/support-email"],
+    ]);
+    expect(JSON.parse(w.seen[1]!.body)).toMatchObject({
+      from: "mandar@joshi.test",
+      name: "Mandar Joshi",
+      subject: "Damaged coils",
+      messageId: "<m1@joshi.test>",
+      inReplyTo: "<csm-1@the-office.test>",
+    });
     expect(w.docs.map.size).toBe(0);
   });
 });
@@ -427,9 +571,38 @@ describe("the sales address", () => {
     const { w, cp, A } = await twoOffices();
     await cp.claimRoute(A, "sales_email", "kaveri.sales@in.the-office.test");
     const raw = (to: string) =>
-      ["From: Amazon Seller Central <no-reply@amazon.in>", `To: ${to}`, "Subject: Your report is ready", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", "Content-Type: text/plain", "", "Attached.", "--b", 'Content-Type: text/csv; name="MTR.csv"', 'Content-Disposition: attachment; filename="MTR.csv"', "", "Order Id,Quantity", "--b--", ""].join("\r\n");
-    await receiveEmail({ from: "no-reply@amazon.in", to: "kaveri.sales@in.the-office.test", raw: new Response(raw("kaveri.sales@in.the-office.test")).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/sales-email"]]);
+      [
+        "From: Amazon Seller Central <no-reply@amazon.in>",
+        `To: ${to}`,
+        "Subject: Your report is ready",
+        "MIME-Version: 1.0",
+        'Content-Type: multipart/mixed; boundary="b"',
+        "",
+        "--b",
+        "Content-Type: text/plain",
+        "",
+        "Attached.",
+        "--b",
+        'Content-Type: text/csv; name="MTR.csv"',
+        'Content-Disposition: attachment; filename="MTR.csv"',
+        "",
+        "Order Id,Quantity",
+        "--b--",
+        "",
+      ].join("\r\n");
+    await receiveEmail(
+      {
+        from: "no-reply@amazon.in",
+        to: "kaveri.sales@in.the-office.test",
+        raw: new Response(raw("kaveri.sales@in.the-office.test")).body!,
+        setReject: vi.fn(),
+      } as unknown as ForwardableEmailMessage,
+      w.env,
+    );
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+      [A, "/internal/mail-admit"],
+      [A, "/internal/sales-email"],
+    ]);
     expect(JSON.parse(w.seen[1]!.body)).toMatchObject({ from: "no-reply@amazon.in", docs: [{ filename: "MTR.csv" }], skipped: [] });
     expect([...w.docs.map.keys()].every((k) => k.startsWith(`o/${A}/docs/`))).toBe(true);
   });
@@ -439,29 +612,73 @@ describe("the assistant's address", () => {
   it("takes an owner's forwarded mail to that office's assistant, with what Cloudflare found of its sender", async () => {
     const { w, cp, A } = await twoOffices();
     await cp.claimRoute(A, "assistant_email", "kaveri.assistant@in.the-office.test");
-    const raw = (top: string[]) => [...top, "From: Anil <anil@kaverielectricals.in>", "To: kaveri.assistant@in.the-office.test", "Subject: Fwd: Statement please", "Content-Type: text/plain", "", "---------- Forwarded message ---------", "From: Rakesh <rakesh@sharma.test>", "Subject: Statement please", "", "Please send it.", ""].join("\r\n");
+    const raw = (top: string[]) =>
+      [
+        ...top,
+        "From: Anil <anil@kaverielectricals.in>",
+        "To: kaveri.assistant@in.the-office.test",
+        "Subject: Fwd: Statement please",
+        "Content-Type: text/plain",
+        "",
+        "---------- Forwarded message ---------",
+        "From: Rakesh <rakesh@sharma.test>",
+        "Subject: Statement please",
+        "",
+        "Please send it.",
+        "",
+      ].join("\r\n");
     const envelope = "anil+caf_=kaveri.assistant=in.the-office.test@kaverielectricals.in";
     const send = (top: string[], results?: string) =>
-      receiveEmail({ from: envelope, to: "kaveri.assistant@in.the-office.test", headers: new Headers({ "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test", ...(results ? { "authentication-results": results } : {}) }), raw: new Response(raw(top)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+      receiveEmail(
+        {
+          from: envelope,
+          to: "kaveri.assistant@in.the-office.test",
+          headers: new Headers({
+            "x-forwarded-for": "anil@kaverielectricals.in kaveri.assistant@in.the-office.test",
+            ...(results ? { "authentication-results": results } : {}),
+          }),
+          raw: new Response(raw(top)).body!,
+          setReject: vi.fn(),
+        } as unknown as ForwardableEmailMessage,
+        w.env,
+      );
     const stamp = "mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass";
     await send([`Authentication-Results: ${stamp}`], stamp);
-    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([[A, "/internal/mail-admit"], [A, "/internal/assistant-email"]]);
+    expect(w.seen.map((s) => [s.stub, s.path])).toEqual([
+      [A, "/internal/mail-admit"],
+      [A, "/internal/assistant-email"],
+    ]);
     const proven = JSON.parse(w.seen[1]!.body);
     expect(proven).toMatchObject({ envelope, from: "anil@kaverielectricals.in", subject: "Fwd: Statement please", authenticated: true, envelopeSigned: true });
     expect(proven).not.toHaveProperty("forwardedFor");
     // The same message with a forwarding header naming the owner, but nothing from Cloudflare to back it.
-    await send(["X-Forwarded-For: anil@kaverielectricals.in kaveri.assistant@in.the-office.test", "Authentication-Results: mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass"]);
+    await send([
+      "X-Forwarded-For: anil@kaverielectricals.in kaveri.assistant@in.the-office.test",
+      "Authentication-Results: mx.cloudflare.net; dkim=pass header.d=kaverielectricals.in; spf=pass; dmarc=pass",
+    ]);
     expect(JSON.parse(w.seen[3]!.body)).toMatchObject({ authenticated: false, envelopeSigned: false });
   });
 
   it("tells the office when a bill's sender could not be verified", async () => {
     const { w, anil, A } = await twoOffices();
     const admin = (await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { ingestEmail: string };
-    const raw = (top: string[]) => [...top, "From: Supplier <bills@supplier.test>", `To: ${admin.ingestEmail}`, "Subject: Bill", "Content-Type: text/plain", "", "Attached.", ""].join("\r\n");
+    const raw = (top: string[]) =>
+      [...top, "From: Supplier <bills@supplier.test>", `To: ${admin.ingestEmail}`, "Subject: Bill", "Content-Type: text/plain", "", "Attached.", ""].join(
+        "\r\n",
+      );
     const send = (results: string[]) => {
       const headers = new Headers();
       for (const r of results) headers.append("authentication-results", r);
-      return receiveEmail({ from: "bills@supplier.test", to: admin.ingestEmail, headers, raw: new Response(raw(results.map((r) => `Authentication-Results: ${r}`))).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+      return receiveEmail(
+        {
+          from: "bills@supplier.test",
+          to: admin.ingestEmail,
+          headers,
+          raw: new Response(raw(results.map((r) => `Authentication-Results: ${r}`))).body!,
+          setReject: vi.fn(),
+        } as unknown as ForwardableEmailMessage,
+        w.env,
+      );
     };
     await send(["mx.cloudflare.net; dmarc=pass header.from=supplier.test"]);
     await send(["mx.cloudflare.net; dmarc=fail header.from=supplier.test", "mx.cloudflare.net; dmarc=pass"]);
@@ -475,8 +692,29 @@ describe("the assistant's address", () => {
     await cp.claimRoute(A, "sales_email", "kaveri.sales@in.the-office.test");
     await cp.claimRoute(A, "assistant_email", "kaveri.assistant@in.the-office.test");
     const raw = (to: string) =>
-      ["From: Someone <x@attacker.test>", `To: ${to}`, "Subject: Bill", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", 'Content-Type: application/pdf; name="bill.pdf"', 'Content-Disposition: attachment; filename="bill.pdf"', "Content-Transfer-Encoding: base64", "", btoa("%PDF-1.4 a bill"), "--b", 'Content-Type: text/csv; name="r.csv"', 'Content-Disposition: attachment; filename="r.csv"', "", "a,b", "--b--", ""].join("\r\n");
-    const send = (to: string) => receiveEmail({ from: "x@attacker.test", to, raw: new Response(raw(to)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
+      [
+        "From: Someone <x@attacker.test>",
+        `To: ${to}`,
+        "Subject: Bill",
+        "MIME-Version: 1.0",
+        'Content-Type: multipart/mixed; boundary="b"',
+        "",
+        "--b",
+        'Content-Type: application/pdf; name="bill.pdf"',
+        'Content-Disposition: attachment; filename="bill.pdf"',
+        "Content-Transfer-Encoding: base64",
+        "",
+        btoa("%PDF-1.4 a bill"),
+        "--b",
+        'Content-Type: text/csv; name="r.csv"',
+        'Content-Disposition: attachment; filename="r.csv"',
+        "",
+        "a,b",
+        "--b--",
+        "",
+      ].join("\r\n");
+    const send = (to: string) =>
+      receiveEmail({ from: "x@attacker.test", to, raw: new Response(raw(to)).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env);
     w.mail.admit = false;
     for (const to of [admin.ingestEmail, "kaveri.sales@in.the-office.test", "kaveri.assistant@in.the-office.test"]) await send(to);
     expect(w.docs.map.size).toBe(0);
@@ -508,17 +746,25 @@ describe("the weather for the Lived-in office", () => {
 });
 
 describe("a person's own rights", () => {
-  const me = async (w: World, p: Person) => (await (await call(w, p, ACCOUNT_ROUTES.me)).json()) as { consentNeeded: { document: string; version: string }[]; deletionRequested: boolean };
+  const me = async (w: World, p: Person) =>
+    (await (await call(w, p, ACCOUNT_ROUTES.me)).json()) as { consentNeeded: { document: string; version: string }[]; deletionRequested: boolean };
   const current = Object.entries(LEGAL_DOCUMENTS).map(([document, d]) => ({ document, version: d.version }));
 
   it("asks for the current terms and privacy notice until they are accepted, and refuses an old version", async () => {
     const { w, anil } = await twoOffices();
     expect((await me(w, anil)).consentNeeded).toEqual(current);
-    const old = await call(w, anil, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: [{ document: "terms", version: "2020-01-01" }] }) });
+    const old = await call(w, anil, ACCOUNT_ROUTES.consent, {
+      method: "POST",
+      body: JSON.stringify({ documents: [{ document: "terms", version: "2020-01-01" }] }),
+    });
     expect(old.status).toBe(409);
-    expect((await call(w, anil, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: current }), headers: { "cf-ipcountry": "IN" } })).status).toBe(200);
+    expect(
+      (await call(w, anil, ACCOUNT_ROUTES.consent, { method: "POST", body: JSON.stringify({ documents: current }), headers: { "cf-ipcountry": "IN" } })).status,
+    ).toBe(200);
     expect((await me(w, anil)).consentNeeded).toEqual([]);
-    expect(w.db.sqlite.prepare("SELECT document, version, country FROM consent WHERE user_id = ? ORDER BY document").all(anil.id)).toEqual(current.map((c) => ({ ...c, country: "IN" })).sort((a, b) => a.document.localeCompare(b.document)));
+    expect(w.db.sqlite.prepare("SELECT document, version, country FROM consent WHERE user_id = ? ORDER BY document").all(anil.id)).toEqual(
+      current.map((c) => ({ ...c, country: "IN" })).sort((a, b) => a.document.localeCompare(b.document)),
+    );
     w.db.sqlite.prepare("UPDATE consent SET version = '2026-01-01' WHERE user_id = ? AND document = 'privacy'").run(anil.id);
     expect((await me(w, anil)).consentNeeded.map((c) => c.document)).toEqual(["privacy"]);
   });
@@ -563,14 +809,20 @@ describe("a person's own rights", () => {
     expect(await done.json()).toEqual({ ok: true, closed: 1 });
     expect(w.seen.map((x) => [x.stub, x.path, x.body])).toEqual([[B, "/internal/disconnect", "{}"]]);
 
-    const count = (table: string, where: string, v: string) => (w.db.sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).get(v) as { n: number }).n;
+    const count = (table: string, where: string, v: string) =>
+      (w.db.sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).get(v) as { n: number }).n;
     for (const t of ["session", "account", "two_factor", "membership", "consent"]) expect(count(t, "user_id = ?", bina.id), t).toBe(0);
     expect(count("user", "id = ?", bina.id)).toBe(0);
     expect(count("invitation", "lower(invited_by) = ?", bina.email)).toBe(0);
     expect((await call(w, bina, ACCOUNT_ROUTES.me)).status).toBe(401);
     // Her office is deleted with her, and purged after 30 days like any other.
     expect(await cp.office(B)).toMatchObject({ status: "deleting" });
-    expect(await cp.auditTrail(B)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "a deleted account", action: "member.account-deleted", detail: null }), expect.objectContaining({ action: "office.deleting" })]));
+    expect(await cp.auditTrail(B)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ actor: "a deleted account", action: "member.account-deleted", detail: null }),
+        expect.objectContaining({ action: "office.deleting" }),
+      ]),
+    );
     const record = w.db.sqlite.prepare("SELECT * FROM rights_request WHERE kind = 'delete' AND status = 'done'").all() as Record<string, unknown>[];
     expect(record).toHaveLength(1);
     expect(record[0]).toMatchObject({ user_id: "", email: "", note: null, done_by: "self" });
@@ -593,7 +845,9 @@ describe("a person's own rights", () => {
 
   it("still lets a request made before deletion was self-serve be withdrawn", async () => {
     const { w, anil, bina } = await twoOffices();
-    w.db.sqlite.prepare("INSERT INTO rights_request (id, user_id, email, kind, status, created_at) VALUES ('req_old', ?, ?, 'delete', 'open', ?)").run(anil.id, anil.email, Date.now());
+    w.db.sqlite
+      .prepare("INSERT INTO rights_request (id, user_id, email, kind, status, created_at) VALUES ('req_old', ?, ?, 'delete', 'open', ?)")
+      .run(anil.id, anil.email, Date.now());
     expect((await me(w, anil)).deletionRequested).toBe(true);
     expect((await call(w, bina, `${ACCOUNT_ROUTES.accountRequests}/req_old`, { method: "DELETE" })).status).toBe(404);
     expect((await call(w, anil, `${ACCOUNT_ROUTES.accountRequests}/req_old`, { method: "DELETE" })).status).toBe(200);
@@ -602,7 +856,8 @@ describe("a person's own rights", () => {
 });
 
 describe("the website chat", () => {
-  const post = (w: World, key: string, body: unknown, ip = "203.0.113.9") => call(w, null, `/api/chat/${key}`, { method: "POST", body: JSON.stringify(body), headers: { "cf-connecting-ip": ip } });
+  const post = (w: World, key: string, body: unknown, ip = "203.0.113.9") =>
+    call(w, null, `/api/chat/${key}`, { method: "POST", body: JSON.stringify(body), headers: { "cf-connecting-ip": ip } });
   const visitor = "visitor-aaaaaaaaaaaaaaaa";
 
   it("serves the script and takes messages only for a key that is switched on, without anyone signed in", async () => {
@@ -675,7 +930,10 @@ describe("the website chat", () => {
   it("tells the visitor when the office took no new conversation today", async () => {
     const { w, cp, A } = await twoOffices();
     await cp.claimRoute(A, "widget", "wkaverichat01");
-    (w.env as { Office: unknown }).Office = { idFromName: (name: string) => ({ name }), get: () => ({ fetch: async () => Response.json({ messages: [], business: "Kaveri Electricals" }) }) };
+    (w.env as { Office: unknown }).Office = {
+      idFromName: (name: string) => ({ name }),
+      get: () => ({ fetch: async () => Response.json({ messages: [], business: "Kaveri Electricals" }) }),
+    };
     const res = await post(w, "wkaverichat01", { visitor, text: "hi" });
     expect(res.status).toBe(429);
     expect(((await res.json()) as { error: string }).error).toContain("cannot take more new conversations today");
@@ -695,7 +953,9 @@ describe("the shared WhatsApp number", () => {
 
     const { code } = await dir.newJoinCode(A, anil.id);
     await hook(`JOIN ${code}`);
-    expect(w.seen.map((s) => [s.stub, s.path, JSON.parse(s.body).joined, JSON.parse(s.body).person.userId])).toEqual([[A, "/internal/whatsapp", true, anil.id]]);
+    expect(w.seen.map((s) => [s.stub, s.path, JSON.parse(s.body).joined, JSON.parse(s.body).person.userId])).toEqual([
+      [A, "/internal/whatsapp", true, anil.id],
+    ]);
 
     await hook("desk");
     expect(JSON.parse(w.seen.at(-1)!.body).heading).toBeUndefined();
@@ -722,7 +982,9 @@ describe("the shared WhatsApp number", () => {
   it("stops sending to an office someone has left", async () => {
     const { w, anil, bina, A, B, cp } = await twoOffices();
     const dir = new WaDirectory(w.db);
-    await cp.invite(B, anil.email, "accountant", bina.email).then(({ token }) => call(w, anil, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) }));
+    await cp
+      .invite(B, anil.email, "accountant", bina.email)
+      .then(({ token }) => call(w, anil, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) }));
     await dir.redeem(PHONE, (await dir.newJoinCode(B, anil.id)).code);
     expect((await call(w, anil, inOffice(B, ROUTES.officeLeave), { method: "POST" })).status).toBe(200);
     w.seen.length = 0;
@@ -760,7 +1022,8 @@ describe("two-factor sign-in for owners", () => {
 
 describe("a fresh sign-in for the riskier owner actions", () => {
   /** Moves this person's sessions, and any step-up in them, an hour into the past (D1 keeps seconds). */
-  const anHourAgo = (w: World, who: Person) => w.db.sqlite.prepare("UPDATE session SET created_at = created_at - 3600, step_up_at = step_up_at - 3600 WHERE user_id = ?").run(who.id);
+  const anHourAgo = (w: World, who: Person) =>
+    w.db.sqlite.prepare("UPDATE session SET created_at = created_at - 3600, step_up_at = step_up_at - 3600 WHERE user_id = ?").run(who.id);
 
   it("asks again for the password or a code before export, inviting, changing roles, handing over and deleting", async () => {
     const { w, anil, A } = await twoOffices();
@@ -801,8 +1064,14 @@ describe("a fresh sign-in for the riskier owner actions", () => {
   it("takes the authenticator's code as the confirmation, and refuses it from someone without two-factor", async () => {
     const w = makeEnv();
     const anil = await signUp(w, "Anil Kulkarni", "anil@kaveri.test");
-    const A = ((await (await call(w, anil, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Kaveri Electricals" }) })).json()) as { id: string }).id;
-    const enrolled = await enrolTwoFactor((path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }), anil.cookie, "a-long-password-1");
+    const A = (
+      (await (await call(w, anil, ACCOUNT_ROUTES.offices, { method: "POST", body: JSON.stringify({ name: "Kaveri Electricals" }) })).json()) as { id: string }
+    ).id;
+    const enrolled = await enrolTwoFactor(
+      (path, body, cookie) => call(w, { cookie } as Person, path, { method: "POST", body: JSON.stringify(body) }),
+      anil.cookie,
+      "a-long-password-1",
+    );
     anil.cookie = enrolled.cookie;
     anHourAgo(w, anil);
     expect((await call(w, anil, inOffice(A, ROUTES.officeExport))).status).toBe(403);
@@ -819,18 +1088,26 @@ describe("a fresh sign-in for the riskier owner actions", () => {
   it("will not check codes for someone already signed in with two-factor on, and emails when it is turned on", async () => {
     const { w, anil } = await twoOffices();
     // Signed in, there is nothing left to verify: such a check would only let a stolen cookie guess codes.
-    for (const path of ["/api/auth/two-factor/verify-totp", "/api/auth/two-factor/verify-backup-code"]) expect((await call(w, anil, path, { method: "POST", body: JSON.stringify({ code: "000000" }) })).status).toBe(403);
-    const subjects = w.sent.filter((m) => m.to === anil.email).map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString());
+    for (const path of ["/api/auth/two-factor/verify-totp", "/api/auth/two-factor/verify-backup-code"])
+      expect((await call(w, anil, path, { method: "POST", body: JSON.stringify({ code: "000000" }) })).status).toBe(403);
+    const subjects = w.sent
+      .filter((m) => m.to === anil.email)
+      .map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString());
     expect(subjects).toContain("Two-step sign-in is now on for your account");
     // An accountant may turn it off again, and is told.
     const carol = await twoStep(w, await signUp(w, "Carol Rao", "carol@firm.test"));
-    expect((await call(w, carol, "/api/auth/two-factor/disable", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(200);
-    expect(w.sent.filter((m) => m.to === carol.email).map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString())).toEqual(["Two-step sign-in is now on for your account", "Two-step sign-in was turned off for your account"]);
+    expect((await call(w, carol, "/api/auth/two-factor/disable", { method: "POST", body: JSON.stringify({ password: "a-long-password-1" }) })).status).toBe(
+      200,
+    );
+    expect(
+      w.sent.filter((m) => m.to === carol.email).map((m) => Buffer.from(/^Subject: =\?UTF-8\?B\?([^?]*)\?=/im.exec(m.raw)?.[1] ?? "", "base64").toString()),
+    ).toEqual(["Two-step sign-in is now on for your account", "Two-step sign-in was turned off for your account"]);
   });
 
   it("stops listening after ten wrong tries for one account, from whatever address", async () => {
     const { w, anil } = await twoOffices();
-    const stepUp = (code: string, ip: string) => call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code }), headers: { "cf-connecting-ip": ip } });
+    const stepUp = (code: string, ip: string) =>
+      call(w, anil, "/api/auth/step-up", { method: "POST", body: JSON.stringify({ code }), headers: { "cf-connecting-ip": ip } });
     // Sent all at once, as a guesser would: each still takes its own try.
     const wrong = await Promise.all(Array.from({ length: 10 }, (_, i) => stepUp("000000", `203.0.113.${i + 1}`)));
     expect(wrong.map((r) => r.status)).toEqual(Array(10).fill(401));
@@ -848,13 +1125,18 @@ describe("a fresh sign-in for the riskier owner actions", () => {
 describe("people in an office", () => {
   it("invites by link for one address, once, and the accountant sees the office but not its administration", async () => {
     const { w, anil, bina, A } = await twoOffices();
-    const inv = (await (await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })).json()) as { link: string; emailed: boolean };
+    const inv = (await (
+      await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })
+    ).json()) as { link: string; emailed: boolean };
     expect(inv.emailed).toBe(true);
     const token = inviteIn(inv.link);
     expect((await call(w, bina, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(200);
     expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
     const carol = await signUp(w, "Carol Rao", "carol@firm.test");
-    expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: A, role: "accountant" });
+    expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({
+      officeId: A,
+      role: "accountant",
+    });
     expect((await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
 
     const admin = (await (await call(w, carol, inOffice(A, ROUTES.officeAdmin))).json()) as { members: unknown[]; invitations: unknown[]; audit: unknown[] };
@@ -866,7 +1148,9 @@ describe("people in an office", () => {
 
   it("keeps invitation tokens out of every URL a server sees: after # in the link, in the body to look up and accept", async () => {
     const { w, anil, bina, A } = await twoOffices();
-    const inv = (await (await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })).json()) as { link: string };
+    const inv = (await (
+      await call(w, anil, inOffice(A, ROUTES.officeInvitations), { method: "POST", body: JSON.stringify({ email: "carol@firm.test", role: "accountant" }) })
+    ).json()) as { link: string };
     const link = new URL(inv.link);
     expect([link.origin, link.pathname, link.search]).toEqual([BASE, "/", ""]);
     expect(link.hash).toMatch(/^#invite=[\w-]{40,}$/);
@@ -879,14 +1163,19 @@ describe("people in an office", () => {
     expect((await peek({ token: "x".repeat(43) })).status).toBe(404);
     expect((await peek({})).status).toBe(404);
     // The sign-in page asks before anyone has signed in.
-    expect(await (await call(w, null, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toMatchObject({ email: "carol@firm.test" });
+    expect(await (await call(w, null, ACCOUNT_ROUTES.peekInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toMatchObject({
+      email: "carol@firm.test",
+    });
     // The old lookup, with the token in the path, is gone.
     const old = await call(w, bina, `/api/invitations/${token}`);
     expect(old.status).toBe(404);
     expect(await old.text()).not.toContain("carol@firm.test");
 
     const carol = await signUp(w, "Carol Rao", "carol@firm.test");
-    expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: A, role: "accountant" });
+    expect(await (await call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({
+      officeId: A,
+      role: "accountant",
+    });
     expect((await peek({ token })).status).toBe(404);
   });
 
@@ -904,7 +1193,9 @@ describe("people in an office", () => {
     await twoStep(w, carol);
     expect((await call(w, carol, inOffice(A, ROUTES.officeMember(anil.id)), { method: "DELETE" })).status).toBe(200);
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(404);
-    expect((await cp.auditTrail(A)).map((a) => a.action)).toEqual(expect.arrayContaining(["office.opened", "invitation.sent", "invitation.accepted", "office.transferred", "member.removed"]));
+    expect((await cp.auditTrail(A)).map((a) => a.action)).toEqual(
+      expect.arrayContaining(["office.opened", "invitation.sent", "invitation.accepted", "office.transferred", "member.removed"]),
+    );
   });
 
   it("exports only the office's own books and files", async () => {
@@ -930,18 +1221,24 @@ describe("suspending, deleting and purging", () => {
   it("hides a deleted office from everyone at once, lets the owner restore it, and purges it after 30 days", async () => {
     const { w, anil, bina, A, B, cp } = await twoOffices();
     const carol = await signUp(w, "Carol Rao", "carol@firm.test");
-    await cp.invite(A, carol.email, "accountant", anil.email).then(({ token }) => call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) }));
+    await cp
+      .invite(A, carol.email, "accountant", anil.email)
+      .then(({ token }) => call(w, carol, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) }));
     await w.docs.put(docKey(A, "doc-u1"), "A's bill");
     await w.docs.put(docKey(B, "doc-u2"), "B's bill");
     await cp.claimRoute(A, "meta_page", "page-a");
 
     expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri" }) })).status).toBe(400);
-    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) })).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) })).status).toBe(
+      200,
+    );
     expect((await call(w, carol, inOffice(A, ROUTES.desk))).status).toBe(404);
     expect((await call(w, anil, inOffice(A, ROUTES.desk))).status).toBe(404);
     expect(await cp.routeFor("meta_page", "page-a")).toBeNull();
     expect(((await (await call(w, carol, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([]);
-    expect(((await (await call(w, anil, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([expect.objectContaining({ id: A, status: "deleting" })]);
+    expect(((await (await call(w, anil, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([
+      expect.objectContaining({ id: A, status: "deleting" }),
+    ]);
     expect(((await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { purgeAt: string | null }).purgeAt).not.toBeNull();
     expect((await call(w, anil, inOffice(A, ROUTES.officeRestore), { method: "POST" })).status).toBe(200);
     expect((await call(w, carol, inOffice(A, ROUTES.desk))).status).toBe(200);
@@ -960,7 +1257,13 @@ describe("suspending, deleting and purging", () => {
 
   it("deletes a purged office's copies in India, a page at a time, and tries again the next night if the store refuses", async () => {
     const { w, anil, A, B, cp } = await twoOffices();
-    Object.assign(w.env, { INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.example", INDIA_BACKUP_BUCKET: "books-in", INDIA_BACKUP_REGION: "ap-south-1", INDIA_BACKUP_ACCESS_KEY_ID: "AKID", INDIA_BACKUP_SECRET_ACCESS_KEY: "secret" });
+    Object.assign(w.env, {
+      INDIA_BACKUP_ENDPOINT: "https://s3.ap-south-1.example",
+      INDIA_BACKUP_BUCKET: "books-in",
+      INDIA_BACKUP_REGION: "ap-south-1",
+      INDIA_BACKUP_ACCESS_KEY_ID: "AKID",
+      INDIA_BACKUP_SECRET_ACCESS_KEY: "secret",
+    });
     const store = indiaStore();
     for (let d = 0; d < 1203; d++) store.keys.add(`${A}/day-${String(d).padStart(4, "0")}.json.gz.enc`);
     store.keys.add(`${B}/2026-11-04.json.gz.enc`);
@@ -974,7 +1277,10 @@ describe("suspending, deleting and purging", () => {
 
     store.refuse = true;
     expect(await eraseBackups(w.env)).toBe(0);
-    expect(w.db.sqlite.prepare("SELECT tries, last_error FROM backup_erasure WHERE office_id = ?").get(A)).toEqual({ tries: 1, last_error: expect.stringContaining("403") });
+    expect(w.db.sqlite.prepare("SELECT tries, last_error FROM backup_erasure WHERE office_id = ?").get(A)).toEqual({
+      tries: 1,
+      last_error: expect.stringContaining("403"),
+    });
     expect(store.keys.size).toBe(1205);
 
     store.refuse = false;
@@ -982,7 +1288,9 @@ describe("suspending, deleting and purging", () => {
     expect([...store.keys].sort()).toEqual([`${B}/2026-11-04.json.gz.enc`, `${A}x/2026-11-04.json.gz.enc`].sort());
     expect(store.deletes.every((n) => n <= 1000)).toBe(true);
     expect(w.db.sqlite.prepare("SELECT * FROM backup_erasure").all()).toEqual([]);
-    expect(await cp.auditTrail(A)).toEqual(expect.arrayContaining([expect.objectContaining({ actor: "system", action: "office.backups-erased", detail: "1203 copies in India deleted" })]));
+    expect(await cp.auditTrail(A)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ actor: "system", action: "office.backups-erased", detail: "1203 copies in India deleted" })]),
+    );
     expect(await eraseBackups(w.env)).toBe(0);
   });
 
@@ -1008,7 +1316,11 @@ describe("suspending, deleting and purging", () => {
 
     expect(await sweepRetained(w.env, new Date("2027-03-31T12:00:00Z"))).toBe(1);
     expect(await sweepRetained(w.env, new Date("2027-04-01T12:00:00Z"))).toBe(1);
-    expect([...w.docs.map.keys()].filter((k) => k.startsWith("retained/")).sort()).toEqual(["retained/off_bbbbbbbbbbbbbbbb/2026-11-04T21-30-00-000Z.json", "retained/off_dddddddddddddddd/undated.json", "retained/off_eeeeeeeeeeeeeeee/2017-06-01T21-30-00-000Z.json"]);
+    expect([...w.docs.map.keys()].filter((k) => k.startsWith("retained/")).sort()).toEqual([
+      "retained/off_bbbbbbbbbbbbbbbb/2026-11-04T21-30-00-000Z.json",
+      "retained/off_dddddddddddddddd/undated.json",
+      "retained/off_eeeeeeeeeeeeeeee/2017-06-01T21-30-00-000Z.json",
+    ]);
     expect(w.docs.map.has(docKey("off_aaaaaaaaaaaaaaaa", "doc-1"))).toBe(true);
     expect(await cp.auditTrail("off_aaaaaaaaaaaaaaaa")).toEqual([expect.objectContaining({ actor: "system", action: "office.retained-deleted" })]);
     expect(await cp.auditTrail("off_cccccccccccccccc")).toEqual([expect.objectContaining({ action: "office.retained-deleted" })]);
@@ -1043,7 +1355,9 @@ describe("open screens of someone who leaves", () => {
     expect((await call(w, dev, inOffice(A, ROUTES.officeLeave), { method: "POST" })).status).toBe(200);
     expect((await call(w, puja, PLATFORM_ROUTES.status(A), { method: "PUT", body: JSON.stringify({ status: "suspended" }) })).status).toBe(200);
     expect((await call(w, puja, PLATFORM_ROUTES.status(A), { method: "PUT", body: JSON.stringify({ status: "active" }) })).status).toBe(200);
-    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) })).status).toBe(200);
+    expect((await call(w, anil, inOffice(A, ROUTES.officeAdmin), { method: "DELETE", body: JSON.stringify({ confirm: "Kaveri Electricals" }) })).status).toBe(
+      200,
+    );
 
     expect(w.seen.map((s) => [s.stub, s.path, s.caller.userId, JSON.parse(s.body || "{}")])).toEqual([
       [A, "/internal/disconnect", "system", { userId: carol.id }],
@@ -1063,15 +1377,36 @@ describe("the platform owners' console", () => {
     expect((await call(w, puja, PLATFORM_ROUTES.view)).status).toBe(403);
     w.env.PLATFORM_OWNERS = "someone@snilld.test, puja@snilld.test";
     expect((await call(w, anil, PLATFORM_ROUTES.view)).status).toBe(403);
-    expect((await call(w, anil, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Sneaky", ownerEmail: "anil@kaveri.test" }) })).status).toBe(403);
+    expect(
+      (await call(w, anil, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Sneaky", ownerEmail: "anil@kaveri.test" }) })).status,
+    ).toBe(403);
     expect((await call(w, null, PLATFORM_ROUTES.view)).status).toBe(401);
     expect(await (await call(w, puja, PLATFORM_ROUTES.view)).json()).toMatchObject({ code: "two_factor_required" });
     expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { twoFactor: unknown }).twoFactor).toEqual({ enabled: false, required: true });
     await twoStep(w, puja);
     const v = await view(w, puja);
     expect(v.businesses.map((b) => b.id).sort()).toEqual([A, B].sort());
-    expect(v.businesses.find((b) => b.id === A)).toMatchObject({ name: "Kaveri Electricals", status: "active", owners: [{ name: "Anil Kulkarni", email: "anil@kaveri.test" }], people: 1, onboardedBy: null, ownerInvite: null });
-    expect(Object.keys(v.businesses[0]!).sort()).toEqual(["address", "id", "ingestEmail", "lastEvent", "name", "onboardedBy", "opened", "ownerInvite", "owners", "people", "status"]);
+    expect(v.businesses.find((b) => b.id === A)).toMatchObject({
+      name: "Kaveri Electricals",
+      status: "active",
+      owners: [{ name: "Anil Kulkarni", email: "anil@kaveri.test" }],
+      people: 1,
+      onboardedBy: null,
+      ownerInvite: null,
+    });
+    expect(Object.keys(v.businesses[0]!).sort()).toEqual([
+      "address",
+      "id",
+      "ingestEmail",
+      "lastEvent",
+      "name",
+      "onboardedBy",
+      "opened",
+      "ownerInvite",
+      "owners",
+      "people",
+      "status",
+    ]);
     expect(w.seen).toEqual([]);
   });
 
@@ -1079,25 +1414,41 @@ describe("the platform owners' console", () => {
     const w = makeEnv();
     w.env.PLATFORM_OWNERS = "puja@snilld.test";
     const puja = await twoStep(w, await signUp(w, "Puja", "puja@snilld.test"));
-    const res = await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "Ravi@Mehta.test" }) });
+    const res = await call(w, puja, PLATFORM_ROUTES.businesses, {
+      method: "POST",
+      body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "Ravi@Mehta.test" }),
+    });
     expect(res.status).toBe(201);
     const made = (await res.json()) as PlatformInvited;
     expect(made).toMatchObject({ name: "Mehta Hardware", email: "ravi@mehta.test", emailed: true });
     const invites = w.sent.filter((m) => m.to !== puja.email); // puja was told two-step sign-in is on
     expect(invites.map((m) => m.to)).toEqual(["ravi@mehta.test"]);
     const token = inviteIn(mailText(invites[0]!));
-    expect((await view(w, puja)).businesses).toEqual([expect.objectContaining({ id: made.id, people: 0, owners: [], onboardedBy: "puja@snilld.test", ownerInvite: expect.objectContaining({ email: "ravi@mehta.test", expired: false }) })]);
+    expect((await view(w, puja)).businesses).toEqual([
+      expect.objectContaining({
+        id: made.id,
+        people: 0,
+        owners: [],
+        onboardedBy: "puja@snilld.test",
+        ownerInvite: expect.objectContaining({ email: "ravi@mehta.test", expired: false }),
+      }),
+    ]);
     expect(((await (await call(w, puja, ACCOUNT_ROUTES.me)).json()) as { offices: unknown[] }).offices).toEqual([]);
 
     const bina = await signUp(w, "Bina Shah", "bina@shah.test");
     expect((await call(w, bina, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).status).toBe(403);
     const ravi = await signUp(w, "Ravi Mehta", "ravi@mehta.test");
-    expect(await (await call(w, ravi, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({ officeId: made.id, role: "owner" });
+    expect(await (await call(w, ravi, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token }) })).json()).toEqual({
+      officeId: made.id,
+      role: "owner",
+    });
     expect(await (await call(w, ravi, inOffice(made.id, ROUTES.desk))).json()).toMatchObject({ code: "two_factor_required" });
     await twoStep(w, ravi);
     expect((await call(w, ravi, inOffice(made.id, ROUTES.desk))).status).toBe(200);
     expect((await view(w, puja)).businesses[0]).toMatchObject({ owners: [{ name: "Ravi Mehta", email: "ravi@mehta.test" }], people: 1, ownerInvite: null });
-    expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(made.id), { method: "POST", body: JSON.stringify({ email: "ravi@mehta.test" }) })).status).toBe(409);
+    expect((await call(w, puja, PLATFORM_ROUTES.ownerInvite(made.id), { method: "POST", body: JSON.stringify({ email: "ravi@mehta.test" }) })).status).toBe(
+      409,
+    );
   });
 
   it("never invites an owner into an office that has one, and never hands the console the link", async () => {
@@ -1116,9 +1467,14 @@ describe("the platform owners' console", () => {
     expect(w.sent).toEqual([]);
 
     // A waiting office: the console may invite its owner, by email only, and never its own people.
-    const opened = await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "ravi@mehta.test" }) });
+    const opened = await call(w, puja, PLATFORM_ROUTES.businesses, {
+      method: "POST",
+      body: JSON.stringify({ name: "Mehta Hardware", ownerEmail: "ravi@mehta.test" }),
+    });
     const made = (await opened.clone().json()) as PlatformInvited & { id: string };
-    expect((await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mine", ownerEmail: "Puja@Snilld.test" }) })).status).toBe(403);
+    expect(
+      (await call(w, puja, PLATFORM_ROUTES.businesses, { method: "POST", body: JSON.stringify({ name: "Mine", ownerEmail: "Puja@Snilld.test" }) })).status,
+    ).toBe(403);
     expect((await invite(made.id, "puja@snilld.test")).status).toBe(403);
     const again = await invite(made.id, "ravi.mehta@mehta.test");
     expect(again.status).toBe(200);
@@ -1137,7 +1493,10 @@ describe("the platform owners' console", () => {
     const stray = await cp.invite(A, "alias@elsewhere.test", "owner", "puja@snilld.test");
     const alias = await signUp(w, "Alias", "alias@elsewhere.test");
     const late = await call(w, alias, ACCOUNT_ROUTES.acceptInvitation, { method: "POST", body: JSON.stringify({ token: stray.token }) });
-    expect([late.status, ((await late.json()) as { error: string }).error]).toEqual([403, "This office has an owner now. Ask them to invite you from the office's Settings."]);
+    expect([late.status, ((await late.json()) as { error: string }).error]).toEqual([
+      403,
+      "This office has an owner now. Ask them to invite you from the office's Settings.",
+    ]);
     expect(await cp.membership(A, alias.id)).toBeNull();
 
     // The corrected address replaces the first: one way in, not two.
@@ -1180,12 +1539,22 @@ describe("the platform owners' console", () => {
 describe("an office on its own address", () => {
   const CONSOLE = "http://app.office.localhost:8787";
   const at = (host: string, w: World, who: Person | null, path: string, init: RequestInit = {}) =>
-    app.request(`${host}${path}`, { ...init, headers: { origin: host, ...(typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}) } }, w.env);
+    app.request(
+      `${host}${path}`,
+      {
+        ...init,
+        headers: { origin: host, ...(typeof init.body === "string" ? { "content-type": "application/json" } : {}), ...(who ? { cookie: who.cookie } : {}) },
+      },
+      w.env,
+    );
 
   it("signs in once on the console and is signed in on every office address", async () => {
     const w = makeEnv();
     Object.assign(w.env, { BETTER_AUTH_URL: CONSOLE, APP_DOMAIN: "office.localhost" });
-    const res = await at(CONSOLE, w, null, "/api/auth/sign-up/email", { method: "POST", body: JSON.stringify({ name: "Anil Kulkarni", email: "anil@kaveri.test", password: "a-long-password-1" }) });
+    const res = await at(CONSOLE, w, null, "/api/auth/sign-up/email", {
+      method: "POST",
+      body: JSON.stringify({ name: "Anil Kulkarni", email: "anil@kaveri.test", password: "a-long-password-1" }),
+    });
     expect(res.status).toBe(200);
     const set = (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie();
     expect(set.every((c) => /domain=office\.localhost/i.test(c))).toBe(true);
@@ -1194,9 +1563,14 @@ describe("an office on its own address", () => {
     const A = ((await opened.json()) as { id: string }).id;
     await w.db.prepare("UPDATE office SET subdomain = 'kaveri' WHERE id = ?").bind(A).run();
     expect(await (await at("http://office.localhost:8787", w, null, "/api/health")).json()).toMatchObject({ appDomain: "office.localhost" });
-    const me = (await (await at("http://kaveri.office.localhost:8787", w, anil, ACCOUNT_ROUTES.me)).json()) as { offices: { id: string; subdomain: string | null }[] };
+    const me = (await (await at("http://kaveri.office.localhost:8787", w, anil, ACCOUNT_ROUTES.me)).json()) as {
+      offices: { id: string; subdomain: string | null }[];
+    };
     expect(me.offices).toEqual([expect.objectContaining({ id: A, subdomain: "kaveri" })]);
-    const signIn = await at("http://kaveri.office.localhost:8787", w, null, "/api/auth/sign-in/email", { method: "POST", body: JSON.stringify({ email: "anil@kaveri.test", password: "a-long-password-1" }) });
+    const signIn = await at("http://kaveri.office.localhost:8787", w, null, "/api/auth/sign-in/email", {
+      method: "POST",
+      body: JSON.stringify({ email: "anil@kaveri.test", password: "a-long-password-1" }),
+    });
     expect(signIn.status).toBe(200);
     const elsewhere = await at("http://kaveri.elsewhere.localhost:8787", w, anil, "/api/auth/sign-out", { method: "POST", body: "{}" });
     expect(elsewhere.status).toBe(403);
@@ -1204,7 +1578,10 @@ describe("an office on its own address", () => {
 
   it("keeps a host-only cookie on any host outside APP_DOMAIN", () => {
     const env = { BETTER_AUTH_URL: "https://console.office.snilld.in", APP_DOMAIN: "office.snilld.in" };
-    expect(authScope(env, "kaveri.office.snilld.in")).toEqual({ origins: ["https://console.office.snilld.in", "https://office.snilld.in", "*.office.snilld.in"], cookieDomain: "office.snilld.in" });
+    expect(authScope(env, "kaveri.office.snilld.in")).toEqual({
+      origins: ["https://console.office.snilld.in", "https://office.snilld.in", "*.office.snilld.in"],
+      cookieDomain: "office.snilld.in",
+    });
     expect(authScope(env, "the-office.example.workers.dev").cookieDomain).toBeNull();
     expect(authScope(env, "evil-office.snilld.in").cookieDomain).toBeNull();
     expect(authScope({ BETTER_AUTH_URL: BASE }, "localhost:8787")).toEqual({ origins: [BASE], cookieDomain: null });

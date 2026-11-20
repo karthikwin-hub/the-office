@@ -31,7 +31,8 @@ function SessionGate() {
     return session.error ? (
       <main className="signin">
         <p className="form-error" role="alert">
-          The office could not be reached. {session.error instanceof ApiError && session.error.status === 404 ? "You are not in this office any more." : session.error.message}
+          The office could not be reached.{" "}
+          {session.error instanceof ApiError && session.error.status === 404 ? "You are not in this office any more." : session.error.message}
         </p>
         <a href={appUrl("/")}>Go to my offices</a>
       </main>
@@ -53,7 +54,8 @@ function OfficeShell() {
   const figures = useMemo(
     () => ({
       open: (figure: string) => void navigate({ to: ".", search: (s) => ({ ...s, figure, doc: undefined, region: undefined }), resetScroll: false }),
-      openDocument: (doc: string, region?: string | null) => void navigate({ to: ".", search: (s) => ({ ...s, doc, region: region ?? undefined }), resetScroll: false }),
+      openDocument: (doc: string, region?: string | null) =>
+        void navigate({ to: ".", search: (s) => ({ ...s, doc, region: region ?? undefined }), resetScroll: false }),
     }),
     [navigate],
   );
@@ -82,7 +84,11 @@ function OfficeShell() {
           </Link>
         </nav>
         <div className="topbar-side">
-          <button type="button" className="btn btn-quiet" onClick={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: "open" }), resetScroll: false })}>
+          <button
+            type="button"
+            className="btn btn-quiet"
+            onClick={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: "open" }), resetScroll: false })}
+          >
             Ask the office manager
           </button>
           <nav className="topbar-secondary" aria-label="Office">
@@ -97,7 +103,10 @@ function OfficeShell() {
             </Link>
           </nav>
           {office.data ? (
-            <span className="topbar-asof" title={isLive ? (live === "connected" ? "Updates as the team works" : "Reconnecting; checking every minute") : undefined}>
+            <span
+              className="topbar-asof"
+              title={isLive ? (live === "connected" ? "Updates as the team works" : "Reconnecting; checking every minute") : undefined}
+            >
               Books as of {dateLabel(office.data.business.asOf)}
               {isLive && live !== "connected" ? <span className="muted"> · reconnecting</span> : null}
             </span>
@@ -111,7 +120,8 @@ function OfficeShell() {
       </header>
       {role === "accountant" ? (
         <p className="role-banner">
-          You are signed in as {session.data?.user.name ?? "the accountant"} from {office.data?.business.accountantFirm ?? "your firm"}. You can read everything, download the return files and answer the Auditor. Approvals stay with the owner.
+          You are signed in as {session.data?.user.name ?? "the accountant"} from {office.data?.business.accountantFirm ?? "your firm"}. You can read
+          everything, download the return files and answer the Auditor. Approvals stay with the owner.
         </p>
       ) : null}
       {session.data?.mode === "mock" ? <p className="mock-banner">Sample office. Every figure is generated, and nothing you approve is sent.</p> : null}
@@ -129,11 +139,14 @@ function SourceHost({ figure, doc, region, asOf }: { figure?: string; doc?: stri
   const navigate = useNavigate();
   const trace = useQuery({ ...q.trace(figure ?? ""), enabled: Boolean(figure) });
   const firstDoc = trace.data?.rows.find((r) => r.docId);
-  const docId = doc ?? (figure ? firstDoc?.docId ?? undefined : undefined);
-  const activeRegion = doc ? region : figure ? firstDoc?.region ?? undefined : region;
+  const docId = doc ?? (figure ? (firstDoc?.docId ?? undefined) : undefined);
+  const activeRegion = doc ? region : figure ? (firstDoc?.region ?? undefined) : region;
   const document = useQuery({ ...q.document(docId ?? ""), enabled: Boolean(docId) });
   const selected = trace.data ? trace.data.rows.findIndex((r) => r.docId === docId && (r.region ?? undefined) === (activeRegion ?? undefined)) : undefined;
-  const close = useCallback(() => void navigate({ to: ".", search: (s) => ({ ...s, figure: undefined, doc: undefined, region: undefined }), resetScroll: false }), [navigate]);
+  const close = useCallback(
+    () => void navigate({ to: ".", search: (s) => ({ ...s, figure: undefined, doc: undefined, region: undefined }), resetScroll: false }),
+    [navigate],
+  );
   const open = Boolean(figure || doc);
   return (
     <SourceViewer
@@ -198,7 +211,9 @@ function AskPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
         </button>
       </div>
       <div className="ask-thread" aria-live="polite">
-        {thread.length === 0 ? <p className="muted">Ask about the business in your own words. Every figure in the answer opens the documents behind it.</p> : null}
+        {thread.length === 0 ? (
+          <p className="muted">Ask about the business in your own words. Every figure in the answer opens the documents behind it.</p>
+        ) : null}
         {thread.map((t, i) => (
           <div key={i} className="ask-turn">
             <p className="ask-q">{t.q}</p>
@@ -223,7 +238,15 @@ function AskPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
         <label htmlFor="ask-input" className="visually-hidden">
           Your question
         </label>
-        <input id="ask-input" ref={input} className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Which customers are slowest to pay?" maxLength={500} />
+        <input
+          id="ask-input"
+          ref={input}
+          className="input"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Which customers are slowest to pay?"
+          maxLength={500}
+        />
         <button type="submit" className="btn btn-primary" disabled={ask.isPending || !text.trim()}>
           Ask
         </button>

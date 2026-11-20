@@ -9,7 +9,11 @@ import { isOwner, Section } from "./common";
 
 const LANGUAGES: Record<Language, string> = { en: "English", hi: "Hindi", mr: "Marathi" };
 const EMOJI = { none: "None", light: "One or two where they help", free: "As the platform likes" } as const;
-const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+const lines = (s: string) =>
+  s
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 /** Channels and brand voice, shown once the Social Media Manager has a report to read them from. */
 export function SocialSettings() {
@@ -32,7 +36,8 @@ function ChannelsSection({ report }: { report: SocialReport }) {
   return (
     <Section id="channels" title="Channels">
       <p className="section-lede">
-        Connected channels publish on schedule and bring comments and messages to the Social Media Manager. Any channel can go out by hand instead: you get the text and pictures ready to paste, and mark it posted.
+        Connected channels publish on schedule and bring comments and messages to the Social Media Manager. Any channel can go out by hand instead: you get the
+        text and pictures ready to paste, and mark it posted.
         {isLive ? " Connecting takes you to the platform to sign in, and back here." : ""}
       </p>
       {returned ? <p role="status">{PLATFORM_NAMES[returned as Channel["platform"]] ?? returned} is connected.</p> : null}
@@ -111,8 +116,15 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
       ...v,
       dos: lines(dos),
       donts: lines(donts),
-      samples: samples.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean).slice(0, 10),
-      hashtags: hashtags.split(/[\s,]+/).filter(Boolean).map((h) => (h.startsWith("#") ? h : `#${h}`)),
+      samples: samples
+        .split(/\n\s*\n/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 10),
+      hashtags: hashtags
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map((h) => (h.startsWith("#") ? h : `#${h}`)),
     };
     social.mutate(() => api.saveVoice(next), { onSuccess: () => setSaved(true) });
   };
@@ -120,7 +132,9 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
     <form onSubmit={submit} className="settings-form">
       <fieldset disabled={!owner}>
         <legend className="h2">How your posts sound</legend>
-        <p className="section-lede">The Social Media Manager writes every draft to this. Paste a few posts you were happy with, and it will follow their length and manner.</p>
+        <p className="section-lede">
+          The Social Media Manager writes every draft to this. Paste a few posts you were happy with, and it will follow their length and manner.
+        </p>
         <div className="settings-grid">
           <div className="field field-wide">
             <label htmlFor="tone">Tone</label>
@@ -142,7 +156,12 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
             <legend>Languages</legend>
             {(Object.keys(LANGUAGES) as Language[]).map((l) => (
               <label key={l}>
-                <input type="checkbox" checked={v.languages.includes(l)} onChange={(e) => setV({ ...v, languages: e.target.checked ? [...v.languages, l] : v.languages.filter((x) => x !== l) })} /> {LANGUAGES[l]}
+                <input
+                  type="checkbox"
+                  checked={v.languages.includes(l)}
+                  onChange={(e) => setV({ ...v, languages: e.target.checked ? [...v.languages, l] : v.languages.filter((x) => x !== l) })}
+                />{" "}
+                {LANGUAGES[l]}
               </label>
             ))}
           </fieldset>
@@ -182,7 +201,14 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
                     min={0}
                     max={100}
                     value={p.share}
-                    onChange={(e) => setV({ ...v, pillars: v.pillars.map((x) => (x.id === p.id ? { ...x, share: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) } : x)) })}
+                    onChange={(e) =>
+                      setV({
+                        ...v,
+                        pillars: v.pillars.map((x) =>
+                          x.id === p.id ? { ...x, share: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) } : x,
+                        ),
+                      })
+                    }
                   />
                   <span>%</span>
                 </div>

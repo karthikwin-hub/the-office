@@ -38,7 +38,8 @@ export function ZoomHero({ openHref, demoHref }: { openHref: string; demoHref: s
     focus.current = layers.current.map((layer) => {
       const el = layer?.querySelector<HTMLElement>("[data-focus]");
       if (!layer || !el) return { x: 0, y: 0 };
-      let x = el.offsetWidth / 2, y = el.offsetHeight / 2;
+      let x = el.offsetWidth / 2,
+        y = el.offsetHeight / 2;
       for (let n: HTMLElement | null = el; n && n !== layer; n = n.offsetParent as HTMLElement | null) {
         x += n.offsetLeft;
         y += n.offsetTop;
@@ -67,7 +68,8 @@ export function ZoomHero({ openHref, demoHref }: { openHref: string; demoHref: s
       let scale = F ** t;
       const f = focus.current[i] ?? { x: 0, y: 0 };
       const e = t > 0 ? smooth(0, 0.5, t) : 0;
-      let x = -f.x * scale * e, y = -f.y * scale * e;
+      let x = -f.x * scale * e,
+        y = -f.y * scale * e;
       if (last) {
         scale *= 1 - 0.82 * out;
         x = 0;
@@ -128,7 +130,10 @@ export function ZoomHero({ openHref, demoHref }: { openHref: string; demoHref: s
           <>
             <div ref={pitch} className="zoom-pitch">
               <h1 id="zoom-title">Every rupee in your books opens down to the paper it came from.</h1>
-              <p className="zoom-lede">A team of AI agents keeps the books, chases payments and prepares your GST and TDS returns. You see every step, and nothing reaches the books until you approve it.</p>
+              <p className="zoom-lede">
+                A team of AI agents keeps the books, chases payments and prepares your GST and TDS returns. You see every step, and nothing reaches the books
+                until you approve it.
+              </p>
               <div className="zoom-actions">
                 <a className="btn btn-primary" href={openHref}>
                   Open your office
@@ -405,7 +410,15 @@ function PaperBill() {
       <p className="paper-words">{INV.words}</p>
       <footer className="paper-foot">
         <div className="paper-received">
-          <Seal variant="approved" ring={["Sahyog Infratech Ltd", "Pune"]} word="Received" sign="Stores" date={new Date(2026, 8, 8)} className="paper-stamp" label="Received by Sahyog Infratech Ltd stores, 8 Sep 2026" />
+          <Seal
+            variant="approved"
+            ring={["Sahyog Infratech Ltd", "Pune"]}
+            word="Received"
+            sign="Stores"
+            date={new Date(2026, 8, 8)}
+            className="paper-stamp"
+            label="Received by Sahyog Infratech Ltd stores, 8 Sep 2026"
+          />
           <svg className="paper-signature" viewBox="0 0 120 40" aria-hidden="true">
             <path d="M4 28c6-14 10-20 13-18s-4 18 0 18 8-16 12-16-2 14 3 14 7-10 11-10 0 8 4 8 9-9 14-9 3 6 8 6c6 0 10-6 16-6s10 3 30 1" />
           </svg>

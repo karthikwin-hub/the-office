@@ -27,12 +27,37 @@ function flatten2b(raw: unknown): Gstr2b | null {
   const d = (raw as { data?: { gstin?: string; rtnprd?: string; docdata?: { b2b?: unknown[] } } }).data;
   if (!d?.docdata?.b2b || !d.rtnprd || !d.gstin) return null;
   const rows = d.docdata.b2b.flatMap((s) => {
-    const sup = s as { ctin: string; trdnm?: string; inv?: { inum: string; dt?: string; idt?: string; val: number; items?: { txval: number; igst?: number; cgst?: number; sgst?: number }[]; txval?: number; iamt?: number; camt?: number; samt?: number }[]; inum?: string };
+    const sup = s as {
+      ctin: string;
+      trdnm?: string;
+      inv?: {
+        inum: string;
+        dt?: string;
+        idt?: string;
+        val: number;
+        items?: { txval: number; igst?: number; cgst?: number; sgst?: number }[];
+        txval?: number;
+        iamt?: number;
+        camt?: number;
+        samt?: number;
+      }[];
+      inum?: string;
+    };
     if (!sup.inv) return [s as Gstr2b["data"]["docdata"]["b2b"][number]];
     return sup.inv.map((i) => {
       const items = i.items ?? [];
       const sum = (k: "txval" | "igst" | "cgst" | "sgst") => Math.round(items.reduce((a, x) => a + (x[k] ?? 0), 0) * 100) / 100;
-      return { ctin: sup.ctin, trdnm: sup.trdnm ?? "", inum: i.inum, idt: i.dt ?? i.idt ?? "", val: i.val, txval: items.length ? sum("txval") : (i.txval ?? 0), iamt: items.length ? sum("igst") : (i.iamt ?? 0), camt: items.length ? sum("cgst") : (i.camt ?? 0), samt: items.length ? sum("sgst") : (i.samt ?? 0) };
+      return {
+        ctin: sup.ctin,
+        trdnm: sup.trdnm ?? "",
+        inum: i.inum,
+        idt: i.dt ?? i.idt ?? "",
+        val: i.val,
+        txval: items.length ? sum("txval") : (i.txval ?? 0),
+        iamt: items.length ? sum("igst") : (i.iamt ?? 0),
+        camt: items.length ? sum("cgst") : (i.camt ?? 0),
+        samt: items.length ? sum("sgst") : (i.samt ?? 0),
+      };
     });
   });
   const parsed = Gstr2b.safeParse({ period: periodOf(d.rtnprd), data: { gstin: d.gstin, rtnprd: d.rtnprd, docdata: { b2b: rows } } });
@@ -84,7 +109,9 @@ function parse26q(l: Ledger, text: string): Imported {
   const [head, ...body] = parseCsv(text);
   if (!head) throw new ImportError("The CSV is empty.");
   const at = Object.fromEntries(Object.entries(COLUMNS).map(([k, re]) => [k, head.findIndex((h) => re.test(h))])) as Record<keyof typeof COLUMNS, number>;
-  const missing = Object.entries(at).filter(([k, i]) => i < 0 && k !== "deducteeName" && k !== "bill").map(([k]) => k);
+  const missing = Object.entries(at)
+    .filter(([k, i]) => i < 0 && k !== "deducteeName" && k !== "bill")
+    .map(([k]) => k);
   if (missing.length) throw new ImportError(`The TDS return CSV (Form 140 or 26Q) needs columns for ${missing.join(", ")}. Found: ${head.join(", ")}.`);
   const deductions: TdsReturnRow[] = body.map((r, n) => {
     const get = (k: keyof typeof COLUMNS) => (at[k] >= 0 ? (r[at[k]] ?? "") : "");
@@ -96,13 +123,38 @@ function parse26q(l: Ledger, text: string): Imported {
     if (!section.success || !paidOn || !depositedOn || amount === null || tds === null) throw new ImportError(`Row ${n + 2} of the CSV could not be read.`);
     const pan = get("deducteePan").toUpperCase();
     const bill = l.books.bills.find((b) => b.number === get("bill") && l.party(b.partyId).pan === pan);
-    return { section: section.data, deducteePan: pan, deducteeName: get("deducteeName") || (bill ? l.party(bill.partyId).name : pan), billId: bill?.id ?? "", paidOn, amountPaidPaise: amount, tdsPaise: tds, depositedOn };
+    return {
+      section: section.data,
+      deducteePan: pan,
+      deducteeName: get("deducteeName") || (bill ? l.party(bill.partyId).name : pan),
+      billId: bill?.id ?? "",
+      paidOn,
+      amountPaidPaise: amount,
+      tdsPaise: tds,
+      depositedOn,
+    };
   });
   if (!deductions.length) throw new ImportError("The CSV has a header but no deductions.");
   const quarter = quarterOf(deductions[0]!.paidOn);
-  const filed: FiledReturn = { id: `26q-${quarter}`, form: "26Q", period: quarter, status: "filed", filedOn: null, sharedOn: null, dueOn: tdsReturnDue(quarter), filedBy: l.books.business.accountantFirm, data: { tan: l.books.business.tan, quarter, deductions } };
+  const filed: FiledReturn = {
+    id: `26q-${quarter}`,
+    form: "26Q",
+    period: quarter,
+    status: "filed",
+    filedOn: null,
+    sharedOn: null,
+    dueOn: tdsReturnDue(quarter),
+    filedBy: l.books.business.accountantFirm,
+    data: { tan: l.books.business.tan, quarter, deductions },
+  };
   const unmatched = deductions.filter((d) => !d.billId).length;
-  return { kind: "return", form: "26Q", period: quarter, filed, summary: `${tdsReturnForm(quarter)}: ${deductions.length} deductions${unmatched ? `, ${unmatched} not matched to a bill` : ""}` };
+  return {
+    kind: "return",
+    form: "26Q",
+    period: quarter,
+    filed,
+    summary: `${tdsReturnForm(quarter)}: ${deductions.length} deductions${unmatched ? `, ${unmatched} not matched to a bill` : ""}`,
+  };
 }
 
 export function importReturn(l: Ledger, content: string, filedOn: string | null): Imported {
@@ -120,7 +172,15 @@ export function importReturn(l: Ledger, content: string, filedOn: string | null)
   }
   const gstin = (raw as { gstin?: string; data?: { gstin?: string } }).gstin ?? (raw as { data?: { gstin?: string } }).data?.gstin;
   if (gstin && gstin !== l.books.business.gstin) throw new ImportError(`This return is for GSTIN ${gstin}, not ${l.books.business.gstin}.`);
-  const base = (form: FiledReturn["form"], period: string) => ({ id: `${form.toLowerCase().replace("-", "")}-${period}`, period, status: "filed" as const, filedOn, sharedOn: null, filedBy: l.books.business.accountantFirm, dueOn: form === "GSTR-1" ? gstDueDates(period).gstr1 : gstDueDates(period).gstr3b });
+  const base = (form: FiledReturn["form"], period: string) => ({
+    id: `${form.toLowerCase().replace("-", "")}-${period}`,
+    period,
+    status: "filed" as const,
+    filedOn,
+    sharedOn: null,
+    filedBy: l.books.business.accountantFirm,
+    dueOn: form === "GSTR-1" ? gstDueDates(period).gstr1 : gstDueDates(period).gstr3b,
+  });
 
   if ((raw as { sup_details?: unknown }).sup_details) {
     const p = Gstr3b.safeParse(raw);

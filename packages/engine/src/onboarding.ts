@@ -92,11 +92,21 @@ function records(text: string): string[][] {
   return out;
 }
 
-const header = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+const header = (h: string) =>
+  h
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
 
 const COLUMNS: Record<ImportKind, { required: string[]; optional: string[] }> = {
-  parties: { required: ["type", "name"], optional: ["gstin", "pan", "state", "city", "contact_name", "phone", "email", "payment_terms_days", "credit_limit", "tan", "tds_section", "entity"] },
-  products: { required: ["sku", "name", "hsn", "gst_rate", "price"], optional: ["unit", "cost", "category", "on_hand", "reorder_point", "lead_time_days", "location"] },
+  parties: {
+    required: ["type", "name"],
+    optional: ["gstin", "pan", "state", "city", "contact_name", "phone", "email", "payment_terms_days", "credit_limit", "tan", "tds_section", "entity"],
+  },
+  products: {
+    required: ["sku", "name", "hsn", "gst_rate", "price"],
+    optional: ["unit", "cost", "category", "on_hand", "reorder_point", "lead_time_days", "location"],
+  },
   "open-items": { required: ["type", "number", "date", "party", "total", "outstanding"], optional: ["due_date"] },
 };
 
@@ -124,7 +134,8 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
   const booksFrom = fixed ?? req.booksFrom;
   if (!realDate(booksFrom)) issue(null, 0, "books_from", "The start date is not a real date.");
   else if (booksFrom > asOf) issue(null, 0, "books_from", `The books cannot start after today, ${dateLabel(asOf)}.`);
-  if (books.staged.some((s) => s.kind === "onboarding" && s.status === "pending")) issue(null, 0, "", "An import is already waiting on the Desk. Approve or reject it first.");
+  if (books.staged.some((s) => s.kind === "onboarding" && s.status === "pending"))
+    issue(null, 0, "", "An import is already waiting on the Desk. Approve or reject it first.");
 
   const files: OnboardingPayload["files"] = [];
   const rowsOf = (kind: ImportKind): Row[] => {
@@ -139,8 +150,10 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     });
     files.push({ kind, name: f.name, rows: rows.length });
     if (!recs.length) issue(kind, 1, "", "The file is empty.");
-    else if (missing.length) issue(kind, 1, missing.join(", "), `The first row needs the column${missing.length === 1 ? "" : "s"} ${missing.join(", ")}. Start from the template.`);
-    else if (rows.length > IMPORT_MAX_ROWS) issue(kind, IMPORT_MAX_ROWS + 2, "", `Up to ${IMPORT_MAX_ROWS.toLocaleString("en-IN")} rows in one file, please. Split it and bring in the rest after.`);
+    else if (missing.length)
+      issue(kind, 1, missing.join(", "), `The first row needs the column${missing.length === 1 ? "" : "s"} ${missing.join(", ")}. Start from the template.`);
+    else if (rows.length > IMPORT_MAX_ROWS)
+      issue(kind, IMPORT_MAX_ROWS + 2, "", `Up to ${IMPORT_MAX_ROWS.toLocaleString("en-IN")} rows in one file, please. Split it and bring in the rest after.`);
     else return rows;
     return [];
   };
@@ -149,7 +162,8 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
   const partyIds = new Set(books.parties.map((p) => p.id));
   const parties: Party[] = [];
   const states = books.states;
-  const stateCode = (v: string) => (/^\d{2}$/.test(v) && states[v] ? v : (Object.entries(states).find(([, name]) => name.toLowerCase() === v.toLowerCase())?.[0] ?? null));
+  const stateCode = (v: string) =>
+    /^\d{2}$/.test(v) && states[v] ? v : (Object.entries(states).find(([, name]) => name.toLowerCase() === v.toLowerCase())?.[0] ?? null);
   for (const r of rowsOf("parties")) {
     const before = issues.length;
     const bad = (column: string, message: string) => issue("parties", r.row, column, message);
@@ -161,11 +175,16 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const gstinRaw = r.get("gstin").toUpperCase().replace(/\s/g, "");
     const gstin = gstinRaw ? (Gstin.safeParse(gstinRaw).success ? gstinRaw : null) : null;
     if (gstinRaw && !gstin) bad("gstin", `"${gstinRaw}" is not a GSTIN. It has 15 characters, like 29ABCDE1234F1Z5.`);
-    else if (gstin && !gstinValid(gstin)) bad("gstin", `${gstin} fails the GSTIN check digit, so one character is wrong: often a letter I or O typed for the digit 1 or 0. Copy it from the GST certificate or the GST portal.`);
+    else if (gstin && !gstinValid(gstin))
+      bad(
+        "gstin",
+        `${gstin} fails the GSTIN check digit, so one character is wrong: often a letter I or O typed for the digit 1 or 0. Copy it from the GST certificate or the GST portal.`,
+      );
     const pan = gstin ? gstin.slice(2, 12) : r.get("pan").toUpperCase();
     if (pan && !PAN.test(pan)) bad("pan", `"${pan}" is not a PAN. It has 10 characters, like ABCDE1234F.`);
     const state = gstin ? gstin.slice(0, 2) : stateCode(r.get("state"));
-    if (!gstin && !state) bad("state", r.get("state") ? `"${r.get("state")}" is not a state. Use its name or two-digit code.` : "Give the state, or the GSTIN.");
+    if (!gstin && !state)
+      bad("state", r.get("state") ? `"${r.get("state")}" is not a state. Use its name or two-digit code.` : "Give the state, or the GSTIN.");
     const terms = r.get("payment_terms_days");
     if (terms && !/^\d{1,3}$/.test(terms)) bad("payment_terms_days", "Write the number of days, like 30.");
     const limit = r.get("credit_limit") ? parseAmount(r.get("credit_limit")) : null;
@@ -229,8 +248,18 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const reorder = count("reorder_point");
     const lead = count("lead_time_days");
     if (issues.length > before) continue;
-    skus.push({ id, name, hsn, unit: r.get("unit").toUpperCase() || "NOS", gstRate: rate, pricePaise: price!, costPaise: cost!, category: r.get("category") || "General" });
-    if (onHand !== null) stock.push({ skuId: id, onHand, reorderPoint: reorder ?? 0, leadTimeDays: lead ?? 7, location: r.get("location") || "Main", lastReceivedOn: booksFrom });
+    skus.push({
+      id,
+      name,
+      hsn,
+      unit: r.get("unit").toUpperCase() || "NOS",
+      gstRate: rate,
+      pricePaise: price!,
+      costPaise: cost!,
+      category: r.get("category") || "General",
+    });
+    if (onHand !== null)
+      stock.push({ skuId: id, onHand, reorderPoint: reorder ?? 0, leadTimeDays: lead ?? 7, location: r.get("location") || "Main", lastReceivedOn: booksFrom });
   }
 
   /* What is still owed, from before the books start */
@@ -247,7 +276,8 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     if (!number || number.length > 40) bad("number", "The invoice or bill number is missing.");
     const date = realDate(parseDate(r.get("date")));
     if (!date) bad("date", "Write the date like 15/09/2026.");
-    else if (realDate(booksFrom) && date >= booksFrom) bad("date", `It is dated on or after ${dateLabel(booksFrom)}, when the books start. Send it as a document instead.`);
+    else if (realDate(booksFrom) && date >= booksFrom)
+      bad("date", `It is dated on or after ${dateLabel(booksFrom)}, when the books start. Send it as a document instead.`);
     const due = r.get("due_date") ? realDate(parseDate(r.get("due_date"))) : null;
     if (r.get("due_date") && !due) bad("due_date", "Write the date like 15/10/2026, or leave it blank.");
     else if (due && date && due < date) bad("due_date", "The due date is before the invoice date.");
@@ -265,8 +295,10 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const party = matches.length === 1 ? matches[0]! : null;
     if (number && party) {
       const same = (n: string, pid: string) => n.toLowerCase() === number.toLowerCase() && (type === "invoice" || pid === party.id);
-      if (type === "invoice" ? books.invoices.some((i) => same(i.number, i.partyId)) : books.bills.some((b) => same(b.number, b.partyId))) bad("number", `${type === "invoice" ? "Invoice" : "Bill"} ${number} is already in the books.`);
-      else if (open.some((o) => o.type === type && same(o.number, o.partyId))) bad("number", `${type === "invoice" ? "Invoice" : "Bill"} ${number} appears twice in this file.`);
+      if (type === "invoice" ? books.invoices.some((i) => same(i.number, i.partyId)) : books.bills.some((b) => same(b.number, b.partyId)))
+        bad("number", `${type === "invoice" ? "Invoice" : "Bill"} ${number} is already in the books.`);
+      else if (open.some((o) => o.type === type && same(o.number, o.partyId)))
+        bad("number", `${type === "invoice" ? "Invoice" : "Bill"} ${number} appears twice in this file.`);
     }
     if (issues.length > before) continue;
     open.push({
@@ -311,7 +343,8 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
       ...open.slice(0, 3).map((o) => `${o.type === "invoice" ? "Invoice" : "Bill"} ${o.number}, ${name(o.partyId)}: ₹${inr(o.outstandingPaise)} still owed`),
     ],
   };
-  if (!issues.length && JSON.stringify(payload).length > IMPORT_MAX_PAYLOAD) issue(null, 0, "", "Together these files are too big for one approval. Split them into smaller files and bring them in one after another.");
+  if (!issues.length && JSON.stringify(payload).length > IMPORT_MAX_PAYLOAD)
+    issue(null, 0, "", "Together these files are too big for one approval. Split them into smaller files and bring them in one after another.");
   const ready = issues.length === 0;
   return { preview: { booksFrom, booksFromFixed: Boolean(fixed), files, counts, issues, ready }, payload: ready ? payload : null };
 }
@@ -328,7 +361,10 @@ export function importConflict(books: Books, raw: unknown): string | null {
   const known = new Set([...partyIds, ...p.parties.map((x) => x.id)]);
   for (const o of p.open) {
     if (!known.has(o.partyId)) return changed;
-    const clash = o.type === "invoice" ? books.invoices.some((i) => i.number.toLowerCase() === o.number.toLowerCase()) : books.bills.some((b) => b.partyId === o.partyId && b.number.toLowerCase() === o.number.toLowerCase());
+    const clash =
+      o.type === "invoice"
+        ? books.invoices.some((i) => i.number.toLowerCase() === o.number.toLowerCase())
+        : books.bills.some((b) => b.partyId === o.partyId && b.number.toLowerCase() === o.number.toLowerCase());
     if (clash) return changed;
   }
   return null;
@@ -365,13 +401,52 @@ export function applyImport(books: Books, raw: unknown, at: string): OnboardingP
       igstPaise: 0,
     };
     const totals = { taxablePaise: o.outstandingPaise, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, roundOffPaise: 0, totalPaise: o.outstandingPaise };
-    const doc: Document = { id: docId, kind: o.type === "invoice" ? "sales_invoice" : "purchase_bill", refId: id, file: o.file, pages: 1, receivedAt: at, channel: "import", from: o.from, status: "posted", regions: [] };
+    const doc: Document = {
+      id: docId,
+      kind: o.type === "invoice" ? "sales_invoice" : "purchase_bill",
+      refId: id,
+      file: o.file,
+      pages: 1,
+      receivedAt: at,
+      channel: "import",
+      from: o.from,
+      status: "posted",
+      regions: [],
+    };
     books.documents.push(doc);
     if (o.type === "invoice") {
-      const inv: Invoice = { id, number: o.number, date: o.date, partyId: party.id, docId, placeOfSupply: party.stateCode, reverseCharge: false, termsDays: daysBetween(o.date, o.dueDate), dueDate: o.dueDate, lines: [line], totals, status: "posted", opening: true };
+      const inv: Invoice = {
+        id,
+        number: o.number,
+        date: o.date,
+        partyId: party.id,
+        docId,
+        placeOfSupply: party.stateCode,
+        reverseCharge: false,
+        termsDays: daysBetween(o.date, o.dueDate),
+        dueDate: o.dueDate,
+        lines: [line],
+        totals,
+        status: "posted",
+        opening: true,
+      };
       books.invoices.push(inv);
     } else {
-      const bill: Bill = { id, number: o.number, date: o.date, partyId: party.id, docId, kind: party.supplyKind ?? "goods", placeOfSupply: party.stateCode, lines: [line], totals, itcEligible: false, tds: null, status: "posted", opening: true };
+      const bill: Bill = {
+        id,
+        number: o.number,
+        date: o.date,
+        partyId: party.id,
+        docId,
+        kind: party.supplyKind ?? "goods",
+        placeOfSupply: party.stateCode,
+        lines: [line],
+        totals,
+        itcEligible: false,
+        tds: null,
+        status: "posted",
+        opening: true,
+      };
       books.bills.push(bill);
     }
   }

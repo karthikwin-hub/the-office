@@ -14,7 +14,11 @@ const met = (symbol: string, temp: number) => ({
 });
 function memoryCache() {
   const m = new Map<string, string>();
-  return { m, match: async (r: Request) => (m.has(r.url) ? new Response(m.get(r.url)) : undefined), put: async (r: Request, res: Response) => void m.set(r.url, await res.text()) };
+  return {
+    m,
+    match: async (r: Request) => (m.has(r.url) ? new Response(m.get(r.url)) : undefined),
+    put: async (r: Request, res: Response) => void m.set(r.url, await res.text()),
+  };
 }
 const PUNE = { latitude: "18.5204", longitude: "73.8567", city: "Pune" };
 
@@ -46,17 +50,34 @@ describe("the weather for small talk", () => {
     expect(fetcher).not.toHaveBeenCalled();
     expect(await weatherFor(PUNE, opts)).toBeNull();
     expect(await weatherFor(PUNE, { ...opts, fetcher: (async () => Response.json({ nope: 1 })) as unknown as typeof fetch })).toBeNull();
-    expect(await weatherFor(PUNE, { ...opts, fetcher: (async () => { throw new Error("offline"); }) as unknown as typeof fetch })).toBeNull();
+    expect(
+      await weatherFor(PUNE, {
+        ...opts,
+        fetcher: (async () => {
+          throw new Error("offline");
+        }) as unknown as typeof fetch,
+      }),
+    ).toBeNull();
   });
 
   it("reads MET Norway's symbols as one word", () => {
-    expect(["heavyrainandthunder", "lightsnow", "rainshowers_night", "fog", "partlycloudy_day", "fair_day", "clearsky_night"].map(skyFrom)).toEqual(["storm", "snow", "rain", "fog", "cloudy", "clear", "clear"]);
+    expect(["heavyrainandthunder", "lightsnow", "rainshowers_night", "fog", "partlycloudy_day", "fair_day", "clearsky_night"].map(skyFrom)).toEqual([
+      "storm",
+      "snow",
+      "rain",
+      "fog",
+      "cloudy",
+      "clear",
+      "clear",
+    ]);
   });
 });
 
 describe("the team's names and what they chat about", () => {
   it("takes only real agents and names made of letters, in any script", () => {
-    expect(checkPersonaNames({ names: { accountant: "Revathi", "tax-clerk": "मोहन लाल" } })).toEqual({ names: { accountant: "Revathi", "tax-clerk": "मोहन लाल" } });
+    expect(checkPersonaNames({ names: { accountant: "Revathi", "tax-clerk": "मोहन लाल" } })).toEqual({
+      names: { accountant: "Revathi", "tax-clerk": "मोहन लाल" },
+    });
     expect(checkPersonaNames({ names: { accountant: "R2-D2" } })).toHaveProperty("error");
     expect(checkPersonaNames({ names: { accountant: "<b>x</b>" } })).toHaveProperty("error");
     expect(checkPersonaNames({ names: { accountant: "A".repeat(25) } })).toHaveProperty("error");
@@ -72,7 +93,12 @@ describe("the team's names and what they chat about", () => {
     const a = ambientFrom(books, { accountant: "Revathi" }, "2026-11-01");
     expect(JSON.stringify(books)).toBe(before);
     for (const f of a.festivals) expect(f.date >= "2026-11-01" && f.date <= "2026-11-15").toBe(true);
-    expect(Object.keys(a.hiredOn).sort()).toEqual(books.agents.filter((x) => x.hired).map((x) => x.agentId).sort());
+    expect(Object.keys(a.hiredOn).sort()).toEqual(
+      books.agents
+        .filter((x) => x.hired)
+        .map((x) => x.agentId)
+        .sort(),
+    );
     expect(a.names).toEqual({ accountant: "Revathi" });
   });
 });

@@ -28,7 +28,12 @@ export function CalendarGrid({ calendar, pillars, posts = [], festivals = [], on
   const pillarIndex = new Map(pillars.map((p, i) => [p.id, i % 4]));
   const byId = new Map(posts.map((p) => [p.id, p]));
   const label = first.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
-  const status = calendar.status === "approved" ? `Approved${calendar.approvedBy ? ` by ${calendar.approvedBy}` : ""}` : calendar.status === "draft" ? "Waiting for your approval" : "Replaced";
+  const status =
+    calendar.status === "approved"
+      ? `Approved${calendar.approvedBy ? ` by ${calendar.approvedBy}` : ""}`
+      : calendar.status === "draft"
+        ? "Waiting for your approval"
+        : "Replaced";
 
   return (
     <figure className="calendar">
@@ -98,9 +103,7 @@ export function CalendarGrid({ calendar, pillars, posts = [], festivals = [], on
           <li key={p.id}>
             <span className={`calendar-swatch pillar-${i % 4}`} aria-hidden="true" />
             {p.name}
-            <span className="muted num">
-              {` ${calendar.slots.filter((s) => s.pillarId === p.id).length} of ${calendar.slots.length}, aim ${p.share}%`}
-            </span>
+            <span className="muted num">{` ${calendar.slots.filter((s) => s.pillarId === p.id).length} of ${calendar.slots.length}, aim ${p.share}%`}</span>
           </li>
         ))}
       </ul>

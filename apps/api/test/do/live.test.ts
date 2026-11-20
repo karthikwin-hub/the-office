@@ -57,7 +57,13 @@ describe("the live connection", () => {
     const anil = await live(stub, callerFor(id, owner));
     const carols = [await live(stub, callerFor(id, carol, "accountant")), await live(stub, callerFor(id, carol, "accountant"))];
 
-    const forged = await stub.fetch(await asCaller(callerFor(id, owner), "/internal/disconnect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: carol.id }) }));
+    const forged = await stub.fetch(
+      await asCaller(callerFor(id, owner), "/internal/disconnect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: carol.id }),
+      }),
+    );
     expect(forged.status).toBe(404);
     await settle();
     expect(carols.map((c) => c.closed)).toEqual([null, null]);
@@ -74,7 +80,13 @@ describe("the live connection", () => {
   it("says when a document arrives unread, so open screens read it without asking every minute", async () => {
     const { id, owner, stub } = await openOffice();
     const heard = await live(stub, callerFor(id, owner));
-    const email = (docId: string) => asSystem(id, "/internal/email", { from: "bills@supplier.test", subject: "Bill", docs: [{ id: docId, mimeType: "application/pdf", filename: "bill.pdf" }], skipped: [] });
+    const email = (docId: string) =>
+      asSystem(id, "/internal/email", {
+        from: "bills@supplier.test",
+        subject: "Bill",
+        docs: [{ id: docId, mimeType: "application/pdf", filename: "bill.pdf" }],
+        skipped: [],
+      });
     const said = () => heard.messages.map((m) => (JSON.parse(m) as { type: string; unread?: boolean }).unread === true);
 
     expect((await stub.fetch(await email("doc-unread-1"))).status).toBe(200);

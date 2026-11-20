@@ -24,10 +24,22 @@ function tea(plan: Plan): { table: Pt; spots: [Pt, Pt] } {
   const c = plan.corridor;
   if (plan.narrow) {
     const table = { x: c.x + c.w / 2, y: c.y + 30 };
-    return { table, spots: [{ x: table.x, y: table.y - 13 }, { x: table.x, y: table.y + 13 }] };
+    return {
+      table,
+      spots: [
+        { x: table.x, y: table.y - 13 },
+        { x: table.x, y: table.y + 13 },
+      ],
+    };
   }
   const table = { x: c.x + 46, y: c.y + c.h / 2 };
-  return { table, spots: [{ x: table.x - 14, y: table.y }, { x: table.x + 14, y: table.y }] };
+  return {
+    table,
+    spots: [
+      { x: table.x - 14, y: table.y },
+      { x: table.x + 14, y: table.y },
+    ],
+  };
 }
 
 type Where = { pt: Pt; room: PlacedRoom | null };
@@ -73,7 +85,21 @@ function route(plan: Plan, from: Where, to: Where): Pt[] {
 const place = (p: Pt) => `translate(${p.x}px, ${p.y}px)`;
 const length = (pts: Pt[]) => pts.slice(1).reduce((n, p, i) => n + Math.hypot(p.x - pts[i]!.x, p.y - pts[i]!.y), 0);
 
-function Person({ plan, agentId, spot, waiting, working, still }: { plan: Plan; agentId: string; spot: Spot; waiting: boolean; working: boolean; still: boolean }) {
+function Person({
+  plan,
+  agentId,
+  spot,
+  waiting,
+  working,
+  still,
+}: {
+  plan: Plan;
+  agentId: string;
+  spot: Spot;
+  waiting: boolean;
+  working: boolean;
+  still: boolean;
+}) {
   const ref = useRef<SVGGElement>(null);
   const here = useRef<{ where: Where; plan: Plan } | null>(null);
   const target = locate(plan, agentId, spot, waiting);
@@ -116,7 +142,8 @@ function Person({ plan, agentId, spot, waiting, working, still }: { plan: Plan; 
 
 /** Sized in screen pixels, whatever the plan's scale, so the words stay readable. */
 function Bubble({ plan, at, name, text, scale }: { plan: Plan; at: Pt; name: string; text: string; scale: number }) {
-  const w = 220 / scale, h = 110 / scale;
+  const w = 220 / scale,
+    h = 110 / scale;
   const x = Math.max(4, Math.min(plan.width - w - 4, at.x - w / 2));
   const above = at.y - h - 10 > 0;
   return (
@@ -201,7 +228,15 @@ export function LivingFloor({ plan, inputs, seed, reducedMotion }: LivingFloorPr
         <rect x={t.table.x - 3} y={t.table.y - 3} width={6} height={6} rx={1} />
       </g>
       {people.map((r) => (
-        <Person key={r.agentId} plan={plan} agentId={r.agentId} spot={spotOf(r.agentId)} waiting={r.waitingCount > 0} working={r.status === "working"} still={still} />
+        <Person
+          key={r.agentId}
+          plan={plan}
+          agentId={r.agentId}
+          spot={spotOf(r.agentId)}
+          waiting={r.waitingCount > 0}
+          working={r.status === "working"}
+          still={still}
+        />
       ))}
       {[...bubbles.values()].map((s) => {
         const r = people.find((p) => p.agentId === s.agentId);

@@ -26,12 +26,40 @@ for (const shape of shapes) {
   await page.evaluate(() => document.fonts.ready);
   const duration = await page.evaluate(() => window.DURATION);
   const file = join(out, `agentic-office-${shape}.mp4`);
-  const ffmpeg = spawn(process.env.FFMPEG ?? "ffmpeg", [
-    "-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
-    "-vf", "scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p",
-    "-color_range", "tv", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
-    "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-movflags", "+faststart", file,
-  ], { stdio: ["pipe", "inherit", "inherit"] });
+  const ffmpeg = spawn(
+    process.env.FFMPEG ?? "ffmpeg",
+    [
+      "-y",
+      "-loglevel",
+      "error",
+      "-f",
+      "image2pipe",
+      "-framerate",
+      String(FPS),
+      "-i",
+      "-",
+      "-vf",
+      "scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p",
+      "-color_range",
+      "tv",
+      "-colorspace",
+      "bt709",
+      "-color_primaries",
+      "bt709",
+      "-color_trc",
+      "bt709",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "slow",
+      "-crf",
+      "18",
+      "-movflags",
+      "+faststart",
+      file,
+    ],
+    { stdio: ["pipe", "inherit", "inherit"] },
+  );
   const done = new Promise((ok, fail) => ffmpeg.on("close", (code) => (code === 0 ? ok() : fail(new Error(`ffmpeg exited ${code}`)))));
   const frames = Math.round(duration * FPS);
   for (let i = 0; i < frames; i++) {

@@ -168,12 +168,18 @@ const STATES: [string, string[]][] = [
   ["38", ["ladakh", "la"]],
 ];
 const STATE_BY_NAME = new Map(STATES.flatMap(([code, names]) => names.map((n) => [n, code] as const)));
-export const STATE_NAME: Record<string, string> = Object.fromEntries(STATES.map(([code, names]) => [code, names[0]!.replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/ And /g, " and ")]));
+export const STATE_NAME: Record<string, string> = Object.fromEntries(
+  STATES.map(([code, names]) => [code, names[0]!.replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/ And /g, " and ")]),
+);
 
 /** "MAHARASHTRA", "Maharashtra", "MH" or "27" → "27". */
 export function stateOf(raw: string | undefined): string | null {
   if (!raw) return null;
-  const s = raw.trim().toLowerCase().replace(/\s+/g, " ").replace(/^state of /, "");
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/^state of /, "");
   if (/^\d{1,2}$/.test(s)) {
     const code = s.padStart(2, "0");
     return STATE_NAME[code] ? code : null;
@@ -182,4 +188,8 @@ export function stateOf(raw: string | undefined): string | null {
 }
 
 /** Headers compared without case, punctuation or spacing. */
-export const norm = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+export const norm = (h: string) =>
+  h
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();

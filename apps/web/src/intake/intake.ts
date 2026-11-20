@@ -98,7 +98,8 @@ export function useBackgroundReader(enabled: boolean) {
       busy.current = true;
       try {
         const unread = await api.unread();
-        for (const doc of unread.filter((d) => d.file.endsWith(".pdf") || /^\/api\/(o\/[^/]+\/)?files\//.test(d.file))) await readStored(doc).catch(() => undefined);
+        for (const doc of unread.filter((d) => d.file.endsWith(".pdf") || /^\/api\/(o\/[^/]+\/)?files\//.test(d.file)))
+          await readStored(doc).catch(() => undefined);
         if (unread.length) await qc.invalidateQueries({ predicate: (x) => touchesBooks(x.queryKey) });
       } finally {
         busy.current = false;

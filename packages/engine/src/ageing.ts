@@ -92,7 +92,11 @@ export function ageingReport(l: Ledger): AgeingReport {
       { text: inrShort(over60), figureId: "ageing:over60", tone: "red" },
       { text: " is more than 60 days overdue" },
       ...(worst
-        ? [{ text: `; the largest overdue balance is ${worst.name}'s at ` }, { text: inrShort(worst.buckets.slice(1).reduce((a, b) => a + b, 0)), figureId: worst.figureId }, { text: "." }]
+        ? [
+            { text: `; the largest overdue balance is ${worst.name}'s at ` },
+            { text: inrShort(worst.buckets.slice(1).reduce((a, b) => a + b, 0)), figureId: worst.figureId },
+            { text: "." },
+          ]
         : [{ text: "." }]),
     ],
     bucketTotals,
@@ -158,7 +162,9 @@ export function draftReminders(l: Ledger, policy: ReminderPolicy = DEFAULT_POLIC
       createdAt: `${l.asOf}T10:30:00+05:30`,
       title: `Send ${tone === "polite" ? "a reminder" : tone === "firm" ? "a firm reminder" : "a final reminder"} to ${party.name} for ${overdue.length === 1 ? overdue[0]!.number : `${overdue.length} invoices`}, ${inrShort(total)}, oldest ${oldest} days overdue`,
       summary: `By email to ${party.contact.email}. ${tone === "final" ? "Mentions a credit hold if not paid in 5 days." : tone === "firm" ? "Asks for payment within 7 days." : "Friendly first reminder."}`,
-      evidence: overdue.slice(0, 4).map((o) => ({ label: `${o.number}, due ${dateLabel(o.dueDate)}`, ref: { kind: "document" as const, id: o.docId, region: "dueDate" } })),
+      evidence: overdue
+        .slice(0, 4)
+        .map((o) => ({ label: `${o.number}, due ${dateLabel(o.dueDate)}`, ref: { kind: "document" as const, id: o.docId, region: "dueDate" } })),
       payload: { partyId, tone, to: party.contact.email, subject: letter.subject, body: letter.body, invoiceIds: overdue.map((o) => o.invoiceId) },
       status: "pending",
     });

@@ -41,13 +41,21 @@ export class SqlAssistantStore implements AssistantStore {
     }
   }
   save(owner: string, doc: AssistantDoc) {
-    this.sql.exec("INSERT INTO ea_owner (owner, doc, updated_at) VALUES (?, ?, ?) ON CONFLICT (owner) DO UPDATE SET doc = excluded.doc, updated_at = excluded.updated_at", ownerKey(owner), JSON.stringify(doc), Date.now());
+    this.sql.exec(
+      "INSERT INTO ea_owner (owner, doc, updated_at) VALUES (?, ?, ?) ON CONFLICT (owner) DO UPDATE SET doc = excluded.doc, updated_at = excluded.updated_at",
+      ownerKey(owner),
+      JSON.stringify(doc),
+      Date.now(),
+    );
   }
   remove(owner: string) {
     this.sql.exec("DELETE FROM ea_owner WHERE owner = ?", ownerKey(owner));
   }
   owners() {
-    return this.sql.exec<{ owner: string }>("SELECT owner FROM ea_owner").toArray().map((r) => r.owner);
+    return this.sql
+      .exec<{ owner: string }>("SELECT owner FROM ea_owner")
+      .toArray()
+      .map((r) => r.owner);
   }
   meta(key: string) {
     return this.sql.exec<{ v: string }>("SELECT v FROM ea_meta WHERE k = ?", key).toArray()[0]?.v ?? null;
@@ -75,7 +83,11 @@ export function calendarUrl(raw: string): URL | null {
 }
 
 /** Reads the calendar at its private address: two weeks ahead and a day back. Errors are worded for the owner. */
-export async function fetchCalendar(raw: string, today: string, fetcher: typeof fetch = fetch): Promise<{ events: ReturnType<typeof parseIcs>["events"]; label: string | null } | { error: string }> {
+export async function fetchCalendar(
+  raw: string,
+  today: string,
+  fetcher: typeof fetch = fetch,
+): Promise<{ events: ReturnType<typeof parseIcs>["events"]; label: string | null } | { error: string }> {
   const url = calendarUrl(raw);
   if (!url) return { error: "That is not a calendar address the office can read. Use the https or webcal link." };
   let res: Response;
@@ -84,7 +96,11 @@ export async function fetchCalendar(raw: string, today: string, fetcher: typeof 
   } catch {
     return { error: "The calendar did not answer. Try again in a minute." };
   }
-  if (res.status === 404 || res.status === 401 || res.status === 403) return { error: "The calendar refused the link. If it is a Google Workspace calendar, your admin may have turned secret addresses off; otherwise copy the secret address again." };
+  if (res.status === 404 || res.status === 401 || res.status === 403)
+    return {
+      error:
+        "The calendar refused the link. If it is a Google Workspace calendar, your admin may have turned secret addresses off; otherwise copy the secret address again.",
+    };
   if (!res.ok) return { error: `The calendar answered with an error (${res.status}).` };
   const len = Number(res.headers.get("content-length") ?? 0);
   if (len > MAX_ICS) return { error: "The calendar is too large to read." };
@@ -108,11 +124,18 @@ type Run = (model: string, input: unknown) => Promise<unknown>;
  * A reply in the owner's name. The model sees the email and what the books say about the sender, and
  * nothing else; without the model, or if its answer is unusable, a plain holding reply is drafted.
  */
-export async function draftReply(ai: Ai | null, office: OfficeService, mail: { from: string; fromName: string | null; subject: string; text: string }, ownerName: string): Promise<DraftText> {
+export async function draftReply(
+  ai: Ai | null,
+  office: OfficeService,
+  mail: { from: string; fromName: string | null; subject: string; text: string },
+  ownerName: string,
+): Promise<DraftText> {
   const fallback = replyTemplate(office, mail, ownerName);
   if (!ai) return fallback;
   const party = partyForEvent(office, { title: mail.subject, attendees: [{ email: mail.from.toLowerCase(), name: mail.fromName }] });
-  const facts = party ? [`The sender is ${party.kind === "customer" ? "a customer" : "a supplier"}, ${party.name}.`, ...partyBrief(office, party)] : ["The sender is not a customer or supplier in the books."];
+  const facts = party
+    ? [`The sender is ${party.kind === "customer" ? "a customer" : "a supplier"}, ${party.name}.`, ...partyBrief(office, party)]
+    : ["The sender is not a customer or supplier in the books."];
   const system = [
     `You draft email replies for ${ownerName}, who runs ${office.books.business.name || "a small business"} in India. The owner reads and edits every draft before it is sent.`,
     "Write a short, warm, businesslike reply in the language the email is written in. Sign it with the owner's name.",
@@ -122,10 +145,24 @@ export async function draftReply(ai: Ai | null, office: OfficeService, mail: { f
   const user = `Facts from the books:\n${facts.map((f) => `- ${f}`).join("\n")}\n\nThe email, from ${mail.fromName ?? mail.from} <${mail.from}>:\nSubject: ${mail.subject}\n\n${mail.text.slice(0, 4000)}`;
   try {
     const run = ai.run.bind(ai) as unknown as Run;
-    const out = modelJson(await run(TEXT_MODEL, { messages: [{ role: "system", content: system }, { role: "user", content: user }], response_format: { type: "json_schema", json_schema: DRAFT_SCHEMA }, max_tokens: 600, temperature: 0.2 })) as Partial<DraftText>;
+    const out = modelJson(
+      await run(TEXT_MODEL, {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: { type: "json_schema", json_schema: DRAFT_SCHEMA },
+        max_tokens: 600,
+        temperature: 0.2,
+      }),
+    ) as Partial<DraftText>;
     const body = typeof out.body === "string" ? out.body.trim() : "";
     if (body.length < 10) return fallback;
-    return { subject: typeof out.subject === "string" && out.subject.trim() ? out.subject.trim().slice(0, 200) : fallback.subject, body: body.slice(0, 5000), promise: typeof out.promise === "string" && out.promise.trim() ? out.promise.trim().slice(0, 160) : null };
+    return {
+      subject: typeof out.subject === "string" && out.subject.trim() ? out.subject.trim().slice(0, 200) : fallback.subject,
+      body: body.slice(0, 5000),
+      promise: typeof out.promise === "string" && out.promise.trim() ? out.promise.trim().slice(0, 160) : null,
+    };
   } catch {
     return fallback;
   }

@@ -33,9 +33,7 @@ function CouldNotLoad({ onFallback }: DioramaProps) {
   return null;
 }
 const Diorama = lazy<ComponentType<DioramaProps>>(() =>
-  import("@office/ui/diorama")
-    .then((m) => ({ default: m.Diorama }))
-    .catch(() => ({ default: CouldNotLoad })),
+  import("@office/ui/diorama").then((m) => ({ default: m.Diorama })).catch(() => ({ default: CouldNotLoad })),
 );
 
 /** `?at=18:40&temp=36` sets the Lived-in office's clock and weather, for the picture only: demos and screenshots. */
@@ -125,7 +123,8 @@ export function FloorScreen() {
               </p>
               {!v.business.gstin && !v.business.legalName ? (
                 <p className="floor-setup">
-                  Your office is new. <Link to="/settings">Enter your business details</Link> so the Accountant can tell your bills from your invoices, then forward or upload your first documents in{" "}
+                  Your office is new. <Link to="/settings">Enter your business details</Link> so the Accountant can tell your bills from your invoices, then
+                  forward or upload your first documents in{" "}
                   <Link to="/rooms/$agentId" params={{ agentId: "accountant" }}>
                     the Accountant's room
                   </Link>
@@ -157,9 +156,19 @@ export function FloorScreen() {
                     setPanel(t.kind === "desk" ? "desk" : t.id);
                     return true;
                   }}
-                  onOpen={(t) => (t.kind === "room" ? navigate({ to: "/rooms/$agentId", params: { agentId: t.id } }) : navigate({ to: t.kind === "desk" ? "/desk" : "/hiring" }))}
+                  onOpen={(t) =>
+                    t.kind === "room"
+                      ? navigate({ to: "/rooms/$agentId", params: { agentId: t.id } })
+                      : navigate({ to: t.kind === "desk" ? "/desk" : "/hiring" })
+                  }
                   renderLink={(agentId, className, children, label) => (
-                    <Link to="/rooms/$agentId" params={{ agentId }} className={`${className}${shown === agentId ? " is-selected" : ""}`} aria-label={label} onClick={(e) => inPanel(e, agentId)}>
+                    <Link
+                      to="/rooms/$agentId"
+                      params={{ agentId }}
+                      className={`${className}${shown === agentId ? " is-selected" : ""}`}
+                      aria-label={label}
+                      onClick={(e) => inPanel(e, agentId)}
+                    >
                       {children}
                     </Link>
                   )}
@@ -177,9 +186,31 @@ export function FloorScreen() {
                 wholeFloor={prefs.wholeFloor}
                 texture={skin.texture}
                 nameFor={people && !lived ? (id) => personaLabel(id, names) : undefined}
-                overlay={lived ? (plan) => <LivingFloor plan={plan} inputs={{ rooms: v.rooms, log: v.log, arriving: v.arriving, names, ambient: ambient.data ?? null, weather: weather.data?.weather ?? null }} /> : undefined}
+                overlay={
+                  lived
+                    ? (plan) => (
+                        <LivingFloor
+                          plan={plan}
+                          inputs={{
+                            rooms: v.rooms,
+                            log: v.log,
+                            arriving: v.arriving,
+                            names,
+                            ambient: ambient.data ?? null,
+                            weather: weather.data?.weather ?? null,
+                          }}
+                        />
+                      )
+                    : undefined
+                }
                 renderLink={(agentId, className, children, label) => (
-                  <Link to="/rooms/$agentId" params={{ agentId }} className={`${className}${shown === agentId ? " is-selected" : ""}`} aria-label={label} onClick={(e) => inPanel(e, agentId)}>
+                  <Link
+                    to="/rooms/$agentId"
+                    params={{ agentId }}
+                    className={`${className}${shown === agentId ? " is-selected" : ""}`}
+                    aria-label={label}
+                    onClick={(e) => inPanel(e, agentId)}
+                  >
                     {children}
                   </Link>
                 )}
@@ -197,7 +228,8 @@ export function FloorScreen() {
                   {vacant ? (
                     <>
                       {" "}
-                      {prefs.wholeFloor ? "Rooms lying flat on the page are empty" : `${count(vacant, "room")} ${vacant === 1 ? "is" : "are"} vacant`}; <Link to="/hiring">hire in the hiring hall</Link>.
+                      {prefs.wholeFloor ? "Rooms lying flat on the page are empty" : `${count(vacant, "room")} ${vacant === 1 ? "is" : "are"} vacant`};{" "}
+                      <Link to="/hiring">hire in the hiring hall</Link>.
                     </>
                   ) : null}
                 </p>
@@ -277,7 +309,12 @@ function DeskColumn({ embedded = false }: { embedded?: boolean }) {
             <p className="floor-desk-why">{i.summary}</p>
             <div className="floor-desk-actions">
               {owner && !REVIEW_ON_DESK.has(i.kind) ? (
-                <button type="button" className="btn btn-primary btn-small" disabled={decide.isPending} onClick={() => decide.mutate({ id: i.id, decision: { action: "approve" } })}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-small"
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ id: i.id, decision: { action: "approve" } })}
+                >
                   {actionFor(i).verb}
                 </button>
               ) : null}

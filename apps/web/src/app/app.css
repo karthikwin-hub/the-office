@@ -450,7 +450,9 @@
   border-radius: 22px;
   background: var(--sheet);
   overflow: hidden;
-  box-shadow: 0 0 0 6px var(--paper), 0 0 0 7px var(--plan-line-soft);
+  box-shadow:
+    0 0 0 6px var(--paper),
+    0 0 0 7px var(--plan-line-soft);
 }
 .wa-phone-head {
   display: grid;

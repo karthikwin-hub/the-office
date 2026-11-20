@@ -101,8 +101,22 @@ function build(books: Books, asOf: string): Obligation[] {
   for (const x of books.compliance) {
     if (x.ruleId || usedLegacy.has(x.id) || out.some((o) => o.id === x.id)) continue;
     const raw: RawItem = {
-      ruleId: "manual", period: x.id, form: x.form, title: x.description || x.form, authority: x.authority, dueOn: x.date, why: "Added by hand.", documents: [], portal: { name: "", url: "" },
-      amountPaise: null, late: { kind: "none" }, lateNote: "", risk: null, papers: false, mca: false, source: "rule",
+      ruleId: "manual",
+      period: x.id,
+      form: x.form,
+      title: x.description || x.form,
+      authority: x.authority,
+      dueOn: x.date,
+      why: "Added by hand.",
+      documents: [],
+      portal: { name: "", url: "" },
+      amountPaise: null,
+      late: { kind: "none" },
+      lateNote: "",
+      risk: null,
+      papers: false,
+      mca: false,
+      source: "rule",
     };
     const o = toObligation(raw, x.id, x.date, null, x, asOf);
     out.push({ ...o, source: "manual" });
@@ -114,7 +128,7 @@ function toObligation(raw: RawItem, id: string, dueOn: string, override: Obligat
   const daysLeft = daysBetween(asOf, dueOn);
   const filedOn = track?.filedOn ?? (track?.status === "done" ? track.date : null) ?? raw.filed?.on ?? null;
   const snoozed = track?.snoozedUntil && track.snoozedUntil > asOf ? track.snoozedUntil : null;
-  const state: Obligation["state"] = filedOn ? "filed" : snoozed ? "snoozed" : daysLeft < 0 ? "late" : track?.progress ?? "upcoming";
+  const state: Obligation["state"] = filedOn ? "filed" : snoozed ? "snoozed" : daysLeft < 0 ? "late" : (track?.progress ?? "upcoming");
   const lateDays = filedOn ? Math.max(0, daysBetween(dueOn, filedOn)) : daysLeft < 0 ? -daysLeft : 0;
   const lateCostPaise = state === "filed" ? lateCost(raw.late, lateDays) : state === "late" ? lateCost(raw.late, lateDays) : lateCost(raw.late, 7);
   const base = {
@@ -159,7 +173,9 @@ function toObligation(raw: RawItem, id: string, dueOn: string, override: Obligat
 
 /** What missing the open items costs: what the late ones have cost so far, and a week's delay for those due within seven days. */
 export function atRisk(obligations: Obligation[]): number {
-  return obligations.filter((o) => o.state === "late" || (o.state !== "filed" && o.state !== "snoozed" && o.daysLeft <= 7)).reduce((a, o) => a + o.lateCostPaise, 0);
+  return obligations
+    .filter((o) => o.state === "late" || (o.state !== "filed" && o.state !== "snoozed" && o.daysLeft <= 7))
+    .reduce((a, o) => a + o.lateCostPaise, 0);
 }
 
 /** The stored record for an item, created from the worked-out one the first time it is tracked. */
@@ -172,7 +188,17 @@ export function trackingFor(books: Books, o: Obligation): ComplianceEvent {
     legacy.period = o.period;
     return legacy;
   }
-  const rec: ComplianceEvent = { id: o.id, date: o.dueOn, form: o.form, description: o.title, authority: o.authority, status: "upcoming", ruleId: o.ruleId, period: o.period, source: o.source };
+  const rec: ComplianceEvent = {
+    id: o.id,
+    date: o.dueOn,
+    form: o.form,
+    description: o.title,
+    authority: o.authority,
+    status: "upcoming",
+    ruleId: o.ruleId,
+    period: o.period,
+    source: o.source,
+  };
   books.compliance.push(rec);
   return rec;
 }

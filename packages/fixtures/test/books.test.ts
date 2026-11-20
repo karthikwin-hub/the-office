@@ -30,8 +30,7 @@ describe("seeded books", () => {
   it("never allocates more than an invoice is worth", () => {
     const paid = new Map<string, number>();
     for (const p of books.payments)
-      for (const a of p.allocations)
-        if (a.invoiceId) paid.set(a.invoiceId, (paid.get(a.invoiceId) ?? 0) + a.amountPaise + a.tdsPaise);
+      for (const a of p.allocations) if (a.invoiceId) paid.set(a.invoiceId, (paid.get(a.invoiceId) ?? 0) + a.amountPaise + a.tdsPaise);
     for (const inv of books.invoices) expect(paid.get(inv.id) ?? 0).toBeLessThanOrEqual(inv.totals.totalPaise);
   });
 });

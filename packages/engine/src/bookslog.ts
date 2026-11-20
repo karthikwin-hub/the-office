@@ -15,7 +15,18 @@ export interface EditLog {
 }
 
 /** The records the log follows: what an auditor would call the books of account and their masters. */
-export const AUDITED_COLLECTIONS = ["parties", "invoices", "bills", "payments", "filedReturns", "employees", "skus", "purchaseOrders", "stock", "compliance"] as const;
+export const AUDITED_COLLECTIONS = [
+  "parties",
+  "invoices",
+  "bills",
+  "payments",
+  "filedReturns",
+  "employees",
+  "skus",
+  "purchaseOrders",
+  "stock",
+  "compliance",
+] as const;
 /** How long the books and their log are kept, from the year they relate to (Companies Act s.128(5)). */
 export const RETENTION_YEARS = 8;
 
@@ -45,7 +56,14 @@ export function diffSnapshots(before: Snapshot, after: Snapshot, by: string, at:
       const old = was.get(id);
       if (old === json) continue;
       if (old === undefined) {
-        out.push({ at, by, coll, recordId: id, action: "create", changes: Object.entries(fields(json)).map(([field, after]) => ({ field, before: null, after })) });
+        out.push({
+          at,
+          by,
+          coll,
+          recordId: id,
+          action: "create",
+          changes: Object.entries(fields(json)).map(([field, after]) => ({ field, before: null, after })),
+        });
         continue;
       }
       const a = fields(old);
@@ -55,7 +73,16 @@ export function diffSnapshots(before: Snapshot, after: Snapshot, by: string, at:
         .map((field) => ({ field, before: a[field] ?? null, after: b[field] ?? null }));
       if (changes.length) out.push({ at, by, coll, recordId: id, action: "change", changes });
     }
-    for (const [id, json] of was) if (!now.has(id)) out.push({ at, by, coll, recordId: id, action: "delete", changes: Object.entries(fields(json)).map(([field, before]) => ({ field, before, after: null })) });
+    for (const [id, json] of was)
+      if (!now.has(id))
+        out.push({
+          at,
+          by,
+          coll,
+          recordId: id,
+          action: "delete",
+          changes: Object.entries(fields(json)).map(([field, before]) => ({ field, before, after: null })),
+        });
   }
   return out;
 }
@@ -96,7 +123,10 @@ export class MemoryEditLog implements EditLog {
     for (const e of entries) this.entries.push(chain(this.last(), e));
   }
   list(opts: { coll?: string; recordId?: string; limit?: number } = {}) {
-    return this.entries.filter((e) => (!opts.coll || e.coll === opts.coll) && (!opts.recordId || e.recordId === opts.recordId)).slice(-(opts.limit ?? 100)).reverse();
+    return this.entries
+      .filter((e) => (!opts.coll || e.coll === opts.coll) && (!opts.recordId || e.recordId === opts.recordId))
+      .slice(-(opts.limit ?? 100))
+      .reverse();
   }
   all() {
     return [...this.entries];
@@ -111,10 +141,11 @@ export class MemoryEditLog implements EditLog {
 
 /* SHA-256, synchronous so the log can be written inside a request without awaiting. */
 const K = new Uint32Array([
-  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74,
+  0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d,
+  0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e,
+  0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+  0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
 export function sha256(text: string): string {

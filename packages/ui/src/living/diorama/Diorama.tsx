@@ -60,7 +60,21 @@ type Bubble = { id: number; agentId: string; text: string; until: number };
  * second when only small things move, every frame while something moves fast, and not
  * at all when the tab is hidden or the floor is scrolled away.
  */
-export function Diorama({ view, names = {}, ambient = null, weather = null, renderLink, renderDeskLink, onOpen, onFallback, wholeFloor = false, focus = null, onSelect, at = null, tempC = null }: DioramaProps) {
+export function Diorama({
+  view,
+  names = {},
+  ambient = null,
+  weather = null,
+  renderLink,
+  renderDeskLink,
+  onOpen,
+  onFallback,
+  wholeFloor = false,
+  focus = null,
+  onSelect,
+  at = null,
+  tempC = null,
+}: DioramaProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const office = useRef<PopupOffice | null>(null);
@@ -71,7 +85,11 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [still] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   // The building changes shape only when the staffed rooms do (or the whole floor is asked for); then the scene is rebuilt.
-  const staffed = view.rooms.filter((r) => r.hired).map((r) => r.agentId).sort().join(",");
+  const staffed = view.rooms
+    .filter((r) => r.hired)
+    .map((r) => r.agentId)
+    .sort()
+    .join(",");
   const layout = useMemo(() => layoutFrom(planFor(view.rooms, { wholeFloor, layout: "wide" })), [wholeFloor, wholeFloor ? "" : staffed]); // eslint-disable-line react-hooks/exhaustive-deps
   const where = whereIs(weather, view.business.stateCode || undefined);
   const live = useRef({ view, names, ambient, weather, at, tempC, onOpen, onFallback });
@@ -79,7 +97,8 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
 
   /* The scene: built once, opened when its shaders are ready. */
   useEffect(() => {
-    const c = canvas.current, box = wrap.current;
+    const c = canvas.current,
+      box = wrap.current;
     if (!c || !box) return;
     const before = remembered(view.business.name);
     let o: PopupOffice;
@@ -100,7 +119,10 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
       return;
     }
     office.current = o;
-    const lost = (e: Event) => { e.preventDefault(); live.current.onFallback("the graphics context was lost"); };
+    const lost = (e: Event) => {
+      e.preventDefault();
+      live.current.onFallback("the graphics context was lost");
+    };
     c.addEventListener("webglcontextlost", lost);
     const size = () => o.resize(box.clientWidth, box.clientHeight);
     size();
@@ -109,7 +131,10 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
     let visible = true;
     const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)));
     io.observe(box);
-    void document.fonts?.load(`700 40px Kalam`).then(() => o.redrawText(), () => undefined);
+    void document.fonts?.load(`700 40px Kalam`).then(
+      () => o.redrawText(),
+      () => undefined,
+    );
 
     // The director: what the team says and where it walks, from the same view the Floor shows.
     let dstate = startState();
@@ -118,13 +143,24 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
     const directTick = () => {
       if (document.hidden) return;
       const v = live.current;
-      const r = direct(dstate, { rooms: v.view.rooms, log: v.view.log, arriving: v.view.arriving, names: v.names, ambient: v.ambient, weather: v.weather, reducedMotion: still }, Date.now(), rng);
+      const r = direct(
+        dstate,
+        { rooms: v.view.rooms, log: v.view.log, arriving: v.view.arriving, names: v.names, ambient: v.ambient, weather: v.weather, reducedMotion: still },
+        Date.now(),
+        rng,
+      );
       dstate = r.state;
       scenes = [...scenes, ...r.scenes].slice(-80);
     };
     const director = window.setInterval(directTick, 1000);
 
-    let raf = 0, last = performance.now(), lastDraw = 0, started = false, shown = false, probe: number[] = [], probing = 0;
+    let raf = 0,
+      last = performance.now(),
+      lastDraw = 0,
+      started = false,
+      shown = false,
+      probe: number[] = [],
+      probing = 0;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -154,14 +190,22 @@ export function Diorama({ view, names = {}, ambient = null, weather = null, rend
           const median = sorted[Math.floor(sorted.length / 2)]!;
           probe = [];
           if (median > SLOW) {
-            if (probing === 1) { o.setLite(true); probing = 2; }
-            else { probing = 0; live.current.onFallback("this device draws the 3D office too slowly"); }
+            if (probing === 1) {
+              o.setLite(true);
+              probing = 2;
+            } else {
+              probing = 0;
+              live.current.onFallback("this device draws the 3D office too slowly");
+            }
           } else probing = 0;
         }
       }
       lastDraw = now;
       o.render();
-      if (!shown && o.opened) { shown = true; setOpened(true); }
+      if (!shown && o.opened) {
+        shown = true;
+        setOpened(true);
+      }
       // name plates and bubbles follow the scene
       const p = new Vector3();
       for (const [id, el] of pins.current) {

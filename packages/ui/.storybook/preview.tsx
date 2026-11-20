@@ -10,7 +10,9 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <FigureContext.Provider value={{ open: (id) => console.info("open figure", id), openDocument: (id, region) => console.info("open document", id, region) }}>
+      <FigureContext.Provider
+        value={{ open: (id) => console.info("open figure", id), openDocument: (id, region) => console.info("open document", id, region) }}
+      >
         <Story />
       </FigureContext.Provider>
     ),

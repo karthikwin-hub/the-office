@@ -61,7 +61,10 @@ export function fibres(g: CanvasRenderingContext2D, w: number, h: number, streng
     const t = fibreTile.getContext("2d")!;
     const r = rng(3);
     for (let i = 0; i < (256 * 256) / 55; i++) {
-      const x = r() * 256, y = r() * 256, a = r() * Math.PI, l = 2 + r() * 7;
+      const x = r() * 256,
+        y = r() * 256,
+        a = r() * Math.PI,
+        l = 2 + r() * 7;
       t.strokeStyle = `rgba(${r() < 0.5 ? "120,100,80" : "255,255,255"},${0.05 + r() * 0.07})`;
       t.lineWidth = 0.6 + r() * 0.6;
       t.beginPath();
@@ -82,7 +85,8 @@ export function leafy(seed: number): Draw {
   return (g, w, h) => {
     const r = rng(seed);
     for (let i = 0; i < 70; i++) {
-      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.42;
+      const a = r() * Math.PI * 2,
+        d = Math.sqrt(r()) * 0.42;
       g.fillStyle = ["#5d7e3f", "#6f8f4e", "#7f9f57", "#4f6e36"][Math.floor(r() * 4)]!;
       g.beginPath();
       g.ellipse(w * (0.5 + Math.cos(a) * d), h * (0.45 + Math.sin(a) * d * 0.8), w * 0.09, h * 0.07, r() * 3, 0, 7);
@@ -95,11 +99,16 @@ export type Kit = ReturnType<typeof makeKit>;
 
 /** The shared materials and builders for one office. */
 export function makeKit(anisotropy: number) {
-  const fibre = drawn(256, 256, (g, w, h) => {
-    g.fillStyle = "#fff";
-    g.fillRect(0, 0, w, h);
-    fibres(g, w, h, 1.6);
-  }, { repeat: [2, 2] });
+  const fibre = drawn(
+    256,
+    256,
+    (g, w, h) => {
+      g.fillStyle = "#fff";
+      g.fillRect(0, 0, w, h);
+      fibres(g, w, h, 1.6);
+    },
+    { repeat: [2, 2] },
+  );
   const lambert = (color: string, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ color, map: fibre, ...extra });
   const M = {
     wall: lambert("#f3eee4"),
@@ -123,7 +132,13 @@ export function makeKit(anisotropy: number) {
     return mesh;
   }
   /** A box standing on the floor at (x, y, z), its base at y. */
-  function box(w: number, h: number, d: number, mat: THREE.Material | THREE.Material[], o: { x?: number; y?: number; z?: number; edges?: boolean; cast?: boolean } = {}) {
+  function box(
+    w: number,
+    h: number,
+    d: number,
+    mat: THREE.Material | THREE.Material[],
+    o: { x?: number; y?: number; z?: number; edges?: boolean; cast?: boolean } = {},
+  ) {
     const geo = new THREE.BoxGeometry(w, h, d);
     geo.translate(0, h / 2, 0);
     const m = new THREE.Mesh(geo, mat);

@@ -146,7 +146,10 @@ export function OfficeGate({ children }: { children: ReactNode }) {
 
 function Suspended({ name, others }: { name: string; others: boolean }) {
   return (
-    <Door title={`${name} is suspended`} lede={<>No one can open this office for now. Its books and files are kept as they were. Write to {BRAND.name} to have it opened again.</>}>
+    <Door
+      title={`${name} is suspended`}
+      lede={<>No one can open this office for now. Its books and files are kept as they were. Write to {BRAND.name} to have it opened again.</>}
+    >
       {others ? (
         <a
           className="btn btn-primary"
@@ -165,7 +168,14 @@ function Suspended({ name, others }: { name: string; others: boolean }) {
 
 function NotYourOffice({ address }: { address: string }) {
   return (
-    <Door title="This is not one of your offices" lede={<>You are signed in, but not as someone in the office at <strong>{address}</strong>. Ask its owner for an invitation, or go to your own offices.</>}>
+    <Door
+      title="This is not one of your offices"
+      lede={
+        <>
+          You are signed in, but not as someone in the office at <strong>{address}</strong>. Ask its owner for an invitation, or go to your own offices.
+        </>
+      }
+    >
       <a className="btn btn-primary" href={appUrl("/")}>
         Go to my offices
       </a>
@@ -204,7 +214,14 @@ function ConfirmEmail({ me }: { me: Me }) {
   const qc = useQueryClient();
   const resend = useMutation({ mutationFn: () => account.resendVerification(me.user.email) });
   return (
-    <Door title="Confirm your email" lede={<>We sent a link to <strong>{me.user.email}</strong>. Open it to confirm the address; then you can open an office or accept an invitation.</>}>
+    <Door
+      title="Confirm your email"
+      lede={
+        <>
+          We sent a link to <strong>{me.user.email}</strong>. Open it to confirm the address; then you can open an office or accept an invitation.
+        </>
+      }
+    >
       <div className="approval-actions">
         <button type="button" className="btn btn-primary" onClick={() => void qc.invalidateQueries({ queryKey: ["me"] })}>
           I have confirmed it
@@ -243,11 +260,16 @@ function AcceptInvitation({ token, me }: { token: string; me: Me }) {
   if (!peek.data) return null;
   const p = peek.data;
   // Signed in as someone else, often on a shared computer: say so before anything is pressed, and offer the way through.
-  if (me.user.email.trim().toLowerCase() !== p.email.trim().toLowerCase()) return <SwitchAccount token={token} invited={p.email} signedInAs={me.user.email} officeName={p.officeName} onLater={forget} />;
+  if (me.user.email.trim().toLowerCase() !== p.email.trim().toLowerCase())
+    return <SwitchAccount token={token} invited={p.email} signedInAs={me.user.email} officeName={p.officeName} onLater={forget} />;
   return (
     <Door
       title={`Join ${p.officeName}`}
-      lede={p.role === "owner" ? "You were invited as an owner: you approve the team's work, hire and change settings." : "You were invited as the accountant: you can read everything, download returns and answer the Auditor. Approvals stay with the owner."}
+      lede={
+        p.role === "owner"
+          ? "You were invited as an owner: you approve the team's work, hire and change settings."
+          : "You were invited as the accountant: you can read everything, download returns and answer the Auditor. Approvals stay with the owner."
+      }
     >
       <p>
         The invitation is for <strong>{p.email}</strong>.
@@ -270,7 +292,19 @@ function AcceptInvitation({ token, me }: { token: string; me: Me }) {
   );
 }
 
-function SwitchAccount({ token, invited, signedInAs, officeName, onLater }: { token: string; invited: string; signedInAs: string; officeName: string; onLater: () => void }) {
+function SwitchAccount({
+  token,
+  invited,
+  signedInAs,
+  officeName,
+  onLater,
+}: {
+  token: string;
+  invited: string;
+  signedInAs: string;
+  officeName: string;
+  onLater: () => void;
+}) {
   const out = useMutation({
     mutationFn: account.signOut,
     // The token is kept, so the sign-in page opens on making an account for the invited address.
@@ -280,7 +314,14 @@ function SwitchAccount({ token, invited, signedInAs, officeName, onLater }: { to
     },
   });
   return (
-    <Door title={`Join ${officeName}`} lede={<>This invitation is for <strong>{invited}</strong>, but this browser is signed in as <strong>{signedInAs}</strong>.</>}>
+    <Door
+      title={`Join ${officeName}`}
+      lede={
+        <>
+          This invitation is for <strong>{invited}</strong>, but this browser is signed in as <strong>{signedInAs}</strong>.
+        </>
+      }
+    >
       <p>Sign out, then make an account for {invited} (or sign in, if it already has one). The invitation will be waiting.</p>
       <div className="approval-actions">
         <button type="button" className="btn btn-primary" onClick={() => out.mutate()} disabled={out.isPending}>
@@ -339,12 +380,25 @@ function OpenOffice({ me }: { me: Me }) {
   return (
     <Door
       title="Open your office"
-      lede={first ? "Name the business. You will own its office: you approve the team's work, hire and invite your accountant. Its books are seen only by the people you invite." : "A separate office for another business, with its own books, people and email address."}
+      lede={
+        first
+          ? "Name the business. You will own its office: you approve the team's work, hire and invite your accountant. Its books are seen only by the people you invite."
+          : "A separate office for another business, with its own books, people and email address."
+      }
     >
       <form onSubmit={onSubmit} className="signin-form">
         <div className="field">
           <label htmlFor="office-name">Business name</label>
-          <input id="office-name" className="input" required minLength={2} maxLength={80} placeholder="Kaveri Electricals" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            id="office-name"
+            className="input"
+            required
+            minLength={2}
+            maxLength={80}
+            placeholder="Kaveri Electricals"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         {open.error ? (
           <p className="form-error" role="alert">
@@ -356,11 +410,7 @@ function OpenOffice({ me }: { me: Me }) {
         </button>
       </form>
       <p className="signin-switch">
-        {first ? (
-          <>Invited to someone else's office? Open the link in the invitation email.</>
-        ) : (
-          <a href={appUrl("/")}>Back to my offices</a>
-        )}
+        {first ? <>Invited to someone else's office? Open the link in the invitation email.</> : <a href={appUrl("/")}>Back to my offices</a>}
       </p>
       {first ? <SignOutLink /> : null}
     </Door>

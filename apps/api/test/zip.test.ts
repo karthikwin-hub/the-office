@@ -22,7 +22,18 @@ const collect = async (s: ReadableStream<Uint8Array>) => new Uint8Array(await ne
 
 /** What Python's zipfile, which checks every CRC, makes of an archive: each name with its size. */
 const pythonReads = (file: string) =>
-  JSON.parse(execFileSync("python3", ["-I", "-c", "import json,sys,zipfile\nz=zipfile.ZipFile(sys.argv[1])\nassert z.testzip() is None\nprint(json.dumps([[i.filename,i.file_size] for i in z.infolist()]))", file], { encoding: "utf8" })) as [string, number][];
+  JSON.parse(
+    execFileSync(
+      "python3",
+      [
+        "-I",
+        "-c",
+        "import json,sys,zipfile\nz=zipfile.ZipFile(sys.argv[1])\nassert z.testzip() is None\nprint(json.dumps([[i.filename,i.file_size] for i in z.infolist()]))",
+        file,
+      ],
+      { encoding: "utf8" },
+    ),
+  ) as [string, number][];
 
 describe("the export archive", () => {
   it("computes CRC-32 as zlib does, a piece at a time", () => {
@@ -80,7 +91,9 @@ describe("the export archive", () => {
       ["files/b", 5000],
     ]);
 
-    const failing = exportArchive({ id: "y", parts: 2, entries: 3 }, async (part) => (part === 0 ? new Response("part one") : Response.json({ error: "No such export." }, { status: 410 })));
+    const failing = exportArchive({ id: "y", parts: 2, entries: 3 }, async (part) =>
+      part === 0 ? new Response("part one") : Response.json({ error: "No such export." }, { status: 410 }),
+    );
     await expect(collect(failing.body)).rejects.toThrow();
     await failing.done;
   });

@@ -24,7 +24,13 @@ function ImportReturn({ onImported }: { onImported: (period: string) => void }) 
       <button type="button" className="btn" onClick={() => input.current?.click()} disabled={imp.isPending} aria-describedby="import-help">
         {imp.isPending ? "Reading the return…" : "Import a filed return"}
       </button>
-      <input ref={input} type="file" accept=".json,.csv,application/json,text/csv" hidden onChange={(e) => e.target.files?.[0] && void take(e.target.files[0])} />
+      <input
+        ref={input}
+        type="file"
+        accept=".json,.csv,application/json,text/csv"
+        hidden
+        onChange={(e) => e.target.files?.[0] && void take(e.target.files[0])}
+      />
       <span id="import-help" className={imp.isError ? "toolbar-error" : "muted toolbar-note"} role={imp.isError ? "alert" : undefined}>
         {imp.isError
           ? imp.error.message
@@ -116,7 +122,13 @@ export function AuditScreen() {
           <Section title={a.findings.length ? `What is wrong and what to do (${a.findings.length})` : "Nothing to fix"}>
             {a.findings.length === 0 ? <p>The returns for this period match the books line for line.</p> : null}
             {a.findings.map((f) => (
-              <FindingItem key={f.id} f={f} item={desk.data?.items.find((i) => i.id === `aud-${f.id}`) ?? desk.data?.decided.find((i) => i.id === `aud-${f.id}`)} owner={owner} firm={firm} />
+              <FindingItem
+                key={f.id}
+                f={f}
+                item={desk.data?.items.find((i) => i.id === `aud-${f.id}`) ?? desk.data?.decided.find((i) => i.id === `aud-${f.id}`)}
+                owner={owner}
+                firm={firm}
+              />
             ))}
           </Section>
         </>
@@ -147,7 +159,13 @@ function FindingItem({ f, item, owner, firm }: { f: Finding; item?: { id: string
       <ul className="approval-evidence" aria-label="Evidence">
         {f.evidence.map((e, i) => (
           <li key={i}>
-            <button type="button" className="btn-link" onClick={() => (e.ref.kind === "document" && e.ref.id ? openDocument(e.ref.id, e.ref.region) : e.ref.kind === "figure" && e.ref.id ? open(e.ref.id) : undefined)}>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() =>
+                e.ref.kind === "document" && e.ref.id ? openDocument(e.ref.id, e.ref.region) : e.ref.kind === "figure" && e.ref.id ? open(e.ref.id) : undefined
+              }
+            >
               {e.label}
             </button>
           </li>
@@ -155,7 +173,14 @@ function FindingItem({ f, item, owner, firm }: { f: Finding; item?: { id: string
       </ul>
       {item ? (
         item.status === "pending" ? (
-          <button type="button" className="btn btn-primary" disabled={decide.isPending} onClick={() => decide.mutate({ id: item.id, decision: { action: "approve", note: owner ? undefined : "Acknowledged; will correct before filing." } })}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={decide.isPending}
+            onClick={() =>
+              decide.mutate({ id: item.id, decision: { action: "approve", note: owner ? undefined : "Acknowledged; will correct before filing." } })
+            }
+          >
             {owner ? `Raise with ${firm}` : "Acknowledge and correct"}
           </button>
         ) : (

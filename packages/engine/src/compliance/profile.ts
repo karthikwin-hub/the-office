@@ -23,10 +23,15 @@ export const fyFromLabel = (label: string) => Number(label.slice(0, 4));
 export function smallCompany(books: Books, p: ComplianceProfile): { value: boolean | null; reason: string } {
   const turnover = books.business.prevYearTurnoverPaise;
   if (p.holdingOrSubsidiary) return { value: false, reason: "A holding or subsidiary company is never a small company." };
-  if (turnover > 100 * CRORE) return { value: false, reason: `Last year's turnover of ₹${(turnover / CRORE).toFixed(1)} crore is above the ₹100 crore limit for a small company.` };
+  if (turnover > 100 * CRORE)
+    return { value: false, reason: `Last year's turnover of ₹${(turnover / CRORE).toFixed(1)} crore is above the ₹100 crore limit for a small company.` };
   if (p.paidUpCapitalPaise === null) return { value: null, reason: "Add the paid-up capital to know whether this is a small company." };
   if (p.paidUpCapitalPaise > 10 * CRORE) return { value: false, reason: "Paid-up capital is above the ₹10 crore limit for a small company." };
-  return { value: true, reason: "Paid-up capital is up to ₹10 crore and turnover up to ₹100 crore, so this is a small company: one board meeting each half-year and MGT-7A instead of MGT-7." };
+  return {
+    value: true,
+    reason:
+      "Paid-up capital is up to ₹10 crore and turnover up to ₹100 crore, so this is a small company: one board meeting each half-year and MGT-7A instead of MGT-7.",
+  };
 }
 
 /** The six answers the calendar cannot do without. */
@@ -54,9 +59,11 @@ export function csrApplies(books: Books, p: ComplianceProfile): boolean {
 }
 
 /** AOC-4 in XBRL: paid-up capital of ₹5 crore or turnover of ₹100 crore. */
-export const xbrlApplies = (books: Books, p: ComplianceProfile) => (p.paidUpCapitalPaise ?? 0) >= 5 * CRORE || books.business.prevYearTurnoverPaise >= 100 * CRORE;
+export const xbrlApplies = (books: Books, p: ComplianceProfile) =>
+  (p.paidUpCapitalPaise ?? 0) >= 5 * CRORE || books.business.prevYearTurnoverPaise >= 100 * CRORE;
 /** MGT-7 certified by a practising company secretary in MGT-8: paid-up capital of ₹10 crore or turnover of ₹50 crore. */
-export const mgt8Applies = (books: Books, p: ComplianceProfile) => (p.paidUpCapitalPaise ?? 0) >= 10 * CRORE || books.business.prevYearTurnoverPaise >= 50 * CRORE;
+export const mgt8Applies = (books: Books, p: ComplianceProfile) =>
+  (p.paidUpCapitalPaise ?? 0) >= 10 * CRORE || books.business.prevYearTurnoverPaise >= 50 * CRORE;
 
 /** The normal MCA filing fee by authorised capital; late filings pay a multiple of it. */
 export function normalFeePaise(p: ComplianceProfile): number {
@@ -70,7 +77,9 @@ export function normalFeePaise(p: ComplianceProfile): number {
 
 /** The ₹ the company still owes on a bill, after TDS and payments. */
 export function billOpenPaise(l: Ledger, b: Bill): number {
-  const paid = l.books.payments.filter((p) => p.direction === "out" && p.date <= l.asOf).reduce((a, p) => a + p.allocations.filter((x) => x.billId === b.id).reduce((s, x) => s + x.amountPaise + x.tdsPaise, 0), 0);
+  const paid = l.books.payments
+    .filter((p) => p.direction === "out" && p.date <= l.asOf)
+    .reduce((a, p) => a + p.allocations.filter((x) => x.billId === b.id).reduce((s, x) => s + x.amountPaise + x.tdsPaise, 0), 0);
   return Math.max(0, b.totals.totalPaise - (b.tds?.amountPaise ?? 0) - paid);
 }
 
@@ -101,14 +110,19 @@ export const COMPANY_TAX_PCT = 25.168;
 export function estimateTax(l: Ledger, p: ComplianceProfile): { taxPaise: number; profitPaise: number; basis: string } {
   const fy = fyOf(l.asOf);
   const from = `${fy}-04-01`;
-  if (p.estimatedTaxPaise !== null) return { taxPaise: p.estimatedTaxPaise, profitPaise: Math.round((p.estimatedTaxPaise * 100) / COMPANY_TAX_PCT), basis: "your CA's estimate" };
+  if (p.estimatedTaxPaise !== null)
+    return { taxPaise: p.estimatedTaxPaise, profitPaise: Math.round((p.estimatedTaxPaise * 100) / COMPANY_TAX_PCT), basis: "your CA's estimate" };
   const sales = l.books.invoices.filter((i) => i.status === "posted" && i.date >= from && i.date <= l.asOf).reduce((a, i) => a + i.totals.taxablePaise, 0);
   const buys = l.books.bills.filter((b) => b.status === "posted" && b.date >= from && b.date <= l.asOf).reduce((a, b) => a + b.totals.taxablePaise, 0);
   const months = Math.max(1, Math.round(daysBetween(from, l.asOf) / 30.4));
   const payroll = payrollFor(l, l.asOf.slice(0, 7)).reduce((a, x) => a + x.earnedPaise + x.pfEmployerPaise + x.esiEmployerPaise, 0) * months;
   const days = Math.max(30, daysBetween(from, l.asOf) + 1);
   const profit = Math.round(((sales - buys - payroll) * 365) / days);
-  return { taxPaise: Math.max(0, Math.round((profit * COMPANY_TAX_PCT) / 100)), profitPaise: profit, basis: `the books so far this year (sales less purchases and payroll, scaled to twelve months) at ${COMPANY_TAX_PCT}%` };
+  return {
+    taxPaise: Math.max(0, Math.round((profit * COMPANY_TAX_PCT) / 100)),
+    profitPaise: profit,
+    basis: `the books so far this year (sales less purchases and payroll, scaled to twelve months) at ${COMPANY_TAX_PCT}%`,
+  };
 }
 
 /**
@@ -121,13 +135,19 @@ export function profileEvents(before: ComplianceProfile, after: ComplianceProfil
     out.push({ id: `evt-${kind}-${on}-${out.length + after.events.length + 1}`, kind, on, detail, auto: true, ...extra });
   const was = new Map(before.directors.map((d) => [d.id, d]));
   const now = new Map(after.directors.map((d) => [d.id, d]));
-  for (const d of after.directors) if (!was.has(d.id)) add("director_joined", d.appointedOn ?? asOf, `${d.name} (DIN ${d.din || "not yet given"}) joined the board.`);
+  for (const d of after.directors)
+    if (!was.has(d.id)) add("director_joined", d.appointedOn ?? asOf, `${d.name} (DIN ${d.din || "not yet given"}) joined the board.`);
   for (const d of before.directors) if (!now.has(d.id)) add("director_left", asOf, `${d.name} (DIN ${d.din || "-"}) left the board.`);
-  if (before.registeredOffice && after.registeredOffice && before.registeredOffice !== after.registeredOffice) add("office_moved", asOf, `Registered office moved to ${after.registeredOffice}.`);
-  if (before.authorisedCapitalPaise && after.authorisedCapitalPaise !== before.authorisedCapitalPaise) add("authorised_capital_changed", asOf, `Authorised capital changed to ₹${(after.authorisedCapitalPaise / 100).toLocaleString("en-IN")}.`);
+  if (before.registeredOffice && after.registeredOffice && before.registeredOffice !== after.registeredOffice)
+    add("office_moved", asOf, `Registered office moved to ${after.registeredOffice}.`);
+  if (before.authorisedCapitalPaise && after.authorisedCapitalPaise !== before.authorisedCapitalPaise)
+    add("authorised_capital_changed", asOf, `Authorised capital changed to ₹${(after.authorisedCapitalPaise / 100).toLocaleString("en-IN")}.`);
   if (before.paidUpCapitalPaise !== null && after.paidUpCapitalPaise !== null && after.paidUpCapitalPaise > before.paidUpCapitalPaise) {
     const foreign = after.shareholders.some((s) => s.foreign && !before.shareholders.some((b) => b.id === s.id && b.shares >= s.shares));
-    add("shares_allotted", asOf, `Paid-up capital went up by ₹${((after.paidUpCapitalPaise - before.paidUpCapitalPaise) / 100).toLocaleString("en-IN")}.`, { privatePlacement: false, foreign });
+    add("shares_allotted", asOf, `Paid-up capital went up by ₹${((after.paidUpCapitalPaise - before.paidUpCapitalPaise) / 100).toLocaleString("en-IN")}.`, {
+      privatePlacement: false,
+      foreign,
+    });
   }
   const loansBefore = new Map(before.loans.map((x) => [x.id, x]));
   for (const loan of after.loans) {
@@ -135,6 +155,7 @@ export function profileEvents(before: ComplianceProfile, after: ComplianceProfil
     if (loan.secured && !prev) add("charge_created", loan.takenOn, `Secured loan from ${loan.lender}.`);
     if (loan.secured && loan.closedOn && !prev?.closedOn) add("charge_satisfied", loan.closedOn, `Secured loan from ${loan.lender} repaid.`);
   }
-  if (before.auditor && after.auditor && before.auditor !== after.auditor) add("auditor_resigned", asOf, `${before.auditor} stepped down; ${after.auditor} is to be appointed to the casual vacancy.`);
+  if (before.auditor && after.auditor && before.auditor !== after.auditor)
+    add("auditor_resigned", asOf, `${before.auditor} stepped down; ${after.auditor} is to be appointed to the casual vacancy.`);
   return out.filter((e) => e.on >= addDays(asOf, -365));
 }

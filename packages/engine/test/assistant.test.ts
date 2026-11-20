@@ -11,7 +11,15 @@ function office() {
   o.setHiring("executive-assistant", { hired: true, trustLevel: "trainee" });
   return o;
 }
-const req = (method: string, path: string, body?: unknown, who: "owner" | "accountant" = "owner"): ApiRequest => ({ method, path, query: new URLSearchParams(), body, role: who, user: who === "owner" ? OWNER : ACCT, mode: "mock" });
+const req = (method: string, path: string, body?: unknown, who: "owner" | "accountant" = "owner"): ApiRequest => ({
+  method,
+  path,
+  query: new URLSearchParams(),
+  body,
+  role: who,
+  user: who === "owner" ? OWNER : ACCT,
+  mode: "mock",
+});
 
 const window = (from: string, days: number) => [Date.parse(`${from}T00:00:00+05:30`), Date.parse(`${from}T00:00:00+05:30`) + days * 86_400_000] as const;
 const ics = (...events: string[]) => ["BEGIN:VCALENDAR", "VERSION:2.0", "X-WR-CALNAME:Anil's work", ...events, "END:VCALENDAR"].join("\r\n");
@@ -19,8 +27,24 @@ const ics = (...events: string[]) => ["BEGIN:VCALENDAR", "VERSION:2.0", "X-WR-CA
 describe("reading a calendar's private address", () => {
   it("handles zones, all-day events, folded lines and escaped text", () => {
     const text = ics(
-      ["BEGIN:VEVENT", "UID:a", "DTSTART;TZID=Asia/Kolkata:20261104T100000", "DTEND;TZID=Asia/Kolkata:20261104T110000", "SUMMARY:Review with\\, the bank", "LOCATION:MG Road", "END:VEVENT"].join("\r\n"),
-      ["BEGIN:VEVENT", "UID:b", "DTSTART:20261104T043000Z", "DTEND:20261104T050000Z", "SUMMARY:A very long title that Google", " folds onto the next line", "END:VEVENT"].join("\r\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:a",
+        "DTSTART;TZID=Asia/Kolkata:20261104T100000",
+        "DTEND;TZID=Asia/Kolkata:20261104T110000",
+        "SUMMARY:Review with\\, the bank",
+        "LOCATION:MG Road",
+        "END:VEVENT",
+      ].join("\r\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:b",
+        "DTSTART:20261104T043000Z",
+        "DTEND:20261104T050000Z",
+        "SUMMARY:A very long title that Google",
+        " folds onto the next line",
+        "END:VEVENT",
+      ].join("\r\n"),
       ["BEGIN:VEVENT", "UID:c", "DTSTART;VALUE=DATE:20261105", "DTEND;VALUE=DATE:20261106", "SUMMARY:Diwali", "END:VEVENT"].join("\r\n"),
       ["BEGIN:VEVENT", "UID:d", "DTSTART;TZID=Europe/London:20261104T090000", "DURATION:PT30M", "SUMMARY:Call with London", "END:VEVENT"].join("\r\n"),
       ["BEGIN:VEVENT", "UID:e", "DTSTART:20261104T090000Z", "STATUS:CANCELLED", "SUMMARY:Gone", "END:VEVENT"].join("\r\n"),
@@ -39,11 +63,36 @@ describe("reading a calendar's private address", () => {
 
   it("repeats daily, weekly and monthly, skipping dates and moved occurrences", () => {
     const text = ics(
-      ["BEGIN:VEVENT", "UID:stand", "DTSTART;TZID=Asia/Kolkata:20261102T100000", "DTEND;TZID=Asia/Kolkata:20261102T101500", "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR", "EXDATE;TZID=Asia/Kolkata:20261106T100000", "SUMMARY:Stand-up", "END:VEVENT"].join("\r\n"),
-      ["BEGIN:VEVENT", "UID:stand", "RECURRENCE-ID;TZID=Asia/Kolkata:20261104T100000", "DTSTART;TZID=Asia/Kolkata:20261104T120000", "DTEND;TZID=Asia/Kolkata:20261104T121500", "SUMMARY:Stand-up (moved)", "END:VEVENT"].join("\r\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:stand",
+        "DTSTART;TZID=Asia/Kolkata:20261102T100000",
+        "DTEND;TZID=Asia/Kolkata:20261102T101500",
+        "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR",
+        "EXDATE;TZID=Asia/Kolkata:20261106T100000",
+        "SUMMARY:Stand-up",
+        "END:VEVENT",
+      ].join("\r\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:stand",
+        "RECURRENCE-ID;TZID=Asia/Kolkata:20261104T100000",
+        "DTSTART;TZID=Asia/Kolkata:20261104T120000",
+        "DTEND;TZID=Asia/Kolkata:20261104T121500",
+        "SUMMARY:Stand-up (moved)",
+        "END:VEVENT",
+      ].join("\r\n"),
       ["BEGIN:VEVENT", "UID:gst", "DTSTART;VALUE=DATE:20260920", "RRULE:FREQ=MONTHLY;BYMONTHDAY=20", "SUMMARY:GSTR-3B", "END:VEVENT"].join("\r\n"),
       ["BEGIN:VEVENT", "UID:daily", "DTSTART:20261103T023000Z", "DTEND:20261103T030000Z", "RRULE:FREQ=DAILY;COUNT=3", "SUMMARY:Gym", "END:VEVENT"].join("\r\n"),
-      ["BEGIN:VEVENT", "UID:board", "DTSTART;TZID=Asia/Kolkata:20260101T150000", "DTEND;TZID=Asia/Kolkata:20260101T160000", "RRULE:FREQ=MONTHLY;BYDAY=-1FR", "SUMMARY:Board", "END:VEVENT"].join("\r\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:board",
+        "DTSTART;TZID=Asia/Kolkata:20260101T150000",
+        "DTEND;TZID=Asia/Kolkata:20260101T160000",
+        "RRULE:FREQ=MONTHLY;BYDAY=-1FR",
+        "SUMMARY:Board",
+        "END:VEVENT",
+      ].join("\r\n"),
     );
     const { events } = parseIcs(text, ...window("2026-11-02", 28));
     const titles = (t: string) => events.filter((e) => e.title === t).map((e) => e.start.slice(0, 10));
@@ -97,7 +146,15 @@ describe("the agenda and meeting briefs", () => {
 describe("drafted replies", () => {
   const mail = (o: OfficeService) => {
     const party = o.books.parties.find((p) => p.kind === "customer")!;
-    return { party, from: party.contact.email, fromName: party.contact.name, replyTo: party.contact.email, subject: "Statement please", text: "Please share our outstanding balance.", messageId: "<m1@example.com>" };
+    return {
+      party,
+      from: party.contact.email,
+      fromName: party.contact.name,
+      replyTo: party.contact.email,
+      subject: "Statement please",
+      text: "Please share our outstanding balance.",
+      messageId: "<m1@example.com>",
+    };
   };
 
   it("flags a figure the books do not hold", () => {
@@ -110,13 +167,19 @@ describe("drafted replies", () => {
   it("are the owner's alone: on their desk, not the accountant's, and sent only by them", () => {
     const o = office();
     const m = mail(o);
-    const { draft } = o.assistant.receiveMail(OWNER.email, m, { subject: "Re: Statement please", body: "Dear Sir, we will send it today.", promise: "Send the statement" });
+    const { draft } = o.assistant.receiveMail(OWNER.email, m, {
+      subject: "Re: Statement please",
+      body: "Dear Sir, we will send it today.",
+      promise: "Send the statement",
+    });
     expect(draft).toBeTruthy();
     const mine = dispatch(o, req("GET", "/api/desk")).body as { items: { id: string }[] };
     const theirs = dispatch(o, req("GET", "/api/desk", undefined, "accountant")).body as { items: { id: string }[] };
     expect(mine.items.some((i) => i.id === draft!.id)).toBe(true);
     expect(theirs.items.some((i) => i.id === draft!.id)).toBe(false);
-    expect((dispatch(o, req("GET", "/api/office")).body as { deskCount: number }).deskCount).toBe((dispatch(o, req("GET", "/api/office", undefined, "accountant")).body as { deskCount: number }).deskCount + 1);
+    expect((dispatch(o, req("GET", "/api/office")).body as { deskCount: number }).deskCount).toBe(
+      (dispatch(o, req("GET", "/api/office", undefined, "accountant")).body as { deskCount: number }).deskCount + 1,
+    );
     expect(dispatch(o, req("GET", "/api/assistant", undefined, "accountant")).status).toBe(403);
     expect(dispatch(o, req("POST", `/api/desk/${draft!.id}`, { action: "approve" }, "accountant")).status).toBe(404);
     // Nothing of the email reaches the shared log.
@@ -130,7 +193,13 @@ describe("drafted replies", () => {
   });
 
   it("recognises Gmail's forwarding confirmation", () => {
-    expect(gmailConfirmation("Gmail Team <forwarding-noreply@google.com>", "(#123456789) Gmail Forwarding Confirmation - Receive Mail from anil@gmail.com", "Confirmation code: 123456789\n\nhttps://mail-settings.google.com/mail/vf-abc")).toEqual({ code: "123456789", link: "https://mail-settings.google.com/mail/vf-abc" });
+    expect(
+      gmailConfirmation(
+        "Gmail Team <forwarding-noreply@google.com>",
+        "(#123456789) Gmail Forwarding Confirmation - Receive Mail from anil@gmail.com",
+        "Confirmation code: 123456789\n\nhttps://mail-settings.google.com/mail/vf-abc",
+      ),
+    ).toEqual({ code: "123456789", link: "https://mail-settings.google.com/mail/vf-abc" });
     expect(gmailConfirmation("someone@client.com", "Order", "hi")).toBeNull();
   });
 });
@@ -149,10 +218,22 @@ describe("tasks on WhatsApp", () => {
     const { handleWhatsApp } = await import("../src");
     const newWaSession = () => ({ list: [], seen: [], lastAt: null, language: "en" as const });
     const o = office();
-    const turn = handleWhatsApp(o, { ...OWNER, role: "owner" }, newWaSession(), { id: "w1", text: "remind me to call the bank tomorrow", at: new Date().toISOString() }, { base: "https://app" });
+    const turn = handleWhatsApp(
+      o,
+      { ...OWNER, role: "owner" },
+      newWaSession(),
+      { id: "w1", text: "remind me to call the bank tomorrow", at: new Date().toISOString() },
+      { base: "https://app" },
+    );
     expect(turn.parts[0]!.text).toContain("Call the bank");
     expect(o.assistant.view(OWNER.email, false).tasks[0]!.due).toBe("2026-11-05");
-    handleWhatsApp(o, { ...ACCT, role: "accountant" }, newWaSession(), { id: "w2", text: "remind me to call the bank tomorrow", at: new Date().toISOString() }, { base: "https://app" });
+    handleWhatsApp(
+      o,
+      { ...ACCT, role: "accountant" },
+      newWaSession(),
+      { id: "w2", text: "remind me to call the bank tomorrow", at: new Date().toISOString() },
+      { base: "https://app" },
+    );
     expect(o.assistant.view(ACCT.email, false).tasks).toHaveLength(0);
   });
 });
@@ -160,9 +241,17 @@ describe("tasks on WhatsApp", () => {
 describe("forwarded emails", () => {
   it("finds the original sender in a Gmail and an Outlook forward", async () => {
     const { readForward } = await import("../src");
-    const gmail = "Can you draft a reply?\n\n---------- Forwarded message ---------\nFrom: Rakesh Sharma <rakesh@sharmatraders.in>\nDate: Tue, 3 Nov 2026 at 10:02\nSubject: Statement please\nTo: Anil <anil@kaverielectricals.in>\n\nPlease send our statement.\n";
-    expect(readForward(gmail)).toMatchObject({ from: "rakesh@sharmatraders.in", name: "Rakesh Sharma", subject: "Statement please", body: "Please send our statement.", note: "Can you draft a reply?" });
-    const outlook = "________________________________\nFrom: Priya <priya@vendor.co.in>\nSent: Monday, November 2, 2026 4:10 PM\nTo: Anil\nSubject: Revised rates\n\nRates go up 4% from December.";
+    const gmail =
+      "Can you draft a reply?\n\n---------- Forwarded message ---------\nFrom: Rakesh Sharma <rakesh@sharmatraders.in>\nDate: Tue, 3 Nov 2026 at 10:02\nSubject: Statement please\nTo: Anil <anil@kaverielectricals.in>\n\nPlease send our statement.\n";
+    expect(readForward(gmail)).toMatchObject({
+      from: "rakesh@sharmatraders.in",
+      name: "Rakesh Sharma",
+      subject: "Statement please",
+      body: "Please send our statement.",
+      note: "Can you draft a reply?",
+    });
+    const outlook =
+      "________________________________\nFrom: Priya <priya@vendor.co.in>\nSent: Monday, November 2, 2026 4:10 PM\nTo: Anil\nSubject: Revised rates\n\nRates go up 4% from December.";
     expect(readForward(outlook)).toMatchObject({ from: "priya@vendor.co.in", subject: "Revised rates", body: "Rates go up 4% from December." });
     expect(readForward("Just a note to myself")).toBeNull();
   });

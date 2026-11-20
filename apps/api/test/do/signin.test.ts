@@ -24,7 +24,9 @@ describe("a channel sign-in", () => {
     });
     const x = fetchMock.get("https://api.x.com");
     x.intercept({ path: "/2/oauth2/token", method: "POST" }).reply(200, { access_token: "at-1", refresh_token: "rt-1", expires_in: 7200 }).times(2);
-    x.intercept({ path: (p) => p.startsWith("/2/users/me"), method: "GET" }).reply(200, { data: { id: "x-account-1", username: "kaveri" } }).times(2);
+    x.intercept({ path: (p) => p.startsWith("/2/users/me"), method: "GET" })
+      .reply(200, { data: { id: "x-account-1", username: "kaveri" } })
+      .times(2);
 
     const { state } = await newState(env.SOCIAL_TOKEN_KEY!, "x", owner.email, id);
     const callback = async () => {

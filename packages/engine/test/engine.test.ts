@@ -107,7 +107,18 @@ describe("office", () => {
           else walk(v);
         }
     };
-    [salesReport(l), ageingReport(l), gstReport(l), tdsReport(l), cashReport(l), marketingReport(l), operationsReport(l), peopleReport(l), auditReport(l), salesTeamReport(l)].forEach(walk);
+    [
+      salesReport(l),
+      ageingReport(l),
+      gstReport(l),
+      tdsReport(l),
+      cashReport(l),
+      marketingReport(l),
+      operationsReport(l),
+      peopleReport(l),
+      auditReport(l),
+      salesTeamReport(l),
+    ].forEach(walk);
     for (const a of AGENTS) walk(office.kpis(a.id));
     expect(ids.size).toBeGreaterThan(20);
     for (const id of ids) {
@@ -124,7 +135,10 @@ describe("office", () => {
     for (const r of rooms) if (!r.hired) expect(r.headline, r.agentId).toBeUndefined();
     for (const r of withHeadline) {
       const h = r.headline!;
-      expect(office.kpis(r.agentId).some((k) => k.label === h.label && k.value === h.value), r.agentId).toBe(true);
+      expect(
+        office.kpis(r.agentId).some((k) => k.label === h.label && k.value === h.value),
+        r.agentId,
+      ).toBe(true);
       expect(h.value, r.agentId).not.toMatch(/^(₹?0|None|-)$/);
       if (h.figureId) expect(trace(l, h.figureId).rows.length, r.agentId).toBeGreaterThan(0);
     }
@@ -142,13 +156,39 @@ describe("office", () => {
   it("dispatch serves every route and enforces roles", () => {
     const owner = { role: "owner" as const, user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" as const };
     const get = (path: string, role = owner) => dispatch(office, { method: "GET", path, query: new URLSearchParams(), ...role });
-    for (const p of ["/api/session", "/api/office", "/api/desk", "/api/reports/sales", "/api/reports/ageing", "/api/reports/gst", "/api/reports/tds", "/api/reports/cash", "/api/reports/sales-team", "/api/reports/marketing", "/api/reports/social", "/api/reports/operations", "/api/reports/people", "/api/audit", "/api/documents", "/api/hiring", "/api/settings", "/api/agents/accountant", "/api/trace/ageing%3Atotal", "/api/parties/C01", "/api/exports/gstr1/2026-10"])
+    for (const p of [
+      "/api/session",
+      "/api/office",
+      "/api/desk",
+      "/api/reports/sales",
+      "/api/reports/ageing",
+      "/api/reports/gst",
+      "/api/reports/tds",
+      "/api/reports/cash",
+      "/api/reports/sales-team",
+      "/api/reports/marketing",
+      "/api/reports/social",
+      "/api/reports/operations",
+      "/api/reports/people",
+      "/api/audit",
+      "/api/documents",
+      "/api/hiring",
+      "/api/settings",
+      "/api/agents/accountant",
+      "/api/trace/ageing%3Atotal",
+      "/api/parties/C01",
+      "/api/exports/gstr1/2026-10",
+    ])
       expect(get(p).status, p).toBe(200);
     expect(get("/api/parties/NOPE").status).toBe(404);
     const reminder = office.desk().items.find((i) => i.kind === "reminder")!;
     const asAccountant = { ...owner, role: "accountant" as const };
-    expect(dispatch(office, { method: "POST", path: `/api/desk/${reminder.id}`, query: new URLSearchParams(), body: { action: "approve" }, ...asAccountant }).status).toBe(403);
-    expect(dispatch(office, { method: "POST", path: `/api/desk/${reminder.id}`, query: new URLSearchParams(), body: { action: "approve" }, ...owner }).status).toBe(200);
+    expect(
+      dispatch(office, { method: "POST", path: `/api/desk/${reminder.id}`, query: new URLSearchParams(), body: { action: "approve" }, ...asAccountant }).status,
+    ).toBe(403);
+    expect(
+      dispatch(office, { method: "POST", path: `/api/desk/${reminder.id}`, query: new URLSearchParams(), body: { action: "approve" }, ...owner }).status,
+    ).toBe(200);
   });
 
   it("answers questions with traceable figures", () => {

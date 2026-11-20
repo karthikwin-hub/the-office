@@ -5,10 +5,13 @@ import type { Ledger } from "../ledger";
 type Intent = SocialMessage["intent"];
 type Sentiment = SocialMessage["sentiment"];
 
-const NEGATIVE = /\b(bad|worst|poor|rude|late|delay(?:ed)?|broken|damaged|faulty|defective|not working|stopped working|refund|cheat(?:ed)?|never again|disappointed|complain|wrong|overcharged?|waste)\b/i;
+const NEGATIVE =
+  /\b(bad|worst|poor|rude|late|delay(?:ed)?|broken|damaged|faulty|defective|not working|stopped working|refund|cheat(?:ed)?|never again|disappointed|complain|wrong|overcharged?|waste)\b/i;
 const POSITIVE = /\b(thank(?:s| you)?|great|good|excellent|helpful|quick|fast|best|recommend|happy|love|genuine|reasonable|polite|nice|superb)\b/i;
-const ENQUIRY = /\b(price|rate|cost|quote|quotation|stock|available|availability|deliver|delivery|order|need|want|require|pcs|pieces|boxes|coils|bulk|wholesale|dealer)\b/i;
-const SPAM = /\b(followers|crypto|bitcoin|loan offer|click here|dm for promo|collab|earn \d+|promote your)\b|https?:\/\/(?!\S*(?:wa\.me|instagram\.com|facebook\.com))/i;
+const ENQUIRY =
+  /\b(price|rate|cost|quote|quotation|stock|available|availability|deliver|delivery|order|need|want|require|pcs|pieces|boxes|coils|bulk|wholesale|dealer)\b/i;
+const SPAM =
+  /\b(followers|crypto|bitcoin|loan offer|click here|dm for promo|collab|earn \d+|promote your)\b|https?:\/\/(?!\S*(?:wa\.me|instagram\.com|facebook\.com))/i;
 
 /** Sentiment and intent from the words and the star rating. */
 export function classify(text: string, rating: number | null): { sentiment: Sentiment; intent: Intent } {
@@ -73,7 +76,10 @@ export function leadFrom(l: Ledger, m: SocialMessage): Lead {
 }
 
 /** Builds a new inbox message from a platform event, with sentiment, intent and a reply drafted. */
-export function newMessage(l: Ledger, raw: Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> & Partial<SocialMessage>): SocialMessage {
+export function newMessage(
+  l: Ledger,
+  raw: Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> & Partial<SocialMessage>,
+): SocialMessage {
   const { sentiment, intent } = classify(raw.text, raw.rating);
   const replyBy = raw.kind === "dm" && platformOf(raw.platform) === "whatsapp" ? new Date(Date.parse(raw.at) + 24 * 3600_000).toISOString() : null;
   const m: SocialMessage = { postId: null, threadId: null, externalId: null, leadId: null, replyBy, ...raw, sentiment, intent, draftReply: "", status: "open" };

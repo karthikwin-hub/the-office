@@ -17,7 +17,13 @@ export class SheetError extends Error {}
 
 type ZipEntry = import("jszip").JSZipObject;
 /** JSZip's own chunked reader, which the typings leave out; `async` would hold the whole entry before anyone could count it. */
-type ChunkStream = { on(evt: "data", fn: (chunk: Uint8Array) => void): ChunkStream; on(evt: "end", fn: () => void): ChunkStream; on(evt: "error", fn: (e: unknown) => void): ChunkStream; resume(): ChunkStream; pause(): ChunkStream };
+type ChunkStream = {
+  on(evt: "data", fn: (chunk: Uint8Array) => void): ChunkStream;
+  on(evt: "end", fn: () => void): ChunkStream;
+  on(evt: "error", fn: (e: unknown) => void): ChunkStream;
+  resume(): ChunkStream;
+  pause(): ChunkStream;
+};
 
 /** The size an entry says it unzips to, from the zip's directory. It can lie, so `inflate` counts as well. */
 const declaredSize = (e: ZipEntry) => {
@@ -141,7 +147,9 @@ export async function readSheets(name: string, data: ArrayBuffer | Uint8Array): 
   if (kind === "zip") {
     const JSZip = (await import("jszip")).default;
     const z = await JSZip.loadAsync(bytes);
-    const entries = Object.values(z.files).filter((f) => !f.dir && !/(^|\/)(__MACOSX|\.)/.test(f.name)).slice(0, MAX_ZIP_ENTRIES);
+    const entries = Object.values(z.files)
+      .filter((f) => !f.dir && !/(^|\/)(__MACOSX|\.)/.test(f.name))
+      .slice(0, MAX_ZIP_ENTRIES);
     const reports = entries.filter((e) => /\.(csv|txt|tsv|xlsx|xlsm)$/i.test(e.name));
     checkDeclared(reports, ZIP_TOO_BIG);
     const out: Sheet[] = [];
@@ -149,7 +157,8 @@ export async function readSheets(name: string, data: ArrayBuffer | Uint8Array): 
     for (const e of reports) {
       const { bytes: inner } = await inflate(e, MAX_UNZIPPED - total, ZIP_TOO_BIG);
       total += inner.byteLength;
-      for (const s of await readSheets(e.name, inner)) out.push({ ...s, name: entries.length > 1 ? `${e.name.split("/").pop()}${s.name && s.name !== e.name ? `: ${s.name}` : ""}` : s.name });
+      for (const s of await readSheets(e.name, inner))
+        out.push({ ...s, name: entries.length > 1 ? `${e.name.split("/").pop()}${s.name && s.name !== e.name ? `: ${s.name}` : ""}` : s.name });
     }
     return out;
   }

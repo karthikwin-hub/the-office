@@ -32,10 +32,28 @@ export function PipelineView({ report, compact }: { report: SalesTeamReport; com
           rowKey={(r) => r.id}
           initialSort={{ id: "v", desc: true }}
           columns={[
-            { id: "n", header: "Lead", cell: (r) => <><strong>{r.name}</strong><br /><span className="muted">{r.need}</span></>, sortBy: (r) => r.name },
+            {
+              id: "n",
+              header: "Lead",
+              cell: (r) => (
+                <>
+                  <strong>{r.name}</strong>
+                  <br />
+                  <span className="muted">{r.need}</span>
+                </>
+              ),
+              sortBy: (r) => r.name,
+            },
             { id: "s", header: "Stage", cell: (r) => stage(r.stage), sortBy: (r) => r.stage },
             { id: "src", header: "Came from", cell: (r) => r.source, secondary: true },
-            { id: "v", header: "Value", cell: (r) => <Amount paise={r.valuePaise} rupees />, sortBy: (r) => r.valuePaise, numeric: true, footer: <Amount paise={open.reduce((a, l) => a + l.valuePaise, 0)} figureId="pipeline:open" rupees /> },
+            {
+              id: "v",
+              header: "Value",
+              cell: (r) => <Amount paise={r.valuePaise} rupees />,
+              sortBy: (r) => r.valuePaise,
+              numeric: true,
+              footer: <Amount paise={open.reduce((a, l) => a + l.valuePaise, 0)} figureId="pipeline:open" rupees />,
+            },
             { id: "x", header: "Next step", cell: (r) => r.nextStep, secondary: true },
             { id: "t", header: "Last contact", cell: (r) => shortDate(r.lastTouchOn), sortBy: (r) => r.lastTouchOn, secondary: true },
           ]}
@@ -58,7 +76,22 @@ export function QuotesView({ report }: { report: SalesTeamReport }) {
         rowTone={(r) => (r.overdueWarning ? "red" : undefined)}
         columns={[
           { id: "n", header: "Quotation", cell: (r) => r.number, sortBy: (r) => r.number },
-          { id: "c", header: "For", cell: (r) => <>{r.customer}{r.overdueWarning ? <><br /><span className="figure-red">{r.overdueWarning}</span></> : null}</>, sortBy: (r) => r.customer },
+          {
+            id: "c",
+            header: "For",
+            cell: (r) => (
+              <>
+                {r.customer}
+                {r.overdueWarning ? (
+                  <>
+                    <br />
+                    <span className="figure-red">{r.overdueWarning}</span>
+                  </>
+                ) : null}
+              </>
+            ),
+            sortBy: (r) => r.customer,
+          },
           { id: "d", header: "Date", cell: (r) => shortDate(r.date), sortBy: (r) => r.date, secondary: true },
           { id: "u", header: "Valid until", cell: (r) => shortDate(r.validUntil), secondary: true },
           { id: "s", header: "Status", cell: (r) => QUOTE_STATUS[r.status], sortBy: (r) => r.status },
@@ -82,7 +115,16 @@ export function ReordersView({ report }: { report: SalesTeamReport }) {
         initialSort={{ id: "late", desc: true }}
         rowTone={(r) => (r.status === "late" ? "red" : undefined)}
         columns={[
-          { id: "n", header: "Customer", cell: (r) => <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>{r.name}</Link>, sortBy: (r) => r.name },
+          {
+            id: "n",
+            header: "Customer",
+            cell: (r) => (
+              <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>
+                {r.name}
+              </Link>
+            ),
+            sortBy: (r) => r.name,
+          },
           { id: "o", header: "Orders this year", cell: (r) => r.orders, numeric: true, secondary: true },
           { id: "i", header: "Orders every", cell: (r) => `${r.avgIntervalDays} days`, numeric: true, secondary: true },
           { id: "l", header: "Last order", cell: (r) => shortDate(r.lastOrderOn), sortBy: (r) => r.lastOrderOn },
@@ -109,10 +151,32 @@ export function CampaignsView({ report, compact }: { report: MarketingReport; co
           rows={report.campaigns}
           rowKey={(r) => r.id}
           columns={[
-            { id: "n", header: "Campaign", cell: (r) => <><strong>{r.name}</strong><br /><span className="muted">{r.channel}: {r.skuNames.slice(0, 3).join(", ")}</span></> },
+            {
+              id: "n",
+              header: "Campaign",
+              cell: (r) => (
+                <>
+                  <strong>{r.name}</strong>
+                  <br />
+                  <span className="muted">
+                    {r.channel}: {r.skuNames.slice(0, 3).join(", ")}
+                  </span>
+                </>
+              ),
+            },
             { id: "s", header: "Status", cell: (r) => CAMPAIGN[r.status] },
             { id: "d", header: "Runs", cell: (r) => `${shortDate(r.start)} to ${shortDate(r.end)}`, secondary: true },
-            { id: "b", header: "Spent of budget", cell: (r) => <><Amount paise={r.spentPaise} rupees /> of <Amount paise={r.budgetPaise} rupees /></>, numeric: true, secondary: true },
+            {
+              id: "b",
+              header: "Spent of budget",
+              cell: (r) => (
+                <>
+                  <Amount paise={r.spentPaise} rupees /> of <Amount paise={r.budgetPaise} rupees />
+                </>
+              ),
+              numeric: true,
+              secondary: true,
+            },
             { id: "e", header: "Enquiries", cell: (r) => r.enquiries, numeric: true },
             { id: "a", header: "Sales it brought", cell: (r) => <Amount paise={r.attributedSalesPaise} rupees />, numeric: true },
             { id: "x", header: "Per rupee spent", cell: (r) => (r.returnMultiple === null ? "" : `₹${r.returnMultiple.toFixed(1)}`), numeric: true },
@@ -145,7 +209,9 @@ export function SlowStockView({ report }: { report: MarketingReport }) {
   const total = report.slowMovers.reduce((a, s) => a + s.stockValuePaise, 0);
   return (
     <Section title="Stock that is not moving">
-      <p className="section-lede">SKUs with stock on hand and few or no sales in the last 60 days. The Marketer plans offers to clear them before buying more.</p>
+      <p className="section-lede">
+        SKUs with stock on hand and few or no sales in the last 60 days. The Marketer plans offers to clear them before buying more.
+      </p>
       <LedgerTable
         caption="Slow-moving stock"
         rows={report.slowMovers}
@@ -155,8 +221,22 @@ export function SlowStockView({ report }: { report: MarketingReport }) {
           { id: "n", header: "SKU", cell: (r) => r.name, sortBy: (r) => r.name },
           { id: "h", header: "On hand", cell: (r) => r.onHand.toLocaleString("en-IN"), numeric: true },
           { id: "s", header: "Sold in 60 days", cell: (r) => r.soldLast60, numeric: true },
-          { id: "d", header: "Days of stock", cell: (r) => (r.daysOfStock === null ? "No sales" : r.daysOfStock), sortBy: (r) => r.daysOfStock ?? 9999, numeric: true, secondary: true },
-          { id: "v", header: "Stock at cost", cell: (r) => <Amount paise={r.stockValuePaise} rupees />, sortBy: (r) => r.stockValuePaise, numeric: true, footer: <Amount paise={total} figureId="marketing:slow" rupees /> },
+          {
+            id: "d",
+            header: "Days of stock",
+            cell: (r) => (r.daysOfStock === null ? "No sales" : r.daysOfStock),
+            sortBy: (r) => r.daysOfStock ?? 9999,
+            numeric: true,
+            secondary: true,
+          },
+          {
+            id: "v",
+            header: "Stock at cost",
+            cell: (r) => <Amount paise={r.stockValuePaise} rupees />,
+            sortBy: (r) => r.stockValuePaise,
+            numeric: true,
+            footer: <Amount paise={total} figureId="marketing:slow" rupees />,
+          },
         ]}
       />
     </Section>
@@ -181,7 +261,15 @@ export function PricesView({ report }: { report: MarketingReport }) {
             header: "Lowest seen",
             cell: (r) => {
               const best = [...r.offers].sort((a, b) => a.pricePaise - b.pricePaise)[0];
-              return best ? <><Amount paise={best.pricePaise} rupees /><br /><span className="muted">{best.seller}, {best.marketplace}</span></> : null;
+              return best ? (
+                <>
+                  <Amount paise={best.pricePaise} rupees />
+                  <br />
+                  <span className="muted">
+                    {best.seller}, {best.marketplace}
+                  </span>
+                </>
+              ) : null;
             },
             numeric: true,
           },
@@ -215,9 +303,22 @@ export function StockView({ report, compact }: { report: OperationsReport; compa
             { id: "h", header: "On hand", cell: (r) => quantity(r.onHand, r.unit), sortBy: (r) => r.onHand, numeric: true },
             { id: "r", header: "Reorder at", cell: (r) => r.reorderPoint.toLocaleString("en-IN"), numeric: true, secondary: true },
             { id: "s", header: "Sold in 30 days", cell: (r) => r.soldLast30.toLocaleString("en-IN"), numeric: true, secondary: true },
-            { id: "c", header: "Days of cover", cell: (r) => (r.daysOfCover === null ? "No sales" : r.daysOfCover), sortBy: (r) => r.daysOfCover ?? 9999, numeric: true },
+            {
+              id: "c",
+              header: "Days of cover",
+              cell: (r) => (r.daysOfCover === null ? "No sales" : r.daysOfCover),
+              sortBy: (r) => r.daysOfCover ?? 9999,
+              numeric: true,
+            },
             { id: "st", header: "Status", cell: (r) => STOCK[r.status], sortBy: (r) => r.status },
-            { id: "v", header: "At cost", cell: (r) => <Amount paise={r.stockValuePaise} rupees />, sortBy: (r) => r.stockValuePaise, numeric: true, secondary: true },
+            {
+              id: "v",
+              header: "At cost",
+              cell: (r) => <Amount paise={r.stockValuePaise} rupees />,
+              sortBy: (r) => r.stockValuePaise,
+              numeric: true,
+              secondary: true,
+            },
           ]}
         />
       </Section>
@@ -254,7 +355,16 @@ export function OrdersView({ report }: { report: OperationsReport }) {
               rowKey={(x) => x.vendorName}
               rowTone={(x) => (x.vendorName === r.recommended ? "green" : undefined)}
               columns={[
-                { id: "v", header: "Supplier", cell: (x) => <>{x.vendorName}{x.vendorName === r.recommended ? <span className="muted">, recommended</span> : null}</> },
+                {
+                  id: "v",
+                  header: "Supplier",
+                  cell: (x) => (
+                    <>
+                      {x.vendorName}
+                      {x.vendorName === r.recommended ? <span className="muted">, recommended</span> : null}
+                    </>
+                  ),
+                },
                 { id: "r", header: "Rate", cell: (x) => <Amount paise={x.ratePaise} />, numeric: true },
                 { id: "l", header: "Delivery", cell: (x) => `${x.leadDays} days`, numeric: true },
                 { id: "t", header: "Terms", cell: (x) => x.terms, secondary: true },
@@ -281,17 +391,62 @@ export function PayrollView({ report }: { report: PeopleReport }) {
           rows={report.lines}
           rowKey={(r) => r.employeeId}
           columns={[
-            { id: "n", header: "Name", cell: (r) => <><strong>{r.name}</strong><br /><span className="muted">{r.role}</span></>, sortBy: (r) => r.name },
+            {
+              id: "n",
+              header: "Name",
+              cell: (r) => (
+                <>
+                  <strong>{r.name}</strong>
+                  <br />
+                  <span className="muted">{r.role}</span>
+                </>
+              ),
+              sortBy: (r) => r.name,
+            },
             { id: "d", header: "Days paid", cell: (r) => r.payableDays, numeric: true, secondary: true },
             { id: "g", header: "Earned", cell: (r) => <Amount paise={r.earnedPaise} rupees />, numeric: true, footer: <Amount paise={t.earnedPaise} rupees /> },
-            { id: "pf", header: "PF", cell: (r) => <Amount paise={r.pfEmployeePaise} rupees />, numeric: true, secondary: true, footer: <Amount paise={t.pfEmployeePaise} rupees /> },
-            { id: "esi", header: "ESI", cell: (r) => (r.esiEmployeePaise ? <Amount paise={r.esiEmployeePaise} rupees /> : ""), numeric: true, secondary: true, footer: <Amount paise={t.esiEmployeePaise} rupees /> },
-            { id: "pt", header: "Prof. tax", cell: (r) => <Amount paise={r.ptPaise} rupees />, numeric: true, secondary: true, footer: <Amount paise={t.ptPaise} rupees /> },
-            { id: "net", header: "Net pay", cell: (r) => <Amount paise={r.netPaise} rupees />, sortBy: (r) => r.netPaise, numeric: true, footer: <Amount paise={t.netPaise} figureId={`payroll:net:${report.period}`} rupees /> },
+            {
+              id: "pf",
+              header: "PF",
+              cell: (r) => <Amount paise={r.pfEmployeePaise} rupees />,
+              numeric: true,
+              secondary: true,
+              footer: <Amount paise={t.pfEmployeePaise} rupees />,
+            },
+            {
+              id: "esi",
+              header: "ESI",
+              cell: (r) => (r.esiEmployeePaise ? <Amount paise={r.esiEmployeePaise} rupees /> : ""),
+              numeric: true,
+              secondary: true,
+              footer: <Amount paise={t.esiEmployeePaise} rupees />,
+            },
+            {
+              id: "pt",
+              header: "Prof. tax",
+              cell: (r) => <Amount paise={r.ptPaise} rupees />,
+              numeric: true,
+              secondary: true,
+              footer: <Amount paise={t.ptPaise} rupees />,
+            },
+            {
+              id: "net",
+              header: "Net pay",
+              cell: (r) => <Amount paise={r.netPaise} rupees />,
+              sortBy: (r) => r.netPaise,
+              numeric: true,
+              footer: <Amount paise={t.netPaise} figureId={`payroll:net:${report.period}`} rupees />,
+            },
           ]}
         />
         <p className="table-note">
-          Your share on top of pay: PF <Amount paise={t.pfEmployerPaise} rupees /> and ESI <Amount paise={t.esiEmployerPaise} rupees />, <Amount paise={t.pfEmployerPaise + t.esiEmployerPaise + t.pfEmployeePaise + t.esiEmployeePaise} figureId={`payroll:statutory:${report.period}`} rupees /> in all to deposit by the 15th.
+          Your share on top of pay: PF <Amount paise={t.pfEmployerPaise} rupees /> and ESI <Amount paise={t.esiEmployerPaise} rupees />,{" "}
+          <Amount
+            paise={t.pfEmployerPaise + t.esiEmployerPaise + t.pfEmployeePaise + t.esiEmployeePaise}
+            figureId={`payroll:statutory:${report.period}`}
+            rupees
+          />{" "}
+          in all to deposit by the 15th.
         </p>
       </Section>
       <Section title="How this is worked out">

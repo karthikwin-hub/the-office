@@ -6,12 +6,23 @@ import { ageingReport, cashReport, dispatch, expectedTdsByBill, gstPeriods, outw
 
 const template = (kind: ImportKind) => readFileSync(new URL(`../../../apps/web/public/templates/${kind}.csv`, import.meta.url), "utf8");
 const KINDS: ImportKind[] = ["parties", "products", "open-items"];
-const all = (booksFrom = "2026-11-01"): ImportCheck => ({ booksFrom, files: KINDS.map((kind) => ({ kind, name: `${kind}.csv`, csv: template(kind), file: `/api/o/o1/files/doc-${kind}` })) });
+const all = (booksFrom = "2026-11-01"): ImportCheck => ({
+  booksFrom,
+  files: KINDS.map((kind) => ({ kind, name: `${kind}.csv`, csv: template(kind), file: `/api/o/o1/files/doc-${kind}` })),
+});
 const only = (kind: ImportKind, csv: string, booksFrom = "2026-11-01"): ImportCheck => ({ booksFrom, files: [{ kind, name: `${kind}.csv`, csv }] });
 
 const fresh = () => new OfficeService(emptyBooks({ owner: "Anil Kaveri", asOf: "2026-11-05" }));
 const call = (office: OfficeService, path: string, body: unknown, role: Role = "owner") =>
-  dispatch(office, { method: "POST", path, query: new URLSearchParams(), body, role, user: { name: role === "owner" ? "Anil Kaveri" : "Rajesh Mehta", email: `${role}@example.in` }, mode: "mock" });
+  dispatch(office, {
+    method: "POST",
+    path,
+    query: new URLSearchParams(),
+    body,
+    role,
+    user: { name: role === "owner" ? "Anil Kaveri" : "Rajesh Mehta", email: `${role}@example.in` },
+    mode: "mock",
+  });
 
 /** Stages the three templates and approves them as the owner. */
 function imported() {
@@ -26,7 +37,16 @@ describe("bringing in existing books", () => {
     const p = fresh().checkOnboarding(all());
     expect(p.issues).toEqual([]);
     expect(p.ready).toBe(true);
-    expect(p.counts).toEqual({ customers: 2, suppliers: 2, products: 4, stock: 3, invoices: 2, bills: 2, receivablePaise: 72_720_00, payablePaise: 2_45_000_00 });
+    expect(p.counts).toEqual({
+      customers: 2,
+      suppliers: 2,
+      products: 4,
+      stock: 3,
+      invoices: 2,
+      bills: 2,
+      receivablePaise: 72_720_00,
+      payablePaise: 2_45_000_00,
+    });
     expect(p.files.map((f) => f.rows)).toEqual([4, 4, 4]);
   });
 
@@ -64,27 +84,46 @@ describe("bringing in existing books", () => {
       ["Nagesh Electrical Contractors", "vendor"],
     ]);
     const sharada = b.parties[0]!;
-    expect(sharada).toMatchObject({ pan: "AABCS1234K", stateCode: "29", entity: "company", paymentTermsDays: 30, creditLimitPaise: 5_00_000_00, tan: "BLRS12345E" });
+    expect(sharada).toMatchObject({
+      pan: "AABCS1234K",
+      stateCode: "29",
+      entity: "company",
+      paymentTermsDays: 30,
+      creditLimitPaise: 5_00_000_00,
+      tan: "BLRS12345E",
+    });
     expect(b.parties[3]).toMatchObject({ tdsSection: "194C", supplyKind: "service", entity: "individual", stateCode: "29" });
     expect(b.skus.map((s) => s.id)).toEqual(["CBL-2.5-RED", "MCB-32A-SP", "LED-9W-CW", "SRV-INSTALL"]);
     expect(b.stock.find((s) => s.skuId === "LED-9W-CW")).toMatchObject({ onHand: 300, reorderPoint: 80, location: "Back store", lastReceivedOn: "2026-11-01" });
 
     const inv = b.invoices.find((i) => i.number === "KE/25-26/0412")!;
-    expect(inv).toMatchObject({ opening: true, status: "posted", dueDate: "2026-10-15", totals: { totalPaise: 68_000_00, cgstPaise: 0, sgstPaise: 0, igstPaise: 0 } });
+    expect(inv).toMatchObject({
+      opening: true,
+      status: "posted",
+      dueDate: "2026-10-15",
+      totals: { totalPaise: 68_000_00, cgstPaise: 0, sgstPaise: 0, igstPaise: 0 },
+    });
     expect(inv.lines).toHaveLength(1);
     expect(inv.lines[0]!.description).toBe("Brought forward: Rs 68,000.00 outstanding of Rs 1,18,000.00, invoice dated 15 Sept 2026");
     const doc = b.documents.find((d) => d.id === inv.docId)!;
     expect(doc).toMatchObject({ channel: "import", from: "open-items.csv, row 2", file: "/api/o/o1/files/doc-open-items", status: "posted", refId: inv.id });
     // No due date in the file: the party's terms decide it.
     expect(b.invoices.find((i) => i.number === "KE/25-26/0437")!.dueDate).toBe("2026-10-17");
-    expect(b.teamLog.at(-2)!.text).toBe("Brought in 2 customers, 2 suppliers, 4 products, 2 unpaid invoices worth ₹72,720 and 2 unpaid bills worth ₹2.5 lakh from before 1 Nov 2026.");
+    expect(b.teamLog.at(-2)!.text).toBe(
+      "Brought in 2 customers, 2 suppliers, 4 products, 2 unpaid invoices worth ₹72,720 and 2 unpaid bills worth ₹2.5 lakh from before 1 Nov 2026.",
+    );
   });
 
   it("counts brought-forward invoices towards ageing and statements, but never towards GST, sales or TDS", () => {
     const office = imported();
     const l = office.ledger;
     const ageing = ageingReport(l);
-    expect(ageing.rows.map((r) => r.partyId).sort()).toEqual(office.books.parties.filter((p) => p.kind === "customer").map((p) => p.id).sort());
+    expect(ageing.rows.map((r) => r.partyId).sort()).toEqual(
+      office.books.parties
+        .filter((p) => p.kind === "customer")
+        .map((p) => p.id)
+        .sort(),
+    );
     expect(ageing.totalPaise).toBe(72_720_00);
     expect(outwardFor(l, "2026-09").invoices).toEqual([]);
     expect(outwardFor(l, "2026-10").invoices).toEqual([]);
@@ -92,7 +131,9 @@ describe("bringing in existing books", () => {
     expect([...expectedTdsByBill(l).values()].filter(Boolean)).toEqual([]);
     expect(gstPeriods(l)).toEqual(["2026-11"]);
     expect(tdsQuarters(l)).toEqual(["FY2026-27-Q3"]);
-    const payable = cashReport(l).weeks.flatMap((w) => w.items).filter((i) => i.direction === "out" && i.label.includes("HDH-8831"));
+    const payable = cashReport(l)
+      .weeks.flatMap((w) => w.items)
+      .filter((i) => i.direction === "out" && i.label.includes("HDH-8831"));
     expect(payable.map((i) => i.amountPaise)).toEqual([2_36_000_00]);
     const sharada = office.books.parties[0]!.id;
     expect(office.partyView(sharada).recent[0]!.label).toBe("Brought forward, invoice KE/25-26/0412");
@@ -161,7 +202,11 @@ describe("bringing in existing books", () => {
 
   it("asks for the template's columns, a start date that has happened, and one import at a time", () => {
     const office = fresh();
-    expect(office.checkOnboarding(only("products", "code,title\nA,B\n")).issues[0]).toMatchObject({ file: "products", row: 1, column: "sku, name, hsn, gst_rate, price" });
+    expect(office.checkOnboarding(only("products", "code,title\nA,B\n")).issues[0]).toMatchObject({
+      file: "products",
+      row: 1,
+      column: "sku, name, hsn, gst_rate, price",
+    });
     expect(office.checkOnboarding(all("2026-12-01")).issues[0]).toMatchObject({ file: null, column: "books_from" });
     office.stageOnboarding(all(), "Rajesh Mehta");
     expect(office.checkOnboarding(all()).issues[0]!.message).toContain("already waiting on the Desk");

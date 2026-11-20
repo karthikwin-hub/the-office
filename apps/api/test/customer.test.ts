@@ -34,7 +34,10 @@ function world(opts: { own?: boolean } = {}) {
     ai: null,
     ownKeys: async () => (opts.own ? { token: "own", phoneId: "own-number", template: null } : null),
     sharedKeys: () => ({ token: "shared", phoneId: "shared-number", template: null }),
-    send: mailSender({ MAIL_FROM: "office@the-office.test", MAILER: { send: async (m: { to: string; raw: string }) => void mail.push(m) } as unknown as SendEmail }),
+    send: mailSender({
+      MAIL_FROM: "office@the-office.test",
+      MAILER: { send: async (m: { to: string; raw: string }) => void mail.push(m) } as unknown as SendEmail,
+    }),
     mailFrom: "office@the-office.test",
     businessName: "Kaveri Electricals",
     supportAddress: "kaveri.help@in.the-office.test",
@@ -56,7 +59,14 @@ describe("sending mail", () => {
     const calls: { url: string; init: RequestInit }[] = [];
     const fetcher = (async (url: string, init: RequestInit) => (calls.push({ url, init }), new Response("{}", { status: 200 }))) as unknown as typeof fetch;
     const send = mailSender({ MAIL_FROM: "support@snilldai.com", RESEND_API_KEY: "re_test", MAILER: undefined }, fetcher)!;
-    const id = await send({ fromName: "Kaveri Electricals", to: "a@b.test", subject: "Re: order", body: "On its way.", replyTo: "kaveri.help@in.office.snilld.in", inReplyTo: "<x@y>" });
+    const id = await send({
+      fromName: "Kaveri Electricals",
+      to: "a@b.test",
+      subject: "Re: order",
+      body: "On its way.",
+      replyTo: "kaveri.help@in.office.snilld.in",
+      inReplyTo: "<x@y>",
+    });
     expect(calls[0]!.url).toBe("https://api.resend.com/emails");
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer re_test");
     expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
@@ -72,7 +82,14 @@ describe("sending mail", () => {
 
   it("says why when Resend refuses, and is not set up without a key or a binding", async () => {
     const refused = (async () => new Response("no", { status: 403 })) as unknown as typeof fetch;
-    await expect(mailSender({ MAIL_FROM: "support@snilldai.com", RESEND_API_KEY: "re_test", MAILER: undefined }, refused)!({ fromName: "x", to: "a@b.test", subject: "s", body: "b" })).rejects.toThrow(/refused the message \(403\)/);
+    await expect(
+      mailSender({ MAIL_FROM: "support@snilldai.com", RESEND_API_KEY: "re_test", MAILER: undefined }, refused)!({
+        fromName: "x",
+        to: "a@b.test",
+        subject: "s",
+        body: "b",
+      }),
+    ).rejects.toThrow(/refused the message \(403\)/);
     expect(mailSender({ MAIL_FROM: "support@snilldai.com", MAILER: undefined })).toBeNull();
   });
 });
@@ -80,14 +97,32 @@ describe("sending mail", () => {
 describe("customer email", () => {
   it("replies in the customer's thread, and their answer to that reply joins the same conversation", async () => {
     const { o, desk, mail } = world();
-    const first = await desk.receive(toSupportInbound({ from: "Accounts@SharmaTraders.in", name: "Rakesh", subject: "Order", text: "Will I get a GST invoice?", messageId: "<c1@sharma.test>", inReplyTo: null }));
+    const first = await desk.receive(
+      toSupportInbound({
+        from: "Accounts@SharmaTraders.in",
+        name: "Rakesh",
+        subject: "Order",
+        text: "Will I get a GST invoice?",
+        messageId: "<c1@sharma.test>",
+        inReplyTo: null,
+      }),
+    );
     expect(first.outcome).toBe("sent");
     expect(mail).toHaveLength(1);
     const parsed = await PostalMime.parse(mail[0]!.raw);
     expect(parsed.inReplyTo).toBe("<c1@sharma.test>");
     expect(parsed.subject).toBe("Re: Order");
     expect(parsed.replyTo?.[0]?.address).toBe("kaveri.help@in.the-office.test");
-    const second = await desk.receive(toSupportInbound({ from: "accounts@sharmatraders.in", name: "Rakesh", subject: "Re: Order", text: "Thanks!\n\nOn Wed, 4 Nov 2026, Kaveri wrote:\n> Yes. Every order comes with a GST tax invoice.", messageId: "<c2@sharma.test>", inReplyTo: parsed.messageId ?? null }));
+    const second = await desk.receive(
+      toSupportInbound({
+        from: "accounts@sharmatraders.in",
+        name: "Rakesh",
+        subject: "Re: Order",
+        text: "Thanks!\n\nOn Wed, 4 Nov 2026, Kaveri wrote:\n> Yes. Every order comes with a GST tax invoice.",
+        messageId: "<c2@sharma.test>",
+        inReplyTo: parsed.messageId ?? null,
+      }),
+    );
     expect(second.thread.id).toBe(first.thread.id);
     const ins = o.customers.threadView(first.thread.id).messages.filter((m) => m.direction === "in");
     expect(ins.at(-1)!.text).toBe("Thanks!");
@@ -110,7 +145,13 @@ describe("customer WhatsApp", () => {
 
     graph.mockClear();
     const shared = world();
-    const r = await shared.desk.receive({ channel: "whatsapp", key: "919489305653", name: "Rakesh", text: "Will I get a GST invoice?", at: new Date().toISOString() });
+    const r = await shared.desk.receive({
+      channel: "whatsapp",
+      key: "919489305653",
+      name: "Rakesh",
+      text: "Will I get a GST invoice?",
+      at: new Date().toISOString(),
+    });
     expect(graph).not.toHaveBeenCalled();
     const out = shared.o.customers.threadView(r.thread.id).messages.at(-1)!;
     expect(out.status).toBe("failed");
@@ -118,9 +159,24 @@ describe("customer WhatsApp", () => {
   });
 
   it("sends customers' messages to the agent only while it is on the team", () => {
-    const dm: IncomingMessage = { id: "wa-1", externalId: "wamid.1", platform: "WhatsApp", channelId: "", kind: "dm", author: "Rakesh", at: "2026-11-04T10:00:00Z", rating: null, text: "Hi", postId: null, threadId: "919489305653" };
+    const dm: IncomingMessage = {
+      id: "wa-1",
+      externalId: "wamid.1",
+      platform: "WhatsApp",
+      channelId: "",
+      kind: "dm",
+      author: "Rakesh",
+      at: "2026-11-04T10:00:00Z",
+      rating: null,
+      text: "Hi",
+      postId: null,
+      threadId: "919489305653",
+    };
     const comment: IncomingMessage = { ...dm, id: "fb-1", platform: "Facebook", kind: "comment", threadId: "post-1" };
-    expect(splitCustomerDms([dm, comment], true)).toMatchObject({ customers: [{ channel: "whatsapp", key: "919489305653", text: "Hi", externalId: "wamid.1" }], rest: [comment] });
+    expect(splitCustomerDms([dm, comment], true)).toMatchObject({
+      customers: [{ channel: "whatsapp", key: "919489305653", text: "Hi", externalId: "wamid.1" }],
+      rest: [comment],
+    });
     expect(splitCustomerDms([dm, comment], false)).toEqual({ customers: [], rest: [dm, comment] });
   });
 });
@@ -161,7 +217,12 @@ describe("the website chat script", () => {
     const thread: Msg[] = [];
     const gets: number[] = [];
     const posts: { text: string; turnstile: string | null }[] = [];
-    const turnstile = { callback: null as ((t: string) => void) | null, resets: 0, render: (_e: unknown, o: { callback: (t: string) => void }) => void (turnstile.callback = o.callback), reset: () => void turnstile.resets++ };
+    const turnstile = {
+      callback: null as ((t: string) => void) | null,
+      resets: 0,
+      render: (_e: unknown, o: { callback: (t: string) => void }) => void (turnstile.callback = o.callback),
+      reset: () => void turnstile.resets++,
+    };
     const win: Record<string, unknown> = siteKey ? { turnstile } : {};
     const fetch = vi.fn(async (_url: string, init?: { method?: string; body?: string }) => {
       if (init?.method === "POST") {
@@ -173,7 +234,12 @@ describe("the website chat script", () => {
     });
     const store = new Map<string, string>();
     const localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
-    new Function("window", "document", "localStorage", "fetch", widgetScript("wkaverichat01", "https://office.example", siteKey))(win, doc, localStorage, fetch);
+    new Function("window", "document", "localStorage", "fetch", widgetScript("wkaverichat01", "https://office.example", siteKey))(
+      win,
+      doc,
+      localStorage,
+      fetch,
+    );
     return {
       thread,
       gets,
@@ -309,11 +375,39 @@ describe("the website chat's one-time code", () => {
   it("asks again in website conversations confirmed the old way, without a code", () => {
     const sql = sqlStorage();
     const store = new SqlCsStore(sql);
-    const thread = (id: string, channel: "web" | "whatsapp") => ({ id, channel, key: id, name: "x", partyId: "C01", verifiedContact: "919489305653", status: "open" as const, subject: null, startedAt: "2026-11-01T00:00:00.000Z", lastAt: "2026-11-01T00:00:00.000Z", lastInboundAt: null, disclosed: true, handoffs: 0, firstReplySeconds: null, test: false });
+    const thread = (id: string, channel: "web" | "whatsapp") => ({
+      id,
+      channel,
+      key: id,
+      name: "x",
+      partyId: "C01",
+      verifiedContact: "919489305653",
+      status: "open" as const,
+      subject: null,
+      startedAt: "2026-11-01T00:00:00.000Z",
+      lastAt: "2026-11-01T00:00:00.000Z",
+      lastInboundAt: null,
+      disclosed: true,
+      handoffs: 0,
+      firstReplySeconds: null,
+      test: false,
+    });
     store.saveThread(thread("cst-old", "web"));
     store.saveThread(thread("cst-coded", "web"));
     store.saveThread(thread("cst-wa", "whatsapp"));
-    store.saveCode({ id: "csc-1", threadId: "cst-coded", code: "123456", contact: "919489305653", partyId: "C01", orderNumber: "SO-1042", ask: "order_status", sentAt: "2026-11-01T00:00:00.000Z", expiresAt: "2026-11-01T00:10:00.000Z", tries: 1, done: true });
+    store.saveCode({
+      id: "csc-1",
+      threadId: "cst-coded",
+      code: "123456",
+      contact: "919489305653",
+      partyId: "C01",
+      orderNumber: "SO-1042",
+      ask: "order_status",
+      sentAt: "2026-11-01T00:00:00.000Z",
+      expiresAt: "2026-11-01T00:10:00.000Z",
+      tries: 1,
+      done: true,
+    });
     const reopened = new SqlCsStore(sql);
     expect(reopened.thread("cst-old")).toMatchObject({ verifiedContact: null, partyId: null });
     expect(reopened.thread("cst-coded")).toMatchObject({ verifiedContact: "919489305653", partyId: "C01" });

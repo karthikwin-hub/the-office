@@ -7,9 +7,23 @@ import { compliance, savePaper, viewingAs } from "../api/client";
 import { q, useChange } from "../api/queries";
 import { count, longDate, Section, shortDate } from "../screens/common";
 
-const STATE: Record<Obligation["state"], string> = { upcoming: "Due", preparing: "Being prepared", ready: "Ready to file", filed: "Filed", late: "Late", snoozed: "Snoozed" };
+const STATE: Record<Obligation["state"], string> = {
+  upcoming: "Due",
+  preparing: "Being prepared",
+  ready: "Ready to file",
+  filed: "Filed",
+  late: "Late",
+  snoozed: "Snoozed",
+};
 const WHO: Record<Assignee, string> = { owner: "You", ca: "The CA", cs: "The CS" };
-const SRN_STATUS: Record<SrnStatus, string> = { draft: "Saved, not yet paid", pay_fees: "Waiting for the fee", under_processing: "Under processing", resubmission: "Sent back for resubmission", approved: "Approved", rejected: "Rejected" };
+const SRN_STATUS: Record<SrnStatus, string> = {
+  draft: "Saved, not yet paid",
+  pay_fees: "Waiting for the fee",
+  under_processing: "Under processing",
+  resubmission: "Sent back for resubmission",
+  approved: "Approved",
+  rejected: "Rejected",
+};
 /** The books' date: a filing is marked on the day the books are at, not the computer's. */
 const AsOf = createContext(new Date().toISOString().slice(0, 10));
 const useToday = () => useContext(AsOf);
@@ -25,7 +39,10 @@ export function ProfileProgress({ view }: { view: View }) {
   return (
     <p className="compliance-nudge">
       <strong>{`Answer ${total - done} more ${total - done === 1 ? "question" : "questions"} to finish your filing calendar.`}</strong>{" "}
-      {`${done} of ${total} answered: ${count(filings, "filing")} found so far. Still open: ${view.answers.filter((a) => !a.answered).map((a) => a.question.toLowerCase()).join("; ")}.`}{" "}
+      {`${done} of ${total} answered: ${count(filings, "filing")} found so far. Still open: ${view.answers
+        .filter((a) => !a.answered)
+        .map((a) => a.question.toLowerCase())
+        .join("; ")}.`}{" "}
       <Link to="/settings" hash="compliance">
         Answer them in Settings
       </Link>
@@ -35,7 +52,10 @@ export function ProfileProgress({ view }: { view: View }) {
 
 /** The Compliance Officer's room: what is next, and how complete the profile is. */
 export function ComplianceRoomCard({ view }: { view: View }) {
-  const next = view.obligations.filter(isOpen).sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1)).slice(0, 3);
+  const next = view.obligations
+    .filter(isOpen)
+    .sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1))
+    .slice(0, 3);
   return (
     <>
       <Section title="Next up">
@@ -184,7 +204,9 @@ function InviteCa() {
   if (!a || a.members.some((m) => m.role === "accountant") || a.invitations.some((i) => i.role === "accountant")) return null;
   return (
     <p className="compliance-nudge">
-      {"Your CA or CS is not in the office yet. Invited as the accountant, they see this view, download the working papers and mark items filed with the proof. "}
+      {
+        "Your CA or CS is not in the office yet. Invited as the accountant, they see this view, download the working papers and mark items filed with the proof. "
+      }
       <Link to="/settings" hash="invite">
         Invite them in Settings
       </Link>
@@ -196,7 +218,9 @@ function InviteCa() {
 function WorkingView({ view, selected, onSelect }: { view: View; selected: string | null; onSelect: (id: string | null) => void }) {
   const [authority, setAuthority] = useState("all");
   const authorities = [...new Set(view.obligations.map((o) => o.authority))].sort();
-  const rows = view.obligations.filter((o) => o.state !== "filed" && (authority === "all" || o.authority === authority)).sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1));
+  const rows = view.obligations
+    .filter((o) => o.state !== "filed" && (authority === "all" || o.authority === authority))
+    .sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1));
   const open = rows.find((o) => o.id === selected);
   const cols: LedgerColumn<Obligation>[] = [
     { id: "f", header: "Form", cell: (o) => <strong>{o.form}</strong>, sortBy: (o) => o.form },
@@ -204,8 +228,21 @@ function WorkingView({ view, selected, onSelect }: { view: View; selected: strin
     { id: "a", header: "With", cell: (o) => o.authority, sortBy: (o) => o.authority, secondary: true },
     { id: "d", header: "Due", cell: (o) => shortDate(o.dueOn), sortBy: (o) => o.dueOn },
     { id: "s", header: "State", cell: (o) => `${STATE[o.state]}${o.assignee ? `, ${WHO[o.assignee].toLowerCase()}` : ""}`, sortBy: (o) => o.state },
-    { id: "p", header: "To pay", cell: (o) => (o.amountPaise === null ? "" : <Amount paise={o.amountPaise} rupees />), sortBy: (o) => o.amountPaise ?? 0, numeric: true },
-    { id: "l", header: "Late cost", cell: (o) => (o.lateCostPaise ? <Amount paise={o.lateCostPaise} rupees tone={o.state === "late" ? "red" : undefined} /> : ""), sortBy: (o) => o.lateCostPaise, numeric: true, secondary: true },
+    {
+      id: "p",
+      header: "To pay",
+      cell: (o) => (o.amountPaise === null ? "" : <Amount paise={o.amountPaise} rupees />),
+      sortBy: (o) => o.amountPaise ?? 0,
+      numeric: true,
+    },
+    {
+      id: "l",
+      header: "Late cost",
+      cell: (o) => (o.lateCostPaise ? <Amount paise={o.lateCostPaise} rupees tone={o.state === "late" ? "red" : undefined} /> : ""),
+      sortBy: (o) => o.lateCostPaise,
+      numeric: true,
+      secondary: true,
+    },
     {
       id: "x",
       header: "",
@@ -233,7 +270,15 @@ function WorkingView({ view, selected, onSelect }: { view: View; selected: strin
         </div>
       }
     >
-      <LedgerTable caption="Open filings and payments" rows={rows} columns={cols} rowKey={(o) => o.id} initialSort={{ id: "d" }} rowTone={(o) => (o.state === "late" ? "red" : undefined)} limit={40} />
+      <LedgerTable
+        caption="Open filings and payments"
+        rows={rows}
+        columns={cols}
+        rowKey={(o) => o.id}
+        initialSort={{ id: "d" }}
+        rowTone={(o) => (o.state === "late" ? "red" : undefined)}
+        limit={40}
+      />
       {open ? (
         <div className="obligation-detail-standalone">
           <h3 className="h2">{`${open.form}: ${open.title}`}</h3>
@@ -381,17 +426,33 @@ function AssignControls({ o, run, busy }: { o: Obligation; run: (f: () => Promis
     <div className="obligation-form-row">
       <div className="field">
         <label htmlFor={`who-${o.id}`}>Who is doing it</label>
-        <select id={`who-${o.id}`} className="input" value={o.assignee ?? ""} disabled={busy} onChange={(e) => run(() => compliance.assign(o.id, { assignee: (e.target.value || null) as Assignee | null }))}>
+        <select
+          id={`who-${o.id}`}
+          className="input"
+          value={o.assignee ?? ""}
+          disabled={busy}
+          onChange={(e) => run(() => compliance.assign(o.id, { assignee: (e.target.value || null) as Assignee | null }))}
+        >
           <option value="">Nobody yet</option>
           <option value="owner">You (the owner)</option>
           <option value="ca">The CA</option>
           <option value="cs">The CS</option>
         </select>
       </div>
-      <button type="button" className="btn btn-small" disabled={busy || o.state === "preparing"} onClick={() => run(() => compliance.assign(o.id, { assignee: o.assignee, progress: "preparing" }))}>
+      <button
+        type="button"
+        className="btn btn-small"
+        disabled={busy || o.state === "preparing"}
+        onClick={() => run(() => compliance.assign(o.id, { assignee: o.assignee, progress: "preparing" }))}
+      >
         Being prepared
       </button>
-      <button type="button" className="btn btn-small" disabled={busy || o.state === "ready"} onClick={() => run(() => compliance.assign(o.id, { assignee: o.assignee, progress: "ready" }))}>
+      <button
+        type="button"
+        className="btn btn-small"
+        disabled={busy || o.state === "ready"}
+        onClick={() => run(() => compliance.assign(o.id, { assignee: o.assignee, progress: "ready" }))}
+      >
         Ready to file
       </button>
     </div>
@@ -423,7 +484,13 @@ function FiledForm({ o }: { o: Obligation }) {
       </div>
       <div className="field">
         <label htmlFor={`proof-${o.id}`}>Proof (PDF or picture, up to 10 MB)</label>
-        <input id={`proof-${o.id}`} className="input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input
+          id={`proof-${o.id}`}
+          className="input"
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
       </div>
       <button type="submit" className="btn btn-primary" disabled={change.isPending || !filedOn}>
         Mark filed
@@ -461,7 +528,14 @@ function SnoozeForm({ o, run, busy }: { o: Obligation; run: (f: () => Promise<un
         </div>
         <div className="field field-wide">
           <label htmlFor={`why-${o.id}`}>Why</label>
-          <input id={`why-${o.id}`} className="input" value={reason} maxLength={300} placeholder="For example: not applicable this year, the CA confirmed" onChange={(e) => setReason(e.target.value)} />
+          <input
+            id={`why-${o.id}`}
+            className="input"
+            value={reason}
+            maxLength={300}
+            placeholder="For example: not applicable this year, the CA confirmed"
+            onChange={(e) => setReason(e.target.value)}
+          />
         </div>
         <button type="submit" className="btn" disabled={busy || !until || !reason.trim()}>
           Snooze
@@ -483,9 +557,14 @@ function FilingPackPanel({ o }: { o: Obligation }) {
       {p.master.rows.length ? (
         <MasterRows rows={p.master.rows} />
       ) : (
-        <p className="muted">Not checked yet. Paste the company's master data from the MCA portal below: wrong master data fails the form's pre-scrutiny, and it shows any filing the portal thinks is overdue.</p>
+        <p className="muted">
+          Not checked yet. Paste the company's master data from the MCA portal below: wrong master data fails the form's pre-scrutiny, and it shows any filing
+          the portal thinks is overdue.
+        </p>
       )}
-      {p.master.checkedOn ? <p className="muted table-note">{`Checked on ${longDate(p.master.checkedOn)}${p.master.status ? `; the portal shows the company as ${p.master.status}` : ""}.`}</p> : null}
+      {p.master.checkedOn ? (
+        <p className="muted table-note">{`Checked on ${longDate(p.master.checkedOn)}${p.master.status ? `; the portal shows the company as ${p.master.status}` : ""}.`}</p>
+      ) : null}
       <MasterPaste />
       {p.prefill.length ? (
         <>
@@ -571,7 +650,11 @@ export function MasterPaste() {
           <button type="submit" className="btn" disabled={change.isPending || text.trim().length < 20}>
             Check it against the profile
           </button>
-          {change.data ? <span role="status">{change.data.rows.every((r) => r.ok) ? "Everything matches." : `${count(change.data.rows.filter((r) => !r.ok).length, "difference")} to fix.`}</span> : null}
+          {change.data ? (
+            <span role="status">
+              {change.data.rows.every((r) => r.ok) ? "Everything matches." : `${count(change.data.rows.filter((r) => !r.ok).length, "difference")} to fix.`}
+            </span>
+          ) : null}
         </div>
         {change.error ? <p className="form-error">{change.error.message}</p> : null}
       </form>
@@ -582,17 +665,32 @@ export function MasterPaste() {
 function SrnForm({ o }: { o: Obligation }) {
   const change = useChange();
   const today = useToday();
-  const [s, setS] = useState({ number: o.srn?.number ?? "", createdOn: o.srn?.createdOn ?? today, challan: o.srn?.challan ?? "", status: (o.srn?.status ?? "pay_fees") as SrnStatus, remarks: o.srn?.remarks ?? "", resubmitBy: o.srn?.resubmitBy ?? "" });
+  const [s, setS] = useState({
+    number: o.srn?.number ?? "",
+    createdOn: o.srn?.createdOn ?? today,
+    challan: o.srn?.challan ?? "",
+    status: (o.srn?.status ?? "pay_fees") as SrnStatus,
+    remarks: o.srn?.remarks ?? "",
+    resubmitBy: o.srn?.resubmitBy ?? "",
+  });
   const set = (k: keyof typeof s) => (e: { target: { value: string } }) => setS({ ...s, [k]: e.target.value });
   return (
     <>
       <h5>Service request (SRN)</h5>
-      {o.srn ? <p>{`SRN ${o.srn.number}, created ${longDate(o.srn.createdOn)}: ${SRN_STATUS[o.srn.status]}${o.srn.resubmitBy ? `. Resubmit by ${longDate(o.srn.resubmitBy)}` : ""}.`}</p> : <p className="muted">The SRN is created when the form is first saved on the portal. The signed form must be uploaded within 15 days of it, or the SRN lapses.</p>}
+      {o.srn ? (
+        <p>{`SRN ${o.srn.number}, created ${longDate(o.srn.createdOn)}: ${SRN_STATUS[o.srn.status]}${o.srn.resubmitBy ? `. Resubmit by ${longDate(o.srn.resubmitBy)}` : ""}.`}</p>
+      ) : (
+        <p className="muted">
+          The SRN is created when the form is first saved on the portal. The signed form must be uploaded within 15 days of it, or the SRN lapses.
+        </p>
+      )}
       <form
         className="obligation-form-row"
         onSubmit={(e) => {
           e.preventDefault();
-          change.mutate(() => compliance.srn(o.id, { ...s, number: s.number.trim(), resubmitBy: s.status === "resubmission" && s.resubmitBy ? s.resubmitBy : null }));
+          change.mutate(() =>
+            compliance.srn(o.id, { ...s, number: s.number.trim(), resubmitBy: s.status === "resubmission" && s.resubmitBy ? s.resubmitBy : null }),
+          );
         }}
       >
         <div className="field">
@@ -710,7 +808,14 @@ function ManualItemForm() {
         </div>
         <div className="field">
           <label htmlFor="man-auth">With</label>
-          <input id="man-auth" className="input" maxLength={60} value={m.authority} placeholder="Directorate of Industrial Safety" onChange={set("authority")} />
+          <input
+            id="man-auth"
+            className="input"
+            maxLength={60}
+            value={m.authority}
+            placeholder="Directorate of Industrial Safety"
+            onChange={set("authority")}
+          />
         </div>
         <div className="field field-wide">
           <label htmlFor="man-desc">Note</label>

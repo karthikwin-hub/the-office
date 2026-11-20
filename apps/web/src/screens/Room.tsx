@@ -1,4 +1,14 @@
-import type { AgeingReport, AgentRoomView, Document, MarketingReport, OperationsReport, PeopleReport, SalesTeamReport, SocialReport, StagedChange } from "@office/contracts";
+import type {
+  AgeingReport,
+  AgentRoomView,
+  Document,
+  MarketingReport,
+  OperationsReport,
+  PeopleReport,
+  SalesTeamReport,
+  SocialReport,
+  StagedChange,
+} from "@office/contracts";
 import { AGENT_BY_ID, AGENTS, TEAMS } from "@office/contracts";
 import { ApprovalCard, HireCard, LedgerTable, TeamLog, TrustLevel, useFigures } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -23,7 +33,12 @@ export function RoomScreen() {
   const { agentId } = useParams({ from: "/rooms/$agentId" });
   const room = useQuery(q.agent(agentId));
   const def = AGENT_BY_ID[agentId];
-  if (!def) return <Page ready={false} error={{ status: 404, message: "No such room" }}>{null}</Page>;
+  if (!def)
+    return (
+      <Page ready={false} error={{ status: 404, message: "No such room" }}>
+        {null}
+      </Page>
+    );
   return (
     <Page ready={Boolean(room.data)} error={room.error} wide>
       {room.data ? <RoomBody v={room.data} /> : null}
@@ -63,7 +78,9 @@ function RoomBody({ v }: { v: AgentRoomView }) {
           <div className="room-standing">
             <TrustLevel level={v.state.trustLevel} compact />
             <span className="muted">
-              {v.accuracyPct === null ? "No work checked yet" : `${v.accuracyPct}% of ${count(v.state.accuracy.checked, "piece")} of work approved without changes`}
+              {v.accuracyPct === null
+                ? "No work checked yet"
+                : `${v.accuracyPct}% of ${count(v.state.accuracy.checked, "piece")} of work approved without changes`}
             </span>
           </div>
         }
@@ -79,7 +96,12 @@ function RoomBody({ v }: { v: AgentRoomView }) {
           <p>
             <strong>Ready for promotion to {v.promotion.to}.</strong> {v.promotion.reason}
           </p>
-          <button type="button" className="btn btn-primary" disabled={hire.isPending} onClick={() => hire.mutate({ agentId: def.id, change: { trustLevel: v.promotion!.to } })}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={hire.isPending}
+            onClick={() => hire.mutate({ agentId: def.id, change: { trustLevel: v.promotion!.to } })}
+          >
             Promote to {v.promotion.to}
           </button>
         </div>
@@ -108,7 +130,11 @@ function RoomBody({ v }: { v: AgentRoomView }) {
           <TeamLog title={`What ${theAgent(def.id)} did`} entries={v.log.slice(0, 14)} showAgent={false} empty="Nothing recorded yet." />
           <RoomRoutines agentId={def.id} />
           <section className="room-trust" aria-label="Trust level">
-            {owner ? <TrustLevel level={v.state.trustLevel} onChange={(l) => hire.mutate({ agentId: def.id, change: { trustLevel: l } })} disabled={hire.isPending} /> : <TrustLevel level={v.state.trustLevel} compact />}
+            {owner ? (
+              <TrustLevel level={v.state.trustLevel} onChange={(l) => hire.mutate({ agentId: def.id, change: { trustLevel: l } })} disabled={hire.isPending} />
+            ) : (
+              <TrustLevel level={v.state.trustLevel} compact />
+            )}
           </section>
           <section className="room-duties" aria-labelledby="duties">
             <h2 id="duties" className="team-log-title">
@@ -183,7 +209,16 @@ function WorkPanel({ agentId, preview }: { agentId: string; preview?: boolean })
     case "account-manager":
       return p(<Q k="salesTeam">{(d) => <ReordersView report={d} />}</Q>);
     case "marketer":
-      return p(<Q k="marketing">{(d) => <><CampaignsView report={d} compact /><SlowStockView report={d} /></>}</Q>);
+      return p(
+        <Q k="marketing">
+          {(d) => (
+            <>
+              <CampaignsView report={d} compact />
+              <SlowStockView report={d} />
+            </>
+          )}
+        </Q>,
+      );
     case "market-watcher":
       return p(<Q k="marketing">{(d) => <PricesView report={d} />}</Q>);
     case "social-media-manager":
@@ -206,7 +241,14 @@ function WorkPanel({ agentId, preview }: { agentId: string; preview?: boolean })
   return null;
 }
 
-type Reports = { ageing: AgeingReport; salesTeam: SalesTeamReport; marketing: MarketingReport; social: SocialReport; operations: OperationsReport; people: PeopleReport };
+type Reports = {
+  ageing: AgeingReport;
+  salesTeam: SalesTeamReport;
+  marketing: MarketingReport;
+  social: SocialReport;
+  operations: OperationsReport;
+  people: PeopleReport;
+};
 
 /** Fetch one report and render it when it arrives. */
 function Q<K extends keyof Reports>({ k, children }: { k: K; children: (d: Reports[K]) => ReactNode }) {
@@ -238,7 +280,11 @@ function OfficeManagerPanel() {
       </Section>
       <Section title="Ask a question">
         <p className="section-lede">Ask in your own words. Every figure in the answer opens the documents it was added up from.</p>
-        <button type="button" className="btn btn-primary" onClick={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: "open" }), resetScroll: false })}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => void navigate({ to: ".", search: (s) => ({ ...s, ask: "open" }), resetScroll: false })}
+        >
           Ask the office manager
         </button>
       </Section>
@@ -249,7 +295,13 @@ function OfficeManagerPanel() {
   );
 }
 
-const DOC_STATUS: Record<Document["status"], string> = { reading: "Reading now", staged: "Waiting for approval", posted: "Posted", filed: "Filed", rejected: "Rejected" };
+const DOC_STATUS: Record<Document["status"], string> = {
+  reading: "Reading now",
+  staged: "Waiting for approval",
+  posted: "Posted",
+  filed: "Filed",
+  rejected: "Rejected",
+};
 
 /** What a document is, from its printed title and which side of the sale the business is on. */
 function docLabel(d: Document): string {
@@ -304,10 +356,23 @@ function DocumentIntake() {
         }}
       >
         <p>
-          <strong>Drop bills or invoices here</strong>, <button type="button" className="link-button" onClick={() => inputRef.current?.click()}>choose files</button>, or forward them by email.
+          <strong>Drop bills or invoices here</strong>,{" "}
+          <button type="button" className="link-button" onClick={() => inputRef.current?.click()}>
+            choose files
+          </button>
+          , or forward them by email.
         </p>
-        <p className="muted">PDFs and photos. The Accountant reads each page, keeps a link to where every figure was printed, and prepares the ledger entry for you to approve.</p>
-        <input ref={inputRef} type="file" accept="application/pdf,image/jpeg,image/png" multiple hidden onChange={(e) => e.target.files && void take(e.target.files)} />
+        <p className="muted">
+          PDFs and photos. The Accountant reads each page, keeps a link to where every figure was printed, and prepares the ledger entry for you to approve.
+        </p>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf,image/jpeg,image/png"
+          multiple
+          hidden
+          onChange={(e) => e.target.files && void take(e.target.files)}
+        />
       </div>
       {intake.length > 0 && <IntakeList items={intake} />}
     </>
@@ -355,7 +420,8 @@ function Unread({ docs }: { docs: Document[] }) {
       {docs.length > 0 && (
         <>
           <p>
-            {docs.length === 1 ? "One document" : `${docs.length} documents`} arrived by email and {docs.length === 1 ? "is" : "are"} waiting to be read. The Accountant reads emailed PDFs in your browser while the office is open.
+            {docs.length === 1 ? "One document" : `${docs.length} documents`} arrived by email and {docs.length === 1 ? "is" : "are"} waiting to be read. The
+            Accountant reads emailed PDFs in your browser while the office is open.
           </p>
           <ul className="unread-list">
             {docs.map((d) => (
@@ -392,8 +458,21 @@ function AccountantPanel() {
           rowKey={(d) => d.id}
           columns={[
             { id: "t", header: "Received", cell: (d) => `${shortDate(d.receivedAt)}, ${time(d.receivedAt)}` },
-            { id: "k", header: "What", cell: (d) => <button type="button" className="figure-link" onClick={() => openDocument(d.id, "number")}>{docLabel(d)}</button> },
-            { id: "f", header: "From", cell: (d) => d.from ?? { generated: "Your billing", upload: "Uploaded", email: "Email", whatsapp: "WhatsApp", import: "Brought in" }[d.channel], secondary: true },
+            {
+              id: "k",
+              header: "What",
+              cell: (d) => (
+                <button type="button" className="figure-link" onClick={() => openDocument(d.id, "number")}>
+                  {docLabel(d)}
+                </button>
+              ),
+            },
+            {
+              id: "f",
+              header: "From",
+              cell: (d) => d.from ?? { generated: "Your billing", upload: "Uploaded", email: "Email", whatsapp: "WhatsApp", import: "Brought in" }[d.channel],
+              secondary: true,
+            },
             { id: "s", header: "Status", cell: (d) => DOC_STATUS[d.status] },
           ]}
         />
@@ -407,10 +486,24 @@ function TaxClerkPanel() {
   const tds = useQuery(q.tds());
   return (
     <>
-      <Section title="Returns" aside={<Link to="/boardroom/$team/$tab" params={{ team: "accounts", tab: "gst" }}>Open the GST report</Link>}>
+      <Section
+        title="Returns"
+        aside={
+          <Link to="/boardroom/$team/$tab" params={{ team: "accounts", tab: "gst" }}>
+            Open the GST report
+          </Link>
+        }
+      >
         {gst.data ? <FilingList filings={gst.data.filings} /> : <p className="loading">Fetching the books</p>}
       </Section>
-      <Section title="TDS this quarter" aside={<Link to="/boardroom/$team/$tab" params={{ team: "accounts", tab: "tds" }}>Open the TDS report</Link>}>
+      <Section
+        title="TDS this quarter"
+        aside={
+          <Link to="/boardroom/$team/$tab" params={{ team: "accounts", tab: "tds" }}>
+            Open the TDS report
+          </Link>
+        }
+      >
         {tds.data ? (
           <ul className="filings">
             {tds.data.bySection.map((s) => (

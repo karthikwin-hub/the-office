@@ -70,10 +70,19 @@ export function salesReport(l: Ledger, from?: string, to?: string): SalesReport 
   ];
   if (lastFull && prev) {
     const change = pct(byMonth.get(lastFull)! - byMonth.get(prev)!, byMonth.get(prev)!);
-    note.push({ text: `${monthLabel(lastFull, "long").split(" ")[0]} brought in ` }, { text: inrShort(byMonth.get(lastFull)!), figureId: `sales:month:${lastFull}` }, { text: `, ${change >= 0 ? "up" : "down"} ${Math.abs(change)}% on the month before. ` });
+    note.push(
+      { text: `${monthLabel(lastFull, "long").split(" ")[0]} brought in ` },
+      { text: inrShort(byMonth.get(lastFull)!), figureId: `sales:month:${lastFull}` },
+      { text: `, ${change >= 0 ? "up" : "down"} ${Math.abs(change)}% on the month before. ` },
+    );
   }
   if (top80 > 0) note.push({ text: `${top80} of ${skuRows.length} SKUs make up 80% of sales` });
-  if (topCustomer) note.push({ text: `, and the largest customer is ${l.party(topCustomer[0]).name} at ` }, { text: inrShort(topCustomer[1].taxable), figureId: `sales:party:${topCustomer[0]}:${start}:${end}` }, { text: "." });
+  if (topCustomer)
+    note.push(
+      { text: `, and the largest customer is ${l.party(topCustomer[0]).name} at ` },
+      { text: inrShort(topCustomer[1].taxable), figureId: `sales:party:${topCustomer[0]}:${start}:${end}` },
+      { text: "." },
+    );
   return {
     from: start,
     to: end,
@@ -82,7 +91,15 @@ export function salesReport(l: Ledger, from?: string, to?: string): SalesReport 
     bySku: skuRows,
     byCustomer: [...byCustomer.entries()]
       .sort((a, b) => b[1].taxable - a[1].taxable)
-      .map(([partyId, c]) => ({ partyId, name: l.party(partyId).name, city: l.party(partyId).city, invoices: c.invoices, taxablePaise: c.taxable, sharePct: pct(c.taxable, total), figureId: `sales:party:${partyId}:${start}:${end}` })),
+      .map(([partyId, c]) => ({
+        partyId,
+        name: l.party(partyId).name,
+        city: l.party(partyId).city,
+        invoices: c.invoices,
+        taxablePaise: c.taxable,
+        sharePct: pct(c.taxable, total),
+        figureId: `sales:party:${partyId}:${start}:${end}`,
+      })),
     byMonth: months.map((m) => ({ month: m, taxablePaise: byMonth.get(m)!, figureId: `sales:month:${m}` })),
   };
 }
@@ -100,7 +117,10 @@ export function gstReport(l: Ledger, period?: string): GstReport {
   const itc = itcFor(l, p);
   const so = setOff(out, itc.eligible);
   const byRate = new Map<number, { taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number }>();
-  const hsn = new Map<string, { hsn: string; description: string; uqc: string; qty: number; rate: number; taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number }>();
+  const hsn = new Map<
+    string,
+    { hsn: string; description: string; uqc: string; qty: number; rate: number; taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number }
+  >();
   for (const inv of out.invoices)
     for (const line of inv.lines) {
       const r = byRate.get(line.gstRate) ?? { taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0 };
@@ -110,7 +130,17 @@ export function gstReport(l: Ledger, period?: string): GstReport {
       r.igstPaise += line.igstPaise;
       byRate.set(line.gstRate, r);
       const key = `${line.hsn}|${line.unit}|${line.gstRate}`;
-      const h = hsn.get(key) ?? { hsn: line.hsn, description: line.skuId ? l.sku(line.skuId).category : line.description, uqc: line.unit, qty: 0, rate: line.gstRate, taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0 };
+      const h = hsn.get(key) ?? {
+        hsn: line.hsn,
+        description: line.skuId ? l.sku(line.skuId).category : line.description,
+        uqc: line.unit,
+        qty: 0,
+        rate: line.gstRate,
+        taxablePaise: 0,
+        cgstPaise: 0,
+        sgstPaise: 0,
+        igstPaise: 0,
+      };
       h.qty += line.qty;
       h.taxablePaise += line.taxablePaise;
       h.cgstPaise += line.cgstPaise;
@@ -135,19 +165,37 @@ export function gstReport(l: Ledger, period?: string): GstReport {
       { text: inrShort(eligibleTax), figureId: `gst:itc-eligible:${p}` },
       { text: ` of input credit${itc.has2b ? " that suppliers have reported in GSTR-2B" : " (provisional until GSTR-2B is available)"}. ` },
       ...(notIn2bTax
-        ? [{ text: "A further " }, { text: inrShort(notIn2bTax), figureId: `gst:itc-missing:${p}`, tone: "red" as const }, { text: " in the books is not yet in GSTR-2B. " }]
+        ? [
+            { text: "A further " },
+            { text: inrShort(notIn2bTax), figureId: `gst:itc-missing:${p}`, tone: "red" as const },
+            { text: " in the books is not yet in GSTR-2B. " },
+          ]
         : []),
       { text: "Cash payable after set-off is " },
       { text: inrShort(so.payable.totalPaise), figureId: `gst:payable:${p}` },
       { text: `, due with GSTR-3B by ${dateLabel(due.gstr3b)}.` },
     ],
-    outward: { taxablePaise: out.taxablePaise, cgstPaise: out.cgstPaise, sgstPaise: out.sgstPaise, igstPaise: out.igstPaise, invoices: out.invoices.length, figureId: `gst:outward:${p}` },
+    outward: {
+      taxablePaise: out.taxablePaise,
+      cgstPaise: out.cgstPaise,
+      sgstPaise: out.sgstPaise,
+      igstPaise: out.igstPaise,
+      invoices: out.invoices.length,
+      figureId: `gst:outward:${p}`,
+    },
     byRate: [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, v]) => ({ rate, ...v })),
     hsn: [...hsn.values()].sort((a, b) => b.taxablePaise - a.taxablePaise),
     itc: {
       books: { ...itc.books, figureId: `gst:itc:${p}` },
       eligible: { ...itc.eligible, figureId: `gst:itc-eligible:${p}` },
-      notIn2b: itc.notIn2b.map((b) => ({ billId: b.id, number: b.number, vendor: l.party(b.partyId).name, date: b.date, taxPaise: b.totals.cgstPaise + b.totals.sgstPaise + b.totals.igstPaise, docId: b.docId })),
+      notIn2b: itc.notIn2b.map((b) => ({
+        billId: b.id,
+        number: b.number,
+        vendor: l.party(b.partyId).name,
+        date: b.date,
+        taxPaise: b.totals.cgstPaise + b.totals.sgstPaise + b.totals.igstPaise,
+        docId: b.docId,
+      })),
     },
     payable: so.payable,
     filings,
@@ -204,7 +252,14 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
   for (const [invoiceId, amount] of expectedCustomer) {
     const inv = l.invoice(invoiceId)!;
     if (!months.has(inv.date.slice(0, 7)) || !l.settled(invoiceId).tds) continue;
-    receivable.push({ invoiceId, number: inv.number, customer: l.party(inv.partyId).name, expectedPaise: amount, creditedPaise: credited.get(invoiceId) ?? 0, docId: inv.docId });
+    receivable.push({
+      invoiceId,
+      number: inv.number,
+      customer: l.party(inv.partyId).name,
+      expectedPaise: amount,
+      creditedPaise: credited.get(invoiceId) ?? 0,
+      docId: inv.docId,
+    });
   }
   const totalExpected = deductions.reduce((a, d) => a + d.expectedPaise, 0);
   const totalBooked = deductions.reduce((a, d) => a + d.bookedPaise, 0);
@@ -217,7 +272,11 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
       { text: inrShort(totalExpected), figureId: `tds:total:${q}` },
       { text: ` of TDS on ${deductions.length} bills. ` },
       ...(short > 100
-        ? [{ text: "The books deducted " }, { text: inrShort(short), figureId: `tds:short:${q}`, tone: "red" as const }, { text: " less than the rules require. " }]
+        ? [
+            { text: "The books deducted " },
+            { text: inrShort(short), figureId: `tds:short:${q}`, tone: "red" as const },
+            { text: " less than the rules require. " },
+          ]
         : [{ text: "The books match the rules. " }]),
       {
         text: filed
@@ -232,7 +291,17 @@ export function tdsReport(l: Ledger, quarter?: string): TdsReport {
       .map(([section, s]) => {
         const sec = section as TdsSection;
         const ref = tdsRef(sec, quarterMonths(q)[0]! + "-01");
-        return { section, reference: ref.reference, code: ref.code, nature: TDS_RULES[sec].nature, rate: TDS_RULES[sec].rateLabel, deductees: s.deductees.size, basePaise: s.base, tdsPaise: s.tds, figureId: `tds:section:${section}:${q}` };
+        return {
+          section,
+          reference: ref.reference,
+          code: ref.code,
+          nature: TDS_RULES[sec].nature,
+          rate: TDS_RULES[sec].rateLabel,
+          deductees: s.deductees.size,
+          basePaise: s.base,
+          tdsPaise: s.tds,
+          figureId: `tds:section:${section}:${q}`,
+        };
       }),
     deductions,
     receivable,
@@ -273,7 +342,12 @@ export function cashReport(l: Ledger): CashReport {
     const party = l.party(b.partyId);
     const first = msmeFirst && msmeProtected(party);
     const on = addDays(b.date, first ? Math.min(30, msmeLimitDays(party)) : 30);
-    place(on, { label: `${party.name}, ${b.number}${first ? " (micro or small supplier, paid first)" : ""}`, amountPaise: b.totals.totalPaise - tds, direction: "out", date: on });
+    place(on, {
+      label: `${party.name}, ${b.number}${first ? " (micro or small supplier, paid first)" : ""}`,
+      amountPaise: b.totals.totalPaise - tds,
+      direction: "out",
+      date: on,
+    });
   }
   const setAside = new Map<string, number>();
   for (const s of agreed) {
@@ -290,12 +364,29 @@ export function cashReport(l: Ledger): CashReport {
   if (lastMonth) {
     const out = outwardFor(l, lastMonth);
     const gst = setOff(out, itcFor(l, lastMonth).eligible).payable.totalPaise;
-    place(gstDueDates(lastMonth).gstr3b, { label: `GST for ${monthLabel(lastMonth)} (GSTR-3B)`, amountPaise: gst, direction: "out", date: gstDueDates(lastMonth).gstr3b });
-    const tdsDue = [...expectedTdsByBill(l).entries()].filter(([id, e]) => e && l.bill(id)!.date.startsWith(lastMonth)).reduce((a, [, e]) => a + (e?.amountPaise ?? 0), 0);
-    place(tdsDepositDue(`${lastMonth}-15`), { label: `TDS deducted in ${monthLabel(lastMonth)}`, amountPaise: tdsDue, direction: "out", date: tdsDepositDue(`${lastMonth}-15`) });
+    place(gstDueDates(lastMonth).gstr3b, {
+      label: `GST for ${monthLabel(lastMonth)} (GSTR-3B)`,
+      amountPaise: gst,
+      direction: "out",
+      date: gstDueDates(lastMonth).gstr3b,
+    });
+    const tdsDue = [...expectedTdsByBill(l).entries()]
+      .filter(([id, e]) => e && l.bill(id)!.date.startsWith(lastMonth))
+      .reduce((a, [, e]) => a + (e?.amountPaise ?? 0), 0);
+    place(tdsDepositDue(`${lastMonth}-15`), {
+      label: `TDS deducted in ${monthLabel(lastMonth)}`,
+      amountPaise: tdsDue,
+      direction: "out",
+      date: tdsDepositDue(`${lastMonth}-15`),
+    });
   }
   const salaries = l.books.employees.reduce((a, e) => a + e.monthlyGrossPaise, 0);
-  place(`${nextMonth(monthKey(l.asOf))}-01`, { label: "Salaries for the month", amountPaise: salaries, direction: "out", date: `${nextMonth(monthKey(l.asOf))}-01` });
+  place(`${nextMonth(monthKey(l.asOf))}-01`, {
+    label: "Salaries for the month",
+    amountPaise: salaries,
+    direction: "out",
+    date: `${nextMonth(monthKey(l.asOf))}-01`,
+  });
   const result = weeks.map((w) => ({
     weekOf: w.weekOf,
     expectedInPaise: w.items.filter((i) => i.direction === "in").reduce((a, i) => a + i.amountPaise, 0),

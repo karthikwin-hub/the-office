@@ -26,7 +26,13 @@ const version = (() => {
   }
 })();
 const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const slug = (s) =>
+  s
+    .toLowerCase()
+    .replace(/<[^>]+>/g, "")
+    .replace(/&[a-z]+;/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 // biome-ignore lint/suspicious/noShadowRestrictedNames: a local helper; the deprecated global escape is not used here.
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -134,7 +140,10 @@ const blurbs = sections.map((html) => {
 });
 
 const nav = toc
-  .map((d) => `<li data-part="part-${d.n}"><a class="nav-doc" href="#${d.id}"><span class="nav-num">${d.n}</span>${d.text}</a><ol>${d.children.map((c) => `<li data-section="${c.id}"><a href="#${c.id}">${c.text.replace(/^\d+(\.\d+)*\.?\s*/, "")}</a></li>`).join("")}</ol></li>`)
+  .map(
+    (d) =>
+      `<li data-part="part-${d.n}"><a class="nav-doc" href="#${d.id}"><span class="nav-num">${d.n}</span>${d.text}</a><ol>${d.children.map((c) => `<li data-section="${c.id}"><a href="#${c.id}">${c.text.replace(/^\d+(\.\d+)*\.?\s*/, "")}</a></li>`).join("")}</ol></li>`,
+  )
   .join("");
 
 const cover = `<section class="cover" id="top">

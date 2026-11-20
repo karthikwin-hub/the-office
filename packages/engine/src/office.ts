@@ -66,8 +66,25 @@ import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YE
 
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
 /** What the owner is asked to file, by its printed title. */
-const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = { proforma: "proforma invoice", delivery_note: "delivery note", credit_note: "credit note", debit_note: "debit note" };
-const ALWAYS_ASK = new Set(["email_reply", "sales_mapping", "audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "handoff", "onboarding", "compliance_action"]);
+const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = {
+  proforma: "proforma invoice",
+  delivery_note: "delivery note",
+  credit_note: "credit note",
+  debit_note: "debit note",
+};
+const ALWAYS_ASK = new Set([
+  "email_reply",
+  "sales_mapping",
+  "audit_flag",
+  "share_file",
+  "payroll_run",
+  "campaign",
+  "calendar",
+  "broadcast",
+  "handoff",
+  "onboarding",
+  "compliance_action",
+]);
 export const TRUSTED_LIMIT_PAISE = 1_00_000_00;
 /** Which of an agent's KPIs its room shows on the floor. */
 const HEADLINE_KPI: Record<string, number> = {
@@ -97,7 +114,8 @@ export type SocialEffect =
   | { kind: "reply"; messageId: string; channelId: string; text: string }
   | { kind: "broadcast"; postId: string; channelId: string; audience: number };
 
-export type IncomingMessage = Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> & Partial<Pick<SocialMessage, "postId" | "threadId" | "externalId">>;
+export type IncomingMessage = Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> &
+  Partial<Pick<SocialMessage, "postId" | "threadId" | "externalId">>;
 
 /** Wall-clock time in India on the books' date, as the log and staged items record it. */
 function istNow(asOf: string): string {
@@ -138,7 +156,9 @@ export class OfficeService {
     this.books = books;
     books.orders ??= [];
     books.customerService ??= structuredClone(DEFAULT_CUSTOMER_SERVICE);
-    for (const a of AGENTS) if (!books.agents.some((s) => s.agentId === a.id)) books.agents.push({ agentId: a.id, hired: false, trustLevel: "trainee", hiredOn: null, accuracy: { checked: 0, correct: 0 } });
+    for (const a of AGENTS)
+      if (!books.agents.some((s) => s.agentId === a.id))
+        books.agents.push({ agentId: a.id, hired: false, trustLevel: "trainee", hiredOn: null, accuracy: { checked: 0, correct: 0 } });
     this.ledger = new Ledger(books, opts.asOf);
     this.routines = opts.routines ?? new MemoryRoutineLog();
     this.customers = new CustomerService(this, opts.conversations ?? new MemoryCsStore(), opts.orderSources);
@@ -152,7 +172,12 @@ export class OfficeService {
       ],
       ingestEmail: opts.ingestEmail ?? `${books.business.id}@in.the-office.app`,
       digestTime: "08:45",
-      reminderPolicy: { firstAfterDays: DEFAULT_POLICY.firstAfterDays, firmAfterDays: DEFAULT_POLICY.firmAfterDays, finalAfterDays: DEFAULT_POLICY.finalAfterDays, sendFrom: books.business.email },
+      reminderPolicy: {
+        firstAfterDays: DEFAULT_POLICY.firstAfterDays,
+        firmAfterDays: DEFAULT_POLICY.firmAfterDays,
+        finalAfterDays: DEFAULT_POLICY.finalAfterDays,
+        sendFrom: books.business.email,
+      },
     };
     this.edits = opts.edits ?? new MemoryEditLog();
     this.snap = snapshot(books);
@@ -175,7 +200,13 @@ export class OfficeService {
     const fyStart = `${fyOf(this.asOf)}-04-01`;
     return {
       provider: { ...BOOKS_PROVIDER },
-      editLog: { since: all[0]?.at ?? null, entries: all.length, thisYear: all.filter((e) => e.at.slice(0, 10) >= fyStart).length, intact: verifyChain(all), latest: this.edits.list({ limit: 20 }) },
+      editLog: {
+        since: all[0]?.at ?? null,
+        entries: all.length,
+        thisYear: all.filter((e) => e.at.slice(0, 10) >= fyStart).length,
+        intact: verifyChain(all),
+        latest: this.edits.list({ limit: 20 }),
+      },
       backup: this.backupStatus(),
       retentionYears: RETENTION_YEARS,
     };
@@ -249,7 +280,16 @@ export class OfficeService {
   room(agentId: string): RoomStatus {
     const s = this.state(agentId);
     const def = AGENT_BY_ID[agentId]!;
-    if (!s?.hired) return { agentId, hired: false, trustLevel: s?.trustLevel ?? "trainee", status: "not_hired", now: def.job.split(".")[0]!, todayCount: 0, waitingCount: 0 };
+    if (!s?.hired)
+      return {
+        agentId,
+        hired: false,
+        trustLevel: s?.trustLevel ?? "trainee",
+        status: "not_hired",
+        now: def.job.split(".")[0]!,
+        todayCount: 0,
+        waitingCount: 0,
+      };
     const log = this.today().filter((e) => e.agentId === agentId);
     const waiting = this.pending().filter((p) => p.agentId === agentId).length;
     const reading = agentId === "accountant" && this.books.documents.some((d) => d.status === "reading");
@@ -268,10 +308,18 @@ export class OfficeService {
   }
 
   private todayCount(agentId: string, fallback: number): number {
-    if (agentId === "accountant") return this.books.documents.filter((d) => d.receivedAt.slice(0, 10) === this.asOf || d.status === "staged").length + this.ledger.salesInvoices.filter((i) => i.date === this.asOf).length;
+    if (agentId === "accountant")
+      return (
+        this.books.documents.filter((d) => d.receivedAt.slice(0, 10) === this.asOf || d.status === "staged").length +
+        this.ledger.salesInvoices.filter((i) => i.date === this.asOf).length
+      );
     if (agentId === "credit-controller") return draftReminders(this.ledger).length;
     if (agentId === "auditor") return auditAll(this.ledger).findings.length;
-    if (agentId === "social-media-manager") return this.books.socialInbox.filter((m) => m.status === "open").length + this.books.posts.filter((p) => p.variants.some((v) => v.publishedAt?.slice(0, 10) === this.asOf)).length;
+    if (agentId === "social-media-manager")
+      return (
+        this.books.socialInbox.filter((m) => m.status === "open").length +
+        this.books.posts.filter((p) => p.variants.some((v) => v.publishedAt?.slice(0, 10) === this.asOf)).length
+      );
     if (agentId === "storekeeper") return this.books.stock.length;
     return fallback;
   }
@@ -279,7 +327,15 @@ export class OfficeService {
   officeView(): OfficeView {
     const b = this.books.business;
     return {
-      business: { name: b.name, legalName: b.legalName, gstin: b.gstin, asOf: this.asOf, owner: b.owner, accountantFirm: b.accountantFirm, stateCode: b.stateCode },
+      business: {
+        name: b.name,
+        legalName: b.legalName,
+        gstin: b.gstin,
+        asOf: this.asOf,
+        owner: b.owner,
+        accountantFirm: b.accountantFirm,
+        stateCode: b.stateCode,
+      },
       rooms: AGENTS.map((a) => {
         const r = this.room(a.id);
         const headline = r.hired ? this.headline(a.id) : undefined;
@@ -288,15 +344,25 @@ export class OfficeService {
       log: this.today().filter((e) => this.hired(e.agentId) || e.agentId === "you"),
       deskCount: this.pending().length,
       arriving: [
-        ...this.books.documents.filter((d) => d.status === "reading").map((d) => ({ docId: d.id, agentId: "accountant", label: d.from ? `Email from ${d.from}` : "Upload", channel: d.channel })),
+        ...this.books.documents
+          .filter((d) => d.status === "reading")
+          .map((d) => ({ docId: d.id, agentId: "accountant", label: d.from ? `Email from ${d.from}` : "Upload", channel: d.channel })),
         ...(this.hired("social-media-manager")
           ? this.books.socialInbox
               .filter((m) => m.status === "open" && Date.now() - Date.parse(m.at) < 3_600_000)
-              .map((m) => ({ docId: m.id, agentId: "social-media-manager", label: `${m.kind === "review" ? "Review" : m.kind === "dm" ? "Message" : "Comment"} from ${m.author}`, channel: "social" as const }))
+              .map((m) => ({
+                docId: m.id,
+                agentId: "social-media-manager",
+                label: `${m.kind === "review" ? "Review" : m.kind === "dm" ? "Message" : "Comment"} from ${m.author}`,
+                channel: "social" as const,
+              }))
           : []),
       ],
       decided: this.allStaged()
-        .filter((s): s is StagedChange & { status: "approved" | "rejected"; decidedAt: string } => s.status !== "pending" && Boolean(s.decidedAt) && Date.now() - Date.parse(s.decidedAt!) < 86_400_000)
+        .filter(
+          (s): s is StagedChange & { status: "approved" | "rejected"; decidedAt: string } =>
+            s.status !== "pending" && Boolean(s.decidedAt) && Date.now() - Date.parse(s.decidedAt!) < 86_400_000,
+        )
         .sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1))
         .slice(0, 10)
         .map((s) => ({ id: s.id, agentId: s.agentId, status: s.status, at: s.decidedAt })),
@@ -346,7 +412,11 @@ export class OfficeService {
         const g = gstReport(l);
         const t = tdsReport(l);
         return [
-          { label: `GST payable for ${monthLabel(lastMonth, "long").split(" ")[0]}`, value: inrShort(g.payable.totalPaise), figureId: `gst:payable:${lastMonth}` },
+          {
+            label: `GST payable for ${monthLabel(lastMonth, "long").split(" ")[0]}`,
+            value: inrShort(g.payable.totalPaise),
+            figureId: `gst:payable:${lastMonth}`,
+          },
           { label: "TDS this quarter", value: inrShort(t.deductions.reduce((x, d) => x + d.expectedPaise, 0)), figureId: `tds:total:${t.quarter}` },
           { label: "Next return", value: `GSTR-1 by ${dateLabel(g.filings[0]!.dueOn)}` },
         ];
@@ -371,7 +441,11 @@ export class OfficeService {
         if (agentId === "quote-desk")
           return [
             { label: "Quotations out", value: String(s.quotes.filter((q) => q.status === "sent").length) },
-            { label: "Accepted value", value: inrShort(s.quotes.filter((q) => q.status === "accepted").reduce((a, q) => a + q.totals.totalPaise, 0)), tone: "green" },
+            {
+              label: "Accepted value",
+              value: inrShort(s.quotes.filter((q) => q.status === "accepted").reduce((a, q) => a + q.totals.totalPaise, 0)),
+              tone: "green",
+            },
             { label: "Drafts", value: String(s.quotes.filter((q) => q.status === "draft").length) },
           ];
         const open = s.leads.filter((x) => !["won", "lost"].includes(x.stage));
@@ -384,7 +458,11 @@ export class OfficeService {
       case "marketer":
       case "market-watcher": {
         const m = marketingReport(l);
-        if (agentId === "market-watcher") return [{ label: "SKUs watched", value: String(m.prices.length) }, { label: "Priced over 5% above market", value: String(m.prices.filter((p) => p.gapPct > 5).length), tone: "red" }];
+        if (agentId === "market-watcher")
+          return [
+            { label: "SKUs watched", value: String(m.prices.length) },
+            { label: "Priced over 5% above market", value: String(m.prices.filter((p) => p.gapPct > 5).length), tone: "red" },
+          ];
         return [
           { label: "Campaigns running", value: String(m.campaigns.filter((c) => c.status === "running").length) },
           { label: "Slow stock at cost", value: inrShort(m.slowMovers.reduce((a, x) => a + x.stockValuePaise, 0)), figureId: "marketing:slow", tone: "red" },
@@ -419,7 +497,11 @@ export class OfficeService {
         }
         return [
           { label: "SKUs to reorder", value: String(o.stock.filter((s) => s.status === "reorder").length), tone: "red" },
-          { label: "Excess stock at cost", value: inrShort(o.stock.filter((s) => s.status === "excess").reduce((a, s) => a + s.stockValuePaise, 0)), figureId: "operations:excess" },
+          {
+            label: "Excess stock at cost",
+            value: inrShort(o.stock.filter((s) => s.status === "excess").reduce((a, s) => a + s.stockValuePaise, 0)),
+            figureId: "operations:excess",
+          },
           { label: "Purchase orders open", value: String(o.purchaseOrders.filter((p) => p.status === "draft" || p.status === "sent").length) },
         ];
       }
@@ -456,7 +538,11 @@ export class OfficeService {
     const o = operationsReport(this.ledger);
     const low = o.stock.filter((s) => s.status === "reorder");
     if (!low.length) return { items: [], drafted: 0, covered: false };
-    const onOrder = new Set(this.books.purchaseOrders.filter((p) => p.status === "draft" || p.status === "sent" || p.cancelledOn === this.asOf).flatMap((p) => p.lines.map((x) => x.skuId)));
+    const onOrder = new Set(
+      this.books.purchaseOrders
+        .filter((p) => p.status === "draft" || p.status === "sent" || p.cancelledOn === this.asOf)
+        .flatMap((p) => p.lines.map((x) => x.skuId)),
+    );
     const lastBought = new Map<string, { vendorId: string; ratePaise: number; date: string }>();
     for (const b of this.books.bills) {
       if (b.status !== "posted") continue;
@@ -510,9 +596,22 @@ export class OfficeService {
     const accuracyPct = state.accuracy.checked ? Math.round((state.accuracy.correct / state.accuracy.checked) * 1000) / 10 : null;
     let promotion: AgentRoomView["promotion"] = null;
     const rate = state.accuracy.checked ? state.accuracy.correct / state.accuracy.checked : 0;
-    if (state.hired && state.trustLevel === "trainee" && state.accuracy.checked >= PROMOTION_RULES.trusted.minChecked && rate >= PROMOTION_RULES.trusted.minAccuracy)
-      promotion = { to: "trusted", reason: `${state.accuracy.correct} of ${state.accuracy.checked} pieces of work approved without changes (${accuracyPct}%).` };
-    if (state.hired && state.trustLevel === "trusted" && state.accuracy.checked >= PROMOTION_RULES.autonomous.minChecked && rate >= PROMOTION_RULES.autonomous.minAccuracy)
+    if (
+      state.hired &&
+      state.trustLevel === "trainee" &&
+      state.accuracy.checked >= PROMOTION_RULES.trusted.minChecked &&
+      rate >= PROMOTION_RULES.trusted.minAccuracy
+    )
+      promotion = {
+        to: "trusted",
+        reason: `${state.accuracy.correct} of ${state.accuracy.checked} pieces of work approved without changes (${accuracyPct}%).`,
+      };
+    if (
+      state.hired &&
+      state.trustLevel === "trusted" &&
+      state.accuracy.checked >= PROMOTION_RULES.autonomous.minChecked &&
+      rate >= PROMOTION_RULES.autonomous.minAccuracy
+    )
       promotion = { to: "autonomous", reason: `${state.accuracy.correct} of ${state.accuracy.checked} approved without changes (${accuracyPct}%).` };
     return {
       agentId,
@@ -542,9 +641,24 @@ export class OfficeService {
   receiveDocument(input: { id: string; file: string; channel: Document["channel"]; from: string | null; pages: number; receivedAt?: string }): Document {
     const existing = this.books.documents.find((d) => d.id === input.id);
     if (existing) return existing;
-    const doc: Document = { id: input.id, kind: "purchase_bill", refId: null, file: input.file, pages: input.pages, receivedAt: input.receivedAt ?? istNow(this.asOf), channel: input.channel, from: input.from, status: "reading", regions: [] };
+    const doc: Document = {
+      id: input.id,
+      kind: "purchase_bill",
+      refId: null,
+      file: input.file,
+      pages: input.pages,
+      receivedAt: input.receivedAt ?? istNow(this.asOf),
+      channel: input.channel,
+      from: input.from,
+      status: "reading",
+      regions: [],
+    };
     this.books.documents.push(doc);
-    this.log("accountant", input.channel === "email" ? `Received a document by email from ${input.from ?? "an unknown sender"}.` : "Received an uploaded document.", { kind: "document", id: doc.id });
+    this.log(
+      "accountant",
+      input.channel === "email" ? `Received a document by email from ${input.from ?? "an unknown sender"}.` : "Received an uploaded document.",
+      { kind: "document", id: doc.id },
+    );
     return doc;
   }
 
@@ -572,7 +686,9 @@ export class OfficeService {
     const biz = this.books.business;
     // Another of the business's registrations: a separate taxpayer, so its documents feed that GSTIN's returns.
     const elsewhere = e.registration && e.registration !== biz.gstin ? e.registration : null;
-    const regNote = elsewhere ? ` ${e.kind === "purchase_bill" ? "Billed to" : "Issued under"} your ${this.books.states[elsewhere.slice(0, 2)] ?? `state ${elsewhere.slice(0, 2)}`} registration ${elsewhere}: it counts in that GSTIN's returns, not ${biz.gstin}'s.` : "";
+    const regNote = elsewhere
+      ? ` ${e.kind === "purchase_bill" ? "Billed to" : "Issued under"} your ${this.books.states[elsewhere.slice(0, 2)] ?? `state ${elsewhere.slice(0, 2)}`} registration ${elsewhere}: it counts in that GSTIN's returns, not ${biz.gstin}'s.`
+      : "";
 
     const partyKind = e.kind === "purchase_bill" ? "vendor" : "customer";
     let partyId = e.partyId;
@@ -606,7 +722,21 @@ export class OfficeService {
 
     if (e.kind === "purchase_bill") {
       const id = `bill-${docId.replace(/^doc-/, "")}`;
-      const bill: Bill = { id, number, date, partyId, docId, kind: party.supplyKind ?? "goods", placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, ...(elsewhere ? { gstin: elsewhere } : {}), lines, totals: e.totals, itcEligible: Boolean(e.partyGstin) && tax > 0, tds: null, status: dup ? "rejected" : "staged" };
+      const bill: Bill = {
+        id,
+        number,
+        date,
+        partyId,
+        docId,
+        kind: party.supplyKind ?? "goods",
+        placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode,
+        ...(elsewhere ? { gstin: elsewhere } : {}),
+        lines,
+        totals: e.totals,
+        itcEligible: Boolean(e.partyGstin) && tax > 0,
+        tds: null,
+        status: dup ? "rejected" : "staged",
+      };
       this.books.bills.push(bill);
       this.ledger.reindex();
       bill.tds = dup ? null : (expectedTdsByBill(this.ledger).get(id) ?? null);
@@ -617,7 +747,21 @@ export class OfficeService {
     } else {
       const id = `inv-${docId.replace(/^doc-/, "")}`;
       const terms = party.paymentTermsDays ?? 30;
-      const invoice: Invoice = { id, number, date, partyId, docId, placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode, ...(elsewhere ? { gstin: elsewhere } : {}), reverseCharge: false, termsDays: terms, dueDate: addDays(date, terms), lines, totals: e.totals, status: dup ? "cancelled" : "staged" };
+      const invoice: Invoice = {
+        id,
+        number,
+        date,
+        partyId,
+        docId,
+        placeOfSupply: e.placeOfSupply ?? this.books.business.stateCode,
+        ...(elsewhere ? { gstin: elsewhere } : {}),
+        reverseCharge: false,
+        termsDays: terms,
+        dueDate: addDays(date, terms),
+        lines,
+        totals: e.totals,
+        status: dup ? "cancelled" : "staged",
+      };
       this.books.invoices.push(invoice);
       this.ledger.reindex();
       doc.refId = id;
@@ -635,7 +779,9 @@ export class OfficeService {
 
     const evidence: StagedChange["evidence"] = [
       { label: e.kind === "purchase_bill" ? "Bill total" : "Invoice total", ref: { kind: "document", id: docId, region: "totals.total" } },
-      ...(e.partyGstin ? [{ label: e.kind === "purchase_bill" ? "Supplier GSTIN" : "Customer GSTIN", ref: { kind: "document" as const, id: docId, region: "gstin" } }] : []),
+      ...(e.partyGstin
+        ? [{ label: e.kind === "purchase_bill" ? "Supplier GSTIN" : "Customer GSTIN", ref: { kind: "document" as const, id: docId, region: "gstin" } }]
+        : []),
     ];
     const item: StagedChange = {
       id: `chg-${docId}`,
@@ -653,7 +799,9 @@ export class OfficeService {
     doc.status = dup ? "rejected" : "staged";
     this.log(
       "accountant",
-      dup ? `Set aside ${number} from ${party.name}: ${dup.detail}` : `Read ${number} from ${party.name}${toCheck.length ? `; ${toCheck.length === 1 ? "one check needs" : `${toCheck.length} checks need`} a look` : ""}.`,
+      dup
+        ? `Set aside ${number} from ${party.name}: ${dup.detail}`
+        : `Read ${number} from ${party.name}${toCheck.length ? `; ${toCheck.length === 1 ? "one check needs" : `${toCheck.length} checks need`} a look` : ""}.`,
       { kind: "document", id: docId },
     );
     return item;
@@ -682,7 +830,8 @@ export class OfficeService {
     } else if (e.docType === "proforma") {
       title = `File proforma invoice ${number} ${toFrom} ${who}, ₹${inr(total)}`;
       summary = "A proforma is an offer, not a sale: it does not go into the books or GSTR-1. A tax invoice is raised when the goods go out.";
-      if (e.lines.length && e.lines.every((l) => l.ratePaise > 0 && l.ratePaise <= 100)) summary += ` Every line is priced at ₹${inr(e.lines[0]!.ratePaise)} a unit; check whether these are samples or a placeholder before the tax invoice is raised.`;
+      if (e.lines.length && e.lines.every((l) => l.ratePaise > 0 && l.ratePaise <= 100))
+        summary += ` Every line is priced at ₹${inr(e.lines[0]!.ratePaise)} a unit; check whether these are samples or a placeholder before the tax invoice is raised.`;
     } else {
       title = `File ${what} ${number} ${toFrom} ${who}, ₹${inr(total)}`;
       summary = `${What}s are not posted yet: it is kept for your accountant and does not change what is owed or the GST returns.`;
@@ -695,7 +844,11 @@ export class OfficeService {
       ? this.books.staged.find((s) => {
           if (s.kind !== "file_document" || s.status === "rejected") return false;
           const p = s.payload as { docType?: string; number?: string; partyId?: string | null; partyGstin?: string | null; partyName?: string };
-          return p.docType === e.docType && same(p.number, e.number) && ((party && p.partyId === party.id) || same(p.partyGstin, e.partyGstin) || same(p.partyName, who));
+          return (
+            p.docType === e.docType &&
+            same(p.number, e.number) &&
+            ((party && p.partyId === party.id) || same(p.partyGstin, e.partyGstin) || same(p.partyName, who))
+          );
         })
       : undefined;
     const dup = earlier ? `${number} came in before and is ${earlier.status === "pending" ? "already on your desk" : "already filed"}.` : null;
@@ -710,13 +863,28 @@ export class OfficeService {
         { label: `${What} number`, ref: { kind: "document", id: doc.id, region: "number" } },
         ...(total ? [{ label: "Total", ref: { kind: "document" as const, id: doc.id, region: "totals.total" } }] : []),
       ],
-      payload: { docId: doc.id, docType: e.docType, number, date: e.date, partyId: party?.id ?? null, partyName: who, partyGstin: e.partyGstin, totalPaise: total, qty, checks: e.checks, method: e.method },
+      payload: {
+        docId: doc.id,
+        docType: e.docType,
+        number,
+        date: e.date,
+        partyId: party?.id ?? null,
+        partyName: who,
+        partyGstin: e.partyGstin,
+        totalPaise: total,
+        qty,
+        checks: e.checks,
+        method: e.method,
+      },
       status: dup ? "rejected" : "pending",
       ...(dup ? { decidedAt: new Date().toISOString(), decidedBy: "The Accountant", note: dup } : {}),
     };
     this.books.staged.push(item);
     doc.status = dup ? "rejected" : "staged";
-    this.log("accountant", dup ? `Set aside ${what} ${number} ${toFrom} ${who}: ${dup}` : `Read ${what} ${number} ${toFrom} ${who}; it is filed, not posted.`, { kind: "document", id: doc.id });
+    this.log("accountant", dup ? `Set aside ${what} ${number} ${toFrom} ${who}: ${dup}` : `Read ${what} ${number} ${toFrom} ${who}; it is filed, not posted.`, {
+      kind: "document",
+      id: doc.id,
+    });
     return item;
   }
 
@@ -748,7 +916,15 @@ export class OfficeService {
       return { document, staged: null, message: "This does not look like a GST invoice or bill." };
     }
     const staged = this.stageExtraction(docId, e);
-    if (staged.kind === "file_document") return { document, staged, message: staged.status === "rejected" ? (staged.note ?? "Set aside as a duplicate.") : `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.` };
+    if (staged.kind === "file_document")
+      return {
+        document,
+        staged,
+        message:
+          staged.status === "rejected"
+            ? (staged.note ?? "Set aside as a duplicate.")
+            : `Read as a ${FILED_NAMES[e.docType as Exclude<DocType, "invoice">]}. It waits on your desk to be filed; nothing goes into the books.`,
+      };
     const failed = e.checks.filter((c) => !c.ok);
     if (!auto && staged.status === "pending") {
       // Mail from a sender who is not in the books waits for the owner, now and at every later morning round.
@@ -781,7 +957,11 @@ export class OfficeService {
     this.ledger.reindex();
     const form = r.kind === "gstr2b" ? "GSTR-2B" : r.form;
     const findings = auditReport(this.ledger, r.period).findings.length;
-    this.log("auditor", `${by} imported ${form} for ${r.period.startsWith("FY") ? r.period : monthLabel(r.period)} (${r.summary}). ${findings ? `${findings} difference${findings === 1 ? "" : "s"} with the books.` : "It matches the books."}`, { kind: "audit", id: r.period });
+    this.log(
+      "auditor",
+      `${by} imported ${form} for ${r.period.startsWith("FY") ? r.period : monthLabel(r.period)} (${r.summary}). ${findings ? `${findings} difference${findings === 1 ? "" : "s"} with the books.` : "It matches the books."}`,
+      { kind: "audit", id: r.period },
+    );
     return { form, period: r.period, summary: r.summary, findings };
   }
 
@@ -846,7 +1026,11 @@ export class OfficeService {
 
     if (decision.action === "approve") this.apply(decided);
     else this.withdraw(decided);
-    this.log("you", `${by} ${decision.action === "approve" ? "approved" : "rejected"}: ${item.title}${decision.note ? `. Note: ${decision.note}` : ""}`, item.evidence[0]?.ref ?? null);
+    this.log(
+      "you",
+      `${by} ${decision.action === "approve" ? "approved" : "rejected"}: ${item.title}${decision.note ? `. Note: ${decision.note}` : ""}`,
+      item.evidence[0]?.ref ?? null,
+    );
     return decided;
   }
 
@@ -891,7 +1075,9 @@ export class OfficeService {
     const p = item.payload as { messageId?: string; reply?: string; postId?: string };
     if (item.kind === "social_reply") {
       const m = this.books.socialInbox.find((x) => x.id === p.messageId);
-      return m && m.status === "open" && isThankYou(m, p.reply ?? m.draftReply) ? { level, reason: "it is a thank-you to a positive review or comment, with no figures or promises" } : null;
+      return m && m.status === "open" && isThankYou(m, p.reply ?? m.draftReply)
+        ? { level, reason: "it is a thank-you to a positive review or comment, with no figures or promises" }
+        : null;
     }
     const post = this.books.posts.find((x) => x.id === p.postId);
     if (!post) return null;
@@ -917,7 +1103,13 @@ export class OfficeService {
       const why = this.routine(item);
       if (!why) continue;
       const title = AGENT_BY_ID[item.agentId]?.title ?? "The agent";
-      const decided: StagedChange = { ...item, status: "approved", decidedAt: new Date().toISOString(), decidedBy: `${title}, ${why.level}`, note: `Went ahead on its own: ${why.reason}.` };
+      const decided: StagedChange = {
+        ...item,
+        status: "approved",
+        decidedAt: new Date().toISOString(),
+        decidedBy: `${title}, ${why.level}`,
+        note: `Went ahead on its own: ${why.reason}.`,
+      };
       const idx = this.books.staged.findIndex((s) => s.id === item.id);
       if (idx >= 0) this.books.staged[idx] = decided;
       else this.books.staged.push(decided);
@@ -989,7 +1181,10 @@ export class OfficeService {
       case "file_document": {
         const doc = this.books.documents.find((d) => d.id === p.docId);
         if (doc) doc.status = "filed";
-        this.log("accountant", `Filed ${FILED_NAMES[p.docType as Exclude<DocType, "invoice">] ?? "the document"} ${p.number ?? ""} for the record.`, { kind: "document", id: p.docId ?? null });
+        this.log("accountant", `Filed ${FILED_NAMES[p.docType as Exclude<DocType, "invoice">] ?? "the document"} ${p.number ?? ""} for the record.`, {
+          kind: "document",
+          id: p.docId ?? null,
+        });
         break;
       }
       case "onboarding": {
@@ -1030,7 +1225,12 @@ export class OfficeService {
         const v = post?.variants.find((x) => x.channelId === p.channelId);
         if (post && v) {
           v.status = "scheduled";
-          this.effects.push({ kind: "broadcast", postId: post.id, channelId: v.channelId, audience: Number((item.payload as { audience?: number }).audience ?? 0) });
+          this.effects.push({
+            kind: "broadcast",
+            postId: post.id,
+            channelId: v.channelId,
+            audience: Number((item.payload as { audience?: number }).audience ?? 0),
+          });
           this.log("social-media-manager", `Sending the WhatsApp broadcast for "${post.topic}".`, { kind: "post", id: post.id });
         }
         break;
@@ -1043,7 +1243,11 @@ export class OfficeService {
         m.draftReply = text;
         const ch = this.books.channels.find((c) => c.id === m.channelId);
         if (ch?.mode === "connected" && ch.status === "connected") this.effects.push({ kind: "reply", messageId: m.id, channelId: ch.id, text });
-        this.log("social-media-manager", ch?.mode === "connected" ? `Replied to ${m.author} on ${PLATFORM_NAMES[ch.platform]}.` : `Reply to ${m.author} is ready to paste on ${m.platform}.`, { kind: "social", id: m.id });
+        this.log(
+          "social-media-manager",
+          ch?.mode === "connected" ? `Replied to ${m.author} on ${PLATFORM_NAMES[ch.platform]}.` : `Reply to ${m.author} is ready to paste on ${m.platform}.`,
+          { kind: "social", id: m.id },
+        );
         break;
       }
       case "purchase_order": {
@@ -1116,7 +1320,10 @@ export class OfficeService {
     const checks = checkPost(this.ledger, post, this.books.brandVoice, { now: this.asOf });
     const failed = checks.filter((c) => !c.ok);
     const evidence: StagedChange["evidence"] = [
-      ...post.skuIds.map((id) => ({ label: `${this.books.skus.find((s) => s.id === id)?.name ?? id}: price and stock`, ref: { kind: "figure" as const, id: `sku:${id}` } })),
+      ...post.skuIds.map((id) => ({
+        label: `${this.books.skus.find((s) => s.id === id)?.name ?? id}: price and stock`,
+        ref: { kind: "figure" as const, id: `sku:${id}` },
+      })),
       ...(post.campaignId ? [{ label: "The campaign", ref: { kind: "campaign" as const, id: post.campaignId } }] : []),
       { label: "The post", ref: { kind: "post" as const, id: post.id } },
     ];
@@ -1126,7 +1333,12 @@ export class OfficeService {
       kind: "post",
       createdAt: istNow(this.asOf),
       title: `Publish "${post.topic}" on ${this.channelList(post)}, ${dateLabel(post.at.slice(0, 10))}`,
-      summary: [note, failed.length ? `Check before approving: ${failed.map((c) => c.detail).join("; ")}.` : "Every check passed: prices, stock, dates, length and claims."].filter(Boolean).join(" "),
+      summary: [
+        note,
+        failed.length ? `Check before approving: ${failed.map((c) => c.detail).join("; ")}.` : "Every check passed: prices, stock, dates, length and claims.",
+      ]
+        .filter(Boolean)
+        .join(" "),
       evidence,
       payload: { postId: post.id, checks },
       status: "pending",
@@ -1198,7 +1410,10 @@ export class OfficeService {
         this.stageBroadcast(post, v);
       } else v.status = "scheduled";
     }
-    this.log("social-media-manager", `Scheduled "${post.topic}" for ${this.channelList(post)} on ${dateLabel(post.at.slice(0, 10))}.`, { kind: "post", id: post.id });
+    this.log("social-media-manager", `Scheduled "${post.topic}" for ${this.channelList(post)} on ${dateLabel(post.at.slice(0, 10))}.`, {
+      kind: "post",
+      id: post.id,
+    });
   }
 
   stageBroadcast(post: Post, v: PostVariant): StagedChange {
@@ -1249,11 +1464,19 @@ export class OfficeService {
           out.push({ kind: "publish", postId: post.id, channelId: v.channelId });
           auto.push(PLATFORM_NAMES[v.platform]);
         } else if (!v.error) {
-          v.error = ch?.status === "rate_limited" ? `${PLATFORM_NAMES[v.platform]} is limiting posts; post it by hand` : "Post by hand from the publishing pack";
-          this.log("social-media-manager", `"${post.topic}" is due on ${PLATFORM_NAMES[v.platform]}. The publishing pack is ready to post by hand.`, { kind: "post", id: post.id });
+          v.error =
+            ch?.status === "rate_limited" ? `${PLATFORM_NAMES[v.platform]} is limiting posts; post it by hand` : "Post by hand from the publishing pack";
+          this.log("social-media-manager", `"${post.topic}" is due on ${PLATFORM_NAMES[v.platform]}. The publishing pack is ready to post by hand.`, {
+            kind: "post",
+            id: post.id,
+          });
         }
       }
-      if (auto.length) this.log("social-media-manager", `Publishing "${post.topic}" to ${auto.length === 1 ? auto[0] : `${auto.length} channels`}.`, { kind: "post", id: post.id });
+      if (auto.length)
+        this.log("social-media-manager", `Publishing "${post.topic}" to ${auto.length === 1 ? auto[0] : `${auto.length} channels`}.`, {
+          kind: "post",
+          id: post.id,
+        });
     }
     this.effects.push(...out);
     return out;
@@ -1266,7 +1489,11 @@ export class OfficeService {
     Object.assign(v, { status: "published", externalId: result.externalId, url: result.url, publishedAt: result.at ?? istNow(this.asOf), error: null });
     if (post.variants.every((x) => x.status === "published" || x.status === "skipped" || x.status === "failed")) post.status = "published";
     else if (post.status === "draft") post.status = "scheduled";
-    this.log(by === "social-media-manager" ? by : "you", `${by === "social-media-manager" ? "Published" : `${by} posted`} "${post.topic}" on ${PLATFORM_NAMES[v.platform]}.`, { kind: "post", id: post.id });
+    this.log(
+      by === "social-media-manager" ? by : "you",
+      `${by === "social-media-manager" ? "Published" : `${by} posted`} "${post.topic}" on ${PLATFORM_NAMES[v.platform]}.`,
+      { kind: "post", id: post.id },
+    );
     return post;
   }
 
@@ -1281,8 +1508,15 @@ export class OfficeService {
     if (ch && (opts.rateLimited || opts.expired)) {
       ch.status = opts.rateLimited ? "rate_limited" : "expired";
       ch.lastError = v.error;
-      this.log("social-media-manager", opts.rateLimited ? `${PLATFORM_NAMES[ch.platform]} is limiting posts, so I stopped publishing there. "${post.topic}" is ready to post by hand.` : `The ${PLATFORM_NAMES[ch.platform]} connection has expired. Reconnect it in Settings.`, { kind: "channel", id: ch.id });
-    } else if (opts.final) this.log("social-media-manager", `Could not publish "${post.topic}" on ${PLATFORM_NAMES[v.platform]}: ${v.error}`, { kind: "post", id: post.id });
+      this.log(
+        "social-media-manager",
+        opts.rateLimited
+          ? `${PLATFORM_NAMES[ch.platform]} is limiting posts, so I stopped publishing there. "${post.topic}" is ready to post by hand.`
+          : `The ${PLATFORM_NAMES[ch.platform]} connection has expired. Reconnect it in Settings.`,
+        { kind: "channel", id: ch.id },
+      );
+    } else if (opts.final)
+      this.log("social-media-manager", `Could not publish "${post.topic}" on ${PLATFORM_NAMES[v.platform]}: ${v.error}`, { kind: "post", id: post.id });
   }
 
   /** A channel stopped working outside a publish: the token lapsed, the platform throttled us, or it is not set up. */
@@ -1293,7 +1527,15 @@ export class OfficeService {
     ch.lastError = message.slice(0, 300);
     if (status === "manual") ch.mode = "manual";
     const name = PLATFORM_NAMES[ch.platform];
-    this.log("social-media-manager", status === "expired" ? `The ${name} connection has expired. Reconnect it in Settings.` : status === "rate_limited" ? `${name} is limiting requests, so I paused it there.` : `${name} is not connected here, so its posts go out by hand. ${message}`, { kind: "channel", id: ch.id });
+    this.log(
+      "social-media-manager",
+      status === "expired"
+        ? `The ${name} connection has expired. Reconnect it in Settings.`
+        : status === "rate_limited"
+          ? `${name} is limiting requests, so I paused it there.`
+          : `${name} is not connected here, so its posts go out by hand. ${message}`,
+      { kind: "channel", id: ch.id },
+    );
   }
 
   /** The latest numbers from a platform, matched to our posts by the platform's id. */
@@ -1321,7 +1563,8 @@ export class OfficeService {
       post.status = "draft";
       for (const x of post.variants) if (x.status === "scheduled") x.status = "draft";
       this.stagePost(post, `Edited for ${PLATFORM_NAMES[v.platform]} after it was scheduled.`);
-    } else if (!this.books.staged.some((s) => s.kind === "post" && s.status === "pending" && (s.payload as { postId?: string }).postId === post.id)) this.stagePost(post);
+    } else if (!this.books.staged.some((s) => s.kind === "post" && s.status === "pending" && (s.payload as { postId?: string }).postId === post.id))
+      this.stagePost(post);
     return post;
   }
 
@@ -1346,7 +1589,11 @@ export class OfficeService {
       }
       items.push(this.stageReply(m));
     }
-    if (added.length) this.log("social-media-manager", `${added.length} new ${added.length === 1 ? "message" : "comments and messages"} came in.`, { kind: "social", id: added[0]!.id });
+    if (added.length)
+      this.log("social-media-manager", `${added.length} new ${added.length === 1 ? "message" : "comments and messages"} came in.`, {
+        kind: "social",
+        id: added[0]!.id,
+      });
     const replied = this.runTrusted(items).length;
     return { added, leads, replied };
   }
@@ -1363,7 +1610,10 @@ export class OfficeService {
       createdAt: istNow(this.asOf),
       title: `Reply to ${m.author}'s ${what} on ${m.platform}`,
       summary: `"${m.text.slice(0, 160)}${m.text.length > 160 ? "…" : ""}"${m.leadId ? " Passed to the Sales Rep as a lead." : ""}${m.replyBy ? ` WhatsApp allows a free reply until ${new Date(m.replyBy).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}.` : ""}`,
-      evidence: [{ label: "The message", ref: { kind: "social", id: m.id } }, ...(m.leadId ? [{ label: "The lead", ref: { kind: "lead" as const, id: m.leadId } }] : [])],
+      evidence: [
+        { label: "The message", ref: { kind: "social", id: m.id } },
+        ...(m.leadId ? [{ label: "The lead", ref: { kind: "lead" as const, id: m.leadId } }] : []),
+      ],
       payload: { messageId: m.id, reply: m.draftReply },
       status: "pending",
     };
@@ -1394,7 +1644,14 @@ export class OfficeService {
   connectChannel(id: string, handle: string, followers: number | null = null): Channel {
     const ch = this.channel(id);
     if (!ch) throw new Error(`No channel ${id}`);
-    Object.assign(ch, { mode: "connected", status: "connected", handle, lastError: null, connectedAt: istNow(this.asOf), followers: followers ?? ch.followers });
+    Object.assign(ch, {
+      mode: "connected",
+      status: "connected",
+      handle,
+      lastError: null,
+      connectedAt: istNow(this.asOf),
+      followers: followers ?? ch.followers,
+    });
     this.log("social-media-manager", `Connected ${PLATFORM_NAMES[ch.platform]} as ${handle}.`, { kind: "channel", id });
     return ch;
   }
@@ -1418,7 +1675,12 @@ export class OfficeService {
     if (change.hired !== undefined && change.hired !== s.hired) {
       s.hired = change.hired;
       s.hiredOn = change.hired ? this.asOf : s.hiredOn;
-      this.log("office-manager", change.hired ? `${AGENT_BY_ID[agentId]!.title} joined the team as a trainee.` : `${AGENT_BY_ID[agentId]!.title} has left the team. Their pending work was withdrawn.`);
+      this.log(
+        "office-manager",
+        change.hired
+          ? `${AGENT_BY_ID[agentId]!.title} joined the team as a trainee.`
+          : `${AGENT_BY_ID[agentId]!.title} has left the team. Their pending work was withdrawn.`,
+      );
       if (change.hired) s.trustLevel = "trainee";
     }
     if (change.trustLevel && change.trustLevel !== s.trustLevel) {
@@ -1439,8 +1701,15 @@ export class OfficeService {
       const gstin = current.gstin || rest.business.gstin;
       const derived = gstin ? { stateCode: gstin.slice(0, 2), pan: gstin.slice(2, 12) } : {};
       // Other registrations share the PAN, so each must be a valid GSTIN with the main one's PAN in it.
-      const others = [...new Set((rest.business.otherGstins ?? current.otherGstins ?? []).map((g) => g.trim().toUpperCase()))].filter((g) => g !== gstin && gstinValid(g) && (!gstin || g.slice(2, 12) === gstin.slice(2, 12)));
-      Object.assign(current, rest.business, { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom, compliance: current.compliance }, derived);
+      const others = [...new Set((rest.business.otherGstins ?? current.otherGstins ?? []).map((g) => g.trim().toUpperCase()))].filter(
+        (g) => g !== gstin && gstinValid(g) && (!gstin || g.slice(2, 12) === gstin.slice(2, 12)),
+      );
+      Object.assign(
+        current,
+        rest.business,
+        { id: current.id, gstin, asOf: current.asOf, fyStart: current.fyStart, booksFrom: current.booksFrom, compliance: current.compliance },
+        derived,
+      );
       if (others.length) current.otherGstins = others;
       else delete current.otherGstins;
       if (!current.compliance) delete current.compliance;
@@ -1455,17 +1724,35 @@ export class OfficeService {
     const invoice = doc.kind === "sales_invoice" ? (this.ledger.invoice(doc.refId ?? "") ?? null) : null;
     const bill = doc.kind === "purchase_bill" ? (this.ledger.bill(doc.refId ?? "") ?? null) : null;
     const partyId = invoice?.partyId ?? bill?.partyId;
-    return { document: doc, invoice, bill, party: partyId ? this.ledger.party(partyId) : null, outstandingPaise: invoice ? this.ledger.outstanding(invoice.id) : null };
+    return {
+      document: doc,
+      invoice,
+      bill,
+      party: partyId ? this.ledger.party(partyId) : null,
+      outstandingPaise: invoice ? this.ledger.outstanding(invoice.id) : null,
+    };
   }
 
   partyView(id: string): PartyView {
     const party = this.ledger.party(id);
     const ageing = ageingReport(this.ledger).rows.find((r) => r.partyId === id) ?? null;
     const recent: PartyView["recent"] = [];
-    for (const inv of this.ledger.receivableInvoices.filter((i) => i.partyId === id).slice(-8)) recent.push({ date: inv.date, label: `${inv.opening ? "Brought forward, invoice" : "Invoice"} ${inv.number}`, amountPaise: inv.totals.totalPaise, docId: inv.docId });
-    for (const b of this.books.bills.filter((x) => x.partyId === id).slice(-8)) recent.push({ date: b.date, label: `${b.opening ? "Brought forward, bill" : "Bill"} ${b.number}`, amountPaise: b.totals.totalPaise, docId: b.docId });
+    for (const inv of this.ledger.receivableInvoices.filter((i) => i.partyId === id).slice(-8))
+      recent.push({
+        date: inv.date,
+        label: `${inv.opening ? "Brought forward, invoice" : "Invoice"} ${inv.number}`,
+        amountPaise: inv.totals.totalPaise,
+        docId: inv.docId,
+      });
+    for (const b of this.books.bills.filter((x) => x.partyId === id).slice(-8))
+      recent.push({ date: b.date, label: `${b.opening ? "Brought forward, bill" : "Bill"} ${b.number}`, amountPaise: b.totals.totalPaise, docId: b.docId });
     for (const p of this.books.payments.filter((x) => x.partyId === id && x.date <= this.asOf).slice(-8))
-      recent.push({ date: p.date, label: `${p.direction === "in" ? "Received" : "Paid"} by ${p.mode}, ${p.reference}`, amountPaise: p.direction === "in" ? -p.amountPaise : p.amountPaise, docId: null });
+      recent.push({
+        date: p.date,
+        label: `${p.direction === "in" ? "Received" : "Paid"} by ${p.mode}, ${p.reference}`,
+        amountPaise: p.direction === "in" ? -p.amountPaise : p.amountPaise,
+        docId: null,
+      });
     recent.sort((a, b) => (a.date < b.date ? 1 : -1));
     return {
       party,
@@ -1480,7 +1767,13 @@ export class OfficeService {
   ask(question: string): AskResponse {
     const q = question.toLowerCase();
     const l = this.ledger;
-    const follow = ["Who owes me the most?", "How were sales last month?", "What GST do I pay this month?", "Has my accountant filed everything correctly?", "What is waiting for me?"];
+    const follow = [
+      "Who owes me the most?",
+      "How were sales last month?",
+      "What GST do I pay this month?",
+      "Has my accountant filed everything correctly?",
+      "What is waiting for me?",
+    ];
     if (/owe|outstanding|debtor|overdue|collect|receivable/.test(q)) {
       const a = ageingReport(l);
       const top = a.rows.slice(0, 3);
@@ -1521,7 +1814,11 @@ export class OfficeService {
       const by = new Map<string, number>();
       for (const x of p) by.set(x.agentId, (by.get(x.agentId) ?? 0) + 1);
       return {
-        answer: [{ text: `${p.length} items are waiting on your desk: ${[...by.entries()].map(([a, n]) => `${n} from ${AGENT_BY_ID[a]!.title.replace("The ", "the ")}`).join(", ")}.` }],
+        answer: [
+          {
+            text: `${p.length} items are waiting on your desk: ${[...by.entries()].map(([a, n]) => `${n} from ${AGENT_BY_ID[a]!.title.replace("The ", "the ")}`).join(", ")}.`,
+          },
+        ],
         followUps: follow.filter((f) => !f.includes("waiting")),
       };
     }
@@ -1530,7 +1827,11 @@ export class OfficeService {
     if (/review|instagram|social|post/.test(q)) return { answer: socialReport(l).note, followUps: follow };
     if (/salary|payroll|pf|esi/.test(q)) return { answer: peopleReport(l).note, followUps: follow };
     return {
-      answer: [{ text: "I can answer questions about what customers owe, sales, GST, TDS, your accountant's returns, stock, leads, social media and payroll, always with figures you can open and check." }],
+      answer: [
+        {
+          text: "I can answer questions about what customers owe, sales, GST, TDS, your accountant's returns, stock, leads, social media and payroll, always with figures you can open and check.",
+        },
+      ],
       followUps: follow,
     };
   }

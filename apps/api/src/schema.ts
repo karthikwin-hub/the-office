@@ -7,7 +7,9 @@ export const user = sqliteTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   image: text("image"),
-  role: text("role", { enum: ["owner", "accountant"] }).notNull().default("accountant"),
+  role: text("role", { enum: ["owner", "accountant"] })
+    .notNull()
+    .default("accountant"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
@@ -88,7 +90,9 @@ export const office = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
-    status: text("status", { enum: ["active", "suspended", "deleting"] }).notNull().default("active"),
+    status: text("status", { enum: ["active", "suspended", "deleting"] })
+      .notNull()
+      .default("active"),
     createdBy: text("created_by"),
     createdAt: integer("created_at").notNull(),
     deletedAt: integer("deleted_at"),
@@ -98,7 +102,11 @@ export const office = sqliteTable(
     timeZone: text("time_zone").notNull().default("Asia/Kolkata"),
     subdomain: text("subdomain"),
   },
-  (t) => [uniqueIndex("office_slug_unique").on(t.slug), uniqueIndex("office_subdomain_unique").on(t.subdomain), index("office_created_by").on(t.createdBy, t.createdAt)],
+  (t) => [
+    uniqueIndex("office_slug_unique").on(t.slug),
+    uniqueIndex("office_subdomain_unique").on(t.subdomain),
+    index("office_created_by").on(t.createdBy, t.createdAt),
+  ],
 );
 
 export const membership = sqliteTable(
@@ -123,7 +131,9 @@ export const invitation = sqliteTable(
       .notNull()
       .references(() => office.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
-    role: text("role", { enum: ["owner", "accountant"] }).notNull().default("accountant"),
+    role: text("role", { enum: ["owner", "accountant"] })
+      .notNull()
+      .default("accountant"),
     tokenHash: text("token_hash").notNull(),
     invitedBy: text("invited_by").notNull(),
     createdAt: integer("created_at").notNull(),

@@ -20,22 +20,38 @@ const enc = new TextEncoder();
 function r2() {
   const m = new Map<string, { bytes: Uint8Array; httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> }>();
   return {
-    put: async (key: string, data: string | Uint8Array, o: { httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> } = {}) => void m.set(key, { bytes: typeof data === "string" ? enc.encode(data) : data, ...o }),
+    put: async (key: string, data: string | Uint8Array, o: { httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> } = {}) =>
+      void m.set(key, { bytes: typeof data === "string" ? enc.encode(data) : data, ...o }),
     get: async (key: string) => {
       const v = m.get(key);
-      return v ? { key, size: v.bytes.byteLength, httpMetadata: v.httpMetadata, customMetadata: v.customMetadata, get body() { return new Blob([v.bytes]).stream(); } } : null;
+      return v
+        ? {
+            key,
+            size: v.bytes.byteLength,
+            httpMetadata: v.httpMetadata,
+            customMetadata: v.customMetadata,
+            get body() {
+              return new Blob([v.bytes]).stream();
+            },
+          }
+        : null;
     },
   };
 }
 
-function makeEnv(assets: () => Response = () => new Response("<!doctype html><title>the app</title>", { headers: { "content-type": "text/html; charset=utf-8" } })) {
+function makeEnv(
+  assets: () => Response = () => new Response("<!doctype html><title>the app</title>", { headers: { "content-type": "text/html; charset=utf-8" } }),
+) {
   const docs = r2();
   const seen: string[] = [];
   const env = {
     ASSETS: { fetch: async () => assets() },
     DB: d1(),
     DOCS: docs,
-    Office: { idFromName: (name: string) => ({ name }), get: () => ({ fetch: async (req: Request) => (seen.push(`${req.method} ${new URL(req.url).pathname}`), Response.json({ ok: true })) }) },
+    Office: {
+      idFromName: (name: string) => ({ name }),
+      get: () => ({ fetch: async (req: Request) => (seen.push(`${req.method} ${new URL(req.url).pathname}`), Response.json({ ok: true })) }),
+    },
     DATA_MODE: "test",
     MAIL_FROM: "office@the-office.test",
     INGEST_DOMAIN: "in.the-office.test",
@@ -47,17 +63,31 @@ function makeEnv(assets: () => Response = () => new Response("<!doctype html><ti
 }
 type World = ReturnType<typeof makeEnv>;
 
-const req = (w: World, path: string, init: RequestInit = {}, cookie?: string) => app.request(`${BASE}${path}`, { ...init, headers: { ...(cookie ? { cookie } : {}), ...(init.headers as Record<string, string>) } }, w.env);
+const req = (w: World, path: string, init: RequestInit = {}, cookie?: string) =>
+  app.request(`${BASE}${path}`, { ...init, headers: { ...(cookie ? { cookie } : {}), ...(init.headers as Record<string, string>) } }, w.env);
 
 async function owner(w: World) {
-  const res = await req(w, "/api/auth/sign-up/email", { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify({ name: "Anil Kulkarni", email: "anil@kaveri.test", password: "a-long-password-1" }) });
+  const res = await req(w, "/api/auth/sign-up/email", {
+    method: "POST",
+    headers: { origin: BASE, "content-type": "application/json" },
+    body: JSON.stringify({ name: "Anil Kulkarni", email: "anil@kaveri.test", password: "a-long-password-1" }),
+  });
   expect(res.status).toBe(200);
-  const cookie = (res.headers as unknown as { getSetCookie(): string[] }).getSetCookie().map((c) => c.split(";")[0]).join("; ");
-  const opened = await req(w, ACCOUNT_ROUTES.offices, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify({ name: "Kaveri Electricals" }) }, cookie);
+  const cookie = (res.headers as unknown as { getSetCookie(): string[] })
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+  const opened = await req(
+    w,
+    ACCOUNT_ROUTES.offices,
+    { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify({ name: "Kaveri Electricals" }) },
+    cookie,
+  );
   expect(opened.status).toBe(201);
   const office = ((await opened.json()) as { id: string }).id;
   // Owners turn on two-factor sign-in before anything of their office opens.
-  const post = (path: string, body: unknown, c: string) => req(w, path, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify(body) }, c);
+  const post = (path: string, body: unknown, c: string) =>
+    req(w, path, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify(body) }, c);
   return { cookie: (await enrolTwoFactor(post, cookie, "a-long-password-1")).cookie, office };
 }
 
@@ -98,7 +128,9 @@ describe("security headers", () => {
   });
 
   it("lets the live WebSocket reach this host and the office addresses", () => {
-    expect(appCsp({ APP_DOMAIN: "office.snilld.in" })).toContain("connect-src 'self' https://cloudflareinsights.com wss://office.snilld.in wss://*.office.snilld.in;");
+    expect(appCsp({ APP_DOMAIN: "office.snilld.in" })).toContain(
+      "connect-src 'self' https://cloudflareinsights.com wss://office.snilld.in wss://*.office.snilld.in;",
+    );
     expect(appCsp({})).toContain("connect-src 'self' https://cloudflareinsights.com;");
   });
 
@@ -112,7 +144,17 @@ describe("security headers", () => {
   it("sends the same headers from _headers for pages the asset server sends on its own", () => {
     const lines = readFileSync(join(WEB, "public", "_headers"), "utf8").split("\n");
     const rule = lines.slice(lines.indexOf("/*") + 1).filter((l) => /^\s+\S/.test(l));
-    const set = Object.fromEntries(rule.map((l) => l.trim().split(/:\s(.*)/s).slice(0, 2) as [string, string]).map(([k, v]) => [k.toLowerCase(), v]));
+    const set = Object.fromEntries(
+      rule
+        .map(
+          (l) =>
+            l
+              .trim()
+              .split(/:\s(.*)/s)
+              .slice(0, 2) as [string, string],
+        )
+        .map(([k, v]) => [k.toLowerCase(), v]),
+    );
     const wrangler = readFileSync(join(import.meta.dirname, "..", "wrangler.jsonc"), "utf8");
     const domain = /^\s*"APP_DOMAIN":\s*"([^"]+)"/m.exec(wrangler)![1]!;
     expect(set).toEqual({ ...BASE_HEADERS, "x-frame-options": "DENY", "content-security-policy": appCsp({ APP_DOMAIN: domain }) });
@@ -126,7 +168,11 @@ describe("security headers", () => {
     expect(pre.headers.get("access-control-allow-methods")).toBe("GET, POST, OPTIONS");
     expect(pre.headers.get("x-frame-options")).toBeNull();
     expect(pre.headers.get("content-security-policy")).toBeNull();
-    const posted = await req(w, "/api/chat/wabcdefgh1", { method: "POST", headers: { origin: "https://shop.example", "content-type": "application/json" }, body: JSON.stringify({ visitor: "v1234567890", text: "hello" }) });
+    const posted = await req(w, "/api/chat/wabcdefgh1", {
+      method: "POST",
+      headers: { origin: "https://shop.example", "content-type": "application/json" },
+      body: JSON.stringify({ visitor: "v1234567890", text: "hello" }),
+    });
     expect(posted.status).toBe(404);
     expect(posted.headers.get("access-control-allow-origin")).toBe("*");
     expect(posted.headers.get("content-security-policy")).toBeNull();
@@ -140,9 +186,12 @@ describe("security headers", () => {
   });
 });
 
-
 describe("changes come only from the app's own pages", () => {
-  const json = (origin: string | null, body: unknown, extra: Record<string, string> = {}) => ({ method: "POST", headers: { ...(origin ? { origin } : {}), "content-type": "application/json", ...extra }, body: JSON.stringify(body) });
+  const json = (origin: string | null, body: unknown, extra: Record<string, string> = {}) => ({
+    method: "POST",
+    headers: { ...(origin ? { origin } : {}), "content-type": "application/json", ...extra },
+    body: JSON.stringify(body),
+  });
 
   it("refuses a signed-in person's request forged from another site, and takes the app's own", async () => {
     const w = makeEnv();
@@ -181,9 +230,29 @@ describe("changes come only from the app's own pages", () => {
     expect(w.seen).toEqual([]);
     expect((await upload(BASE)).status).toBe(200);
     expect((await req(w, `/api/o/${office}/routines/compliance-due/run`, { method: "POST", headers: { origin: BASE } }, cookie)).status).toBe(200);
-    expect((await req(w, `/api/o/${office}/office-admin/restore`, { method: "POST", headers: { origin: BASE, "content-length": "0" }, body: new Uint8Array(0) }, cookie)).status).toBe(409);
-    expect((await req(w, `/api/o/${office}/settings`, { method: "PUT", headers: { origin: BASE, "content-length": "7" }, body: '{"x":1}' }, cookie)).status).toBe(415);
-    expect((await req(w, `/api/o/${office}/documents/doc-1/scan`, { method: "POST", headers: { origin: BASE, "content-type": "image/png" }, body: new Uint8Array([137, 80, 78, 71]) }, cookie)).status).toBe(200);
+    expect(
+      (
+        await req(
+          w,
+          `/api/o/${office}/office-admin/restore`,
+          { method: "POST", headers: { origin: BASE, "content-length": "0" }, body: new Uint8Array(0) },
+          cookie,
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (await req(w, `/api/o/${office}/settings`, { method: "PUT", headers: { origin: BASE, "content-length": "7" }, body: '{"x":1}' }, cookie)).status,
+    ).toBe(415);
+    expect(
+      (
+        await req(
+          w,
+          `/api/o/${office}/documents/doc-1/scan`,
+          { method: "POST", headers: { origin: BASE, "content-type": "image/png" }, body: new Uint8Array([137, 80, 78, 71]) },
+          cookie,
+        )
+      ).status,
+    ).toBe(200);
     expect(w.seen).toEqual(["POST /api/documents", "POST /api/routines/compliance-due/run", "POST /api/documents/doc-1/scan"]);
   });
 
@@ -201,8 +270,25 @@ describe("changes come only from the app's own pages", () => {
   it("knows the app's addresses: its own host, BETTER_AUTH_URL, APP_DOMAIN and the offices under it", () => {
     const env = { BETTER_AUTH_URL: "https://app.office.snilld.in", APP_DOMAIN: "office.snilld.in" };
     const at = "https://kaveri.office.snilld.in/api/o/off_x/settings";
-    for (const o of ["https://app.office.snilld.in", "https://office.snilld.in", "https://console.office.snilld.in", "https://kaveri.office.snilld.in", "https://mehta.office.snilld.in"]) expect([o, ownOrigin(env, o, at)]).toEqual([o, true]);
-    for (const o of ["https://evil.test", "https://evil-office.snilld.in", "https://office.snilld.in.evil.test", "http://kaveri.office.snilld.in", "https://kaveri.office.snilld.in:8443", "https://snilld.in", "null", "", "https://kaveri.office.snilld.in/path"])
+    for (const o of [
+      "https://app.office.snilld.in",
+      "https://office.snilld.in",
+      "https://console.office.snilld.in",
+      "https://kaveri.office.snilld.in",
+      "https://mehta.office.snilld.in",
+    ])
+      expect([o, ownOrigin(env, o, at)]).toEqual([o, true]);
+    for (const o of [
+      "https://evil.test",
+      "https://evil-office.snilld.in",
+      "https://office.snilld.in.evil.test",
+      "http://kaveri.office.snilld.in",
+      "https://kaveri.office.snilld.in:8443",
+      "https://snilld.in",
+      "null",
+      "",
+      "https://kaveri.office.snilld.in/path",
+    ])
       expect([o, ownOrigin(env, o, "https://app.office.snilld.in/api/offices")]).toEqual([o, false]);
     expect(ownOrigin({ BETTER_AUTH_URL: BASE }, "https://the-office.example.workers.dev", "https://the-office.example.workers.dev/api/offices")).toBe(true);
     expect(ownOrigin({ BETTER_AUTH_URL: BASE }, "https://other.example.workers.dev", "https://the-office.example.workers.dev/api/offices")).toBe(false);
@@ -233,7 +319,10 @@ describe("stored files", () => {
   it("sends a file stored as a web page as a sandboxed download, whatever it is called", async () => {
     const w = makeEnv();
     const { cookie, office } = await owner(w);
-    await w.docs.put(docKey(office, "doc-u1"), "<script>fetch('/api/me')</script>", { httpMetadata: { contentType: "text/html" }, customMetadata: { filename: "statement.csv" } });
+    await w.docs.put(docKey(office, "doc-u1"), "<script>fetch('/api/me')</script>", {
+      httpMetadata: { contentType: "text/html" },
+      customMetadata: { filename: "statement.csv" },
+    });
     const res = await req(w, `/api/o/${office}/files/doc-u1`, {}, cookie);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/octet-stream");
@@ -246,7 +335,11 @@ describe("stored files", () => {
     for (const type of ["image/svg+xml", "text/html; charset=utf-8", "application/xhtml+xml", "text/plain", "text/csv", "", "APPLICATION/PDFX"]) {
       await w.docs.put(docKey(office, "doc-u2"), "x", { httpMetadata: type ? { contentType: type } : {} });
       const r = await req(w, `/api/o/${office}/files/doc-u2`, {}, cookie);
-      expect([type, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual([type, "application/octet-stream", 'attachment; filename="doc-u2"']);
+      expect([type, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual([
+        type,
+        "application/octet-stream",
+        'attachment; filename="doc-u2"',
+      ]);
     }
   });
 
@@ -259,7 +352,12 @@ describe("stored files", () => {
     expect(pdf.headers.get("content-disposition")).toBe('inline; filename="bill.pdf"');
     expect(pdf.headers.get("content-security-policy")).toBe(FILE_CSP);
     expect(await pdf.text()).toBe("%PDF-1.4");
-    for (const [stored, sent] of [["image/png", "image/png"], ["image/jpeg", "image/jpeg"], ["image/jpg", "image/jpeg"], ["IMAGE/WEBP", "image/webp"]]) {
+    for (const [stored, sent] of [
+      ["image/png", "image/png"],
+      ["image/jpeg", "image/jpeg"],
+      ["image/jpg", "image/jpeg"],
+      ["IMAGE/WEBP", "image/webp"],
+    ]) {
       await w.docs.put(docKey(office, "doc-u2"), "x", { httpMetadata: { contentType: stored } });
       const r = await req(w, `/api/o/${office}/files/doc-u2`, {}, cookie);
       expect([stored, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual([stored, sent, 'inline; filename="doc-u2"']);
@@ -269,7 +367,10 @@ describe("stored files", () => {
   it("keeps a filename in any script without breaking the header", async () => {
     const w = makeEnv();
     const { cookie, office } = await owner(w);
-    await w.docs.put(docKey(office, "doc-u1"), "%PDF", { httpMetadata: { contentType: "application/pdf" }, customMetadata: { filename: 'बिल "नवंबर"\r\n.pdf' } });
+    await w.docs.put(docKey(office, "doc-u1"), "%PDF", {
+      httpMetadata: { contentType: "application/pdf" },
+      customMetadata: { filename: 'बिल "नवंबर"\r\n.pdf' },
+    });
     const res = await req(w, `/api/o/${office}/files/doc-u1`, {}, cookie);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-disposition")).toBe(`inline; filename="___ _____.pdf"; filename*=UTF-8''${encodeURIComponent("बिल नवंबर.pdf")}`);
@@ -288,7 +389,9 @@ describe("stored files", () => {
       for (const r of [inApp, signed]) {
         expect(r.status).toBe(200);
         expect(r.headers.get("content-security-policy")).toBe(FILE_CSP);
-        expect([id, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual(id === "media-u1" ? [id, "application/octet-stream", "attachment"] : [id, "image/jpeg", "inline"]);
+        expect([id, r.headers.get("content-type"), r.headers.get("content-disposition")]).toEqual(
+          id === "media-u1" ? [id, "application/octet-stream", "attachment"] : [id, "image/jpeg", "inline"],
+        );
       }
     }
   });
@@ -317,6 +420,7 @@ describe("document ids", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-disposition")).toBe('inline; filename="challan.pdf"');
     expect(await res.text()).toBe("%PDF-1.4 challan");
-    for (const bad of ["proof-", "media-u1", "other-1", "proofx-1"]) expect([bad, (await req(w, `/api/o/${office}/files/${bad}`, {}, cookie)).status]).toEqual([bad, 404]);
+    for (const bad of ["proof-", "media-u1", "other-1", "proofx-1"])
+      expect([bad, (await req(w, `/api/o/${office}/files/${bad}`, {}, cookie)).status]).toEqual([bad, 404]);
   });
 });

@@ -27,7 +27,14 @@ export async function seal(secret: string, officeId: string, plain: ArrayBuffer 
   const dek = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
   raw.fill(0);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const header: EnvelopeHeader = { v: 1, alg: "A256GCM", kek: "SOCIAL_TOKEN_KEY/hkdf-sha256/backup", office: officeId, dek: `${b64url(wrapIv)}.${b64url(wrapped)}`, iv: b64url(iv) };
+  const header: EnvelopeHeader = {
+    v: 1,
+    alg: "A256GCM",
+    kek: "SOCIAL_TOKEN_KEY/hkdf-sha256/backup",
+    office: officeId,
+    dek: `${b64url(wrapIv)}.${b64url(wrapped)}`,
+    iv: b64url(iv),
+  };
   const head = enc.encode(JSON.stringify(header));
   const prefix = new Uint8Array(8 + head.byteLength);
   prefix.set(enc.encode(MAGIC), 0);
@@ -62,7 +69,9 @@ export async function open(secret: string, bytes: Uint8Array, officeId?: string)
   const [wrapIv, wrapped] = h.dek.split(".");
   if (!wrapIv || !wrapped) throw new Error("The copy's data key is malformed.");
   const kek = await subkey(secret, "backup", "AES-GCM", h.office);
-  const raw = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64url(wrapIv), additionalData: wrapAad(h.office) }, kek, fromB64url(wrapped)));
+  const raw = new Uint8Array(
+    await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64url(wrapIv), additionalData: wrapAad(h.office) }, kek, fromB64url(wrapped)),
+  );
   const dek = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
   raw.fill(0);
   const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64url(h.iv), additionalData: bytes.subarray(0, len) }, dek, bytes.subarray(len));

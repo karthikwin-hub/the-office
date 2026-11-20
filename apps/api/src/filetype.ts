@@ -27,7 +27,13 @@ const isPdf = (b: Uint8Array) => {
   return false;
 };
 const imageOf = (b: Uint8Array): BillType | null =>
-  startsWith(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) ? "image/png" : startsWith(b, [0xff, 0xd8, 0xff]) ? "image/jpeg" : startsWith(b, ascii("RIFF")) && startsWith(b, ascii("WEBP"), 8) ? "image/webp" : null;
+  startsWith(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    ? "image/png"
+    : startsWith(b, [0xff, 0xd8, 0xff])
+      ? "image/jpeg"
+      : startsWith(b, ascii("RIFF")) && startsWith(b, ascii("WEBP"), 8)
+        ? "image/webp"
+        : null;
 
 /** Plain text: no NUL bytes, or UTF-16 (with a byte-order mark, or NULs on one side of every pair, as some portals save it). */
 function isText(b: Uint8Array): boolean {

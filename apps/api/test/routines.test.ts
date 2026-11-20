@@ -67,7 +67,17 @@ describe("routines", () => {
   it("prunes runs older than 90 days", async () => {
     const { o, routines } = office();
     const old = new Date(Date.now() - 91 * 86_400_000).toISOString();
-    routines.record({ id: "old", routine: "morning-digest", trigger: "schedule", startedAt: old, finishedAt: old, outcome: "ok", summary: "", counts: {}, error: null });
+    routines.record({
+      id: "old",
+      routine: "morning-digest",
+      trigger: "schedule",
+      startedAt: old,
+      finishedAt: old,
+      outcome: "ok",
+      summary: "",
+      counts: {},
+      error: null,
+    });
     await morningRound(o, host());
     expect(routines.runs("morning-digest", 10).map((r) => r.id)).not.toContain("old");
   });
@@ -92,11 +102,23 @@ describe("routines", () => {
   it("pauses and resumes through the API, owner only", () => {
     const { o } = office();
     const q = new URLSearchParams();
-    const req = (role: "owner" | "accountant") => dispatch(o, { method: "POST", path: "/api/routines/send-reminders", query: q, body: { paused: true }, role, user: { name: "Anil", email: "a@x" }, mode: "live" });
+    const req = (role: "owner" | "accountant") =>
+      dispatch(o, {
+        method: "POST",
+        path: "/api/routines/send-reminders",
+        query: q,
+        body: { paused: true },
+        role,
+        user: { name: "Anil", email: "a@x" },
+        mode: "live",
+      });
     expect(req("accountant").status).toBe(403);
     expect(req("owner").status).toBe(200);
     expect(o.routines.paused("send-reminders")).toBe(true);
-    expect(dispatch(o, { method: "GET", path: "/api/routines/send-reminders/runs", query: q, role: "accountant", user: { name: "R", email: "r@x" }, mode: "live" }).status).toBe(200);
+    expect(
+      dispatch(o, { method: "GET", path: "/api/routines/send-reminders/runs", query: q, role: "accountant", user: { name: "R", email: "r@x" }, mode: "live" })
+        .status,
+    ).toBe(200);
   });
 
   it("works out the next morning in India", () => {

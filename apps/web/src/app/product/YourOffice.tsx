@@ -7,7 +7,15 @@ import { Seal } from "./Seal";
 const asText = (_id: string, className: string, children: ReactNode) => <span className={className}>{children}</span>;
 const asHiring = (className: string, children: ReactNode) => <span className={className}>{children}</span>;
 
-const trainee = (agentId: string, now: string): RoomStatus => ({ agentId, hired: true, trustLevel: "trainee", status: "idle", now, todayCount: 0, waitingCount: 0 });
+const trainee = (agentId: string, now: string): RoomStatus => ({
+  agentId,
+  hired: true,
+  trustLevel: "trainee",
+  status: "idle",
+  now,
+  todayCount: 0,
+  waitingCount: 0,
+});
 
 /** "Sharma Hardware's office", "Sharma Traders' office". */
 const possessive = (name: string) => (/s$/i.test(name) ? `${name}'` : `${name}'s`);
@@ -38,12 +46,15 @@ export function YourOffice() {
   useEffect(() => {
     const el = block.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => {
-      if (e!.isIntersecting) {
-        setSeen(true);
-        io.disconnect();
-      }
-    }, { threshold: 0.4 });
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e!.isIntersecting) {
+          setSeen(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -65,11 +76,28 @@ export function YourOffice() {
         <form className="yours-form" onSubmit={(e) => e.preventDefault()}>
           <div className="field">
             <label htmlFor="yours-name">Business name</label>
-            <input id="yours-name" className="input" maxLength={60} placeholder="Sharma Hardware" value={name} onChange={(e) => setName(e.target.value)} onBlur={reseal} autoComplete="organization" />
+            <input
+              id="yours-name"
+              className="input"
+              maxLength={60}
+              placeholder="Sharma Hardware"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={reseal}
+              autoComplete="organization"
+            />
           </div>
           <div className="field">
             <label htmlFor="yours-city">City</label>
-            <input id="yours-city" className="input" maxLength={40} placeholder="Indore" value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
+            <input
+              id="yours-city"
+              className="input"
+              maxLength={40}
+              placeholder="Indore"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              autoComplete="address-level2"
+            />
           </div>
         </form>
       </div>

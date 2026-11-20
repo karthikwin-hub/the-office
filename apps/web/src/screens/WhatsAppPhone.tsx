@@ -9,7 +9,10 @@ type Bubble = { from: "you" | "office"; text: string; voice?: boolean };
 
 const EXAMPLE: Bubble[] = [
   { from: "you", text: "desk" },
-  { from: "office", text: "Hello Anil.\n\n3 waiting on your desk:\n\n1. Post the Shirke Traders bill (Accountant)\n2. Send reminders to 4 customers (Credit Controller)\n3. Reply to Santosh Electricals (Social media)\n\nReply like 1 yes, 2 no, 3 later, or all yes." },
+  {
+    from: "office",
+    text: "Hello Anil.\n\n3 waiting on your desk:\n\n1. Post the Shirke Traders bill (Accountant)\n2. Send reminders to 4 customers (Credit Controller)\n3. Reply to Santosh Electricals (Social media)\n\nReply like 1 yes, 2 no, 3 later, or all yes.",
+  },
   { from: "you", text: "1 haan 2 baad mein" },
   { from: "office", text: "1: मंज़ूर।\n\n2: बाद के लिए रखा।" },
 ];
@@ -34,7 +37,11 @@ function Linked({ text }: { text: string }) {
 /** The office on WhatsApp, as the owner sees it on their phone. On the demo it answers for real, from the same books. */
 export function WhatsAppPhone() {
   const qc = useQueryClient();
-  const [chat, setChat] = useState<Bubble[]>(isLive ? EXAMPLE : [{ from: "office", text: "Send desk to see what is waiting, help for what I understand, or ask a question. You can also pick a voice note below." }]);
+  const [chat, setChat] = useState<Bubble[]>(
+    isLive
+      ? EXAMPLE
+      : [{ from: "office", text: "Send desk to see what is waiting, help for what I understand, or ask a question. You can also pick a voice note below." }],
+  );
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
@@ -66,7 +73,11 @@ export function WhatsAppPhone() {
         <div className="wa-phone-chat" aria-live="polite">
           {chat.map((b, i) => (
             <p key={i} className={`wa-bubble wa-${b.from}`}>
-              {b.voice ? <span className="wa-voice" aria-label="Voice note">▶ voice note · </span> : null}
+              {b.voice ? (
+                <span className="wa-voice" aria-label="Voice note">
+                  ▶ voice note ·{" "}
+                </span>
+              ) : null}
               <Linked text={b.text} />
             </p>
           ))}
@@ -94,7 +105,12 @@ export function WhatsAppPhone() {
       <div className="wa-demo-side">
         {isLive ? (
           <p>
-            Link your own phone in <Link to="/settings" hash="whatsapp">Settings, under Your WhatsApp</Link>. Then send desk, answer by number, ask questions, forward photos of bills, or send a voice note in your own language. Nothing you send is posted on its own; it waits on your desk.
+            Link your own phone in{" "}
+            <Link to="/settings" hash="whatsapp">
+              Settings, under Your WhatsApp
+            </Link>
+            . Then send desk, answer by number, ask questions, forward photos of bills, or send a voice note in your own language. Nothing you send is posted on
+            its own; it waits on your desk.
           </p>
         ) : (
           <>
@@ -102,12 +118,20 @@ export function WhatsAppPhone() {
             <p className="wa-voice-label">Voice notes, with what the office heard:</p>
             <div className="wa-voice-list">
               {SAMPLE_VOICE.map((v) => (
-                <button key={v.id} type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => void send({ voice: v.id }, { from: "you", text: v.transcript, voice: true })}>
+                <button
+                  key={v.id}
+                  type="button"
+                  className="btn btn-quiet btn-small"
+                  disabled={busy}
+                  onClick={() => void send({ voice: v.id }, { from: "you", text: v.transcript, voice: true })}
+                >
                   {v.label}
                 </button>
               ))}
             </div>
-            <p className="field-help">On this demo, item titles and answers stay in English; the live office translates them and keeps every figure as it is.</p>
+            <p className="field-help">
+              On this demo, item titles and answers stay in English; the live office translates them and keeps every figure as it is.
+            </p>
           </>
         )}
       </div>

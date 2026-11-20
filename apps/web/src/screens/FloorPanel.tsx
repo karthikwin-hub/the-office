@@ -17,7 +17,19 @@ const SHOWN = 4;
  * The right-hand panel of the Floor on a desktop: the room someone clicked, or the owner's desk,
  * without leaving the floor. The full page is one link away.
  */
-export function PanelShell({ title, kicker, open, onClose, children }: { title: string; kicker: string; open: ReactNode; onClose: () => void; children: ReactNode }) {
+export function PanelShell({
+  title,
+  kicker,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  kicker: string;
+  open: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
   // Keyboard and screen-reader users land on the panel they opened.
   useEffect(() => heading.current?.focus({ preventScroll: true }), [title]);
@@ -86,7 +98,11 @@ export function AgentPanel({ agentId, names, people, onClose }: { agentId: strin
           </p>
           <p className="floor-panel-standing">
             <TrustLevel level={v.state.trustLevel} compact />
-            <span className="muted">{v.accuracyPct === null ? "No work checked yet" : `${v.accuracyPct}% of ${count(v.state.accuracy.checked, "piece")} of work approved without changes`}</span>
+            <span className="muted">
+              {v.accuracyPct === null
+                ? "No work checked yet"
+                : `${v.accuracyPct}% of ${count(v.state.accuracy.checked, "piece")} of work approved without changes`}
+            </span>
           </p>
           <Register items={v.kpis} />
           {v.promotion && owner ? (
@@ -94,7 +110,12 @@ export function AgentPanel({ agentId, names, people, onClose }: { agentId: strin
               <p>
                 <strong>Ready for promotion to {v.promotion.to}.</strong> {v.promotion.reason}
               </p>
-              <button type="button" className="btn btn-primary" disabled={hire.isPending} onClick={() => hire.mutate({ agentId, change: { trustLevel: v.promotion!.to } })}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={hire.isPending}
+                onClick={() => hire.mutate({ agentId, change: { trustLevel: v.promotion!.to } })}
+              >
                 Promote to {v.promotion.to}
               </button>
             </div>

@@ -11,13 +11,43 @@ type Args = { busy: boolean; waiting: boolean; birthday: boolean; reducedMotion:
 const today = new Date().toISOString().slice(0, 10);
 
 function LivedIn({ busy, waiting, birthday, reducedMotion }: Args) {
-  const rooms = view.rooms.map((r) => (r.hired ? { ...r, status: busy && r.agentId === "accountant" ? ("working" as const) : ("idle" as const), waitingCount: waiting && r.agentId === "credit-controller" ? 3 : 0 } : r));
-  const log: LogEntry[] = busy ? [{ id: "story-1", at: new Date().toISOString(), agentId: "accountant", text: "Read a bill from Narmada Switchgear and left it on your desk for the Credit controller to see.", ref: null }] : [];
+  const rooms = view.rooms.map((r) =>
+    r.hired
+      ? {
+          ...r,
+          status: busy && r.agentId === "accountant" ? ("working" as const) : ("idle" as const),
+          waitingCount: waiting && r.agentId === "credit-controller" ? 3 : 0,
+        }
+      : r,
+  );
+  const log: LogEntry[] = busy
+    ? [
+        {
+          id: "story-1",
+          at: new Date().toISOString(),
+          agentId: "accountant",
+          text: "Read a bill from Narmada Switchgear and left it on your desk for the Credit controller to see.",
+          ref: null,
+        },
+      ]
+    : [];
   const ambient = { today: birthday ? `${today.slice(0, 4)}-${PERSONAS.accountant!.birthday}` : today, names: {}, festivals: [], hiredOn: {} };
   const skin = SKIN_BY_ID["lived-in"];
   return (
     <div style={{ ...(skinStyle(skin) as CSSProperties), background: "var(--paper)", padding: 24, maxWidth: 1280 }} data-skin={skin.id}>
-      <FloorPlan rooms={rooms} arriving={[]} texture={skin.texture} overlay={(plan) => <LivingFloor plan={plan} inputs={{ rooms, log, arriving: [], ambient, weather: { city: "Pune", tempC: 26, sky: "rain", at: new Date().toISOString() } }} seed={4} reducedMotion={reducedMotion} />} />
+      <FloorPlan
+        rooms={rooms}
+        arriving={[]}
+        texture={skin.texture}
+        overlay={(plan) => (
+          <LivingFloor
+            plan={plan}
+            inputs={{ rooms, log, arriving: [], ambient, weather: { city: "Pune", tempC: 26, sky: "rain", at: new Date().toISOString() } }}
+            seed={4}
+            reducedMotion={reducedMotion}
+          />
+        )}
+      />
     </div>
   );
 }

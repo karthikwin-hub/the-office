@@ -16,16 +16,76 @@ export type RoutineDef = {
 
 /** Every scheduled job in an office, in the order the morning round runs them. */
 export const ROUTINES: RoutineDef[] = [
-  { id: "trusted-work", title: "Routine work by trusted agents", agentId: "office-manager", schedule: "morning", does: "Agents you have made trusted or autonomous finish the routine items waiting for them, within the limits on their trust level." },
-  { id: "send-reminders", title: "Send approved reminders", agentId: "credit-controller", schedule: "morning", does: "Payment reminders approved since yesterday go out by email, and any that failed are tried again, up to three times." },
-  { id: "social-morning", title: "Social media morning", agentId: "social-media-manager", schedule: "morning", does: "Results come in from each connected channel, overdue posts are published or held back, and from the 25th next month's calendar is drafted." },
-  { id: "reorder-check", title: "Reorder check", agentId: "storekeeper", schedule: "morning", does: "Every item at or under its reorder level is listed, and a purchase order is drafted for each supplier you last bought it from." },
-  { id: "online-sales", title: "Yesterday online", agentId: "marketplace-manager", schedule: "morning", does: "The last day's sales from each marketplace report that has come in go into the morning digest, with any product whose returns are climbing." },
-  { id: "compliance-due", title: "Returns and filings due", agentId: "compliance-officer", schedule: "morning", does: "Filings and payments due in seven days, in two days and today go into the morning digest with what missing them costs, and late ones are raised again every week until they are marked filed." },
-  { id: "handoff-chase", title: "Customers waiting for you", agentId: "customer-service", schedule: "morning", does: "Customers handed to you more than four hours ago are listed, WhatsApp chats about to close are flagged, and conversations older than the retention period are deleted." },
-  { id: "assistant-agenda", title: "Your next three days", agentId: "executive-assistant", schedule: "morning", does: "Each owner's calendar is read again and their agenda for today, tomorrow and the day after is put together from their meetings, tasks and what the office needs from them, for their own morning brief only." },
-  { id: "morning-digest", title: "Morning digest", agentId: "office-manager", schedule: "morning", does: "What is waiting on your desk and what the routines found goes to the owners, on WhatsApp if they asked for it, otherwise by email." },
-  { id: "publish-posts", title: "Publish scheduled posts", agentId: "social-media-manager", schedule: "posts", does: "When a post's time comes, its checks run again; it is published, held back for you, or left ready to post by hand." },
+  {
+    id: "trusted-work",
+    title: "Routine work by trusted agents",
+    agentId: "office-manager",
+    schedule: "morning",
+    does: "Agents you have made trusted or autonomous finish the routine items waiting for them, within the limits on their trust level.",
+  },
+  {
+    id: "send-reminders",
+    title: "Send approved reminders",
+    agentId: "credit-controller",
+    schedule: "morning",
+    does: "Payment reminders approved since yesterday go out by email, and any that failed are tried again, up to three times.",
+  },
+  {
+    id: "social-morning",
+    title: "Social media morning",
+    agentId: "social-media-manager",
+    schedule: "morning",
+    does: "Results come in from each connected channel, overdue posts are published or held back, and from the 25th next month's calendar is drafted.",
+  },
+  {
+    id: "reorder-check",
+    title: "Reorder check",
+    agentId: "storekeeper",
+    schedule: "morning",
+    does: "Every item at or under its reorder level is listed, and a purchase order is drafted for each supplier you last bought it from.",
+  },
+  {
+    id: "online-sales",
+    title: "Yesterday online",
+    agentId: "marketplace-manager",
+    schedule: "morning",
+    does: "The last day's sales from each marketplace report that has come in go into the morning digest, with any product whose returns are climbing.",
+  },
+  {
+    id: "compliance-due",
+    title: "Returns and filings due",
+    agentId: "compliance-officer",
+    schedule: "morning",
+    does: "Filings and payments due in seven days, in two days and today go into the morning digest with what missing them costs, and late ones are raised again every week until they are marked filed.",
+  },
+  {
+    id: "handoff-chase",
+    title: "Customers waiting for you",
+    agentId: "customer-service",
+    schedule: "morning",
+    does: "Customers handed to you more than four hours ago are listed, WhatsApp chats about to close are flagged, and conversations older than the retention period are deleted.",
+  },
+  {
+    id: "assistant-agenda",
+    title: "Your next three days",
+    agentId: "executive-assistant",
+    schedule: "morning",
+    does: "Each owner's calendar is read again and their agenda for today, tomorrow and the day after is put together from their meetings, tasks and what the office needs from them, for their own morning brief only.",
+  },
+  {
+    id: "morning-digest",
+    title: "Morning digest",
+    agentId: "office-manager",
+    schedule: "morning",
+    does: "What is waiting on your desk and what the routines found goes to the owners, on WhatsApp if they asked for it, otherwise by email.",
+  },
+  {
+    id: "publish-posts",
+    title: "Publish scheduled posts",
+    agentId: "social-media-manager",
+    schedule: "posts",
+    does: "When a post's time comes, its checks run again; it is published, held back for you, or left ready to post by hand.",
+  },
 ];
 export const ROUTINE_BY_ID: Record<string, RoutineDef> = Object.fromEntries(ROUTINES.map((r) => [r.id, r]));
 

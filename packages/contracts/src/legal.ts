@@ -15,7 +15,14 @@ export const LegalDocumentId = z.enum(["terms", "privacy"]);
 export const LEGAL_PAGES = ["terms", "privacy", "subprocessors", "data-processing", "ai-notice"] as const;
 export type LegalPage = (typeof LEGAL_PAGES)[number];
 
-export const ConsentRequest = z.object({ documents: z.array(z.object({ document: LegalDocumentId, version: z.string().min(1).max(20) })).min(1).max(4) }).strict();
+export const ConsentRequest = z
+  .object({
+    documents: z
+      .array(z.object({ document: LegalDocumentId, version: z.string().min(1).max(20) }))
+      .min(1)
+      .max(4),
+  })
+  .strict();
 
 /** A person's own rights, without asking the owner of any office: a copy of their account data, or its deletion. */
 export const RightsRequestKind = z.enum(["delete"]);

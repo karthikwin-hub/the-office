@@ -15,7 +15,9 @@ const out = join(dir, "the-office-handbook.html");
 const fonts = join(root, "packages/ui/node_modules/@fontsource/atkinson-hyperlegible-next/files");
 const REPO = "https://github.com/karthikwin-hub/the-office/blob/main";
 
-const files = readdirSync(dir).filter((f) => /^\d\d-.+\.md$/.test(f)).sort();
+const files = readdirSync(dir)
+  .filter((f) => /^\d\d-.+\.md$/.test(f))
+  .sort();
 const version = (() => {
   try {
     return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
@@ -25,7 +27,13 @@ const version = (() => {
 })();
 const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-const slug = (s) => s.toLowerCase().replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const slug = (s) =>
+  s
+    .toLowerCase()
+    .replace(/<[^>]+>/g, "")
+    .replace(/&[a-z]+;/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 // biome-ignore lint/suspicious/noShadowRestrictedNames: a local helper; the deprecated global escape is not used here.
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -83,7 +91,10 @@ const sections = files.map((file, i) => {
       return `<blockquote class="callout ${kind}"><p><strong class="callout-label">${label}</strong>`;
     })
     .replace(/<strong>(Open[^<]*)<\/strong>/g, '<strong class="open">$1</strong>')
-    .replace(/<td>(<strong>)?(Done|Built|Next|Planned|Not started, by design|Preview on the books)(<\/strong>)?<\/td>/g, (_, _b, status) => `<td><span class="tag tag-${slug(status)}">${status}</span></td>`);
+    .replace(
+      /<td>(<strong>)?(Done|Built|Next|Planned|Not started, by design|Preview on the books)(<\/strong>)?<\/td>/g,
+      (_, _b, status) => `<td><span class="tag tag-${slug(status)}">${status}</span></td>`,
+    );
   return `<section class="doc" id="part-${n}">${html}</section>`;
 });
 
@@ -99,7 +110,10 @@ const css = [
 ].join("\n");
 
 const nav = toc
-  .map((d) => `<li><a class="nav-doc" href="#${d.id}"><span class="nav-num">${d.n}</span>${d.text}</a><ol>${d.children.map((c) => `<li><a href="#${c.id}">${c.text.replace(/^\d+(\.\d+)*\.?\s*/, "")}</a></li>`).join("")}</ol></li>`)
+  .map(
+    (d) =>
+      `<li><a class="nav-doc" href="#${d.id}"><span class="nav-num">${d.n}</span>${d.text}</a><ol>${d.children.map((c) => `<li><a href="#${c.id}">${c.text.replace(/^\d+(\.\d+)*\.?\s*/, "")}</a></li>`).join("")}</ol></li>`,
+  )
   .join("");
 
 const cover = `<section class="cover" id="top">

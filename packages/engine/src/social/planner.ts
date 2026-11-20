@@ -56,7 +56,9 @@ export function planMonth(l: Ledger, month: string): ContentCalendar {
     return channels.filter((c) => want.includes(c.platform)).map((c) => c.id);
   };
   const counts = shareSlots(voice.pillars, days.length);
-  const best = performance(l).byPillar.filter((p) => p.posts > 0).sort((a, b) => b.rate - a.rate)[0];
+  const best = performance(l)
+    .byPillar.filter((p) => p.posts > 0)
+    .sort((a, b) => b.rate - a.rate)[0];
   if (best && counts.has(best.pillarId)) {
     const biggest = [...counts.entries()].filter(([id]) => id !== best.pillarId).sort((a, b) => b[1] - a[1])[0];
     if (biggest && biggest[1] > 1) {
@@ -83,9 +85,13 @@ export function planMonth(l: Ledger, month: string): ContentCalendar {
   }
 
   const inStock = new Set(l.books.stock.filter((s) => s.onHand > 0).map((s) => s.skuId));
-  const slow = marketingReport(l).slowMovers.filter((s) => inStock.has(s.skuId)).map((s) => s.name);
+  const slow = marketingReport(l)
+    .slowMovers.filter((s) => inStock.has(s.skuId))
+    .map((s) => s.name);
   const products = [...slow, ...l.books.skus.filter((s) => inStock.has(s.id) && !slow.includes(s.name)).map((s) => s.name)];
-  const campaigns = l.books.campaigns.filter((c) => c.status !== "ended" && c.status !== "draft" && c.end >= `${month}-01` && c.start <= monthEnd(month)).map((c) => c.name);
+  const campaigns = l.books.campaigns
+    .filter((c) => c.status !== "ended" && c.status !== "draft" && c.end >= `${month}-01` && c.start <= monthEnd(month))
+    .map((c) => c.name);
   const topics: Record<string, string[]> = { products: products.map((n) => `${n} in stock`), offers: campaigns, "know-how": KNOW_HOW, behind: BEHIND };
   const used = new Map<string, number>();
   const total = voice.pillars.reduce((a, p) => a + Math.max(0, counts.get(p.id) ?? 0), 0);
@@ -119,7 +125,12 @@ export function draftCalendar(l: Ledger, cal: ContentCalendar): { calendar: Cont
     if (s.postId) return s;
     const campaign = l.books.campaigns.find((c) => s.topic.includes(c.name));
     const id = `post-${cal.month.replace("-", "")}-${String(i + 1).padStart(2, "0")}`;
-    const post = draftPost(l, s, { id, calendarId: cal.id, campaignId: campaign?.id ?? null, skuIds: campaign && !s.topic.includes(" in stock") ? campaign.skuIds.slice(0, 2) : undefined });
+    const post = draftPost(l, s, {
+      id,
+      calendarId: cal.id,
+      campaignId: campaign?.id ?? null,
+      skuIds: campaign && !s.topic.includes(" in stock") ? campaign.skuIds.slice(0, 2) : undefined,
+    });
     posts.push(post);
     return { ...s, postId: id };
   });

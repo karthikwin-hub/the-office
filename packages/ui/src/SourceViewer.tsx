@@ -15,7 +15,19 @@ export function loadPdfJs() {
 }
 
 /** One page of a PDF drawn to canvas, with the regions of interest boxed on top. */
-export function PdfPage({ url, page = 1, highlight, regions = [], onRegion }: { url: string; page?: number; highlight?: Region | null; regions?: Region[]; onRegion?: (key: string) => void }) {
+export function PdfPage({
+  url,
+  page = 1,
+  highlight,
+  regions = [],
+  onRegion,
+}: {
+  url: string;
+  page?: number;
+  highlight?: Region | null;
+  regions?: Region[];
+  onRegion?: (key: string) => void;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -53,7 +65,8 @@ export function PdfPage({ url, page = 1, highlight, regions = [], onRegion }: { 
   }, [url, page]);
 
   useEffect(() => {
-    if (state === "ready" && highlight) box.current?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (state === "ready" && highlight)
+      box.current?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [state, highlight]);
 
   const pos = (r: Region) => ({ left: `${r.box[0] * 100}%`, top: `${r.box[1] * 100}%`, width: `${r.box[2] * 100}%`, height: `${r.box[3] * 100}%` });
@@ -142,7 +155,13 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
                 <ol className="source-trace-rows">
                   {trace.rows.map((r, i) => (
                     <li key={i}>
-                      <button type="button" className={`source-trace-row${selectedRow === i ? " is-selected" : ""}`} onClick={() => onSelectRow?.(r)} disabled={!r.docId} aria-current={selectedRow === i ? "true" : undefined}>
+                      <button
+                        type="button"
+                        className={`source-trace-row${selectedRow === i ? " is-selected" : ""}`}
+                        onClick={() => onSelectRow?.(r)}
+                        disabled={!r.docId}
+                        aria-current={selectedRow === i ? "true" : undefined}
+                      >
                         <span className="source-trace-label">{r.label}</span>
                         <span className="num">{inr(r.amountPaise)}</span>
                         <span className="source-trace-detail muted">{r.detail}</span>
@@ -172,7 +191,13 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
                           ? `Brought in from ${doc.document.from}`
                           : `Received by ${doc.document.channel}`}
                     {", "}
-                    {new Date(doc.document.receivedAt).toLocaleString("en-IN", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false })}
+                    {new Date(doc.document.receivedAt).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })}
                   </p>
                 </div>
                 <div className="source-doc-status">
@@ -190,7 +215,9 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
               {doc.document.channel === "import" ? (
                 <>
                   <p className="source-doc-import">{(inv ?? bill)?.lines[0]?.description}</p>
-                  <p className="muted">Brought forward from before the books started, so it counts towards what is owed but not towards GST returns or sales.</p>
+                  <p className="muted">
+                    Brought forward from before the books started, so it counts towards what is owed but not towards GST returns or sales.
+                  </p>
                   {doc.document.file ? (
                     <p className="source-doc-foot">
                       <a href={doc.document.file} target="_blank" rel="noreferrer">

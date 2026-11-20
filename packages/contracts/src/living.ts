@@ -29,7 +29,14 @@ export type Sky = z.infer<typeof Sky>;
  * Roughly what it is like outside where the person is looking from. `lat` and `lon` are the
  * same ten-kilometre square sent to the forecast, so the Lived-in office can put the sun where it is.
  */
-export const Weather = z.object({ city: z.string().nullable(), tempC: z.number(), sky: Sky, at: IsoDateTime, lat: z.number().optional(), lon: z.number().optional() });
+export const Weather = z.object({
+  city: z.string().nullable(),
+  tempC: z.number(),
+  sky: Sky,
+  at: IsoDateTime,
+  lat: z.number().optional(),
+  lon: z.number().optional(),
+});
 export type Weather = z.infer<typeof Weather>;
 export const WeatherView = z.object({ weather: Weather.nullable() });
 export type WeatherView = z.infer<typeof WeatherView>;
@@ -67,7 +74,13 @@ export function readPersonaNames(raw: string | null): PersonaNames {
 /** A change from the owner: every name must be for a real agent and look like a name. */
 export function checkPersonaNames(body: unknown): { names: PersonaNames } | { error: string } {
   const parsed = PersonaNamesChange.safeParse(body);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message === "Use letters and spaces only." ? "Use letters and spaces only, up to 24." : "Give each name as letters and spaces, up to 24." };
+  if (!parsed.success)
+    return {
+      error:
+        parsed.error.issues[0]?.message === "Use letters and spaces only."
+          ? "Use letters and spaces only, up to 24."
+          : "Give each name as letters and spaces, up to 24.",
+    };
   const unknown = Object.keys(parsed.data.names).find((id) => !AGENT_BY_ID[id]);
   if (unknown) return { error: `There is no agent called ${unknown}.` };
   return { names: parsed.data.names };

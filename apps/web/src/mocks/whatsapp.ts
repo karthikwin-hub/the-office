@@ -1,4 +1,14 @@
-import { type JoinCode, makeJoinCode, readJoinCode, type Role, showJoinCode, WhatsAppChange, WhatsAppDemoMessage, type WhatsAppDemoReply, type WhatsAppStatus } from "@office/contracts";
+import {
+  type JoinCode,
+  makeJoinCode,
+  readJoinCode,
+  type Role,
+  showJoinCode,
+  WhatsAppChange,
+  WhatsAppDemoMessage,
+  type WhatsAppDemoReply,
+  type WhatsAppStatus,
+} from "@office/contracts";
 import { detectLanguage, handleWhatsApp, newSession, noteQuoteRequest, type OfficeService, parseCommand, phrase, render, type WaSession } from "@office/engine";
 import { HttpResponse } from "msw";
 import { SAMPLE_VOICE } from "./voice-samples";
@@ -12,14 +22,34 @@ let seq = 0;
 
 const load = (): State => ({ linked: true, language: "auto", digest: false, ...JSON.parse(localStorage.getItem(STATE_KEY) ?? "{}") });
 const save = (s: State) => localStorage.setItem(STATE_KEY, JSON.stringify(s));
-const status = (s: State): WhatsAppStatus => ({ available: true, linked: s.linked, number: s.linked ? "+91 ••••• ••345" : null, linkedAt: null, language: s.language, digest: s.digest, businessNumber: BUSINESS_NUMBER, template: false });
+const status = (s: State): WhatsAppStatus => ({
+  available: true,
+  linked: s.linked,
+  number: s.linked ? "+91 ••••• ••345" : null,
+  linkedAt: null,
+  language: s.language,
+  digest: s.digest,
+  businessNumber: BUSINESS_NUMBER,
+  template: false,
+});
 
 /** The mock office on WhatsApp: the same conversation module as the live office, without the models. */
-export async function mockWhatsApp(request: Request, path: string, role: Role, office: OfficeService, user: { name: string; email: string }): Promise<Response | null> {
+export async function mockWhatsApp(
+  request: Request,
+  path: string,
+  role: Role,
+  office: OfficeService,
+  user: { name: string; email: string },
+): Promise<Response | null> {
   if (path === "/api/whatsapp/code" && request.method === "POST") {
     const code = showJoinCode(makeJoinCode((n) => crypto.getRandomValues(new Uint8Array(n))));
     pendingCode = { code, expiresAt: Date.now() + 15 * 60_000 };
-    return HttpResponse.json({ code, expiresAt: new Date(pendingCode.expiresAt).toISOString(), businessNumber: BUSINESS_NUMBER, link: `https://wa.me/912027124480?text=${encodeURIComponent(`JOIN ${code}`)}` } satisfies JoinCode);
+    return HttpResponse.json({
+      code,
+      expiresAt: new Date(pendingCode.expiresAt).toISOString(),
+      businessNumber: BUSINESS_NUMBER,
+      link: `https://wa.me/912027124480?text=${encodeURIComponent(`JOIN ${code}`)}`,
+    } satisfies JoinCode);
   }
   if (path === "/api/whatsapp") {
     const s = load();
@@ -48,7 +78,12 @@ export async function mockWhatsApp(request: Request, path: string, role: Role, o
   if (!s.linked) {
     const cmd = parseCommand(text);
     const lang = detectLanguage(text) ?? "en";
-    if (cmd.kind !== "join" || !pendingCode || cmd.code !== readJoinCode(pendingCode.code) || pendingCode.expiresAt < Date.now()) return reply(cmd.kind === "join" ? phrase("badCode", lang) : "This phone is not linked to the office yet. Get a code in Settings, under Your WhatsApp, and send JOIN with it.");
+    if (cmd.kind !== "join" || !pendingCode || cmd.code !== readJoinCode(pendingCode.code) || pendingCode.expiresAt < Date.now())
+      return reply(
+        cmd.kind === "join"
+          ? phrase("badCode", lang)
+          : "This phone is not linked to the office yet. Get a code in Settings, under Your WhatsApp, and send JOIN with it.",
+      );
     pendingCode = null;
     save({ ...s, linked: true });
     return reply(phrase("linked", lang));
@@ -68,9 +103,18 @@ export async function mockWhatsApp(request: Request, path: string, role: Role, o
       return reply(`${echo}\n\n${phrase("quoteNoted", language)}`, voice.transcript);
     }
     const what = voice.kind === "invoice" ? `a sales invoice to ${voice.party}` : `a bill from ${voice.party} for ₹2,400`;
-    return reply(`${echo}\n\nIn the live office the Accountant drafts this as ${what}, with the voice note and its transcript attached, and it waits on your desk.`, voice.transcript);
+    return reply(
+      `${echo}\n\nIn the live office the Accountant drafts this as ${what}, with the voice note and its transcript attached, and it waits on your desk.`,
+      voice.transcript,
+    );
   }
-  const turn = handleWhatsApp(office, person, session, { id, text, at, heard: Boolean(voice), english: voice?.english, language: voice?.language ?? null }, opts);
+  const turn = handleWhatsApp(
+    office,
+    person,
+    session,
+    { id, text, at, heard: Boolean(voice), english: voice?.english, language: voice?.language ?? null },
+    opts,
+  );
   sessions.set(role, turn.session);
   return reply(render(turn.parts), voice ? voice.transcript : null);
 }

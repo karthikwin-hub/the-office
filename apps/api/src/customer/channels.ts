@@ -20,7 +20,8 @@ export function splitCustomerDms(raws: IncomingMessage[], hired: boolean): { cus
   const customers: Inbound[] = [];
   const rest: IncomingMessage[] = [];
   for (const m of raws) {
-    if (m.platform === "WhatsApp" && m.kind === "dm" && m.threadId) customers.push({ channel: "whatsapp", key: m.threadId, name: m.author, text: m.text, externalId: m.externalId ?? undefined, at: m.at });
+    if (m.platform === "WhatsApp" && m.kind === "dm" && m.threadId)
+      customers.push({ channel: "whatsapp", key: m.threadId, name: m.author, text: m.text, externalId: m.externalId ?? undefined, at: m.at });
     else rest.push(m);
   }
   return { customers, rest };
@@ -32,7 +33,14 @@ export function freshText(text: string): string {
   const out: string[] = [];
   for (const l of lines) {
     if (/^\s*>/.test(l)) break;
-    if (/^On .{4,120} wrote:\s*$/i.test(l.trim()) || /^-{2,}\s*Original Message\s*-{2,}/i.test(l.trim()) || /^From:\s.+/i.test(l.trim()) || /^--\s*$/.test(l) || /^Sent from my /i.test(l.trim())) break;
+    if (
+      /^On .{4,120} wrote:\s*$/i.test(l.trim()) ||
+      /^-{2,}\s*Original Message\s*-{2,}/i.test(l.trim()) ||
+      /^From:\s.+/i.test(l.trim()) ||
+      /^--\s*$/.test(l) ||
+      /^Sent from my /i.test(l.trim())
+    )
+      break;
     out.push(l);
   }
   return out.join("\n").trim().slice(0, 4000);
@@ -52,7 +60,13 @@ export const toSupportInbound = (m: SupportMail): Inbound => ({
  * Cloudflare Turnstile. Live, a missing secret shuts the chat rather than opening it to scripts; in the
  * mockups, tests and local runs there is no secret and the rate limit is the only guard.
  */
-export async function turnstileOk(secret: string | undefined, token: string | null | undefined, ip: string | null, live: boolean, fetcher: typeof fetch = fetch): Promise<boolean> {
+export async function turnstileOk(
+  secret: string | undefined,
+  token: string | null | undefined,
+  ip: string | null,
+  live: boolean,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean> {
   if (!secret) return !live;
   if (!token) return false;
   const form = new FormData();

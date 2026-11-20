@@ -3,7 +3,16 @@ import { chain, type EditLog } from "@office/engine";
 
 type Row = { seq: number; at: string; by_name: string; coll: string; record_id: string; action: BookEdit["action"]; changes: string; hash: string };
 
-const toEdit = (r: Row): BookEdit => ({ seq: r.seq, at: r.at, by: r.by_name, coll: r.coll, recordId: r.record_id, action: r.action, changes: JSON.parse(r.changes) as BookEdit["changes"], hash: r.hash });
+const toEdit = (r: Row): BookEdit => ({
+  seq: r.seq,
+  at: r.at,
+  by: r.by_name,
+  coll: r.coll,
+  recordId: r.record_id,
+  action: r.action,
+  changes: JSON.parse(r.changes) as BookEdit["changes"],
+  hash: r.hash,
+});
 
 /**
  * The books' edit log in the office's own SQLite. Rows are only ever inserted: triggers refuse an
@@ -12,7 +21,9 @@ const toEdit = (r: Row): BookEdit => ({ seq: r.seq, at: r.at, by: r.by_name, col
  */
 export class SqlEditLog implements EditLog {
   constructor(private readonly sql: SqlStorage) {
-    sql.exec("CREATE TABLE IF NOT EXISTS book_edits (seq INTEGER PRIMARY KEY, at TEXT NOT NULL, by_name TEXT NOT NULL, coll TEXT NOT NULL, record_id TEXT NOT NULL, action TEXT NOT NULL, changes TEXT NOT NULL, hash TEXT NOT NULL)");
+    sql.exec(
+      "CREATE TABLE IF NOT EXISTS book_edits (seq INTEGER PRIMARY KEY, at TEXT NOT NULL, by_name TEXT NOT NULL, coll TEXT NOT NULL, record_id TEXT NOT NULL, action TEXT NOT NULL, changes TEXT NOT NULL, hash TEXT NOT NULL)",
+    );
     sql.exec("CREATE INDEX IF NOT EXISTS book_edits_record ON book_edits (coll, record_id)");
     sql.exec("CREATE TRIGGER IF NOT EXISTS book_edits_no_update BEFORE UPDATE ON book_edits BEGIN SELECT RAISE(ABORT, 'the edit log is append-only'); END");
     sql.exec("CREATE TRIGGER IF NOT EXISTS book_edits_no_delete BEFORE DELETE ON book_edits BEGIN SELECT RAISE(ABORT, 'the edit log is append-only'); END");
@@ -22,7 +33,17 @@ export class SqlEditLog implements EditLog {
     let prev = this.last();
     for (const e of entries) {
       const next = chain(prev, e);
-      this.sql.exec("INSERT INTO book_edits (seq, at, by_name, coll, record_id, action, changes, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", next.seq, next.at, next.by, next.coll, next.recordId, next.action, JSON.stringify(next.changes), next.hash);
+      this.sql.exec(
+        "INSERT INTO book_edits (seq, at, by_name, coll, record_id, action, changes, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        next.seq,
+        next.at,
+        next.by,
+        next.coll,
+        next.recordId,
+        next.action,
+        JSON.stringify(next.changes),
+        next.hash,
+      );
       prev = next;
     }
   }
@@ -39,7 +60,10 @@ export class SqlEditLog implements EditLog {
       args.push(opts.recordId);
     }
     args.push(opts.limit ?? 100);
-    return this.sql.exec<Row>(`SELECT * FROM book_edits ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY seq DESC LIMIT ?`, ...args).toArray().map(toEdit);
+    return this.sql
+      .exec<Row>(`SELECT * FROM book_edits ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY seq DESC LIMIT ?`, ...args)
+      .toArray()
+      .map(toEdit);
   }
 
   all() {

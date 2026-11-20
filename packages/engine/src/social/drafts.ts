@@ -17,12 +17,21 @@ export function draftPrompt(topic: string, facts: PostFact[], voice: BrandVoice,
     `Keep it under ${r.maxChars} characters with at most ${r.maxHashtags} hashtags. Emoji: ${voice.emoji}.`,
     "State a price, percentage, count or date only if it appears in the fact list, copied exactly, and list the ids of every fact you used.",
     "Never claim to be the cheapest or best, and never name a competitor.",
-    voice.samples.length ? `Past posts in this voice:\n${voice.samples.slice(0, 5).map((s) => `- ${s}`).join("\n")}` : "",
+    voice.samples.length
+      ? `Past posts in this voice:\n${voice.samples
+          .slice(0, 5)
+          .map((s) => `- ${s}`)
+          .join("\n")}`
+      : "",
   ]
     .filter(Boolean)
     .join("\n");
   const user = `Topic: ${topic}\nFacts:\n${facts.map((f) => `[${f.id}] ${f.label}: ${f.value}`).join("\n") || "(none)"}`;
-  const schema = { type: "object", properties: { text: { type: "string" }, factIds: { type: "array", items: { type: "string" } } }, required: ["text", "factIds"] };
+  const schema = {
+    type: "object",
+    properties: { text: { type: "string" }, factIds: { type: "array", items: { type: "string" } } },
+    required: ["text", "factIds"],
+  };
   return { system, user, schema };
 }
 
@@ -65,7 +74,12 @@ export function templateDraft(l: Ledger, slot: Pick<CalendarSlot, "topic" | "pil
   const sku = price ? l.books.skus.find((s) => s.id === price.ref.id) : undefined;
   const festival = facts.find((f) => f.id.startsWith("festival:"));
   const campaignEnd = facts.find((f) => f.id.endsWith(":end"));
-  const city = l.books.business.address.split(",").map((s) => s.trim()).filter(Boolean).at(-2) ?? "";
+  const city =
+    l.books.business.address
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .at(-2) ?? "";
   const lines: string[] = [];
   if (slot.pillarId === "products" && sku && price) {
     lines.push(`${sku.name}, in stock at ${biz}${city ? `, ${city}` : ""}.`);
@@ -89,7 +103,11 @@ export function templateDraft(l: Ledger, slot: Pick<CalendarSlot, "topic" | "pil
 }
 
 /** Drafts one post for a calendar slot: one fact list, and a caption written for each channel. */
-export function draftPost(l: Ledger, slot: CalendarSlot, opts: { id: string; time?: string; skuIds?: string[]; campaignId?: string | null; calendarId?: string | null; link?: string | null }): Post {
+export function draftPost(
+  l: Ledger,
+  slot: CalendarSlot,
+  opts: { id: string; time?: string; skuIds?: string[]; campaignId?: string | null; calendarId?: string | null; link?: string | null },
+): Post {
   const voice = l.books.brandVoice;
   const skuIds = opts.skuIds ?? skusFor(l, slot);
   const at = `${slot.date}T${opts.time ?? "11:00"}:00+05:30`;
@@ -99,10 +117,37 @@ export function draftPost(l: Ledger, slot: CalendarSlot, opts: { id: string; tim
     const raw = templateDraft(l, slot, facts, voice, c.platform);
     const link = opts.link ? withUtm(opts.link, c.platform, opts.id) : null;
     const fitted = fit(c.platform, raw, { link, hashtags: voice.hashtags });
-    const media = l.books.media.filter((m) => m.skuId && skuIds.includes(m.skuId)).slice(0, RULES[c.platform].media.images).map((m) => m.id);
-    return { channelId: c.id, platform: c.platform, text: fitted.text, mediaIds: media, link, status: "draft", externalId: null, url: null, publishedAt: null, error: null, approvedHash: null, metrics: null };
+    const media = l.books.media
+      .filter((m) => m.skuId && skuIds.includes(m.skuId))
+      .slice(0, RULES[c.platform].media.images)
+      .map((m) => m.id);
+    return {
+      channelId: c.id,
+      platform: c.platform,
+      text: fitted.text,
+      mediaIds: media,
+      link,
+      status: "draft",
+      externalId: null,
+      url: null,
+      publishedAt: null,
+      error: null,
+      approvedHash: null,
+      metrics: null,
+    };
   });
-  return { id: opts.id, topic: slot.topic, pillar: slot.pillarId, calendarId: opts.calendarId ?? null, campaignId: opts.campaignId ?? null, status: "draft", at, skuIds, facts, variants };
+  return {
+    id: opts.id,
+    topic: slot.topic,
+    pillar: slot.pillarId,
+    calendarId: opts.calendarId ?? null,
+    campaignId: opts.campaignId ?? null,
+    status: "draft",
+    at,
+    skuIds,
+    facts,
+    variants,
+  };
 }
 
 /** The SKUs a slot is about: named in its topic, or the slow movers for product slots. */

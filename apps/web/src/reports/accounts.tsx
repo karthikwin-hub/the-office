@@ -28,16 +28,39 @@ export function SalesView({ report }: { report: SalesReport }) {
     { id: "category", header: "Category", cell: (r) => r.category, secondary: true, sortBy: (r) => r.category },
     { id: "hsn", header: "HSN", cell: (r) => r.hsn, secondary: true },
     { id: "qty", header: "Quantity", cell: (r) => quantity(r.qty, r.unit), sortBy: (r) => r.qty, numeric: true, secondary: true },
-    { id: "taxable", header: "Taxable value", cell: (r) => <Amount paise={r.taxablePaise} figureId={r.figureId} rupees label={r.name} />, sortBy: (r) => r.taxablePaise, numeric: true, footer: <Amount paise={report.totals.taxablePaise} figureId={`sales:total:${report.from}:${report.to}`} rupees /> },
+    {
+      id: "taxable",
+      header: "Taxable value",
+      cell: (r) => <Amount paise={r.taxablePaise} figureId={r.figureId} rupees label={r.name} />,
+      sortBy: (r) => r.taxablePaise,
+      numeric: true,
+      footer: <Amount paise={report.totals.taxablePaise} figureId={`sales:total:${report.from}:${report.to}`} rupees />,
+    },
     { id: "margin", header: "Margin", cell: (r) => `${r.marginPct.toFixed(1)}%`, sortBy: (r) => r.marginPct, numeric: true },
     { id: "share", header: "Share", cell: (r) => `${r.sharePct.toFixed(1)}%`, sortBy: (r) => r.sharePct, numeric: true, secondary: true },
   ];
   type Cust = SalesReport["byCustomer"][number];
   const custCols: LedgerColumn<Cust>[] = [
-    { id: "name", header: "Customer", cell: (r) => <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>{r.name}</Link>, sortBy: (r) => r.name },
+    {
+      id: "name",
+      header: "Customer",
+      cell: (r) => (
+        <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>
+          {r.name}
+        </Link>
+      ),
+      sortBy: (r) => r.name,
+    },
     { id: "city", header: "City", cell: (r) => r.city, secondary: true },
     { id: "inv", header: "Invoices", cell: (r) => r.invoices, sortBy: (r) => r.invoices, numeric: true },
-    { id: "taxable", header: "Taxable value", cell: (r) => <Amount paise={r.taxablePaise} figureId={r.figureId} rupees label={r.name} />, sortBy: (r) => r.taxablePaise, numeric: true, footer: <Amount paise={report.totals.taxablePaise} rupees /> },
+    {
+      id: "taxable",
+      header: "Taxable value",
+      cell: (r) => <Amount paise={r.taxablePaise} figureId={r.figureId} rupees label={r.name} />,
+      sortBy: (r) => r.taxablePaise,
+      numeric: true,
+      footer: <Amount paise={report.totals.taxablePaise} rupees />,
+    },
     { id: "share", header: "Share", cell: (r) => `${r.sharePct.toFixed(1)}%`, sortBy: (r) => r.sharePct, numeric: true },
   ];
   return (
@@ -48,7 +71,8 @@ export function SalesView({ report }: { report: SalesReport }) {
         <ul className="inline-figures">
           {report.byMonth.map((m) => (
             <li key={m.month}>
-              <span className="muted">{monthLabel(m.month, "short")}</span> <Amount paise={m.taxablePaise} figureId={m.figureId} short label={monthLabel(m.month)} />
+              <span className="muted">{monthLabel(m.month, "short")}</span>{" "}
+              <Amount paise={m.taxablePaise} figureId={m.figureId} short label={monthLabel(m.month)} />
             </li>
           ))}
         </ul>
@@ -67,9 +91,23 @@ export function SalesView({ report }: { report: SalesReport }) {
         }
       >
         {by === "sku" ? (
-          <LedgerTable caption="Sales by SKU" rows={report.bySku} columns={skuCols} rowKey={(r) => r.skuId} initialSort={{ id: "taxable", desc: true }} limit={15} />
+          <LedgerTable
+            caption="Sales by SKU"
+            rows={report.bySku}
+            columns={skuCols}
+            rowKey={(r) => r.skuId}
+            initialSort={{ id: "taxable", desc: true }}
+            limit={15}
+          />
         ) : (
-          <LedgerTable caption="Sales by customer" rows={report.byCustomer} columns={custCols} rowKey={(r) => r.partyId} initialSort={{ id: "taxable", desc: true }} limit={15} />
+          <LedgerTable
+            caption="Sales by customer"
+            rows={report.byCustomer}
+            columns={custCols}
+            rowKey={(r) => r.partyId}
+            initialSort={{ id: "taxable", desc: true }}
+            limit={15}
+          />
         )}
       </Section>
     </>
@@ -80,7 +118,16 @@ export function SalesView({ report }: { report: SalesReport }) {
 
 export function AgeingView({ report, compact }: { report: AgeingReport; compact?: boolean }) {
   const cols: LedgerColumn<AgeingRow>[] = [
-    { id: "name", header: "Customer", cell: (r) => <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>{r.name}</Link>, sortBy: (r) => r.name },
+    {
+      id: "name",
+      header: "Customer",
+      cell: (r) => (
+        <Link to="/parties/$partyId" params={{ partyId: r.partyId }}>
+          {r.name}
+        </Link>
+      ),
+      sortBy: (r) => r.name,
+    },
     ...[0, 1, 2, 3, 4].map(
       (i): LedgerColumn<AgeingRow> => ({
         id: `b${i}`,
@@ -92,14 +139,47 @@ export function AgeingView({ report, compact }: { report: AgeingReport; compact?
         footer: <Amount paise={report.bucketTotals[i]!} figureId={report.bucketFigureIds[i]} rupees />,
       }),
     ),
-    { id: "total", header: "Total owed", cell: (r) => <Amount paise={r.totalPaise} figureId={r.figureId} rupees label={r.name} />, sortBy: (r) => r.totalPaise, numeric: true, footer: <Amount paise={report.totalPaise} figureId="ageing:total" rupees /> },
-    { id: "late", header: "Pays late by", cell: (r) => (r.avgDaysLate === null ? "" : r.avgDaysLate <= 0 ? "On time" : `${Math.round(r.avgDaysLate)} days`), sortBy: (r) => r.avgDaysLate ?? -99, numeric: true, secondary: true },
+    {
+      id: "total",
+      header: "Total owed",
+      cell: (r) => <Amount paise={r.totalPaise} figureId={r.figureId} rupees label={r.name} />,
+      sortBy: (r) => r.totalPaise,
+      numeric: true,
+      footer: <Amount paise={report.totalPaise} figureId="ageing:total" rupees />,
+    },
+    {
+      id: "late",
+      header: "Pays late by",
+      cell: (r) => (r.avgDaysLate === null ? "" : r.avgDaysLate <= 0 ? "On time" : `${Math.round(r.avgDaysLate)} days`),
+      sortBy: (r) => r.avgDaysLate ?? -99,
+      numeric: true,
+      secondary: true,
+    },
   ];
   const overdue = report.open.filter((o) => o.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue);
   const invCols: LedgerColumn<OpenInvoice>[] = [
-    { id: "number", header: "Invoice", cell: (r) => <DocLink docId={r.docId} region="number">{r.number}</DocLink>, sortBy: (r) => r.number },
+    {
+      id: "number",
+      header: "Invoice",
+      cell: (r) => (
+        <DocLink docId={r.docId} region="number">
+          {r.number}
+        </DocLink>
+      ),
+      sortBy: (r) => r.number,
+    },
     { id: "party", header: "Customer", cell: (r) => r.partyName, sortBy: (r) => r.partyName },
-    { id: "due", header: "Due", cell: (r) => <DocLink docId={r.docId} region="dueDate">{shortDate(r.dueDate)}</DocLink>, sortBy: (r) => r.dueDate, secondary: true },
+    {
+      id: "due",
+      header: "Due",
+      cell: (r) => (
+        <DocLink docId={r.docId} region="dueDate">
+          {shortDate(r.dueDate)}
+        </DocLink>
+      ),
+      sortBy: (r) => r.dueDate,
+      secondary: true,
+    },
     { id: "late", header: "Days overdue", cell: (r) => r.daysOverdue, sortBy: (r) => r.daysOverdue, numeric: true },
     { id: "out", header: "Outstanding", cell: (r) => <Amount paise={r.outstandingPaise} rupees />, sortBy: (r) => r.outstandingPaise, numeric: true },
     { id: "stamp", header: "", cell: (r) => (r.bucket >= 3 ? <Stamp kind="overdue" /> : null) },
@@ -111,11 +191,26 @@ export function AgeingView({ report, compact }: { report: AgeingReport; compact?
         <AgeingBuckets totals={report.bucketTotals} />
       </Section>
       <Section title="Who owes what">
-        <LedgerTable caption="Amount owed by each customer, by age" rows={report.rows} columns={cols} rowKey={(r) => r.partyId} initialSort={{ id: "total", desc: true }} rowTone={(r) => (r.buckets[3]! + r.buckets[4]! > 0 ? "red" : undefined)} limit={compact ? 8 : 25} />
+        <LedgerTable
+          caption="Amount owed by each customer, by age"
+          rows={report.rows}
+          columns={cols}
+          rowKey={(r) => r.partyId}
+          initialSort={{ id: "total", desc: true }}
+          rowTone={(r) => (r.buckets[3]! + r.buckets[4]! > 0 ? "red" : undefined)}
+          limit={compact ? 8 : 25}
+        />
       </Section>
       {compact ? null : (
         <Section title="Overdue invoices">
-          <LedgerTable caption="Overdue invoices, oldest first" rows={overdue} columns={invCols} rowKey={(r) => r.invoiceId} initialSort={{ id: "late", desc: true }} limit={12} />
+          <LedgerTable
+            caption="Overdue invoices, oldest first"
+            rows={overdue}
+            columns={invCols}
+            rowKey={(r) => r.invoiceId}
+            initialSort={{ id: "late", desc: true }}
+            limit={12}
+          />
         </Section>
       )}
     </>
@@ -192,23 +287,41 @@ export function GstView({ report, onPeriod }: { report: GstReport; onPeriod?: (p
               <td className="num">
                 <Amount paise={o.taxablePaise} figureId={o.figureId} rupees />
               </td>
-              <td className="num"><Amount paise={o.igstPaise} rupees /></td>
-              <td className="num"><Amount paise={o.cgstPaise} rupees /></td>
-              <td className="num"><Amount paise={o.sgstPaise} rupees /></td>
+              <td className="num">
+                <Amount paise={o.igstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={o.cgstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={o.sgstPaise} rupees />
+              </td>
             </tr>
             <tr>
               <th scope="row">4(A) Input tax credit in your books</th>
               <td />
-              <td className="num"><Amount paise={report.itc.books.igstPaise} figureId={report.itc.books.figureId} rupees /></td>
-              <td className="num"><Amount paise={report.itc.books.cgstPaise} rupees /></td>
-              <td className="num"><Amount paise={report.itc.books.sgstPaise} rupees /></td>
+              <td className="num">
+                <Amount paise={report.itc.books.igstPaise} figureId={report.itc.books.figureId} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.itc.books.cgstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.itc.books.sgstPaise} rupees />
+              </td>
             </tr>
             <tr>
               <th scope="row">Credit you can claim, matched with GSTR-2B</th>
               <td />
-              <td className="num"><Amount paise={report.itc.eligible.igstPaise} figureId={report.itc.eligible.figureId} rupees /></td>
-              <td className="num"><Amount paise={report.itc.eligible.cgstPaise} rupees /></td>
-              <td className="num"><Amount paise={report.itc.eligible.sgstPaise} rupees /></td>
+              <td className="num">
+                <Amount paise={report.itc.eligible.igstPaise} figureId={report.itc.eligible.figureId} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.itc.eligible.cgstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.itc.eligible.sgstPaise} rupees />
+              </td>
             </tr>
           </tbody>
           <tfoot>
@@ -217,13 +330,22 @@ export function GstView({ report, onPeriod }: { report: GstReport; onPeriod?: (p
               <td className="num">
                 <Amount paise={report.payable.totalPaise} figureId={`gst:payable:${p}`} rupees />
               </td>
-              <td className="num"><Amount paise={report.payable.igstPaise} rupees /></td>
-              <td className="num"><Amount paise={report.payable.cgstPaise} rupees /></td>
-              <td className="num"><Amount paise={report.payable.sgstPaise} rupees /></td>
+              <td className="num">
+                <Amount paise={report.payable.igstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.payable.cgstPaise} rupees />
+              </td>
+              <td className="num">
+                <Amount paise={report.payable.sgstPaise} rupees />
+              </td>
             </tr>
           </tfoot>
         </table>
-        <p className="muted table-note">Credit is set off IGST first, then CGST and SGST, as rule 88A requires. Only bills your suppliers have reported in GSTR-2B count toward the credit you can claim.</p>
+        <p className="muted table-note">
+          Credit is set off IGST first, then CGST and SGST, as rule 88A requires. Only bills your suppliers have reported in GSTR-2B count toward the credit you
+          can claim.
+        </p>
       </Section>
       {report.itc.notIn2b.length ? (
         <Section title="Credit you cannot claim yet">
@@ -235,10 +357,24 @@ export function GstView({ report, onPeriod }: { report: GstReport; onPeriod?: (p
             rows={report.itc.notIn2b}
             rowKey={(r) => r.billId}
             columns={[
-              { id: "n", header: "Bill", cell: (r) => <DocLink docId={r.docId} region="number">{r.number}</DocLink> },
+              {
+                id: "n",
+                header: "Bill",
+                cell: (r) => (
+                  <DocLink docId={r.docId} region="number">
+                    {r.number}
+                  </DocLink>
+                ),
+              },
               { id: "v", header: "Supplier", cell: (r) => r.vendor },
               { id: "d", header: "Date", cell: (r) => shortDate(r.date), secondary: true },
-              { id: "t", header: "Tax on the bill", cell: (r) => <Amount paise={r.taxPaise} rupees tone="red" />, numeric: true, footer: <Amount paise={sum(report.itc.notIn2b, (r) => r.taxPaise)} figureId={`gst:itc-missing:${p}`} rupees /> },
+              {
+                id: "t",
+                header: "Tax on the bill",
+                cell: (r) => <Amount paise={r.taxPaise} rupees tone="red" />,
+                numeric: true,
+                footer: <Amount paise={sum(report.itc.notIn2b, (r) => r.taxPaise)} figureId={`gst:itc-missing:${p}`} rupees />,
+              },
               { id: "s", header: "", cell: () => <Stamp kind="mismatch" /> },
             ]}
           />
@@ -251,7 +387,13 @@ export function GstView({ report, onPeriod }: { report: GstReport; onPeriod?: (p
           rowKey={(r) => String(r.rate)}
           columns={[
             { id: "r", header: "Rate", cell: (r) => `${r.rate}%` },
-            { id: "t", header: "Taxable value", cell: (r) => <Amount paise={r.taxablePaise} rupees />, numeric: true, footer: <Amount paise={o.taxablePaise} rupees /> },
+            {
+              id: "t",
+              header: "Taxable value",
+              cell: (r) => <Amount paise={r.taxablePaise} rupees />,
+              numeric: true,
+              footer: <Amount paise={o.taxablePaise} rupees />,
+            },
             { id: "x", header: "Tax", cell: (r) => <Amount paise={tax(r)} rupees />, numeric: true, footer: <Amount paise={tax(o)} rupees /> },
           ]}
         />
@@ -295,7 +437,19 @@ export function FilingList({ filings }: { filings: GstReport["filings"] }) {
   );
 }
 
-export function PeriodPicker({ value, options, label, onChange, name }: { value: string; options: string[]; label: (p: string) => string; onChange?: (p: string) => void; name: string }) {
+export function PeriodPicker({
+  value,
+  options,
+  label,
+  onChange,
+  name,
+}: {
+  value: string;
+  options: string[];
+  label: (p: string) => string;
+  onChange?: (p: string) => void;
+  name: string;
+}) {
   if (!onChange) return null;
   return (
     <div className="field field-inline">
@@ -320,10 +474,30 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
     { id: "s", header: "Section", cell: (r) => r.section, sortBy: (r) => r.section },
     { id: "d", header: "Bill date", cell: (r) => shortDate(r.date), sortBy: (r) => r.date, secondary: true },
     { id: "b", header: "Paid or credited", cell: (r) => <Amount paise={r.basePaise} rupees />, sortBy: (r) => r.basePaise, numeric: true, secondary: true },
-    { id: "rate", header: "Rate", cell: (r) => `${r.ruleRateBp / 100}%${r.bookedRateBp !== r.ruleRateBp ? `, booked at ${r.bookedRateBp / 100}%` : ""}`, numeric: true },
+    {
+      id: "rate",
+      header: "Rate",
+      cell: (r) => `${r.ruleRateBp / 100}%${r.bookedRateBp !== r.ruleRateBp ? `, booked at ${r.bookedRateBp / 100}%` : ""}`,
+      numeric: true,
+    },
     { id: "e", header: "Should be", cell: (r) => <Amount paise={r.expectedPaise} rupees />, sortBy: (r) => r.expectedPaise, numeric: true },
-    { id: "k", header: "In the books", cell: (r) => <Amount paise={r.bookedPaise} rupees tone={r.bookedPaise < r.expectedPaise ? "red" : undefined} />, numeric: true },
-    { id: "f", header: `In ${report.returnForm}`, cell: (r) => (r.filedPaise === null ? <span className="muted">Not filed yet</span> : <Amount paise={r.filedPaise} rupees tone={r.filedPaise < r.expectedPaise ? "red" : undefined} />), numeric: true },
+    {
+      id: "k",
+      header: "In the books",
+      cell: (r) => <Amount paise={r.bookedPaise} rupees tone={r.bookedPaise < r.expectedPaise ? "red" : undefined} />,
+      numeric: true,
+    },
+    {
+      id: "f",
+      header: `In ${report.returnForm}`,
+      cell: (r) =>
+        r.filedPaise === null ? (
+          <span className="muted">Not filed yet</span>
+        ) : (
+          <Amount paise={r.filedPaise} rupees tone={r.filedPaise < r.expectedPaise ? "red" : undefined} />
+        ),
+      numeric: true,
+    },
   ];
   const missing = report.receivable.filter((r) => r.creditedPaise < r.expectedPaise);
   return (
@@ -343,13 +517,23 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
           rows={report.bySection}
           rowKey={(r) => r.section}
           columns={[
-            { id: "s", header: "Section", cell: (r) => (r.reference === r.section ? r.section : <span title={`Formerly section ${r.section}`}>{r.reference}</span>) },
+            {
+              id: "s",
+              header: "Section",
+              cell: (r) => (r.reference === r.section ? r.section : <span title={`Formerly section ${r.section}`}>{r.reference}</span>),
+            },
             { id: "code", header: "Payment code", cell: (r) => r.code || <span className="muted">None before April 2026</span>, secondary: true },
             { id: "n", header: "Nature of payment", cell: (r) => r.nature },
             { id: "r", header: "Rate", cell: (r) => r.rate, secondary: true },
             { id: "c", header: "Deductees", cell: (r) => r.deductees, numeric: true, secondary: true },
             { id: "b", header: "Paid or credited", cell: (r) => <Amount paise={r.basePaise} rupees />, numeric: true, secondary: true },
-            { id: "t", header: "TDS", cell: (r) => <Amount paise={r.tdsPaise} figureId={r.figureId} rupees label={r.section} />, numeric: true, footer: <Amount paise={sum(report.bySection, (r) => r.tdsPaise)} figureId={`tds:total:${report.quarter}`} rupees /> },
+            {
+              id: "t",
+              header: "TDS",
+              cell: (r) => <Amount paise={r.tdsPaise} figureId={r.figureId} rupees label={r.section} />,
+              numeric: true,
+              footer: <Amount paise={sum(report.bySection, (r) => r.tdsPaise)} figureId={`tds:total:${report.quarter}`} rupees />,
+            },
           ]}
         />
         <p className="muted table-note">{report.sectionNote}</p>
@@ -363,21 +547,37 @@ export function TdsView({ report, onQuarter }: { report: TdsReport; onQuarter?: 
         <LedgerTable caption="All TDS deductions" rows={report.deductions} columns={cols} rowKey={(r) => r.billId} initialSort={{ id: "d" }} limit={12} />
       </Section>
       <Section title="TDS your customers deducted from you">
-        <p className="section-lede">Customers who deduct TDS on purchases from you (section 393, code 1031; formerly 194Q) must deposit it against your PAN. Credits missing from Form 26AS cannot be claimed in your income-tax return.</p>
+        <p className="section-lede">
+          Customers who deduct TDS on purchases from you (section 393, code 1031; formerly 194Q) must deposit it against your PAN. Credits missing from Form
+          26AS cannot be claimed in your income-tax return.
+        </p>
         <LedgerTable
           caption="TDS receivable against Form 26AS"
           rows={report.receivable}
           rowKey={(r) => r.invoiceId}
           rowTone={(r) => (r.creditedPaise < r.expectedPaise ? "red" : undefined)}
           columns={[
-            { id: "n", header: "Invoice", cell: (r) => <DocLink docId={r.docId} region="number">{r.number}</DocLink> },
+            {
+              id: "n",
+              header: "Invoice",
+              cell: (r) => (
+                <DocLink docId={r.docId} region="number">
+                  {r.number}
+                </DocLink>
+              ),
+            },
             { id: "c", header: "Customer", cell: (r) => r.customer },
             { id: "e", header: "Deducted", cell: (r) => <Amount paise={r.expectedPaise} rupees />, numeric: true },
             { id: "k", header: "In 26AS", cell: (r) => <Amount paise={r.creditedPaise} rupees />, numeric: true },
             { id: "s", header: "", cell: (r) => (r.creditedPaise < r.expectedPaise ? <Stamp kind="mismatch" /> : <Stamp kind="matched" />) },
           ]}
         />
-        {missing.length ? <p className="table-note">{missing.length === 1 ? "One credit is" : `${missing.length} credits are`} missing. The Auditor has asked your accountant to follow up with the customer.</p> : null}
+        {missing.length ? (
+          <p className="table-note">
+            {missing.length === 1 ? "One credit is" : `${missing.length} credits are`} missing. The Auditor has asked your accountant to follow up with the
+            customer.
+          </p>
+        ) : null}
       </Section>
     </>
   );
@@ -398,9 +598,27 @@ export function CashView({ report }: { report: CashReport }) {
           rowKey={(r) => r.weekOf}
           columns={[
             { id: "w", header: "Week of", cell: (r) => shortDate(r.weekOf) },
-            { id: "i", header: "Expected in", cell: (r) => <Amount paise={r.expectedInPaise} figureId={`cash:week:${r.weekOf}`} rupees />, numeric: true, footer: <Amount paise={sumIn} figureId="cash:in" rupees /> },
-            { id: "o", header: "Expected out", cell: (r) => <Amount paise={r.expectedOutPaise} rupees />, numeric: true, footer: <Amount paise={sumOut} figureId="cash:out" rupees /> },
-            { id: "n", header: "Net", cell: (r) => <Amount paise={r.expectedInPaise - r.expectedOutPaise} rupees tone={r.expectedInPaise < r.expectedOutPaise ? "red" : undefined} />, numeric: true, footer: <Amount paise={sumIn - sumOut} rupees /> },
+            {
+              id: "i",
+              header: "Expected in",
+              cell: (r) => <Amount paise={r.expectedInPaise} figureId={`cash:week:${r.weekOf}`} rupees />,
+              numeric: true,
+              footer: <Amount paise={sumIn} figureId="cash:in" rupees />,
+            },
+            {
+              id: "o",
+              header: "Expected out",
+              cell: (r) => <Amount paise={r.expectedOutPaise} rupees />,
+              numeric: true,
+              footer: <Amount paise={sumOut} figureId="cash:out" rupees />,
+            },
+            {
+              id: "n",
+              header: "Net",
+              cell: (r) => <Amount paise={r.expectedInPaise - r.expectedOutPaise} rupees tone={r.expectedInPaise < r.expectedOutPaise ? "red" : undefined} />,
+              numeric: true,
+              footer: <Amount paise={sumIn - sumOut} rupees />,
+            },
             { id: "c", header: "Items", cell: (r) => r.items.length, numeric: true, secondary: true },
           ]}
         />

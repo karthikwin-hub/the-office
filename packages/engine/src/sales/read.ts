@@ -26,7 +26,15 @@ export function skuMatcher(skus: Sku[]): (sellerSku: string | null, item: string
  * The lines in a sheet, read by a known layout or the owner's mapping. Every row either becomes a
  * line or is listed with why it was left out: no row is guessed at.
  */
-export function readLines(opts: { rows: string[][]; headerAt: number; channel: SalesChannel; file: string; format: Format | null; mapping?: ColumnMapping; skus: Sku[] }): ReadResult {
+export function readLines(opts: {
+  rows: string[][];
+  headerAt: number;
+  channel: SalesChannel;
+  file: string;
+  format: Format | null;
+  mapping?: ColumnMapping;
+  skus: Sku[];
+}): ReadResult {
   const headers = opts.rows[opts.headerAt] ?? [];
   const col = (f: SalesField): number => {
     if (opts.mapping) {
@@ -35,7 +43,12 @@ export function readLines(opts: { rows: string[][]; headerAt: number; channel: S
     }
     return columnFor(headers, opts.format?.fields[f]);
   };
-  const c = Object.fromEntries((["date", "order", "invoice", "qty", "gross", "taxable", "tax", "discount", "sku", "item", "state", "city", "status"] as SalesField[]).map((f) => [f, col(f)])) as Record<SalesField, number>;
+  const c = Object.fromEntries(
+    (["date", "order", "invoice", "qty", "gross", "taxable", "tax", "discount", "sku", "item", "state", "city", "status"] as SalesField[]).map((f) => [
+      f,
+      col(f),
+    ]),
+  ) as Record<SalesField, number>;
   const added = (f: "gross" | "taxable") => (opts.mapping ? [] : columnsFor(headers, opts.format?.add?.[f]));
   const plus = { gross: added("gross"), taxable: added("taxable") };
   const match = skuMatcher(opts.skus);
@@ -62,8 +75,7 @@ export function readLines(opts: { rows: string[][]; headerAt: number; channel: S
         continue;
       }
       status = mapped ?? "skip";
-    }
-    else if (opts.format?.statusFromName) status = opts.format.statusFromName(opts.file);
+    } else if (opts.format?.statusFromName) status = opts.format.statusFromName(opts.file);
     else if (c.status >= 0) status = statusWord(at(c.status));
     if (status === "skip") {
       skipped.push({ row: rowNo, reason: `"${at(c.status) ?? ""}" is not a sale, return or cancellation.` });
@@ -151,7 +163,18 @@ export function readAmazonSettlement(rows: string[][], headerAt: number): Payout
     if (amount === null) continue;
     const type = r[i("amount type")]?.trim() || "Other";
     const desc = r[i("amount description")]?.trim() || "";
-    const label = type === "ItemPrice" ? (desc === "Principal" ? "Sales" : `Sales: ${desc}`) : type === "ItemFees" ? `Fees: ${desc}` : type === "ItemWithheldTax" ? `Tax withheld: ${desc}` : desc ? `${type}: ${desc}` : type;
+    const label =
+      type === "ItemPrice"
+        ? desc === "Principal"
+          ? "Sales"
+          : `Sales: ${desc}`
+        : type === "ItemFees"
+          ? `Fees: ${desc}`
+          : type === "ItemWithheldTax"
+            ? `Tax withheld: ${desc}`
+            : desc
+              ? `${type}: ${desc}`
+              : type;
     parts.set(label, (parts.get(label) ?? 0) + amount);
   }
   if (!summary && !parts.size) return null;
@@ -214,8 +237,14 @@ export function readAmazonTransactions(rows: string[][], headerAt: number): Payo
       transfers++;
       if (date && (!paidOn || date > paidOn)) paidOn = date;
     } else if (t === "order" || t === "refund") {
-      put(t === "order" ? "Sales, with GST" : "Refunds, with GST", c.principal.reduce((a, i) => a + v(i), 0));
-      put("Tax withheld: TCS", c.tcs.reduce((a, i) => a + v(i), 0));
+      put(
+        t === "order" ? "Sales, with GST" : "Refunds, with GST",
+        c.principal.reduce((a, i) => a + v(i), 0),
+      );
+      put(
+        "Tax withheld: TCS",
+        c.tcs.reduce((a, i) => a + v(i), 0),
+      );
       put("Tax withheld: TDS (194-O)", v(c.tds));
       put("Fees: selling", v(c.selling));
       put("Fees: FBA", v(c.fba));
@@ -223,7 +252,19 @@ export function readAmazonTransactions(rows: string[][], headerAt: number): Payo
       put("Other", v(c.other));
     } else {
       const desc = (r[c.desc] ?? "").trim();
-      const label = t.startsWith("shipping") ? "Fees: shipping" : t.startsWith("fba") ? "Fees: FBA" : t === "service fee" ? (/advertis/i.test(desc) ? "Advertising" : `Fees: ${desc.toLowerCase() || "service"}`) : t.startsWith("reimburse") ? "Reimbursements" : t.startsWith("adjust") ? "Adjustments" : type;
+      const label = t.startsWith("shipping")
+        ? "Fees: shipping"
+        : t.startsWith("fba")
+          ? "Fees: FBA"
+          : t === "service fee"
+            ? /advertis/i.test(desc)
+              ? "Advertising"
+              : `Fees: ${desc.toLowerCase() || "service"}`
+            : t.startsWith("reimburse")
+              ? "Reimbursements"
+              : t.startsWith("adjust")
+                ? "Adjustments"
+                : type;
       put(label, total);
     }
   }
@@ -238,7 +279,12 @@ export function readAmazonTransactions(rows: string[][], headerAt: number): Payo
  * line and one returned line on the last day of the month, with no order number. The month is
  * read from the summary sheet ("Orders Received During: October 2026").
  */
-export function readMyntraPnl(opts: { rows: string[][]; headerAt: number; sheets: { rows: string[][] }[]; skus: Sku[] }): ReadResult & { payout: PayoutDraft | null; settled: number | null } {
+export function readMyntraPnl(opts: {
+  rows: string[][];
+  headerAt: number;
+  sheets: { rows: string[][] }[];
+  skus: Sku[];
+}): ReadResult & { payout: PayoutDraft | null; settled: number | null } {
   const empty = (reason: string) => ({ lines: [], skipped: [{ row: opts.headerAt + 1, reason }], period: null, payout: null, settled: null });
   let month: { from: string; to: string } | null = null;
   for (const s of opts.sheets)
@@ -271,13 +317,28 @@ export function readMyntraPnl(opts: { rows: string[][]; headerAt: number; sheets
     for (const [i, name] of h.entries()) if (name) sums.set(name, (sums.get(name) ?? 0) + (paiseOf(row[i]) ?? 0));
     const item = [at("brand name"), at("article type")].filter(Boolean).join(" ") || null;
     const named = item ? `${item} (${sku})` : sku;
-    const base = { channel: "myntra" as const, date, order: "", invoice: null, sellerSku: sku, skuId: match(sku, item), item: named, taxablePaise: null, taxPaise: null, discountPaise: null, state: null, city: null };
+    const base = {
+      channel: "myntra" as const,
+      date,
+      order: "",
+      invoice: null,
+      sellerSku: sku,
+      skuId: match(sku, item),
+      item: named,
+      taxablePaise: null,
+      taxPaise: null,
+      discountPaise: null,
+      state: null,
+      city: null,
+    };
     const units = numberOf(at("grosssalesunit")) ?? 0;
     const gross = paiseOf(at("grosssalesamount")) ?? 0;
-    if (units || gross) lines.push({ ...base, id: `myntra|${month.from}|${sku}|sold`, qty: Math.abs(units), grossPaise: Math.abs(gross), status: "sold", row: r + 1 });
+    if (units || gross)
+      lines.push({ ...base, id: `myntra|${month.from}|${sku}|sold`, qty: Math.abs(units), grossPaise: Math.abs(gross), status: "sold", row: r + 1 });
     const backUnits = numberOf(at("returnsandcancellationsunit")) ?? 0;
     const back = paiseOf(at("returnsandcancellationsamount")) ?? 0;
-    if (backUnits || back) lines.push({ ...base, id: `myntra|${month.from}|${sku}|returned`, qty: Math.abs(backUnits), grossPaise: Math.abs(back), status: "returned", row: r + 1 });
+    if (backUnits || back)
+      lines.push({ ...base, id: `myntra|${month.from}|${sku}|returned`, qty: Math.abs(backUnits), grossPaise: Math.abs(back), status: "returned", row: r + 1 });
   }
   const sum = (name: string) => sums.get(name) ?? 0;
   const parts = new Map<string, number>([
@@ -294,5 +355,11 @@ export function readMyntraPnl(opts: { rows: string[][]; headerAt: number; sheets
   ]);
   const projected = sums.has("banksettlement projected") ? sum("banksettlement projected") : [...parts.values()].reduce((a, b) => a + b, 0);
   const payout: PayoutDraft = { channel: "myntra", from: month.from, to: month.to, paidOn: null, parts: byAmount(parts), netPaise: projected };
-  return { lines, skipped, period: lines.length ? { from: date, to: date } : null, payout, settled: sums.has("banksettlement settled") ? sum("banksettlement settled") : null };
+  return {
+    lines,
+    skipped,
+    period: lines.length ? { from: date, to: date } : null,
+    payout,
+    settled: sums.has("banksettlement settled") ? sum("banksettlement settled") : null,
+  };
 }

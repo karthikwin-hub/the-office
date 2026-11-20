@@ -12,7 +12,13 @@ type State = { p: Platform; n: string; exp: number; by: string; o: string };
  * until when, signed. The callback has one address for every office, so the office comes from here.
  * The PKCE verifier is derived from it, so nothing has to be stored while the owner is away signing in.
  */
-export async function newState(secret: string, platform: Platform, by: string, officeId: string, now = Date.now()): Promise<{ state: string; verifier: string }> {
+export async function newState(
+  secret: string,
+  platform: Platform,
+  by: string,
+  officeId: string,
+  now = Date.now(),
+): Promise<{ state: string; verifier: string }> {
   const body: State = { p: platform, n: b64url(crypto.getRandomValues(new Uint8Array(16))), exp: now + STATE_TTL_MS, by, o: officeId };
   const payload = b64url(enc.encode(JSON.stringify(body)));
   const key = await subkey(secret, "state", "HMAC");
@@ -20,7 +26,12 @@ export async function newState(secret: string, platform: Platform, by: string, o
   return { state, verifier: await verifierFor(key, body.n) };
 }
 
-export async function readState(secret: string, platform: string, state: string | null, now = Date.now()): Promise<{ by: string; verifier: string; officeId: string; nonce: string; expiresAt: number } | null> {
+export async function readState(
+  secret: string,
+  platform: string,
+  state: string | null,
+  now = Date.now(),
+): Promise<{ by: string; verifier: string; officeId: string; nonce: string; expiresAt: number } | null> {
   const [payload, sig] = (state ?? "").split(".");
   if (!payload || !sig) return null;
   const key = await subkey(secret, "state", "HMAC");

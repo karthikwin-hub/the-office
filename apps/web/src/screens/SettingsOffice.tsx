@@ -16,7 +16,12 @@ const ROLE_NOTE: Record<Role, string> = {
 /** The office as an account: who is in it, who is invited, its email address, and handing it over, exporting or deleting it. */
 export function OfficeSettings() {
   const admin = useQuery(q.officeAdmin());
-  if (!admin.data) return admin.error ? <Section title="Your office"><p className="form-error">{admin.error.message}</p></Section> : null;
+  if (!admin.data)
+    return admin.error ? (
+      <Section title="Your office">
+        <p className="form-error">{admin.error.message}</p>
+      </Section>
+    ) : null;
   return <OfficePanel a={admin.data} />;
 }
 
@@ -72,7 +77,13 @@ function OfficePanel({ a }: { a: OfficeAdmin }) {
                 <label className="visually-hidden" htmlFor={`role-${m.userId}`}>
                   Role for {m.name}
                 </label>
-                <select id={`role-${m.userId}`} className="input" value={m.role} onChange={(e) => setRole.mutate({ userId: m.userId, role: e.target.value as Role })} disabled={setRole.isPending}>
+                <select
+                  id={`role-${m.userId}`}
+                  className="input"
+                  value={m.role}
+                  onChange={(e) => setRole.mutate({ userId: m.userId, role: e.target.value as Role })}
+                  disabled={setRole.isPending}
+                >
                   <option value="owner">Owner</option>
                   <option value="accountant">Accountant</option>
                 </select>
@@ -162,7 +173,8 @@ function InviteForm({ onSent }: { onSent: () => void }) {
       {sent ? (
         <div className="invite-link" role="status">
           <p>
-            {sent.emailed ? `Invitation emailed to ${sent.email}.` : `Email is not set up here, so send ${sent.email} this link yourself.`} It works once, until {dateLabel(sent.expiresAt.slice(0, 10))}.
+            {sent.emailed ? `Invitation emailed to ${sent.email}.` : `Email is not set up here, so send ${sent.email} this link yourself.`} It works once, until{" "}
+            {dateLabel(sent.expiresAt.slice(0, 10))}.
           </p>
           <div className="office-inline">
             <input className="input" readOnly value={sent.link} aria-label="Invitation link" onFocus={(e) => e.currentTarget.select()} />
@@ -260,7 +272,8 @@ function OwnerTools({ a }: { a: OfficeAdmin }) {
           }}
         >
           <label htmlFor="delete-confirm">
-            Delete the office. Everyone loses access at once; the books and files are kept 30 days in case you change your mind, then removed for good. Type <strong>{a.name}</strong> to confirm.
+            Delete the office. Everyone loses access at once; the books and files are kept 30 days in case you change your mind, then removed for good. Type{" "}
+            <strong>{a.name}</strong> to confirm.
           </label>
           <div className="office-inline">
             <input id="delete-confirm" className="input" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />

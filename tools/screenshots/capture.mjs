@@ -16,7 +16,18 @@ const mode = args.shift() ?? "app";
 const dirFlag = args.indexOf("--dir");
 const serveDir = dirFlag >= 0 ? resolve(args.splice(dirFlag, 2)[1]) : null;
 
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".pdf": "application/pdf", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".woff": "font/woff", ".png": "image/png" };
+const TYPES = {
+  ".html": "text/html",
+  ".js": "text/javascript",
+  ".mjs": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".pdf": "application/pdf",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".png": "image/png",
+};
 
 /** A static server with SPA fallback, enough for a Vite or Storybook build. */
 async function serve(dir) {

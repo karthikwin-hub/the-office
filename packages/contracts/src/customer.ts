@@ -116,5 +116,8 @@ export const ChatPost = z.object({
   name: z.string().trim().max(80).optional(),
   turnstile: z.string().max(4096).optional(),
 });
-export const ChatMessages = z.object({ messages: z.array(z.object({ id: z.string(), at: IsoDateTime, from: z.enum(["you", "us"]), text: z.string() })), business: z.string() });
+export const ChatMessages = z.object({
+  messages: z.array(z.object({ id: z.string(), at: IsoDateTime, from: z.enum(["you", "us"]), text: z.string() })),
+  business: z.string(),
+});
 export type ChatMessages = z.infer<typeof ChatMessages>;

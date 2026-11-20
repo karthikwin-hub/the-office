@@ -20,7 +20,16 @@ export async function sendTemplate(keys: WaKeys, to: string, summary: string, f:
   const r = await call<{ messages?: { id: string }[] }>(f, `${FB}/${keys.phoneId}/messages`, {
     method: "POST",
     headers: { authorization: `Bearer ${keys.token}` },
-    json: { messaging_product: "whatsapp", to, type: "template", template: { name: keys.template, language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text: summary.replace(/\s*\n\s*/g, " · ").slice(0, 1024) }] }] } },
+    json: {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: keys.template,
+        language: { code: "en" },
+        components: [{ type: "body", parameters: [{ type: "text", text: summary.replace(/\s*\n\s*/g, " · ").slice(0, 1024) }] }],
+      },
+    },
   });
   return r.messages?.[0]?.id ?? null;
 }
@@ -30,7 +39,9 @@ export async function sendTemplate(keys: WaKeys, to: string, summary: string, f:
  * Anything over `max` bytes is refused before it is downloaded.
  */
 export async function downloadMedia(keys: WaKeys, mediaId: string, max: number, f: Fetch = fetch): Promise<{ bytes: ArrayBuffer; mimeType: string }> {
-  const meta = await call<{ url?: string; mime_type?: string; file_size?: number }>(f, `${FB}/${encodeURIComponent(mediaId)}`, { headers: { authorization: `Bearer ${keys.token}` } });
+  const meta = await call<{ url?: string; mime_type?: string; file_size?: number }>(f, `${FB}/${encodeURIComponent(mediaId)}`, {
+    headers: { authorization: `Bearer ${keys.token}` },
+  });
   if (!meta.url) throw new PlatformError("WhatsApp did not give a link to the file", "final");
   if ((meta.file_size ?? 0) > max) throw new PlatformError("The file is too large", "final");
   const res = await f(meta.url, { headers: { authorization: `Bearer ${keys.token}` } });

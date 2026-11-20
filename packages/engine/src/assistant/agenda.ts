@@ -9,12 +9,30 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const DAY = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 /** Free webmail domains say nothing about which business someone is from. */
-const PUBLIC_MAIL = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.in", "outlook.com", "hotmail.com", "live.com", "icloud.com", "rediffmail.com", "proton.me", "protonmail.com", "zoho.com"]);
+const PUBLIC_MAIL = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.in",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "icloud.com",
+  "rediffmail.com",
+  "proton.me",
+  "protonmail.com",
+  "zoho.com",
+]);
 const LEGAL_WORDS = /\b(pvt|private|ltd|limited|llp|and|co|company|corporation|corp|inc|industries|enterprises|traders|trading|the|&|m\/s)\b\.?/gi;
 
 /** The words that name a business, without "Pvt Ltd" and the like, for finding it in a meeting title. */
 function nameKey(name: string): string {
-  return name.toLowerCase().replace(LEGAL_WORDS, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return name
+    .toLowerCase()
+    .replace(LEGAL_WORDS, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** The customer or supplier a meeting is with: by an attendee's address, their company's domain, or the name in the title. */
@@ -53,12 +71,17 @@ export function partyBrief(office: OfficeService, party: Party): string[] {
     const late = open.filter((o) => o.daysOverdue > 0);
     if (owed > 0) {
       const lateSum = late.reduce((s, o) => s + o.outstandingPaise, 0);
-      lines.push(late.length ? `Owes you ${inrShort(owed)}; ${inrShort(lateSum)} of it is overdue, the oldest by ${plural(late[0]!.daysOverdue, "day")} (${late[0]!.number}).` : `Owes you ${inrShort(owed)}, none of it overdue yet.`);
+      lines.push(
+        late.length
+          ? `Owes you ${inrShort(owed)}; ${inrShort(lateSum)} of it is overdue, the oldest by ${plural(late[0]!.daysOverdue, "day")} (${late[0]!.number}).`
+          : `Owes you ${inrShort(owed)}, none of it overdue yet.`,
+      );
     } else lines.push("Owes you nothing today.");
     const last = l.receivableInvoices.filter((i) => i.partyId === party.id).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
     if (last) lines.push(`Last invoice ${last.number} on ${DAY(last.date)}, for ${inrShort(last.totals.totalPaise)}.`);
     const quotes = office.books.quotes.filter((q) => q.partyId === party.id && q.status === "sent" && q.validUntil >= office.asOf);
-    if (quotes.length) lines.push(`${plural(quotes.length, "open quotation")}: ${quotes.map((q) => `${q.number} for ${inrShort(q.totals.totalPaise)}`).join(", ")}.`);
+    if (quotes.length)
+      lines.push(`${plural(quotes.length, "open quotation")}: ${quotes.map((q) => `${q.number} for ${inrShort(q.totals.totalPaise)}`).join(", ")}.`);
     if (party.creditLimitPaise && owed > party.creditLimitPaise) lines.push(`Over their credit limit of ${inrShort(party.creditLimitPaise)}.`);
   } else {
     const unpaid = l.payableBills.filter((b) => b.partyId === party.id && !l.vendorBillPaid(b.id));
@@ -117,7 +140,18 @@ export function buildAgenda(office: OfficeService, doc: AssistantDoc, owner: str
       const party = partyForEvent(office, ev, owner);
       const brief = party ? partyBrief(office, party) : undefined;
       const others = ev.attendees.filter((a) => a.email !== owner.toLowerCase());
-      const detail = [ev.location, others.length ? `With ${others.slice(0, 3).map((a) => a.name ?? a.email).join(", ")}${others.length > 3 ? ` and ${others.length - 3} more` : ""}` : null].filter(Boolean).join(" · ") || null;
+      const detail =
+        [
+          ev.location,
+          others.length
+            ? `With ${others
+                .slice(0, 3)
+                .map((a) => a.name ?? a.email)
+                .join(", ")}${others.length > 3 ? ` and ${others.length - 3} more` : ""}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null;
       if (!ev.allDay) busy.push({ from: s, to: e });
       items.push({
         kind: "event",
@@ -134,7 +168,15 @@ export function buildAgenda(office: OfficeService, doc: AssistantDoc, owner: str
       if (t.status !== "open" || (t.snoozedUntil && t.snoozedUntil > date)) continue;
       const lateToday = offset === 0 && t.due && t.due < today;
       if (t.due === date || lateToday || (offset === 0 && !t.due)) {
-        items.push({ kind: "task", at: null, until: null, title: t.title, detail: lateToday ? `Was due ${DAY(t.due!)}` : t.due ? null : "No date set", link: null, taskId: t.id });
+        items.push({
+          kind: "task",
+          at: null,
+          until: null,
+          title: t.title,
+          detail: lateToday ? `Was due ${DAY(t.due!)}` : t.due ? null : "No date set",
+          link: null,
+          taskId: t.id,
+        });
       }
     }
 
@@ -142,27 +184,65 @@ export function buildAgenda(office: OfficeService, doc: AssistantDoc, owner: str
       if (deskItems.length || opts.drafts) {
         const oldest = deskItems.length ? deskItems[deskItems.length - 1]! : null;
         const age = oldest ? daysBetween(oldest.createdAt.slice(0, 10), today) : 0;
-        const parts = [deskItems.length ? plural(deskItems.length, "item") : "", opts.drafts ? plural(opts.drafts, "reply", "replies") + " I drafted" : ""].filter(Boolean);
-        items.push({ kind: "office", at: null, until: null, title: `${parts.join(" and ")} waiting on your desk`, detail: age > 1 ? `The oldest has waited ${plural(age, "day")}.` : null, link: "/desk" });
+        const parts = [
+          deskItems.length ? plural(deskItems.length, "item") : "",
+          opts.drafts ? plural(opts.drafts, "reply", "replies") + " I drafted" : "",
+        ].filter(Boolean);
+        items.push({
+          kind: "office",
+          at: null,
+          until: null,
+          title: `${parts.join(" and ")} waiting on your desk`,
+          detail: age > 1 ? `The oldest has waited ${plural(age, "day")}.` : null,
+          link: "/desk",
+        });
       }
-      if (handoffs) items.push({ kind: "office", at: null, until: null, title: `${plural(handoffs, "customer")} waiting for your answer`, detail: null, link: "/rooms/customer-service" });
+      if (handoffs)
+        items.push({
+          kind: "office",
+          at: null,
+          until: null,
+          title: `${plural(handoffs, "customer")} waiting for your answer`,
+          detail: null,
+          link: "/rooms/customer-service",
+        });
     }
     for (const o of due) {
       const onThisDay = o.dueOn === date || (offset === 0 && o.dueOn < today);
-      if (onThisDay) items.push({ kind: "office", at: null, until: null, title: o.dueOn < today ? `Late: ${o.title}` : `Due: ${o.title}`, detail: o.line, link: "/rooms/compliance-officer" });
+      if (onThisDay)
+        items.push({
+          kind: "office",
+          at: null,
+          until: null,
+          title: o.dueOn < today ? `Late: ${o.title}` : `Due: ${o.title}`,
+          detail: o.line,
+          link: "/rooms/compliance-officer",
+        });
     }
 
     const work = (offset === 0 ? deskItems.length + opts.drafts : 0) + items.filter((i) => i.kind === "task").length;
     if (work > 0) {
       const slot = freeSlot(date, busy, offset === 0 && realToday ? round15(now) : 0);
       if (slot) {
-        const minutes = Math.max(10, Math.min(60, Math.round(((offset === 0 ? deskItems.length + opts.drafts : 0) * 1.5 + items.filter((i) => i.kind === "task").length * 10) / 5) * 5));
-        items.push({ kind: "focus", at: istClock(new Date(slot.from).toISOString()), until: istClock(new Date(slot.to).toISOString()), title: "Free time", detail: `A good moment for your desk and tasks, about ${minutes} minutes.`, link: null });
+        const minutes = Math.max(
+          10,
+          Math.min(60, Math.round(((offset === 0 ? deskItems.length + opts.drafts : 0) * 1.5 + items.filter((i) => i.kind === "task").length * 10) / 5) * 5),
+        );
+        items.push({
+          kind: "focus",
+          at: istClock(new Date(slot.from).toISOString()),
+          until: istClock(new Date(slot.to).toISOString()),
+          title: "Free time",
+          detail: `A good moment for your desk and tasks, about ${minutes} minutes.`,
+          link: null,
+        });
       }
     }
 
     const order = { office: 0, task: 1, event: 2, focus: 2 } as const;
-    items.sort((a, b) => (a.at === null) !== (b.at === null) ? (a.at === null ? -1 : 1) : a.at && b.at && a.at !== b.at ? (a.at < b.at ? -1 : 1) : order[a.kind] - order[b.kind]);
+    items.sort((a, b) =>
+      (a.at === null) !== (b.at === null) ? (a.at === null ? -1 : 1) : a.at && b.at && a.at !== b.at ? (a.at < b.at ? -1 : 1) : order[a.kind] - order[b.kind],
+    );
     return { date, label, items };
   });
 }
@@ -172,12 +252,20 @@ export function agendaText(days: AgendaDay[], short = false): string {
   const line = (i: AgendaItem) => `${i.at ? `${i.at}${i.until ? `–${i.until}` : ""} ` : ""}${i.kind === "task" ? "To do: " : ""}${i.title}`;
   if (short) {
     const [today, ...rest] = days;
-    const out = [`${today!.label}:`, ...today!.items.filter((i) => i.kind !== "focus").slice(0, 6).map((i) => `• ${line(i)}`)];
+    const out = [
+      `${today!.label}:`,
+      ...today!.items
+        .filter((i) => i.kind !== "focus")
+        .slice(0, 6)
+        .map((i) => `• ${line(i)}`),
+    ];
     if (!today!.items.length) out.push("• Nothing in your calendar.");
     for (const d of rest) {
       const meets = d.items.filter((i) => i.kind === "event").length;
       const other = d.items.length - meets;
-      out.push(`${d.label}: ${meets || other ? [meets ? plural(meets, "meeting") : "", other ? plural(other, "other item") : ""].filter(Boolean).join(", ") : "clear"}.`);
+      out.push(
+        `${d.label}: ${meets || other ? [meets ? plural(meets, "meeting") : "", other ? plural(other, "other item") : ""].filter(Boolean).join(", ") : "clear"}.`,
+      );
     }
     return out.join("\n");
   }
@@ -185,7 +273,13 @@ export function agendaText(days: AgendaDay[], short = false): string {
     .map((d, n) => {
       const items = n === 0 ? d.items : d.items.filter((i) => i.kind !== "focus");
       const body = items.length
-        ? items.map((i) => [`  • ${line(i)}`, i.detail && n === 0 ? `    ${i.detail}` : "", ...(n === 0 && i.brief ? i.brief.map((b) => `    ${b}`) : [])].filter(Boolean).join("\n")).join("\n")
+        ? items
+            .map((i) =>
+              [`  • ${line(i)}`, i.detail && n === 0 ? `    ${i.detail}` : "", ...(n === 0 && i.brief ? i.brief.map((b) => `    ${b}`) : [])]
+                .filter(Boolean)
+                .join("\n"),
+            )
+            .join("\n")
         : "  • Nothing planned.";
       return `${d.label}\n${body}`;
     })

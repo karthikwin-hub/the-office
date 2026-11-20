@@ -11,7 +11,15 @@ function keyFor(secret: string): Promise<CryptoKey> {
   if (!key) {
     key = crypto.subtle
       .importKey("raw", enc.encode(secret), "HKDF", false, ["deriveKey"])
-      .then((base) => crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: enc.encode("the-office/caller"), info: enc.encode("caller") }, base, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign", "verify"]));
+      .then((base) =>
+        crypto.subtle.deriveKey(
+          { name: "HKDF", hash: "SHA-256", salt: enc.encode("the-office/caller"), info: enc.encode("caller") },
+          base,
+          { name: "HMAC", hash: "SHA-256", length: 256 },
+          false,
+          ["sign", "verify"],
+        ),
+      );
     keys.set(secret, key);
   }
   return key;

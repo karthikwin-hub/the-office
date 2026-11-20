@@ -1,4 +1,13 @@
-import { CHANNEL_NAME, type OnlineSalesReport, type Payout, SALES_CHANNELS, type SalesChannel, type SalesImport, type SalesLine, type Sku } from "@office/contracts";
+import {
+  CHANNEL_NAME,
+  type OnlineSalesReport,
+  type Payout,
+  SALES_CHANNELS,
+  type SalesChannel,
+  type SalesImport,
+  type SalesLine,
+  type Sku,
+} from "@office/contracts";
 import { addDays, daysBetween, weekStart } from "../dates";
 import { inrShort } from "../money";
 import { STATE_NAME } from "./parse";
@@ -6,13 +15,34 @@ import { STATE_NAME } from "./parse";
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0);
 const change = (now: number, before: number) => (before > 0 ? Math.round(((now - before) / before) * 1000) / 10 : null);
 const label = (from: string, to: string) => {
-  const f = (d: string, year: boolean) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
+  const f = (d: string, year: boolean) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
   return `${f(from, from.slice(0, 4) !== to.slice(0, 4))} to ${f(to, true)}`;
 };
 
 /** `ordered` is the sales on lines with an order number: a platform's summary by product has none, so it stays out of the average order. */
-type Sums = { orders: Set<string>; units: number; gross: number; ordered: number; returned: number; returnedUnits: number; cancelled: Set<string>; last: string | null; days: Set<string> };
-const sums = (): Sums => ({ orders: new Set(), units: 0, gross: 0, ordered: 0, returned: 0, returnedUnits: 0, cancelled: new Set(), last: null, days: new Set() });
+type Sums = {
+  orders: Set<string>;
+  units: number;
+  gross: number;
+  ordered: number;
+  returned: number;
+  returnedUnits: number;
+  cancelled: Set<string>;
+  last: string | null;
+  days: Set<string>;
+};
+const sums = (): Sums => ({
+  orders: new Set(),
+  units: 0,
+  gross: 0,
+  ordered: 0,
+  returned: 0,
+  returnedUnits: 0,
+  cancelled: new Set(),
+  last: null,
+  days: new Set(),
+});
 /** Against the period before only when that period was reported too: on at least half as many days. */
 const against = (now: Sums, before: Sums | undefined) => (before && before.days.size * 2 >= now.days.size ? change(now.gross, before.gross) : null);
 const aov = (s: Sums) => (s.orders.size ? Math.round(s.ordered / s.orders.size) : 0);
@@ -36,7 +66,16 @@ function add(s: Sums, l: SalesLine) {
  * Online sales over a period, against the same length of time before it. Sales are what the
  * platforms reported as shipped or sold; returns are counted on the day the platform reported them.
  */
-export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLine[]; from: string; to: string; skus: Sku[]; payouts: Payout[]; imports: SalesImport[]; address: string | null }): OnlineSalesReport {
+export function onlineSalesReport(opts: {
+  lines: SalesLine[];
+  previous: SalesLine[];
+  from: string;
+  to: string;
+  skus: Sku[];
+  payouts: Payout[];
+  imports: SalesImport[];
+  address: string | null;
+}): OnlineSalesReport {
   const { lines, from, to } = opts;
   const days = daysBetween(from, to) + 1;
   const prevTo = addDays(from, -1);
@@ -84,7 +123,12 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
   }
   const weeks = weekKeys.map((week) => {
     const byC = weekMap.get(week)!;
-    return { week, label: new Date(`${week}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }), byChannel: byC, totalPaise: Object.values(byC).reduce((a, b) => a + b, 0) };
+    return {
+      week,
+      label: new Date(`${week}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }),
+      byChannel: byC,
+      totalPaise: Object.values(byC).reduce((a, b) => a + b, 0),
+    };
   });
 
   const skuName = new Map(opts.skus.map((s) => [s.id, s.name]));
@@ -92,7 +136,14 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
   for (const l of lines) {
     // Without a match in the catalogue, a product is known by its name, so the same item listed under two codes (Amazon's own and FBA) is one row.
     const key = l.skuId ?? (l.item || l.sellerSku || "Unnamed item").toLowerCase();
-    const cur = bySku.get(key) ?? { skuId: l.skuId, name: (l.skuId && skuName.get(l.skuId)) || l.item || l.sellerSku || "Unnamed item", units: 0, gross: 0, returnedUnits: 0, channels: new Set() };
+    const cur = bySku.get(key) ?? {
+      skuId: l.skuId,
+      name: (l.skuId && skuName.get(l.skuId)) || l.item || l.sellerSku || "Unnamed item",
+      units: 0,
+      gross: 0,
+      returnedUnits: 0,
+      channels: new Set(),
+    };
     if (l.status === "sold") {
       cur.units += l.qty;
       cur.gross += l.grossPaise;
@@ -100,15 +151,34 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
     cur.channels.add(l.channel);
     bySku.set(key, cur);
   }
-  const skus = [...bySku].map(([key, s]) => ({ key, skuId: s.skuId, name: s.name, units: s.units, grossPaise: s.gross, returnedUnits: s.returnedUnits, returnsPct: pct(s.returnedUnits, s.units), channels: [...s.channels] })).sort((a, b) => b.grossPaise - a.grossPaise);
+  const skus = [...bySku]
+    .map(([key, s]) => ({
+      key,
+      skuId: s.skuId,
+      name: s.name,
+      units: s.units,
+      grossPaise: s.gross,
+      returnedUnits: s.returnedUnits,
+      returnsPct: pct(s.returnedUnits, s.units),
+      channels: [...s.channels],
+    }))
+    .sort((a, b) => b.grossPaise - a.grossPaise);
   const soldIds = new Set(skus.map((s) => s.skuId).filter(Boolean));
-  const unsold = soldIds.size ? opts.skus.filter((s) => !soldIds.has(s.id)).map((s) => ({ skuId: s.id, name: s.name })).slice(0, 20) : [];
+  const unsold = soldIds.size
+    ? opts.skus
+        .filter((s) => !soldIds.has(s.id))
+        .map((s) => ({ skuId: s.id, name: s.name }))
+        .slice(0, 20)
+    : [];
 
   const byState = new Map<string, { orders: Set<string>; gross: number }>();
   const byCity = new Map<string, { orders: Set<string>; gross: number }>();
   for (const l of lines) {
     if (l.status !== "sold") continue;
-    for (const [map, key] of [[byState, l.state], [byCity, l.city]] as const) {
+    for (const [map, key] of [
+      [byState, l.state],
+      [byCity, l.city],
+    ] as const) {
       if (!key) continue;
       const cur = map.get(key) ?? { orders: new Set<string>(), gross: 0 };
       if (l.order) cur.orders.add(`${l.channel}|${l.order}`);
@@ -116,8 +186,13 @@ export function onlineSalesReport(opts: { lines: SalesLine[]; previous: SalesLin
       map.set(key, cur);
     }
   }
-  const states = [...byState].map(([state, s]) => ({ state, name: STATE_NAME[state] ?? state, orders: s.orders.size, grossPaise: s.gross })).sort((a, b) => b.grossPaise - a.grossPaise);
-  const cities = [...byCity].map(([city, s]) => ({ city, orders: s.orders.size, grossPaise: s.gross })).sort((a, b) => b.grossPaise - a.grossPaise).slice(0, 15);
+  const states = [...byState]
+    .map(([state, s]) => ({ state, name: STATE_NAME[state] ?? state, orders: s.orders.size, grossPaise: s.gross }))
+    .sort((a, b) => b.grossPaise - a.grossPaise);
+  const cities = [...byCity]
+    .map(([city, s]) => ({ city, orders: s.orders.size, grossPaise: s.gross }))
+    .sort((a, b) => b.grossPaise - a.grossPaise)
+    .slice(0, 15);
 
   const totals = {
     orders: total.orders.size,

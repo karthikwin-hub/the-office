@@ -5,7 +5,21 @@ import { ACTIONS } from "./ApprovalCard";
 import { TrustLevel } from "./TrustLevel";
 
 /** A job description in the Hiring Hall: what the agent does and what it will ask you to approve. */
-export function HireCard({ state, onHire, onLetGo, busy, readOnly, compact }: { state: AgentState; onHire?: () => void; onLetGo?: () => void; busy?: boolean; readOnly?: boolean; compact?: boolean }) {
+export function HireCard({
+  state,
+  onHire,
+  onLetGo,
+  busy,
+  readOnly,
+  compact,
+}: {
+  state: AgentState;
+  onHire?: () => void;
+  onLetGo?: () => void;
+  busy?: boolean;
+  readOnly?: boolean;
+  compact?: boolean;
+}) {
   const def = AGENT_BY_ID[state.agentId]!;
   const id = useId();
   const pct = state.accuracy.checked ? Math.round((state.accuracy.correct / state.accuracy.checked) * 1000) / 10 : null;
@@ -24,7 +38,9 @@ export function HireCard({ state, onHire, onLetGo, busy, readOnly, compact }: { 
               ))}
             </ul>
             <p className="hire-asks muted">
-              {def.proposes.length ? `Will ask you to approve: ${def.proposes.map((k) => ACTIONS[k].verb.toLowerCase()).join(", ")}.` : "Only answers and reports; never acts on its own."}
+              {def.proposes.length
+                ? `Will ask you to approve: ${def.proposes.map((k) => ACTIONS[k].verb.toLowerCase()).join(", ")}.`
+                : "Only answers and reports; never acts on its own."}
             </p>
           </details>
         </div>

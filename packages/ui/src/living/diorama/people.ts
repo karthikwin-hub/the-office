@@ -8,7 +8,15 @@ import type { Kit } from "./paper";
  * office looks like a papercraft film and costs little to draw.
  */
 
-type Look = { skin: string; outfit: string; trim: string; hair: string; style: "bun" | "braid" | "short" | "curly"; kind: "saree" | "kurta" | "shirt"; glasses?: boolean };
+type Look = {
+  skin: string;
+  outfit: string;
+  trim: string;
+  hair: string;
+  style: "bun" | "braid" | "short" | "curly";
+  kind: "saree" | "kurta" | "shirt";
+  glasses?: boolean;
+};
 
 export const LOOKS: Record<string, Look> = {
   "office-manager": { skin: "#8d5a3b", outfit: "#2f7f86", trim: "#d9a441", hair: "#1d1612", style: "bun", kind: "saree" },
@@ -30,7 +38,8 @@ export const LOOKS: Record<string, Look> = {
   "compliance-officer": { skin: "#7a4b30", outfit: "#33465c", trim: "#e9e2d0", hair: "#100c09", style: "short", kind: "shirt", glasses: true },
   "payroll-clerk": { skin: "#a86f4c", outfit: "#2f7a5a", trim: "#e6c36a", hair: "#241812", style: "braid", kind: "saree" },
 };
-export const lookFor = (id: string): Look => LOOKS[id] ?? { skin: "#8d5a3b", outfit: "#4f6e7d", trim: "#efe6cf", hair: "#1d1612", style: "short", kind: "shirt" };
+export const lookFor = (id: string): Look =>
+  LOOKS[id] ?? { skin: "#8d5a3b", outfit: "#4f6e7d", trim: "#efe6cf", hair: "#1d1612", style: "short", kind: "shirt" };
 
 const SPEED = 6;
 const SIT = -0.62;
@@ -61,7 +70,12 @@ export class Doll {
   private stepAcc = 1;
   private carried: THREE.Object3D | null = null;
 
-  constructor(readonly id: string, kit: Kit, home: V2, homeSpot: V2[]) {
+  constructor(
+    readonly id: string,
+    kit: Kit,
+    home: V2,
+    homeSpot: V2[],
+  ) {
     const L = lookFor(id);
     const mat = (c: string) => new THREE.MeshLambertMaterial({ color: c, map: kit.fibre });
     this.doll.scale.setScalar(1.45);
@@ -197,7 +211,9 @@ export class Doll {
       let move = SPEED * dt;
       while (move > 0 && this.path) {
         const tgt = this.path[this.seg]!;
-        const dx = tgt.x - this.pos.x, dz = tgt.z - this.pos.z, len = Math.hypot(dx, dz);
+        const dx = tgt.x - this.pos.x,
+          dz = tgt.z - this.pos.z,
+          len = Math.hypot(dx, dz);
         if (len > 1e-4) this.facing = Math.atan2(dx, dz);
         if (len <= move) {
           this.pos.copy(tgt);

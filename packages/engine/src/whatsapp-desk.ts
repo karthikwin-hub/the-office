@@ -1,4 +1,13 @@
-import { AGENT_BY_ID, CS_CHANNEL_NAMES, type Note, type OrderStatus, type Role, type StagedChange, type WaLanguage, WA_LANGUAGE_NAMES } from "@office/contracts";
+import {
+  AGENT_BY_ID,
+  CS_CHANNEL_NAMES,
+  type Note,
+  type OrderStatus,
+  type Role,
+  type StagedChange,
+  type WaLanguage,
+  WA_LANGUAGE_NAMES,
+} from "@office/contracts";
 import { parseOrderCommand, STATUS_WORDS } from "./customer/orders";
 import type { OfficeService } from "./office";
 import { phrase, WORDS } from "./whatsapp-phrases";
@@ -19,9 +28,20 @@ export type WaSession = { list: WaListed[]; seen: string[]; lastAt: string | nul
 export const newSession = (language: WaLanguage = "en"): WaSession => ({ list: [], seen: [], lastAt: null, language });
 /** A piece of a reply. Fixed phrases are already in the person's language; `translate` marks free text in English. */
 export type WaPart = { text: string; translate?: boolean };
-export type WaMessage = { id: string; text: string; at: string; /** said in a voice note, so it is repeated back first */ heard?: boolean; /** the question in English, when it was asked in another language */ english?: string; language?: WaLanguage | null };
+export type WaMessage = {
+  id: string;
+  text: string;
+  at: string /** said in a voice note, so it is repeated back first */;
+  heard?: boolean /** the question in English, when it was asked in another language */;
+  english?: string;
+  language?: WaLanguage | null;
+};
 export type WaTurn = { parts: WaPart[]; session: WaSession; decided: StagedChange[]; duplicate: boolean };
-export type WaOptions = { base: string; /** the person chose a language in Settings rather than "auto" */ fixedLanguage?: WaLanguage | null; /** the office's id, added to every link */ office?: string };
+export type WaOptions = {
+  base: string /** the person chose a language in Settings rather than "auto" */;
+  fixedLanguage?: WaLanguage | null /** the office's id, added to every link */;
+  office?: string;
+};
 
 export type WaAction = "approve" | "reject" | "later";
 export type WaCommand =
@@ -81,7 +101,8 @@ export function parseCommand(text: string): WaCommand {
   const w = words(raw);
   if (!w.length) return { kind: "desk" };
   if (w.length <= 3 && (w.every((x) => inSet(x, WORDS.help)) || raw === "?")) return { kind: "help" };
-  if (w.length <= 3 && w.some((x) => inSet(x, WORDS.desk)) && w.every((x) => inSet(x, WORDS.desk) || ["good", "morning", "there", "office"].includes(x))) return { kind: "desk" };
+  if (w.length <= 3 && w.some((x) => inSet(x, WORDS.desk)) && w.every((x) => inSet(x, WORDS.desk) || ["good", "morning", "there", "office"].includes(x)))
+    return { kind: "desk" };
   if (/^good\s+morning$/i.test(raw)) return { kind: "desk" };
 
   const known = (x: string) => /^\d+$/.test(x) || actionOf(x) !== null || inSet(x, WORDS.all) || inSet(x, WORDS.filler);
@@ -144,10 +165,16 @@ const firstSentence = (s: string, max = 110) => {
 /** Links name the office, so someone in several businesses lands in the right one. */
 const withOffice = (office: string | undefined) => (office ? `office=${encodeURIComponent(office)}` : "");
 const deskLink = (base: string, office?: string) => `${base.replace(/\/$/, "")}/desk${office ? `?${withOffice(office)}` : ""}`;
-export const figureLink = (base: string, figureId: string, office?: string) => `${base.replace(/\/$/, "")}/?figure=${encodeURIComponent(figureId)}${office ? `&${withOffice(office)}` : ""}`;
+export const figureLink = (base: string, figureId: string, office?: string) =>
+  `${base.replace(/\/$/, "")}/?figure=${encodeURIComponent(figureId)}${office ? `&${withOffice(office)}` : ""}`;
 
 /** A short digest and the numbered list; the numbers are remembered until the next list. */
-export function deskParts(office: OfficeService, person: WaPerson, session: WaSession, opts: WaOptions & { morning?: boolean }): { parts: WaPart[]; session: WaSession } {
+export function deskParts(
+  office: OfficeService,
+  person: WaPerson,
+  session: WaSession,
+  opts: WaOptions & { morning?: boolean },
+): { parts: WaPart[]; session: WaSession } {
   const lang = session.language;
   const items = office.desk().items;
   const first = person.name.split(/\s+/)[0] || person.name;
@@ -267,7 +294,12 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
         break;
       }
       const t = office.customers.replyByRef(cmd.ref, cmd.text, person.name);
-      parts.push({ text: t ? `Sent to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}.` : `There is no customer waiting as number ${cmd.ref}. The number is in the message that told you about them.`, translate: true });
+      parts.push({
+        text: t
+          ? `Sent to ${t.name} on ${CS_CHANNEL_NAMES[t.channel]}.`
+          : `There is no customer waiting as number ${cmd.ref}. The number is in the message that told you about them.`,
+        translate: true,
+      });
       break;
     }
     case "order": {
@@ -276,12 +308,20 @@ export function handleWhatsApp(office: OfficeService, person: WaPerson, session:
         break;
       }
       const o = office.customers.orderUpdate(cmd.number, cmd.status, cmd.tracking, person.name);
-      parts.push({ text: o ? `Order ${o.number} for ${o.customer} is now ${STATUS_WORDS[o.status]}${o.tracking && cmd.tracking ? `, with the tracking link` : ""}. Customers who ask will be told.` : `There is no order ${cmd.number} in your orders.`, translate: true });
+      parts.push({
+        text: o
+          ? `Order ${o.number} for ${o.customer} is now ${STATUS_WORDS[o.status]}${o.tracking && cmd.tracking ? `, with the tracking link` : ""}. Customers who ask will be told.`
+          : `There is no order ${cmd.number} in your orders.`,
+        translate: true,
+      });
       break;
     }
     case "ask": {
       // "remind me ..." and "done ..." are the owner's own tasks, kept by the Executive Assistant.
-      const task = person.role === "owner" ? (office.assistant.fromMessage(person.email, msg.text) ?? (msg.english ? office.assistant.fromMessage(person.email, msg.english) : null)) : null;
+      const task =
+        person.role === "owner"
+          ? (office.assistant.fromMessage(person.email, msg.text) ?? (msg.english ? office.assistant.fromMessage(person.email, msg.english) : null))
+          : null;
       if (task) {
         parts.push({ text: task, translate: true });
         break;
@@ -315,7 +355,18 @@ export function digestChannel(o: { wantsWhatsApp: boolean; lastAt: string | null
 export function noteQuoteRequest(office: OfficeService, r: { party: string; need: string; by: string }): string {
   const id = `lead-wa-${Date.now().toString(36)}`;
   const day = office.asOf;
-  office.books.leads.push({ id, name: r.party || "Customer from a voice note", city: "", source: "WhatsApp voice note", stage: "new", valuePaise: 0, need: r.need, createdOn: day, lastTouchOn: day, nextStep: "Draft the quotation" });
+  office.books.leads.push({
+    id,
+    name: r.party || "Customer from a voice note",
+    city: "",
+    source: "WhatsApp voice note",
+    stage: "new",
+    valuePaise: 0,
+    need: r.need,
+    createdOn: day,
+    lastTouchOn: day,
+    nextStep: "Draft the quotation",
+  });
   const agent = office.hired("quote-desk") ? "quote-desk" : "sales-rep";
   office.log(agent, `${r.by} asked on WhatsApp for a quotation${r.party ? ` for ${r.party}` : ""}: "${r.need.slice(0, 120)}".`, { kind: "lead", id });
   return id;

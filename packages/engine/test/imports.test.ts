@@ -35,10 +35,30 @@ describe("importing filed returns", () => {
     const rep = tdsReport(o.ledger, "FY2026-27-Q2");
     const header = "Section,Deductee PAN,Deductee name,Bill no,Paid on,Amount paid,TDS,Deposited on";
     const csv = (rate: (d: (typeof rep.deductions)[number]) => number) =>
-      [header, ...rep.deductions.map((d) => [d.section, d.pan, `"${d.vendor}"`, o.ledger.bill(d.billId)!.number, d.date, (d.basePaise / 100).toFixed(2), (rate(d) / 100).toFixed(2), d.date.slice(0, 8) + "28"].join(","))].join("\n");
-    o.importReturn(csv((d) => d.expectedPaise), "Rajesh Mehta");
+      [
+        header,
+        ...rep.deductions.map((d) =>
+          [
+            d.section,
+            d.pan,
+            `"${d.vendor}"`,
+            o.ledger.bill(d.billId)!.number,
+            d.date,
+            (d.basePaise / 100).toFixed(2),
+            (rate(d) / 100).toFixed(2),
+            d.date.slice(0, 8) + "28",
+          ].join(","),
+        ),
+      ].join("\n");
+    o.importReturn(
+      csv((d) => d.expectedPaise),
+      "Rajesh Mehta",
+    );
     expect(forms(o, "FY2026-27-Q2")).not.toContain("26Q");
-    o.importReturn(csv((d) => (d.section === "194J" ? Math.round(d.expectedPaise / 5) : d.expectedPaise)), "Rajesh Mehta");
+    o.importReturn(
+      csv((d) => (d.section === "194J" ? Math.round(d.expectedPaise / 5) : d.expectedPaise)),
+      "Rajesh Mehta",
+    );
     expect(forms(o, "FY2026-27-Q2")).toContain("26Q");
   });
 
@@ -49,7 +69,13 @@ describe("importing filed returns", () => {
       data: {
         gstin: s.data.gstin,
         rtnprd: s.data.rtnprd,
-        docdata: { b2b: s.data.docdata.b2b.map((e) => ({ ctin: e.ctin, trdnm: e.trdnm, inv: [{ inum: e.inum, dt: e.idt, val: e.val, items: [{ num: 1, rt: 18, txval: e.txval, igst: e.iamt, cgst: e.camt, sgst: e.samt }] }] })) },
+        docdata: {
+          b2b: s.data.docdata.b2b.map((e) => ({
+            ctin: e.ctin,
+            trdnm: e.trdnm,
+            inv: [{ inum: e.inum, dt: e.idt, val: e.val, items: [{ num: 1, rt: 18, txval: e.txval, igst: e.iamt, cgst: e.camt, sgst: e.samt }] }],
+          })),
+        },
       },
     };
     const r = importReturn(o.ledger, JSON.stringify(portal), null);
@@ -62,12 +88,23 @@ describe("importing filed returns", () => {
     const other = { ...computeGstr3b(o.ledger, "2026-10"), gstin: "29ABCDE1234F1Z5" };
     expect(() => importReturn(o.ledger, JSON.stringify(other), null)).toThrow(ImportError);
     expect(() => importReturn(o.ledger, '{"hello":1}', null)).toThrow(/not a GSTR-1/);
-    const res = dispatch(o, { method: "POST", path: "/api/returns/import", query: new URLSearchParams(), body: { content: "nonsense" }, role: "accountant", user: { name: "R", email: "r@x" }, mode: "mock" });
+    const res = dispatch(o, {
+      method: "POST",
+      path: "/api/returns/import",
+      query: new URLSearchParams(),
+      body: { content: "nonsense" },
+      role: "accountant",
+      user: { name: "R", email: "r@x" },
+      mode: "mock",
+    });
     expect(res.status).toBe(422);
   });
 
   it("parses quoted CSV cells", () => {
-    expect(parseCsv('a,"b, c","d ""e"""\r\n1,2,3\n')).toEqual([["a", "b, c", 'd "e"'], ["1", "2", "3"]]);
+    expect(parseCsv('a,"b, c","d ""e"""\r\n1,2,3\n')).toEqual([
+      ["a", "b, c", 'd "e"'],
+      ["1", "2", "3"],
+    ]);
   });
 });
 

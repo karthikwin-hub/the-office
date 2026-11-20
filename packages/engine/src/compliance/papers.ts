@@ -40,24 +40,46 @@ export function workingPaper(books: Books, obligationId: string, asOf = books.bu
   switch (o.ruleId) {
     case "tds-deposit":
     case "tds-return": {
-      const rows: (string | number | null)[][] = [["Bill", "Date", "Deductee", "PAN", "Section (1961 Act)", "Section 393 reference", "Payment code", "Amount liable (₹)", "TDS (₹)", "Deposit due"]];
+      const rows: (string | number | null)[][] = [
+        ["Bill", "Date", "Deductee", "PAN", "Section (1961 Act)", "Section 393 reference", "Payment code", "Amount liable (₹)", "TDS (₹)", "Deposit due"],
+      ];
       for (const b of l.postedBills) {
         if (!b.tds || !months.includes(b.date.slice(0, 7))) continue;
         const party = l.party(b.partyId);
         const ref = tdsRef(b.tds.section, b.date, party);
-        rows.push([b.number, b.date, party.name, party.pan, b.tds.section, ref.code ? ref.reference : "", ref.code, r2(b.tds.basePaise), r2(b.tds.amountPaise), tdsDepositDue(b.date)]);
+        rows.push([
+          b.number,
+          b.date,
+          party.name,
+          party.pan,
+          b.tds.section,
+          ref.code ? ref.reference : "",
+          ref.code,
+          r2(b.tds.basePaise),
+          r2(b.tds.amountPaise),
+          tdsDepositDue(b.date),
+        ]);
       }
       return paper(name(o.ruleId === "tds-deposit" ? "TDS_challan" : o.form.replace(/\s/g, "")), rows);
     }
     case "gstr1":
     case "gstr3b":
     case "gstr9": {
-      const rows: (string | number | null)[][] = [["Month", "Taxable outward (₹)", "Output tax (₹)", "Eligible ITC (₹)", "Bills not in GSTR-2B", "Cash payable (₹)"]];
+      const rows: (string | number | null)[][] = [
+        ["Month", "Taxable outward (₹)", "Output tax (₹)", "Eligible ITC (₹)", "Bills not in GSTR-2B", "Cash payable (₹)"],
+      ];
       for (const m of months.filter((x) => monthEnd(x) <= asOf || x === asOf.slice(0, 7))) {
         const out = outwardFor(l, m);
         const itc = itcFor(l, m);
         const pay = setOff(out, itc.eligible).payable;
-        rows.push([m, r2(out.taxablePaise), r2(out.igstPaise + out.cgstPaise + out.sgstPaise), r2(itc.eligible.igstPaise + itc.eligible.cgstPaise + itc.eligible.sgstPaise), itc.notIn2b.length, r2(pay.totalPaise)]);
+        rows.push([
+          m,
+          r2(out.taxablePaise),
+          r2(out.igstPaise + out.cgstPaise + out.sgstPaise),
+          r2(itc.eligible.igstPaise + itc.eligible.cgstPaise + itc.eligible.sgstPaise),
+          itc.notIn2b.length,
+          r2(pay.totalPaise),
+        ]);
       }
       return paper(name(o.form.replace(/\s/g, "")), rows);
     }
@@ -71,17 +93,33 @@ export function workingPaper(books: Books, obligationId: string, asOf = books.bu
       ]);
     }
     case "msme1": {
-      const rows: (string | number | null)[][] = [["Supplier", "Udyam number", "Category", "Bill", "Bill date", "Days allowed", "Amount (₹)", "Unpaid now (₹)", "Days since bill", "Reason for delay"]];
+      const rows: (string | number | null)[][] = [
+        ["Supplier", "Udyam number", "Category", "Bill", "Bill date", "Days allowed", "Amount (₹)", "Unpaid now (₹)", "Days since bill", "Reason for delay"],
+      ];
       for (const b of l.payableBills) {
         const party = l.party(b.partyId);
         if (!msmeProtected(party) || !months.includes(b.date.slice(0, 7))) continue;
         const open = billOpenPaise(l, b);
-        rows.push([party.name, party.udyamNumber ?? "", party.udyamCategory ?? "", b.number, b.date, msmeLimitDays(party), r2(b.totals.totalPaise), r2(open), Math.round((Date.parse(asOf) - Date.parse(b.date)) / 86_400_000), ""]);
+        rows.push([
+          party.name,
+          party.udyamNumber ?? "",
+          party.udyamCategory ?? "",
+          b.number,
+          b.date,
+          msmeLimitDays(party),
+          r2(b.totals.totalPaise),
+          r2(open),
+          Math.round((Date.parse(asOf) - Date.parse(b.date)) / 86_400_000),
+          "",
+        ]);
       }
       return paper(name("MSME-1"), rows);
     }
     case "dpt3":
-      return paper(name("DPT-3"), [["Lender", "Kind", "Amount (₹)", "Taken on", "Secured", "Repaid on"], ...p.loans.map((x) => [x.lender, x.kind.replace("_", " "), r2(x.amountPaise), x.takenOn, x.secured ? "Yes" : "No", x.closedOn ?? ""])]);
+      return paper(name("DPT-3"), [
+        ["Lender", "Kind", "Amount (₹)", "Taken on", "Secured", "Repaid on"],
+        ...p.loans.map((x) => [x.lender, x.kind.replace("_", " "), r2(x.amountPaise), x.takenOn, x.secured ? "Yes" : "No", x.closedOn ?? ""]),
+      ]);
     case "aoc4":
       return paper(name("AOC-4"), [
         ["Field", "Value"],
@@ -146,7 +184,10 @@ const MASTER_LABELS: [RegExp, string][] = [
 /** Reads master data copied from the MCA portal: "Label: value" or label and value on the same line separated by tabs. */
 export function parseMasterData(text: string): Record<string, string> {
   const fields: Record<string, string> = {};
-  const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const lines = text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const m = /^([^:\t]+?)\s*(?::|\t+)\s*(.*)$/.exec(line);
@@ -166,20 +207,64 @@ export function masterChecks(books: Books, p: ComplianceProfile): MasterCheck[] 
   const f = p.masterData?.fields ?? {};
   if (!p.masterData) return [];
   const rows: MasterCheck[] = [];
-  const add = (field: string, portal: string | undefined, office: string, ok: boolean, note: string) => rows.push({ field, portal: portal ?? "Not shown", office, ok, note });
+  const add = (field: string, portal: string | undefined, office: string, ok: boolean, note: string) =>
+    rows.push({ field, portal: portal ?? "Not shown", office, ok, note });
   add("CIN", f.cin, p.cin, norm(f.cin ?? "") === norm(p.cin), "Must match exactly.");
   add("Name", f.name, books.business.legalName, norm(f.name ?? "") === norm(books.business.legalName), "The name on every form comes from the master data.");
   add("Status", f.status, "Active", /^active$/i.test(f.status ?? ""), "Forms other than those to revive the company cannot be filed unless it is Active.");
-  if (f.activeCompliance) add("Active compliance", f.activeCompliance, "ACTIVE Compliant", /compliant/i.test(f.activeCompliance) && !/non/i.test(f.activeCompliance), "Set by the INC-22A filing.");
-  if (f.roc || p.roc) add("ROC", f.roc, p.roc, !p.roc || norm(f.roc ?? "").includes(norm(p.roc).slice(0, 6)), "The ROC mapping changed on 16 February 2026; use what the portal shows.");
-  if (f.address || p.registeredOffice) add("Registered office", f.address, p.registeredOffice, norm(f.address ?? "").slice(0, 20) === norm(p.registeredOffice).slice(0, 20), "A change needs INC-22 first.");
-  if (f.authorised || p.authorisedCapitalPaise) add("Authorised capital", f.authorised, p.authorisedCapitalPaise ? `₹${(p.authorisedCapitalPaise / 100).toLocaleString("en-IN")}` : "", amountOf(f.authorised ?? "") === p.authorisedCapitalPaise, "Changes need SH-7.");
-  if (f.paidUp || p.paidUpCapitalPaise !== null) add("Paid-up capital", f.paidUp, p.paidUpCapitalPaise !== null ? `₹${(p.paidUpCapitalPaise / 100).toLocaleString("en-IN")}` : "", amountOf(f.paidUp ?? "") === p.paidUpCapitalPaise, "A difference usually means a PAS-3 was missed.");
+  if (f.activeCompliance)
+    add(
+      "Active compliance",
+      f.activeCompliance,
+      "ACTIVE Compliant",
+      /compliant/i.test(f.activeCompliance) && !/non/i.test(f.activeCompliance),
+      "Set by the INC-22A filing.",
+    );
+  if (f.roc || p.roc)
+    add(
+      "ROC",
+      f.roc,
+      p.roc,
+      !p.roc || norm(f.roc ?? "").includes(norm(p.roc).slice(0, 6)),
+      "The ROC mapping changed on 16 February 2026; use what the portal shows.",
+    );
+  if (f.address || p.registeredOffice)
+    add(
+      "Registered office",
+      f.address,
+      p.registeredOffice,
+      norm(f.address ?? "").slice(0, 20) === norm(p.registeredOffice).slice(0, 20),
+      "A change needs INC-22 first.",
+    );
+  if (f.authorised || p.authorisedCapitalPaise)
+    add(
+      "Authorised capital",
+      f.authorised,
+      p.authorisedCapitalPaise ? `₹${(p.authorisedCapitalPaise / 100).toLocaleString("en-IN")}` : "",
+      amountOf(f.authorised ?? "") === p.authorisedCapitalPaise,
+      "Changes need SH-7.",
+    );
+  if (f.paidUp || p.paidUpCapitalPaise !== null)
+    add(
+      "Paid-up capital",
+      f.paidUp,
+      p.paidUpCapitalPaise !== null ? `₹${(p.paidUpCapitalPaise / 100).toLocaleString("en-IN")}` : "",
+      amountOf(f.paidUp ?? "") === p.paidUpCapitalPaise,
+      "A difference usually means a PAS-3 was missed.",
+    );
   if (f.email) add("Email", f.email, books.business.email, norm(f.email) === norm(books.business.email), "The ROC's notices go here.");
   const lastAgm = [...p.agms].sort((a, b) => (a.heldOn < b.heldOn ? 1 : -1))[0];
-  if (f.lastAgm || lastAgm) add("Last AGM", f.lastAgm, lastAgm?.heldOn ?? "", Boolean(f.lastAgm && lastAgm && dateMatches(f.lastAgm, lastAgm.heldOn)), "Updates when AOC-4 or MGT-7 for that year is approved.");
+  if (f.lastAgm || lastAgm)
+    add(
+      "Last AGM",
+      f.lastAgm,
+      lastAgm?.heldOn ?? "",
+      Boolean(f.lastAgm && lastAgm && dateMatches(f.lastAgm, lastAgm.heldOn)),
+      "Updates when AOC-4 or MGT-7 for that year is approved.",
+    );
   const dins = (f.dins ?? "").split(",").filter(Boolean);
-  for (const d of p.directors) add(`Director ${d.name}`, dins.includes(d.din) ? d.din : "Not on the portal", d.din, dins.includes(d.din), "A director not on the portal needs DIR-12.");
+  for (const d of p.directors)
+    add(`Director ${d.name}`, dins.includes(d.din) ? d.din : "Not on the portal", d.din, dins.includes(d.din), "A director not on the portal needs DIR-12.");
   return rows;
 }
 
@@ -211,7 +296,12 @@ export function filingPack(books: Books, obligationId: string, asOf = books.busi
     else if (d.dscExpiresOn < o.dueOn) problems.push(`DSC expires ${dateLabel(d.dscExpiresOn)}, before the due date`);
     if (kycDue(d, asOf) < asOf) problems.push("DIR-3 KYC overdue, so the DIN is deactivated");
     if (!d.mcaSigner) problems.push("not set up to sign on the portal");
-    return { name: d.name, din: d.din, ok: problems.length === 0, note: problems.length ? problems.join("; ") : `Can sign; DSC valid to ${dateLabel(d.dscExpiresOn!)}.` };
+    return {
+      name: d.name,
+      din: d.din,
+      ok: problems.length === 0,
+      note: problems.length ? problems.join("; ") : `Can sign; DSC valid to ${dateLabel(d.dscExpiresOn!)}.`,
+    };
   });
   return {
     obligationId: o.id,
@@ -273,7 +363,10 @@ function prefillFor(books: Books, p: ComplianceProfile, o: Obligation): FilingPa
     }
     case "adt1":
     case "event-adt1":
-      rows.push({ label: "Auditor", value: p.auditor, from: "Profile" }, { label: "Term ends with the AGM for", value: p.auditorTermEndsFy ?? "", from: "Profile" });
+      rows.push(
+        { label: "Auditor", value: p.auditor, from: "Profile" },
+        { label: "Term ends with the AGM for", value: p.auditorTermEndsFy ?? "", from: "Profile" },
+      );
       break;
     case "dir3kyc": {
       const d = p.directors.find((x) => x.din === o.period || x.id === o.period);

@@ -82,7 +82,11 @@ const spaced = (v: string) => v.replace(/\s+/g, " ").trim();
  * signature passed whose domain aligns with it. A message with no single, plain `From:` is never
  * authenticated.
  */
-export function mailVerdict(results: string | null | undefined, headers: Header[], from: string | null): Pick<Inbound, "authenticated" | "signedBy" | "spfFor"> {
+export function mailVerdict(
+  results: string | null | undefined,
+  headers: Header[],
+  from: string | null,
+): Pick<Inbound, "authenticated" | "signedBy" | "spfFor"> {
   const none = { authenticated: false, signedBy: [] };
   const stamped = headers.filter((h) => h.key.toLowerCase() === "authentication-results");
   const top = stamped[0];
@@ -125,7 +129,8 @@ export function mailVerdict(results: string | null | undefined, headers: Header[
 }
 
 /** Google's own forwarding confirmation, proven to be from Google. */
-export const fromGoogleForwarding = (mail: { from: string | null; authenticated?: boolean }) => Boolean(mail.authenticated) && (mail.from ?? "").trim().toLowerCase() === "forwarding-noreply@google.com";
+export const fromGoogleForwarding = (mail: { from: string | null; authenticated?: boolean }) =>
+  Boolean(mail.authenticated) && (mail.from ?? "").trim().toLowerCase() === "forwarding-noreply@google.com";
 
 /**
  * Whether the envelope sender is proven, as for an owner's Gmail filter forward (`anil+caf_=…@gmail.com`):
@@ -154,7 +159,17 @@ export async function parseInbound(raw: ReadableStream | ArrayBuffer, opts: { sh
     else attachments.push({ filename: name, mimeType: kind, content });
   }
   const from = mail.from?.address ?? null;
-  return { from, name: mail.from?.name || null, subject: mail.subject ?? "", text: mail.text ?? "", messageId: mail.messageId ?? null, inReplyTo: mail.inReplyTo ?? null, attachments, skipped, ...mailVerdict(opts.results, mail.headers, from) };
+  return {
+    from,
+    name: mail.from?.name || null,
+    subject: mail.subject ?? "",
+    text: mail.text ?? "",
+    messageId: mail.messageId ?? null,
+    inReplyTo: mail.inReplyTo ?? null,
+    attachments,
+    skipped,
+    ...mailVerdict(opts.results, mail.headers, from),
+  };
 }
 
 const b64 = (s: string) => {
@@ -168,7 +183,16 @@ const b64 = (s: string) => {
 export const oneLine = (v: string) => v.replace(/[\r\n\0]+/g, " ").trim();
 
 /** A plain-text message in UTF-8, as `send_email` takes it. */
-export function plainMessage(m: { fromName: string; from: string; to: string; subject: string; body: string; replyTo?: string; messageId?: string; inReplyTo?: string | null }): string {
+export function plainMessage(m: {
+  fromName: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  replyTo?: string;
+  messageId?: string;
+  inReplyTo?: string | null;
+}): string {
   const domain = m.from.split("@")[1] ?? "localhost";
   const id = oneLine(m.messageId ?? `<${crypto.randomUUID()}@${domain}>`);
   const inReplyTo = m.inReplyTo ? oneLine(m.inReplyTo) : "";
@@ -210,7 +234,14 @@ export function mailSender(env: Pick<Env, "MAILER" | "MAIL_FROM" | "RESEND_API_K
       const res = await fetcher("https://api.resend.com/emails", {
         method: "POST",
         headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ from: `${oneLine(m.fromName).replace(/[<>"]/g, "")} <${from}>`, to: [oneLine(m.to)], subject: oneLine(m.subject), text: m.body, ...(m.replyTo ? { reply_to: oneLine(m.replyTo) } : {}), headers }),
+        body: JSON.stringify({
+          from: `${oneLine(m.fromName).replace(/[<>"]/g, "")} <${from}>`,
+          to: [oneLine(m.to)],
+          subject: oneLine(m.subject),
+          text: m.body,
+          ...(m.replyTo ? { reply_to: oneLine(m.replyTo) } : {}),
+          headers,
+        }),
       });
       if (!res.ok) throw new Error(`the mail service refused the message (${res.status})`);
       return id;

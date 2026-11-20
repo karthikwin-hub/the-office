@@ -10,7 +10,15 @@ type What = "ai" | "cs_ai" | "ea_ai" | "upload";
 
 export class QuotaError extends Error {
   constructor(what: What) {
-    super(what === "ai" ? "This office has read as much as it can today. It will read again tomorrow." : what === "cs_ai" ? "The Customer Service agent has used today's model allowance; it answers from its rules until tomorrow." : what === "ea_ai" ? "The assistant has used today's model allowance; it drafts plain holding replies until tomorrow." : "This office has stored as much as it can today. Try again tomorrow.");
+    super(
+      what === "ai"
+        ? "This office has read as much as it can today. It will read again tomorrow."
+        : what === "cs_ai"
+          ? "The Customer Service agent has used today's model allowance; it answers from its rules until tomorrow."
+          : what === "ea_ai"
+            ? "The assistant has used today's model allowance; it drafts plain holding replies until tomorrow."
+            : "This office has stored as much as it can today. Try again tomorrow.",
+    );
   }
 }
 

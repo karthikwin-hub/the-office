@@ -24,7 +24,9 @@ export function WhatsAppSettings() {
       </p>
       {!s.available ? (
         <p className="field-help">
-          {isOwner() ? "WhatsApp is not set up for this office yet. Add the WhatsApp Cloud API keys (WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID) as Worker secrets, then link your phone here." : "WhatsApp is not set up for this office yet. The owner can switch it on."}
+          {isOwner()
+            ? "WhatsApp is not set up for this office yet. Add the WhatsApp Cloud API keys (WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID) as Worker secrets, then link your phone here."
+            : "WhatsApp is not set up for this office yet. The owner can switch it on."}
         </p>
       ) : s.linked ? (
         <div className="wa-linked">
@@ -35,11 +37,17 @@ export function WhatsAppSettings() {
               Unlink
             </button>
           </p>
-          <p className="field-help">Not your phone, or not when you linked it? Unlink it now and get a new code: whoever has that number can talk to the office as you.</p>
+          <p className="field-help">
+            Not your phone, or not when you linked it? Unlink it now and get a new code: whoever has that number can talk to the office as you.
+          </p>
           <div className="wa-fields">
             <label className="field">
               <span>Reply language</span>
-              <select className="input" value={s.language} onChange={(e) => save.mutate({ language: e.target.value === "auto" ? "auto" : WaLanguage.parse(e.target.value) })}>
+              <select
+                className="input"
+                value={s.language}
+                onChange={(e) => save.mutate({ language: e.target.value === "auto" ? "auto" : WaLanguage.parse(e.target.value) })}
+              >
                 <option value="auto">The language I write in</option>
                 {WaLanguage.options.map((l) => (
                   <option key={l} value={l}>
@@ -60,7 +68,8 @@ export function WhatsAppSettings() {
       ) : code ? (
         <div className="wa-code" role="status">
           <p>
-            From your own phone, send <strong className="num">JOIN {code.code}</strong> to {code.businessNumber ? <span className="num">{code.businessNumber}</span> : "the office's WhatsApp number"} within 15 minutes.
+            From your own phone, send <strong className="num">JOIN {code.code}</strong> to{" "}
+            {code.businessNumber ? <span className="num">{code.businessNumber}</span> : "the office's WhatsApp number"} within 15 minutes.
           </p>
           {code.link ? (
             <a className="btn btn-primary btn-small" href={code.link} target="_blank" rel="noreferrer">

@@ -113,12 +113,16 @@ exit 0
 `;
   put("apps/api/node_modules/.bin/wrangler", stub("wrangler"), true);
   put("bin/pnpm", stub("pnpm"), true);
-  put("bin/age", `#!/bin/sh
+  put(
+    "bin/age",
+    `#!/bin/sh
 echo "age $*" >> "${log}"
 [ -n "\${FAIL_AGE:-}" ] && exit 1
 while [ $# -gt 1 ]; do [ "$1" = -o ] && out=$2; shift; done
 cp "$1" "$out"
-`, true);
+`,
+    true,
+  );
   const run = (args: string[], env: Record<string, string> = {}) => {
     const r = spawnSync("sh", [join(dir, "tools/admin/deploy.sh"), ...args], {
       encoding: "utf8",
@@ -210,7 +214,11 @@ describe("admin.mjs targets", () => {
 
   it("refuses an environment it does not know, a missing one, or the --env=staging form, before touching anything", () => {
     const { admin } = sandbox();
-    for (const args of [["list", "--env", "stagign"], ["list", "--env"], ["list", "--env=staging"]]) {
+    for (const args of [
+      ["list", "--env", "stagign"],
+      ["list", "--env"],
+      ["list", "--env=staging"],
+    ]) {
       const r = admin(args, STAGING);
       expect(r.status).toBe(1);
       expect(r.stderr).toMatch(/Not an environment/);
@@ -222,7 +230,10 @@ describe("admin.mjs targets", () => {
 describe("deploy.sh backs up before it migrates", () => {
   const steps = (calls: string[]) => calls.map((c) => c.split(" token=")[0]!.replace(/backups\/\S+/, "<file>"));
 
-  for (const [target, env, flag] of [["staging", STAGING, "staging"], ["live", LIVE, ""]] as const) {
+  for (const [target, env, flag] of [
+    ["staging", STAGING, "staging"],
+    ["live", LIVE, ""],
+  ] as const) {
     it(`${target}: build, back up, migrate, deploy, in that order`, () => {
       const { dir, run } = sandbox();
       const r = run([target], env);
@@ -290,7 +301,12 @@ describe("deploy.sh backs up before it migrates", () => {
 
 describe("smoke.sh", () => {
   const SMOKE = join(ROOT, "tools/admin/smoke.sh");
-  const HEADERS = { "content-security-policy": "default-src 'none'", "strict-transport-security": "max-age=31536000", "x-frame-options": "DENY", "x-content-type-options": "nosniff" };
+  const HEADERS = {
+    "content-security-policy": "default-src 'none'",
+    "strict-transport-security": "max-age=31536000",
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+  };
 
   /** A stand-in Worker; `broken` drops a header and lets a cross-origin POST through. */
   async function serve(broken: boolean) {
@@ -298,7 +314,18 @@ describe("smoke.sh", () => {
       const path = (req.url ?? "/").split("?")[0] ?? "/";
       const headers = broken ? { ...HEADERS, "x-frame-options": undefined } : HEADERS;
       for (const [k, v] of Object.entries(headers)) if (v) res.setHeader(k, v);
-      const code = path === "/api/health" ? 200 : path === "/api/office" ? 401 : path.startsWith("/media/") ? 404 : req.method === "POST" && path === "/api/offices" ? (broken ? 200 : 403) : 200;
+      const code =
+        path === "/api/health"
+          ? 200
+          : path === "/api/office"
+            ? 401
+            : path.startsWith("/media/")
+              ? 404
+              : req.method === "POST" && path === "/api/offices"
+                ? broken
+                  ? 200
+                  : 403
+                : 200;
       res.writeHead(code).end();
     });
     await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
