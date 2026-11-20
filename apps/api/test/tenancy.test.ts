@@ -113,7 +113,7 @@ type Seen = { stub: string; room: string | null; path: string; caller: Caller; b
  */
 function officesNs(docs: ReturnType<typeof r2>) {
   const seen: Seen[] = [];
-  const mail = { admit: true, storedBeforeAsked: [] as number[] };
+  const mail = { admit: true, storedBeforeAsked: [] as number[], filesOk: Number.POSITIVE_INFINITY };
   const exports = new Map<string, OfficeExports>();
   const ns = {
     idFromName: (name: string) => ({ name }),
@@ -126,6 +126,7 @@ function officesNs(docs: ReturnType<typeof r2>) {
         seen.push({ stub: id.name, room: req.headers.get("x-partykit-room"), path, caller, body: req.method === "GET" ? "" : await req.text(), sealed });
         // Stored files and exports run the office's own code, over this bucket and the test's root key.
         const files = new OfficeFiles(docs as unknown as R2Bucket, rootKeys({ SOCIAL_TOKEN_KEY: SECRET }), id.name);
+        if (path.startsWith("/internal/files/") && mail.filesOk-- <= 0) return Response.json({ error: "down" }, { status: 500 });
         const filed = await fileRoute(files, copy, path);
         if (filed) return filed;
         if (path === "/internal/export/plan") {
@@ -541,6 +542,37 @@ describe("one office cannot reach another", () => {
     await receiveEmail(stray, w.env);
     expect(stray.setReject).toHaveBeenCalled();
     expect(w.docs.map.size).toBe(1);
+  });
+
+  it("leaves no stray files when an emailed attachment cannot be stored", async () => {
+    const { w, anil, A } = await twoOffices();
+    const to = ((await (await call(w, anil, inOffice(A, ROUTES.officeAdmin))).json()) as { ingestEmail: string }).ingestEmail;
+    const part = (n: number) => [
+      "--b",
+      `Content-Type: application/pdf; name="bill-${n}.pdf"`,
+      `Content-Disposition: attachment; filename="bill-${n}.pdf"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      btoa(`%PDF-1.4 bill ${n}`),
+    ];
+    const raw = [
+      "From: bills@supplier.test",
+      `To: ${to}`,
+      "Subject: Bills",
+      "MIME-Version: 1.0",
+      'Content-Type: multipart/mixed; boundary="b"',
+      "",
+      ...part(1),
+      ...part(2),
+      "--b--",
+      "",
+    ].join("\r\n");
+    w.mail.filesOk = 1;
+    await expect(
+      receiveEmail({ from: "bills@supplier.test", to, raw: new Response(raw).body!, setReject: vi.fn() } as unknown as ForwardableEmailMessage, w.env),
+    ).rejects.toThrow(/could not store an attachment/);
+    expect(w.docs.map.size).toBe(0);
+    expect(w.seen.some((s) => s.path === "/internal/email")).toBe(false);
   });
 
   it("sends mail to a support address to that office's Customer Service agent, not its bills", async () => {

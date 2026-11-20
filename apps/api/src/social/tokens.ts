@@ -107,7 +107,7 @@ export class TokenVault {
     if (row.key_id) {
       const root = await keyById(this.keys, row.key_id);
       if (!root) {
-        log("warn", "tokens.root-key-missing", { channel: channelId, message: `sealed with root key ${row.key_id}, which is no longer configured` });
+        log("warn", "tokens.root-key-missing", { channel: channelId, message: "sealed with a root key that is no longer configured" });
         return null;
       }
       roots = [root];

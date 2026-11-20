@@ -32,7 +32,7 @@ import { backupTarget, deleteObjects, listObjects, officeBackupPrefix, retainedK
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
 import { rootKeys } from "./keyring";
-import { officePrefix } from "./keys";
+import { docKey, officePrefix } from "./keys";
 import { sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
 import { exportArchive, type ExportPlan } from "./export";
@@ -669,10 +669,24 @@ async function admitted(env: Env, officeId: string, kind: MailKind, mail: Inboun
   return ((await res.json()) as { admit?: boolean }).admit === true;
 }
 
-/** An attachment goes to its office, which seals it with its own key and stores it (`files.ts`): no crypto in the Worker. */
-async function storeAttachment(env: Env, officeId: string, id: string, a: Inbound["attachments"][number], by: string) {
-  const res = await toOffice(env, attachmentRequest(id, a, by), system(officeId));
-  if (!res.ok) throw new Error(`The office could not store an attachment (${res.status}).`);
+/**
+ * A mail's attachments go to its office, which seals each with its own key and stores it (`files.ts`): no crypto in
+ * the Worker. If one cannot be stored, those already stored are removed, so a failed delivery leaves no stray files.
+ */
+async function storeAttachments(env: Env, officeId: string, mail: Inbound, by: string): Promise<InboundDocs["docs"]> {
+  const docs: InboundDocs["docs"] = [];
+  try {
+    for (const a of mail.attachments) {
+      const id = newDocId();
+      const res = await toOffice(env, attachmentRequest(id, a, by), system(officeId));
+      if (!res.ok) throw new Error(`The office could not store an attachment (${res.status}).`);
+      docs.push({ id, mimeType: a.mimeType, filename: a.filename });
+    }
+  } catch (e) {
+    if (docs.length) await env.DOCS.delete(docs.map((d) => docKey(officeId, d.id))).catch(() => undefined);
+    throw e;
+  }
+  return docs;
 }
 
 /** Mail to `<slug>@INGEST_DOMAIN`: the address alone says which office it is for; any other address is refused. */
@@ -698,12 +712,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   if (sales) {
     const mail = await parseInbound(message.raw, { sheets: true, results: authResults(message) });
     if (!(await admitted(env, sales, "sales", mail, message.from))) return;
-    const docs: InboundDocs["docs"] = [];
-    for (const a of mail.attachments) {
-      const id = newDocId();
-      await storeAttachment(env, sales, id, a, mail.from ?? message.from);
-      docs.push({ id, mimeType: a.mimeType, filename: a.filename });
-    }
+    const docs = await storeAttachments(env, sales, mail, mail.from ?? message.from);
     const body: MailDocs & { envelope: string } = {
       from: mail.from,
       envelope: message.from,
@@ -720,12 +729,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   if (assistant) {
     const mail = await parseInbound(message.raw, { results: authResults(message) });
     if (!(await admitted(env, assistant, "assistant", mail, message.from))) return;
-    const docs: AssistantInbound["docs"] = [];
-    for (const a of mail.attachments) {
-      const id = newDocId();
-      await storeAttachment(env, assistant, id, a, mail.from ?? message.from);
-      docs.push({ id, mimeType: a.mimeType, filename: a.filename });
-    }
+    const docs = await storeAttachments(env, assistant, mail, mail.from ?? message.from);
     const body: AssistantInbound = {
       envelope: message.from,
       from: mail.from,
@@ -749,12 +753,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   }
   const mail = await parseInbound(message.raw, { results: authResults(message) });
   if (!(await admitted(env, officeId, "email", mail, message.from))) return;
-  const docs: InboundDocs["docs"] = [];
-  for (const a of mail.attachments) {
-    const id = newDocId();
-    await storeAttachment(env, officeId, id, a, mail.from ?? message.from);
-    docs.push({ id, mimeType: a.mimeType, filename: a.filename });
-  }
+  const docs = await storeAttachments(env, officeId, mail, mail.from ?? message.from);
   const body: MailDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };
   const res = await toOffice(env, internal("/internal/email", body), system(officeId));
   if (!res.ok) throw new Error(`The office could not take the email (${res.status}).`);

@@ -125,6 +125,7 @@ export async function fileRoute(files: OfficeFiles, request: Request, path: stri
   }
   if (request.method === "PUT" && where === "internal/files") {
     if (!FILE_ID.test(id)) return notFound("File not found");
+    if (Number(request.headers.get("content-length") ?? 0) > MAX_FILE) return Response.json({ error: "Too big." }, { status: 413 });
     const bytes = await request.arrayBuffer();
     if (bytes.byteLength > MAX_FILE) return Response.json({ error: "Too big." }, { status: 413 });
     let given: Record<string, unknown>;
