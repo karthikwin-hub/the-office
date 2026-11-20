@@ -31,6 +31,7 @@ import { AccountRecords } from "./account";
 import { backupTarget, deleteObjects, listObjects, officeBackupPrefix, retainedKeepUntil, retainedOffice } from "./backup";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
+import { rootKeys } from "./keyring";
 import { docKey, mediaKey, officePrefix } from "./keys";
 import { fileHeaders, sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
@@ -136,11 +137,8 @@ export async function deliverMeta(env: Env, body: unknown): Promise<boolean> {
 /** Short-lived public links to post pictures, for platforms that fetch media themselves. Signed for one office and one picture. */
 app.get("/media/:office/:id", async (c) => {
   const { office, id } = c.req.param();
-  if (
-    !OFFICE_ID.test(office) ||
-    !c.env.SOCIAL_TOKEN_KEY ||
-    !(await verifyMedia(c.env.SOCIAL_TOKEN_KEY, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null))
-  )
+  const keys = rootKeys(c.env);
+  if (!OFFICE_ID.test(office) || !keys || !(await verifyMedia(keys, office, id, c.req.query("exp") ?? null, c.req.query("sig") ?? null)))
     return c.text("Not found", 404);
   const obj = await c.env.DOCS.get(mediaKey(office, id));
   if (!obj) return c.text("Not found", 404);
@@ -422,7 +420,8 @@ app.post("/api/platform/businesses/:id/owner-invitation", async (c) => {
 /** The platform's sign-in comes back to one address for every office; the signed state says which office started it. */
 app.get("/api/channels/:platform/callback", async (c) => {
   const platform = PlatformEnum.safeParse(c.req.param("platform"));
-  const state = platform.success && c.env.SOCIAL_TOKEN_KEY ? await readState(c.env.SOCIAL_TOKEN_KEY, platform.data, c.req.query("state") ?? null) : null;
+  const keys = rootKeys(c.env);
+  const state = platform.success && keys ? await readState(keys, platform.data, c.req.query("state") ?? null) : null;
   const user = c.get("user");
   const m = state && OFFICE_ID.test(state.officeId) ? await cp(c.env).membership(state.officeId, user.id) : null;
   if (!state || !m || m.office.status !== "active" || m.role !== "owner" || twoFactorMissing(user) || state.by !== user.email)

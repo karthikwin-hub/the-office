@@ -1,5 +1,6 @@
 import { RETENTION_YEARS } from "@office/engine";
 import { seal } from "./envelope";
+import type { RootKeys } from "./keyring";
 import type { Env } from "./env";
 
 /**
@@ -27,8 +28,8 @@ export async function gzip(text: string): Promise<ArrayBuffer> {
 }
 
 /** A copy of an office's books as it leaves the office: JSON, gzipped, then sealed with the office's backup key. */
-export async function sealedCopy(secret: string, officeId: string, data: unknown): Promise<Uint8Array> {
-  return seal(secret, officeId, await gzip(JSON.stringify(data)));
+export async function sealedCopy(keys: RootKeys, officeId: string, data: unknown): Promise<Uint8Array> {
+  return seal(keys, officeId, await gzip(JSON.stringify(data)));
 }
 
 const enc = new TextEncoder();

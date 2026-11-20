@@ -2,6 +2,7 @@ import type { Channel, Platform } from "@office/contracts";
 import { PLATFORM_NAMES } from "@office/contracts";
 import type { OfficeService, SocialEffect } from "@office/engine";
 import { type ChannelAdapter, PlatformError, type Tokens } from "./adapter";
+import type { RootKeys } from "../keyring";
 import { log } from "../log";
 import { signedMedia } from "./media";
 import type { TokenVault } from "./tokens";
@@ -40,7 +41,7 @@ export class SocialHost {
     private readonly office: OfficeService,
     private readonly vault: TokenVault,
     private readonly adapters: Adapters,
-    private readonly opts: { base: string; officeId: string; mediaSecret: string | undefined; kv: Kv; now?: () => number },
+    private readonly opts: { base: string; officeId: string; mediaKeys: RootKeys | null; kv: Kv; now?: () => number },
   ) {}
 
   private now() {
@@ -116,9 +117,9 @@ export class SocialHost {
     let error: PlatformError;
     if ("a" in r) {
       try {
-        const media = this.opts.mediaSecret
+        const media = this.opts.mediaKeys
           ? await signedMedia(
-              this.opts.mediaSecret,
+              this.opts.mediaKeys,
               this.opts.base,
               this.opts.officeId,
               this.office.books.media.filter((m) => v.mediaIds.includes(m.id)),

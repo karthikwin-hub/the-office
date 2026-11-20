@@ -1,3 +1,5 @@
+import { everyKey, keyById, keyId, type RootKeys } from "../keyring";
+import { log } from "../log";
 import type { Tokens } from "./adapter";
 
 const enc = new TextEncoder();
@@ -38,27 +40,25 @@ export async function open<T>(key: CryptoKey, channelId: string, sealed: string)
 }
 
 /**
- * Which key sealed a row. 0 is the single-office key from before; 1 is the office's own key.
- * Rows are resealed with the current key whenever they are read.
+ * Which office key sealed a row: 0 is the single-office key from before; 1 is the office's own key. Separately,
+ * `key_id` names the root key it was derived from (`keyId`; null for rows sealed before root keys had ids).
+ * Rows are resealed with the current office key and root key whenever they are read, so after a rotation every
+ * token in use moves to the new root key on its next read.
  */
 export const KEY_VERSION = 1;
 
 /** Platform tokens in the Office's SQLite, encrypted at rest. Nothing here is ever sent to a browser. */
 export class TokenVault {
-  private keys: Map<number, Promise<CryptoKey>> | null;
-
   /** Without an office id (tests, the old single office before it learns its id) rows stay on the shared key. */
   constructor(
     private readonly sql: SqlStorage,
-    secret: string | undefined,
-    officeId?: string,
+    private readonly keys: RootKeys | null,
+    private readonly officeId?: string,
   ) {
     sql.exec("CREATE TABLE IF NOT EXISTS social_tokens (channel_id TEXT PRIMARY KEY, sealed TEXT NOT NULL, updated_at INTEGER NOT NULL)");
     const cols = sql.exec<{ name: string }>("PRAGMA table_info(social_tokens)").toArray();
     if (!cols.some((c) => c.name === "key_version")) sql.exec("ALTER TABLE social_tokens ADD COLUMN key_version INTEGER NOT NULL DEFAULT 0");
-    this.keys = secret
-      ? new Map([[0, subkey(secret, "tokens", "AES-GCM")], ...(officeId ? ([[KEY_VERSION, subkey(secret, "tokens", "AES-GCM", officeId)]] as const) : [])])
-      : null;
+    if (!cols.some((c) => c.name === "key_id")) sql.exec("ALTER TABLE social_tokens ADD COLUMN key_id TEXT");
   }
 
   get ready(): boolean {
@@ -66,39 +66,58 @@ export class TokenVault {
   }
 
   private get current(): number {
-    return this.keys?.has(KEY_VERSION) ? KEY_VERSION : 0;
+    return this.officeId ? KEY_VERSION : 0;
+  }
+
+  private key(root: string, version: number): Promise<CryptoKey> {
+    return subkey(root, "tokens", "AES-GCM", version === KEY_VERSION ? this.officeId : undefined);
   }
 
   async put(channelId: string, tokens: Tokens): Promise<void> {
     if (!this.keys) throw new Error("SOCIAL_TOKEN_KEY is not set");
     const version = this.current;
-    const sealed = await seal(await this.keys.get(version)!, channelId, tokens);
+    const sealed = await seal(await this.key(this.keys.current, version), channelId, tokens);
     this.sql.exec(
-      "INSERT INTO social_tokens (channel_id, sealed, updated_at, key_version) VALUES (?, ?, ?, ?) ON CONFLICT (channel_id) DO UPDATE SET sealed = excluded.sealed, updated_at = excluded.updated_at, key_version = excluded.key_version",
+      "INSERT INTO social_tokens (channel_id, sealed, updated_at, key_version, key_id) VALUES (?, ?, ?, ?, ?) ON CONFLICT (channel_id) DO UPDATE SET sealed = excluded.sealed, updated_at = excluded.updated_at, key_version = excluded.key_version, key_id = excluded.key_id",
       channelId,
       sealed,
       Date.now(),
       version,
+      await keyId(this.keys.current),
     );
   }
 
+  /** The tokens, or null when there are none or they cannot be opened (the platform then shows as needing to be connected again). */
   async get(channelId: string): Promise<Tokens | null> {
     if (!this.keys) return null;
     const row = this.sql
-      .exec<{ sealed: string; key_version: number }>("SELECT sealed, key_version FROM social_tokens WHERE channel_id = ?", channelId)
+      .exec<{ sealed: string; key_version: number; key_id: string | null }>(
+        "SELECT sealed, key_version, key_id FROM social_tokens WHERE channel_id = ?",
+        channelId,
+      )
       .toArray()[0];
     if (!row) return null;
-    const key = this.keys.get(row.key_version);
-    if (!key) return null;
-    try {
-      const tokens = await open<Tokens>(await key, channelId, row.sealed);
-      if (row.key_version !== this.current) await this.put(channelId, tokens);
-      return tokens;
-    } catch {
-      return null;
+    if (row.key_version === KEY_VERSION && !this.officeId) return null;
+    let roots: string[];
+    if (row.key_id) {
+      const root = await keyById(this.keys, row.key_id);
+      if (!root) {
+        log("warn", "tokens.root-key-missing", { channel: channelId, message: `sealed with root key ${row.key_id}, which is no longer configured` });
+        return null;
+      }
+      roots = [root];
+    } else roots = everyKey(this.keys);
+    for (const root of roots) {
+      try {
+        const tokens = await open<Tokens>(await this.key(root, row.key_version), channelId, row.sealed);
+        if (row.key_version !== this.current || row.key_id !== (await keyId(this.keys.current))) await this.put(channelId, tokens);
+        return tokens;
+      } catch {
+        // Another root key, or a row that was changed: try the next.
+      }
     }
+    return null;
   }
-
   has(channelId: string): boolean {
     return this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM social_tokens WHERE channel_id = ?", channelId).toArray()[0]!.n > 0;
   }

@@ -205,7 +205,7 @@ Accepted or open, in no particular order. The open work and its order are in `do
 | Inbound sender proof depends on Cloudflare stamping every message | Not yet confirmed on live mail | Unproven mail waits for the owner; confirming it is open work |
 | Live secrets kept in the shared development secrets environment | The restricted production environment is an owner step | Secrets never in files or logs; rotation planned with the move |
 | Live files in R2 encrypted only by the storage provider's key | Office-key encryption of live files is in progress | Files reachable only through the office's checked path or a signed, expiring link |
-| One root key per purpose, without versions | Rotation is open work | Keys derived per office and purpose |
+| What an old root key sealed stays readable with it after a rotation | Re-sealing copies under the new key is not automated | Keys derived per office and purpose; each sealed thing names its root key, so a rotation (handbook 05, section 3a) moves everything new to the new key and platform tokens on their next read |
 | People with deploy rights or the Cloudflare account could change code that reads books | Inherent to running the service | CI gates on every pull request; live releases behind a reviewer once the GitHub environments are set; branch protection is an owner step |
 | A model steered by text in a document, email or chat | Models can be steered | Fixed output shapes, engine checks, staged approval; trust levels are the owner's choice |
 | Text layers come from the uploader's browser | CPU budget (ADR 0003) | The engine recomputes totals; the approver sees the highlighted source |

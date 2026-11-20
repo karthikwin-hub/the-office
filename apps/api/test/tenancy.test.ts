@@ -7,6 +7,7 @@ import { CALLER_HEADER, type Caller } from "../src/caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "../src/caller-seal";
 import type { Env } from "../src/env";
 import { OfficeExports } from "../src/export";
+import { rootKeys } from "../src/keyring";
 import { docKey, mediaKey } from "../src/keys";
 import { meteredAi, QUOTA, QuotaError, take } from "../src/quota";
 import { signMedia } from "../src/social/media";
@@ -15,6 +16,9 @@ import { ControlPlane, OFFICE_ID, PURGE_AFTER_MS } from "../src/tenancy";
 import { WaDirectory } from "../src/whatsapp/links";
 import { d1 } from "./d1";
 import { enrolTwoFactor, totp } from "./two-factor";
+
+/** Root keys as the Worker reads them: the current one, then any it replaced. */
+const ring = (current: string, ...old: string[]) => rootKeys({ SOCIAL_TOKEN_KEY: current, SOCIAL_TOKEN_KEYS_OLD: old.join(",") })!;
 
 const BASE = "http://localhost:8787";
 const SECRET = "tenancy-test-secret-not-a-real-one";
@@ -437,7 +441,7 @@ describe("one office cannot reach another", () => {
     await w.docs.put(mediaKey(A, "media-u1"), "A's photo");
     await w.docs.put(mediaKey(B, "media-u1"), "B's photo");
     const exp = Math.floor(Date.now() / 1000) + 600;
-    const sig = await signMedia(SECRET, A, "media-u1", exp);
+    const sig = await signMedia(ring(SECRET), A, "media-u1", exp);
     expect(await (await call(w, null, `/media/${A}/media-u1?exp=${exp}&sig=${sig}`)).text()).toBe("A's photo");
     expect((await call(w, null, `/media/${B}/media-u1?exp=${exp}&sig=${sig}`)).status).toBe(404);
   });
@@ -451,7 +455,7 @@ describe("one office cannot reach another", () => {
 
   it("finishes a channel sign-in only for an owner of the office that started it", async () => {
     const { w, anil, bina, A } = await twoOffices();
-    const { state } = await newState(SECRET, "x", anil.email, A);
+    const { state } = await newState(ring(SECRET), "x", anil.email, A);
     const back = await call(w, bina, `/api/channels/x/callback?code=c&state=${encodeURIComponent(state)}`);
     expect(back.status).toBe(302);
     expect(back.headers.get("location")).toContain("connect_error");

@@ -38,6 +38,11 @@ put() {
   echo "$1: put on the $2 Worker"
 }
 
+# The root keys SOCIAL_TOKEN_KEY replaced (handbook 05, section 3a) go on first, so that while the new key is being put
+# the Worker can still open what the old one sealed.
+present=$(infisical run --env="$ENV" --silent -- sh -c "[ -n \"\${SOCIAL_TOKEN_KEYS_OLD:-}\" ] && echo yes || echo no")
+if [ "$present" = "yes" ]; then put SOCIAL_TOKEN_KEYS_OLD "$1"; else echo "SOCIAL_TOKEN_KEYS_OLD: not in Infisical ($ENV), skipped (only after a rotation)"; fi
+
 for name in $NAMES; do put "$name" "$1"; done
 
 # Not generated, put when present in Infisical. RESEND_API_KEY sends all mail through Resend (from MAIL_FROM); staging

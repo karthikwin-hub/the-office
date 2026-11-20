@@ -53,7 +53,7 @@ Update a row in the same pull request that changes its control.
 | 1.5.2 | No serialisation with untrusted clients | Met | JSON only, parsed by zod |
 | 1.5.3 | Input validation on a trusted layer | Met | Worker and office validate every body |
 | 1.5.4 | Output encoding near the interpreter | Met | React rendering; bound SQL parameters |
-| 1.6.1 | Key management policy | Partly | Keys derived per purpose and office (`social/tokens.ts` `subkey`); a written rotation policy is open |
+| 1.6.1 | Key management policy | Met | Keys derived per purpose and office (`social/tokens.ts` `subkey`) from a versioned root key (`keyring.ts`); rotation in handbook 05, section 3a |
 | 1.6.2 | Key material protected | Met | Worker secrets from Infisical; never in files or logs |
 | 1.6.3 | Keys replaceable | Partly | Token key version exists (`KEY_VERSION`); a versioned root key is open work |
 | 1.6.4 | Client-side secrets treated as insecure | Met | No secret ships to the browser; Turnstile uses a public site key |
@@ -204,7 +204,7 @@ Not applicable: 5.3.7 (LDAP), 5.4.1–5.4.3 (memory-safe runtime).
 | 6.2.1 | Cryptography fails securely | Met | Authenticated encryption; opening fails on change (`envelope.ts`, `social/tokens.ts`) |
 | 6.2.2 | Vetted algorithms and libraries | Met | WebCrypto: AES-256-GCM, HKDF-SHA256, HMAC-SHA256, PBKDF2 |
 | 6.2.3 | IVs, modes and padding configured correctly | Met | Random 96-bit IVs per encryption, AES-GCM with associated data |
-| 6.2.4 | Algorithms and keys replaceable | Partly | Format markers (`OFB1`) and `KEY_VERSION`; root-key rotation open |
+| 6.2.4 | Algorithms and keys replaceable | Met | Format markers (`OFB1`), `KEY_VERSION`, and the root key's id on everything sealed (`keyring.ts`) |
 | 6.2.5 | No insecure algorithms | Met | MD5 only as the S3 protocol's integrity field for batch delete (`backup.ts`), not for security |
 | 6.2.6 | Nonces not reused | Met | Fresh random IVs; a fresh data key per copy |
 | 6.2.7 | Encrypted data authenticated | Met | AES-GCM with the header as associated data |

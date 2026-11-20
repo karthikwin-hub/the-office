@@ -54,7 +54,8 @@ Each deploy token is made from Cloudflare's "Edit Cloudflare Workers" template w
 | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | Yes | Signs sessions; encrypts two-step sign-in secrets and backup codes; a subkey seals the caller header the Worker sends to each office. Rotating it signs everyone out and makes enrolled authenticators unreadable, so owners enrol again |
 | `RESEND_API_KEY` | Yes on live | Sends all mail through Resend from `MAIL_FROM` (the `snilldai.com` domain, shared with Clubs and Sports OS); without it mail falls back to `MAILER` |
-| `SOCIAL_TOKEN_KEY` | For channels and WhatsApp | Root key: per-office keys are derived from it to seal platform tokens; it also signs media links and OAuth state |
+| `SOCIAL_TOKEN_KEY` | For channels, WhatsApp, backups and purges | The current root key: per-office keys are derived from it to seal platform tokens and the copies of the books (section 4d); it also signs media links and OAuth state. Rotate it as in section 3a, never by replacing it alone |
+| `SOCIAL_TOKEN_KEYS_OLD` | After a rotation | The root keys `SOCIAL_TOKEN_KEY` replaced, comma-separated, newest first. They open what they sealed and seal nothing new |
 | `META_APP_ID`, `META_APP_SECRET` | For Facebook and webhooks | The Meta app; the secret verifies webhook signatures |
 | `META_VERIFY_TOKEN` | For webhooks | Checked on Meta's webhook handshake |
 | `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET` | For Instagram | Instagram API with Instagram login |
@@ -70,6 +71,20 @@ Each deploy token is made from Cloudflare's "Edit Cloudflare Workers" template w
 The deploy tokens are passed to wrangler as `CLOUDFLARE_API_TOKEN` at run time by `tools/admin/deploy.sh`. The wrangler login on developer machines belongs to another company's account, so nothing here is deployed with `wrangler login`.
 
 > **Rule:** no `.env` or `.dev.vars` files. Commands that need secrets run as `infisical run --env=<environment> -- <command>`, and a machine a coding agent works on uses only `dev`.
+
+## 3a. Rotating the root key
+
+`SOCIAL_TOKEN_KEY` is a root key: nothing is encrypted with it directly; every office's keys are derived from it (`apps/api/src/keyring.ts`). Each thing sealed with one records the root key's id, a short value derived from the key that reveals nothing about it: platform-token rows, media-link signatures, sign-in states, and the header of every sealed copy of the books. Everything new is sealed with `SOCIAL_TOKEN_KEY`; anything older opens with the key its id names, from `SOCIAL_TOKEN_KEY` or `SOCIAL_TOKEN_KEYS_OLD`. Things sealed before ids existed (before this change) name no key, and every configured key is tried on them.
+
+To rotate on live (staging is the same with `staging`; run it yourself, not through an agent):
+
+1. In Infisical `prod`, set `SOCIAL_TOKEN_KEYS_OLD` to the current `SOCIAL_TOKEN_KEY` value, followed by any keys already listed there, comma-separated.
+2. Set `SOCIAL_TOKEN_KEY` to a new value: `openssl rand -hex 32`.
+3. `sh tools/admin/set-secrets.sh live`. It puts `SOCIAL_TOKEN_KEYS_OLD` on the Worker before `SOCIAL_TOKEN_KEY`, so at no moment does the Worker lack a key it needs.
+
+After that, platform tokens move to the new key the next time each is read; media links signed with the old key work until they expire (an hour) and sign-in states for ten minutes. Copies in India and copies retained after a purge keep naming the old key, and open as long as it is listed. So an old key stays in `SOCIAL_TOKEN_KEYS_OLD` for as long as anything sealed with it is kept: eight years after the last copy it sealed (section 4d). Remove it only then. If a key is removed too early, opening fails with "Sealed with root key `<id>`, which is not in SOCIAL_TOKEN_KEY or SOCIAL_TOKEN_KEYS_OLD"; put the key back. `tools/admin/open-backup.mjs` reads both secrets the same way.
+
+A rotation protects what is sealed from then on. After a suspected leak of a root key, rotate at once; what the leaked key sealed stays readable to whoever holds it until it is sealed again, which is not automated yet.
 
 ## 4. Email
 
@@ -104,8 +119,8 @@ Nothing to configure. The templates are static files at `/templates/parties.csv`
 - **Reminders** come from the `compliance-due` routine of the Compliance Officer: 7 days, 2 days and on the day, then weekly while late, in the morning digest, by email and on WhatsApp.
 - **The edit log** is the `book_edits` table in each office's SQLite. Triggers refuse any update or delete, and each entry carries the hash of the one before. When an office is purged, its books and log are sealed (below) and written to `DOCS` as `retained/<officeId>/<time>.json.gz.enc`, with a keep-until date of 31 March eight years after the financial year of the purge.
 - **The daily copy in India** runs at the end of each office's morning routines once the three `INDIA_BACKUP_*` settings and two secrets are set. Each office writes `<officeId>/<date>.json.gz.enc` (the books and the edit log, sealed), replacing the copy from the same day. Give the bucket a lifecycle rule that keeps objects for at least eight years. The key must be allowed to put, list and delete objects in the bucket: deleting is how a purged office's copies go. The last copy and any error show in Settings, under **Books record**.
-- **Sealing.** Both copies are encrypted before they leave the office (`apps/api/src/envelope.ts`): the gzipped JSON is encrypted with a fresh AES-256-GCM data key, and that key is wrapped with the office's own key, derived with HKDF from `SOCIAL_TOKEN_KEY` and the office id, as the platform-token keys are. Without `SOCIAL_TOKEN_KEY` no copy goes to India (Settings shows why) and no office is purged. Rotating `SOCIAL_TOKEN_KEY` leaves older copies readable only with the old value, so keep it (in Infisical) for eight years after a rotation.
-- **Opening a copy.** Fetch the file: from the India bucket with the provider's console or CLI, or from R2 with `wrangler r2 object get office-docs/retained/<officeId>/<time>.json.gz.enc --file backups/<name>.enc --remote`. Then `infisical run --env=dev --silent -- node tools/admin/open-backup.mjs backups/<name>.enc backups/<name>.json` checks and decrypts it with `SOCIAL_TOKEN_KEY` and writes `{ office, at or purgedAt, keepUntil, books, edits }`. `books` is the same object the owner's export holds and `edits` is the edit log with its hash chain. Keep both files in `backups/` (git-ignored) and delete them when done. Loading the books back into a live office is not automated yet: it is an engineering step, done with the business.
+- **Sealing.** Both copies are encrypted before they leave the office (`apps/api/src/envelope.ts`): the gzipped JSON is encrypted with a fresh AES-256-GCM data key, and that key is wrapped with the office's own key, derived with HKDF from `SOCIAL_TOKEN_KEY` and the office id, as the platform-token keys are. Without `SOCIAL_TOKEN_KEY` no copy goes to India (Settings shows why) and no office is purged. Each copy's header names the root key that sealed it; after a rotation (section 3a) older copies open with the old key from `SOCIAL_TOKEN_KEYS_OLD`, so keep it there for eight years after the rotation.
+- **Opening a copy.** Fetch the file: from the India bucket with the provider's console or CLI, or from R2 with `wrangler r2 object get office-docs/retained/<officeId>/<time>.json.gz.enc --file backups/<name>.enc --remote`. Then `infisical run --env=dev --silent -- node tools/admin/open-backup.mjs backups/<name>.enc backups/<name>.json` checks and decrypts it with the root key its header names (`SOCIAL_TOKEN_KEY` or one in `SOCIAL_TOKEN_KEYS_OLD`) and writes `{ office, at or purgedAt, keepUntil, books, edits }`. `books` is the same object the owner's export holds and `edits` is the edit log with its hash chain. Keep both files in `backups/` (git-ignored) and delete them when done. Loading the books back into a live office is not automated yet: it is an engineering step, done with the business.
 
 ## 5. Social channels and WhatsApp
 

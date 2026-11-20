@@ -40,6 +40,7 @@ import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "./caller-seal";
 import type { Env } from "./env";
+import { rootKeys } from "./keyring";
 import { docKey, fileUrl, mediaKey, mediaUrl } from "./keys";
 import { log, REQUEST_ID_HEADER, requestIdOf, routeOf, withRequest } from "./log";
 import { fromGoogleForwarding, mailSender } from "./mail";
@@ -191,7 +192,7 @@ export class Office extends Agent<Env> {
     this.conversations = new SqlCsStore(sql);
     this.assistantStore = new SqlAssistantStore(sql);
     this.salesStore = new SqlSalesStore(sql);
-    this.vault = new TokenVault(sql, this.env.SOCIAL_TOKEN_KEY, id);
+    this.vault = new TokenVault(sql, rootKeys(this.env), id);
     this.spentStates = new SpentStates(sql);
     let books = this.store.load();
     if (books?.seed === SAMPLE_SEED && this.env.OFFICE_SEED !== "sample") {
@@ -265,7 +266,7 @@ export class Office extends Agent<Env> {
     return new SocialHost(this.office, this.vault, adaptersFor(this.env), {
       base: this.env.BETTER_AUTH_URL,
       officeId: this.officeId!,
-      mediaSecret: this.env.SOCIAL_TOKEN_KEY,
+      mediaKeys: rootKeys(this.env),
       kv: (k, v) => this.kv(k, v),
     });
   }
@@ -548,7 +549,7 @@ export class Office extends Agent<Env> {
     if (request.method === "POST" && path === "/internal/purge" && this.kv("office:purged")) return json({ purged: true });
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/purge") {
-      if (this.office && !this.env.SOCIAL_TOKEN_KEY)
+      if (this.office && !rootKeys(this.env))
         return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);
       return json(await this.purge());
     }
@@ -720,7 +721,7 @@ export class Office extends Agent<Env> {
     if (this.office) {
       const at = new Date().toISOString();
       const keepUntil = retainedUntil(new Date());
-      const sealed = await sealedCopy(this.env.SOCIAL_TOKEN_KEY!, this.officeId!, {
+      const sealed = await sealedCopy(rootKeys(this.env)!, this.officeId!, {
         office: this.officeId,
         purgedAt: at,
         keepUntil,
@@ -756,9 +757,10 @@ export class Office extends Agent<Env> {
     const parsed = PlatformEnum.safeParse(p);
     const adapter = parsed.success ? adaptersFor(this.env)[parsed.data] : undefined;
     if (!parsed.success || !adapter) return this.back({ connect_error: `${p} cannot be connected; post there by hand.` });
-    if (!this.env.SOCIAL_TOKEN_KEY) return this.back({ connect_error: "Add SOCIAL_TOKEN_KEY as a Worker secret first, so sign-ins can be stored safely." });
+    const keys = rootKeys(this.env);
+    if (!keys) return this.back({ connect_error: "Add SOCIAL_TOKEN_KEY as a Worker secret first, so sign-ins can be stored safely." });
     try {
-      const { state, verifier } = await newState(this.env.SOCIAL_TOKEN_KEY, parsed.data, caller.email, this.officeId!);
+      const { state, verifier } = await newState(keys, parsed.data, caller.email, this.officeId!);
       return new Response(null, {
         status: 302,
         headers: { location: await adapter.authorizeUrl({ state, verifier, redirect: callbackUrl(this.env.BETTER_AUTH_URL, parsed.data) }) },
@@ -772,11 +774,12 @@ export class Office extends Agent<Env> {
   private async finishConnect(p: string, url: URL, caller: Caller): Promise<Response> {
     if (caller.role !== "owner") return json({ error: "Only the owner can connect channels." }, 403);
     const parsed = PlatformEnum.safeParse(p);
-    if (!parsed.success || !this.env.SOCIAL_TOKEN_KEY) return this.back({ connect_error: "That sign-in did not come from this office." });
+    const keys = rootKeys(this.env);
+    if (!parsed.success || !keys) return this.back({ connect_error: "That sign-in did not come from this office." });
     const platform: Platform = parsed.data;
     const denied = url.searchParams.get("error_description") ?? url.searchParams.get("error");
     if (denied) return this.back({ connect_error: denied.slice(0, 200) });
-    const state = await readState(this.env.SOCIAL_TOKEN_KEY, platform, url.searchParams.get("state"));
+    const state = await readState(keys, platform, url.searchParams.get("state"));
     const code = url.searchParams.get("code");
     const adapter = adaptersFor(this.env)[platform];
     const ch = this.office.books.channels.find((c) => c.platform === platform);
@@ -1500,8 +1503,9 @@ export class Office extends Agent<Env> {
     if (!target) return;
     const at = new Date().toISOString();
     try {
-      if (!this.env.SOCIAL_TOKEN_KEY) throw new Error("SOCIAL_TOKEN_KEY is not set, so the copy cannot be encrypted and was not sent.");
-      const body = await sealedCopy(this.env.SOCIAL_TOKEN_KEY, this.officeId!, {
+      const keys = rootKeys(this.env);
+      if (!keys) throw new Error("SOCIAL_TOKEN_KEY is not set, so the copy cannot be encrypted and was not sent.");
+      const body = await sealedCopy(keys, this.officeId!, {
         office: this.officeId,
         at,
         books: this.office.books,

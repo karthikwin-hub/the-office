@@ -1,11 +1,13 @@
 import type { Platform } from "@office/contracts";
+import { everyKey, keyById, keyId, type RootKeys } from "../keyring";
 import { b64url, fromB64url, subkey } from "./tokens";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 const STATE_TTL_MS = 10 * 60_000;
 
-type State = { p: Platform; n: string; exp: number; by: string; o: string };
+/** `k` is the id of the root key that signed it (absent on states signed before root keys had ids). */
+type State = { p: Platform; n: string; exp: number; by: string; o: string; k?: string };
 
 /**
  * The `state` sent to a platform's sign-in page: who started it, in which office, for which platform,
@@ -13,36 +15,56 @@ type State = { p: Platform; n: string; exp: number; by: string; o: string };
  * The PKCE verifier is derived from it, so nothing has to be stored while the owner is away signing in.
  */
 export async function newState(
-  secret: string,
+  keys: RootKeys,
   platform: Platform,
   by: string,
   officeId: string,
   now = Date.now(),
 ): Promise<{ state: string; verifier: string }> {
-  const body: State = { p: platform, n: b64url(crypto.getRandomValues(new Uint8Array(16))), exp: now + STATE_TTL_MS, by, o: officeId };
+  const body: State = {
+    p: platform,
+    n: b64url(crypto.getRandomValues(new Uint8Array(16))),
+    exp: now + STATE_TTL_MS,
+    by,
+    o: officeId,
+    k: await keyId(keys.current),
+  };
   const payload = b64url(enc.encode(JSON.stringify(body)));
-  const key = await subkey(secret, "state", "HMAC");
+  const key = await subkey(keys.current, "state", "HMAC");
   const state = `${payload}.${b64url(await crypto.subtle.sign("HMAC", key, enc.encode(payload)))}`;
   return { state, verifier: await verifierFor(key, body.n) };
 }
 
 export async function readState(
-  secret: string,
+  keys: RootKeys,
   platform: string,
   state: string | null,
   now = Date.now(),
 ): Promise<{ by: string; verifier: string; officeId: string; nonce: string; expiresAt: number } | null> {
   const [payload, sig] = (state ?? "").split(".");
   if (!payload || !sig) return null;
-  const key = await subkey(secret, "state", "HMAC");
-  let ok = false;
+  let claimed: State;
+  let mac: Uint8Array;
   try {
-    ok = await crypto.subtle.verify("HMAC", key, fromB64url(sig), enc.encode(payload));
+    claimed = JSON.parse(dec.decode(fromB64url(payload))) as State;
+    mac = fromB64url(sig);
   } catch {
     return null;
   }
-  if (!ok) return null;
-  const body = JSON.parse(dec.decode(fromB64url(payload))) as State;
+  if (!claimed || typeof claimed !== "object") return null;
+  // The key id is read before the signature is checked only to choose the key; nothing else is trusted until it verifies.
+  const named = typeof claimed.k === "string" ? await keyById(keys, claimed.k) : null;
+  if (claimed.k !== undefined && !named) return null;
+  let key: CryptoKey | null = null;
+  for (const root of named ? [named] : everyKey(keys)) {
+    const k = await subkey(root, "state", "HMAC");
+    if (await crypto.subtle.verify("HMAC", k, mac, enc.encode(payload))) {
+      key = k;
+      break;
+    }
+  }
+  if (!key) return null;
+  const body = claimed;
   if (body.p !== platform || body.exp < now || typeof body.o !== "string" || typeof body.n !== "string") return null;
   return { by: body.by, verifier: await verifierFor(key, body.n), officeId: body.o, nonce: body.n, expiresAt: body.exp };
 }

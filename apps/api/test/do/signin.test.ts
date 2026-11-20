@@ -2,8 +2,12 @@ import type { OfficeService } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { env, fetchMock, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { rootKeys } from "../../src/keyring";
 import { newState } from "../../src/social/oauth";
 import { asCaller, callerFor, openOffice } from "./office";
+
+/** Root keys as the Worker reads them: the current one, then any it replaced. */
+const ring = (current: string, ...old: string[]) => rootKeys({ SOCIAL_TOKEN_KEY: current, SOCIAL_TOKEN_KEYS_OLD: old.join(",") })!;
 
 beforeEach(() => {
   fetchMock.activate();
@@ -28,7 +32,7 @@ describe("a channel sign-in", () => {
       .reply(200, { data: { id: "x-account-1", username: "kaveri" } })
       .times(2);
 
-    const { state } = await newState(env.SOCIAL_TOKEN_KEY!, "x", owner.email, id);
+    const { state } = await newState(ring(env.SOCIAL_TOKEN_KEY!), "x", owner.email, id);
     const callback = async () => {
       const res = await stub.fetch(await asCaller(me, `/api/channels/x/callback?state=${encodeURIComponent(state)}&code=code-1`, { redirect: "manual" }));
       if (!res.headers.get("location")) throw new Error(`${res.status} ${await res.text()}`);

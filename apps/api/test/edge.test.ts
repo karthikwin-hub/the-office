@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ACCOUNT_ROUTES } from "@office/contracts";
 import { describe, expect, it } from "vitest";
+import { rootKeys } from "../src/keyring";
 import { app } from "../src/app";
 import { API_CSP, appCsp, BASE_HEADERS, FILE_CSP, ownOrigin, SKIN_SCRIPT_HASH } from "../src/edge";
 import { newDocId } from "../src/caller";
@@ -11,6 +12,9 @@ import { docKey, mediaKey } from "../src/keys";
 import { signMedia } from "../src/social/media";
 import { d1 } from "./d1";
 import { enrolTwoFactor } from "./two-factor";
+
+/** Root keys as the Worker reads them: the current one, then any it replaced. */
+const ring = (current: string, ...old: string[]) => rootKeys({ SOCIAL_TOKEN_KEY: current, SOCIAL_TOKEN_KEYS_OLD: old.join(",") })!;
 
 const BASE = "http://localhost:8787";
 const WEB = join(import.meta.dirname, "..", "..", "web");
@@ -385,7 +389,7 @@ describe("stored files", () => {
     const exp = Math.floor(Date.now() / 1000) + 600;
     for (const id of ["media-u1", "media-u2"]) {
       const inApp = await req(w, `/api/o/${office}/social/media/${id}`, {}, cookie);
-      const signed = await req(w, `/media/${office}/${id}?exp=${exp}&sig=${await signMedia("edge-media-key", office, id, exp)}`);
+      const signed = await req(w, `/media/${office}/${id}?exp=${exp}&sig=${await signMedia(ring("edge-media-key"), office, id, exp)}`);
       for (const r of [inApp, signed]) {
         expect(r.status).toBe(200);
         expect(r.headers.get("content-security-policy")).toBe(FILE_CSP);

@@ -4,6 +4,7 @@ import type { PostVariant, SocialMessage } from "@office/contracts";
 import { OfficeService } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
+import { rootKeys } from "../src/keyring";
 import { type ChannelAdapter, failure, PlatformError, type Tokens } from "../src/social/adapter";
 import { afterFailure, SocialHost } from "../src/social/host";
 import { linkedin, linkedinVersion } from "../src/social/linkedin";
@@ -13,6 +14,9 @@ import { challengeFor, newState, readState, SpentStates } from "../src/social/oa
 import { open, seal, subkey, TokenVault } from "../src/social/tokens";
 import { metaChallenge, parseMetaDelivery, sameSecret, verifyMetaSignature } from "../src/social/webhooks";
 import { x } from "../src/social/x";
+
+/** Root keys as the Worker reads them: the current one, then any it replaced. */
+const ring = (current: string, ...old: string[]) => rootKeys({ SOCIAL_TOKEN_KEY: current, SOCIAL_TOKEN_KEYS_OLD: old.join(",") })!;
 
 const SECRET = "test-secret-that-is-only-for-tests";
 
@@ -80,46 +84,46 @@ describe("tokens at rest", () => {
 
   it("stores tokens in the Office's SQLite and reads nothing without the key", async () => {
     const sql = sqlStorage();
-    const vault = new TokenVault(sql, SECRET);
+    const vault = new TokenVault(sql, ring(SECRET));
     await vault.put("ch-x", tokens);
     expect(vault.has("ch-x")).toBe(true);
     expect(await vault.get("ch-x")).toEqual(tokens);
-    expect(await new TokenVault(sql, undefined).get("ch-x")).toBeNull();
-    expect(await new TokenVault(sql, "wrong-secret-entirely").get("ch-x")).toBeNull();
+    expect(await new TokenVault(sql, null).get("ch-x")).toBeNull();
+    expect(await new TokenVault(sql, ring("wrong-secret-entirely")).get("ch-x")).toBeNull();
     vault.drop("ch-x");
     expect(vault.has("ch-x")).toBe(false);
   });
 
   it("seals each office's tokens with its own key, and moves old rows to it on read", async () => {
     const sql = sqlStorage();
-    await new TokenVault(sql, SECRET).put("ch-x", tokens);
-    const a = new TokenVault(sql, SECRET, "off_a");
+    await new TokenVault(sql, ring(SECRET)).put("ch-x", tokens);
+    const a = new TokenVault(sql, ring(SECRET), "off_a");
     expect(await a.get("ch-x")).toEqual(tokens);
     expect(sql.exec<{ key_version: number }>("SELECT key_version FROM social_tokens").toArray()[0]!.key_version).toBe(1);
-    expect(await new TokenVault(sql, SECRET, "off_b").get("ch-x")).toBeNull();
-    expect(await new TokenVault(sql, SECRET, "off_a").get("ch-x")).toEqual(tokens);
+    expect(await new TokenVault(sql, ring(SECRET), "off_b").get("ch-x")).toBeNull();
+    expect(await new TokenVault(sql, ring(SECRET), "off_a").get("ch-x")).toEqual(tokens);
   });
 });
 
 describe("signed media links", () => {
   it("accepts its own unexpired signature, for its own office, and nothing else", async () => {
     const exp = Math.floor(Date.now() / 1000) + 600;
-    const sig = await signMedia(SECRET, "off_a", "media-u1", exp);
-    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp), sig)).toBe(true);
-    expect(await verifyMedia(SECRET, "off_b", "media-u1", String(exp), sig)).toBe(false);
-    expect(await verifyMedia(SECRET, "off_a", "media-u2", String(exp), sig)).toBe(false);
-    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp + 1), sig)).toBe(false);
-    expect(await verifyMedia("other-secret-value", "off_a", "media-u1", String(exp), sig)).toBe(false);
-    expect(await verifyMedia(SECRET, "off_a", "media-u1", String(exp), sig, (exp + 1) * 1000)).toBe(false);
-    expect(await verifyMedia(SECRET, "off_a", "../docs/doc-1", String(exp), sig)).toBe(false);
+    const sig = await signMedia(ring(SECRET), "off_a", "media-u1", exp);
+    expect(await verifyMedia(ring(SECRET), "off_a", "media-u1", String(exp), sig)).toBe(true);
+    expect(await verifyMedia(ring(SECRET), "off_b", "media-u1", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(ring(SECRET), "off_a", "media-u2", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(ring(SECRET), "off_a", "media-u1", String(exp + 1), sig)).toBe(false);
+    expect(await verifyMedia(ring("other-secret-value"), "off_a", "media-u1", String(exp), sig)).toBe(false);
+    expect(await verifyMedia(ring(SECRET), "off_a", "media-u1", String(exp), sig, (exp + 1) * 1000)).toBe(false);
+    expect(await verifyMedia(ring(SECRET), "off_a", "../docs/doc-1", String(exp), sig)).toBe(false);
   });
 
   it("signs uploads and passes static samples through as absolute links", async () => {
-    const out = await signedMedia(SECRET, "https://office.example/", "off_a", [
+    const out = await signedMedia(ring(SECRET), "https://office.example/", "off_a", [
       { id: "media-u9", url: "/api/o/off_a/social/media/media-u9", kind: "image", alt: "", skuId: null, rights: "own", width: null, height: null },
       { id: "media-01", url: "/samples/media-01.svg", kind: "image", alt: "", skuId: null, rights: "own", width: null, height: null },
     ]);
-    expect(out[0]!.url).toMatch(/^https:\/\/office\.example\/media\/off_a\/media-u9\?exp=\d+&sig=[\w-]+$/);
+    expect(out[0]!.url).toMatch(/^https:\/\/office\.example\/media\/off_a\/media-u9\?exp=\d+&sig=[\w-]{12}\.[\w-]+$/);
     expect(out[1]!.url).toBe("https://office.example/samples/media-01.svg");
   });
 });
@@ -237,28 +241,28 @@ describe("Meta webhooks", () => {
 
 describe("sign-in state", () => {
   it("round-trips for its platform and gives the same PKCE verifier back", async () => {
-    const { state, verifier } = await newState(SECRET, "x", "anil@kaveri.in", "off_a");
-    const back = await readState(SECRET, "x", state);
+    const { state, verifier } = await newState(ring(SECRET), "x", "anil@kaveri.in", "off_a");
+    const back = await readState(ring(SECRET), "x", state);
     expect(back).toEqual({ by: "anil@kaveri.in", verifier, officeId: "off_a", nonce: expect.stringMatching(/^[\w-]{22}$/), expiresAt: expect.any(Number) });
     expect(verifier).toMatch(/^[\w-]{43}$/);
     expect(await challengeFor(verifier)).toMatch(/^[\w-]{43}$/);
   });
 
   it("refuses another platform, a tampered state and an expired one", async () => {
-    const { state } = await newState(SECRET, "instagram", "anil@kaveri.in", "off_a", Date.now() - 11 * 60_000);
-    expect(await readState(SECRET, "instagram", state)).toBeNull();
-    const ok = (await newState(SECRET, "instagram", "a", "off_a")).state;
-    expect(await readState(SECRET, "facebook", ok)).toBeNull();
-    expect(await readState(SECRET, "instagram", `${ok}x`)).toBeNull();
-    expect(await readState("other-secret-value", "instagram", ok)).toBeNull();
+    const { state } = await newState(ring(SECRET), "instagram", "anil@kaveri.in", "off_a", Date.now() - 11 * 60_000);
+    expect(await readState(ring(SECRET), "instagram", state)).toBeNull();
+    const ok = (await newState(ring(SECRET), "instagram", "a", "off_a")).state;
+    expect(await readState(ring(SECRET), "facebook", ok)).toBeNull();
+    expect(await readState(ring(SECRET), "instagram", `${ok}x`)).toBeNull();
+    expect(await readState(ring("other-secret-value"), "instagram", ok)).toBeNull();
   });
 
   it("is taken once, and remembered only until it would have expired", async () => {
     const sql = sqlStorage();
     const spent = new SpentStates(sql);
     const now = Date.now();
-    const a = (await readState(SECRET, "x", (await newState(SECRET, "x", "anil@kaveri.in", "off_a", now)).state, now))!;
-    const b = (await readState(SECRET, "x", (await newState(SECRET, "x", "anil@kaveri.in", "off_a", now)).state, now))!;
+    const a = (await readState(ring(SECRET), "x", (await newState(ring(SECRET), "x", "anil@kaveri.in", "off_a", now)).state, now))!;
+    const b = (await readState(ring(SECRET), "x", (await newState(ring(SECRET), "x", "anil@kaveri.in", "off_a", now)).state, now))!;
     expect(spent.spend(a, now)).toBe(true);
     expect(spent.spend(a, now)).toBe(false);
     expect(new SpentStates(sql).spend(a, now + 60_000)).toBe(false);
@@ -407,7 +411,7 @@ describe("publishing from the Office", () => {
   const setup = async (adapter: Partial<ChannelAdapter>) => {
     const books = structuredClone(loadBooks());
     const office = new OfficeService(books, { asOf: "2026-11-05" });
-    const vault = new TokenVault(sqlStorage(), SECRET);
+    const vault = new TokenVault(sqlStorage(), ring(SECRET));
     await vault.put("ch-instagram", tokens);
     const kv = new Map<string, string>();
     let now = Date.parse("2026-11-05T13:05:00Z");
@@ -419,7 +423,7 @@ describe("publishing from the Office", () => {
       {
         base: "https://o.example",
         officeId: "off_a",
-        mediaSecret: SECRET,
+        mediaKeys: ring(SECRET),
         kv: (k, v) => (v === undefined ? (kv.get(k) ?? null) : (kv.set(k, v), v)),
         now: () => now,
       },

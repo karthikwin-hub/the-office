@@ -31,9 +31,11 @@ export type Env = {
   /**
    * Social channels. All are Worker secrets and all are optional: a platform without its keys
    * says so in Settings and its posts go out by hand. SOCIAL_TOKEN_KEY encrypts platform tokens
-   * and signs media links and sign-in state.
+   * and signs media links and sign-in state. It is the current root key (`keyring.ts`).
    */
   SOCIAL_TOKEN_KEY?: string;
+  /** Root keys SOCIAL_TOKEN_KEY replaced, comma-separated: they open what they sealed, and seal nothing new. */
+  SOCIAL_TOKEN_KEYS_OLD?: string;
   /** The Meta app: Facebook Page and webhook signatures. */
   META_APP_ID?: string;
   META_APP_SECRET?: string;

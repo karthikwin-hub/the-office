@@ -99,7 +99,7 @@ The control plane adds two tables for each person's own rights (migration `0003_
 | Live connection | The WebSocket says nothing before the caller check, takes no messages from browsers (it carries only `changed`, with `unread` when a document arrived), and closes when someone is removed or the office is suspended |
 | Failed requests | A request that fails partway reopens the books as last saved |
 | Invitations | Single-use token, only its hash stored, bound to the invited address, expires after 14 days; the token travels after `#` and in request bodies, never in a logged URL. The console invites an owner only into an office with no owner and never sees the link |
-| Social and WhatsApp tokens | Encrypted at rest with a key derived per office (HKDF from `SOCIAL_TOKEN_KEY` and the office id), with a key version for rotation |
+| Social and WhatsApp tokens | Encrypted at rest with a key derived per office (HKDF from `SOCIAL_TOKEN_KEY` and the office id); each row names its root key, so the root key can be rotated (handbook 05, section 3a) |
 | Webhooks | Meta signatures verified with the app secret; the verify token checked on the handshake |
 | Media links | HMAC-signed, expiring, scoped to one office |
 | Fair use | Per-office daily allowance: 400 AI calls (at most 150 for customer service), 250 MB of uploads; a 429 with a plain explanation when spent |

@@ -1,7 +1,11 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
+import { rootKeys } from "../../src/keyring";
 import { open } from "../../src/envelope";
 import { asSystem, openOffice } from "./office";
+
+/** Root keys as the Worker reads them: the current one, then any it replaced. */
+const ring = (current: string, ...old: string[]) => rootKeys({ SOCIAL_TOKEN_KEY: current, SOCIAL_TOKEN_KEYS_OLD: old.join(",") })!;
 
 const gunzip = async (bytes: ArrayBuffer) => new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
 
@@ -19,8 +23,8 @@ describe("purging an office", () => {
     const bytes = new Uint8Array(await obj.arrayBuffer());
     expect(new TextDecoder("latin1").decode(bytes)).not.toContain("Kaveri Electricals");
 
-    await expect(open(env.SOCIAL_TOKEN_KEY!, bytes, "off_another000000000")).rejects.toThrow(/belongs to/);
-    const kept = JSON.parse(await gunzip((await open(env.SOCIAL_TOKEN_KEY!, bytes, id)).plain)) as {
+    await expect(open(ring(env.SOCIAL_TOKEN_KEY!), bytes, "off_another000000000")).rejects.toThrow(/belongs to/);
+    const kept = JSON.parse(await gunzip((await open(ring(env.SOCIAL_TOKEN_KEY!), bytes, id)).plain)) as {
       office: string;
       books: { business: { name: string } };
       edits: unknown[];
