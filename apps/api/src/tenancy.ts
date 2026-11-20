@@ -206,11 +206,9 @@ export class ControlPlane {
     return results.map((r) => ({ officeId: r.office_id, erased: r.erased }));
   }
 
-  /** Some copies went (`done` false: more are left for the next night), or the last of them did, which the audit trail records. */
-  async backupErasureProgress(officeId: string, erased: number, done: boolean, error: string | null = null): Promise<void> {
-    if (done) {
-      const row = await this.db.prepare("SELECT erased FROM backup_erasure WHERE office_id = ?").bind(officeId).first<{ erased: number }>();
-      const total = (row?.erased ?? 0) + erased;
+  /** Some copies went and more are left for the next night (`total` null), or the last of them did, `total` in all, which the audit trail records. */
+  async backupErasureProgress(officeId: string, erased: number, total: number | null, error: string | null = null): Promise<void> {
+    if (total !== null) {
       await this.db.batch([this.db.prepare("DELETE FROM backup_erasure WHERE office_id = ?").bind(officeId), this.auditStmt(officeId, "system", "office.backups-erased", `${total} ${total === 1 ? "copy" : "copies"} in India deleted`)]);
       return;
     }
@@ -365,6 +363,10 @@ export class ControlPlane {
 
   private auditStmt(officeId: string, actor: string, action: string, detail: string | null = null) {
     return this.db.prepare("INSERT INTO audit (office_id, actor, action, detail, at) VALUES (?, ?, ?, ?, ?)").bind(officeId, actor, action, detail, this.now());
+  }
+
+  async auditMany(entries: { officeId: string; actor: string; action: string; detail: string | null }[]): Promise<void> {
+    if (entries.length) await this.db.batch(entries.map((e) => this.auditStmt(e.officeId, e.actor, e.action, e.detail)));
   }
 
   async audit(officeId: string, actor: string, action: string, detail: string | null = null): Promise<void> {

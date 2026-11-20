@@ -26,14 +26,12 @@ export function AccountSettings() {
         <button type="button" className="btn" onClick={() => download.mutate()} disabled={download.isPending}>
           Download my data
         </button>
-        {open ? null : (
-          <button type="button" className="btn btn-quiet" onClick={() => setConfirming(true)} disabled={confirming}>
-            Delete my account
-          </button>
-        )}
+        <button type="button" className="btn btn-quiet" onClick={() => setConfirming(true)} disabled={confirming}>
+          Delete my account
+        </button>
       </div>
       {download.error ? <p className="form-error">{download.error.message}</p> : null}
-      {confirming && !open ? (
+      {confirming ? (
         <div className="promotion" role="alertdialog" aria-label="Delete my account">
           <p>
             <strong>Delete your account now?</strong> You leave every office you are in and can no longer sign in; this cannot be undone. An office only you are in is deleted with it, and nobody can restore it. If you are the only owner of an office others work in, make one of them an owner first. Your name stays in the books where you approved or recorded something, because the business must keep those records.
@@ -51,7 +49,7 @@ export function AccountSettings() {
       ) : null}
       {open ? (
         <p role="status">
-          You asked on {shortDate(open.createdAt)} for your account to be deleted. We will do it within 30 days of that.{" "}
+          You asked on {shortDate(open.createdAt)} for your account to be deleted. We will do it within 30 days of that, or you can delete it now above.{" "}
           <button type="button" className="link-button" onClick={() => withdraw.mutate(open.id)} disabled={withdraw.isPending}>
             Withdraw the request
           </button>

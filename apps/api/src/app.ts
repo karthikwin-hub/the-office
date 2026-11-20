@@ -711,19 +711,19 @@ export async function eraseBackups(env: Env): Promise<number> {
           await deleteObjects(target, page.keys);
           erased += page.keys.length;
         }
-        if (!page.next) {
+        if (!page.truncated) {
           done = true;
           break;
         }
       }
-      await plane.backupErasureProgress(job.officeId, erased, done);
+      await plane.backupErasureProgress(job.officeId, erased, done ? job.erased + erased : null);
       if (done) {
         finished++;
         console.log(JSON.stringify({ event: "office.backups-erased", office: job.officeId, count: job.erased + erased }));
       }
     } catch (e) {
       const why = (e instanceof Error ? e.message : String(e)).slice(0, 300);
-      await plane.backupErasureProgress(job.officeId, erased, false, why);
+      await plane.backupErasureProgress(job.officeId, erased, null, why);
       console.error(JSON.stringify({ event: "backups-erase.failed", office: job.officeId, error: why }));
     }
   }
@@ -752,7 +752,7 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
     if (due.length) {
       await env.DOCS.delete(due.map((o) => o.key));
       deleted += due.length;
-      for (const officeId of new Set(due.map((o) => retainedOffice(o.key)).filter((id): id is string => id !== null))) await plane.audit(officeId, "system", "office.retained-deleted", "the retention period of its books ended");
+      await plane.auditMany([...new Set(due.map((o) => retainedOffice(o.key)).filter((id): id is string => id !== null))].map((officeId) => ({ officeId, actor: "system", action: "office.retained-deleted", detail: "the retention period of its books ended" })));
       console.log(JSON.stringify({ event: "retained.deleted", count: due.length }));
     }
     if (!listed.truncated) break;
@@ -763,7 +763,12 @@ export async function sweepRetained(env: Env, now = new Date()): Promise<number>
 
 /** The nightly cron: deleted offices purged after 30 days, their copies in India deleted, then retained copies past their date. */
 export async function nightly(env: Env): Promise<void> {
-  await purgeDeleted(env);
-  await eraseBackups(env);
-  await sweepRetained(env);
+  // Each step runs even when one before it fails, so one bad office cannot hold back the others' duties.
+  for (const [name, step] of [["purge", purgeDeleted], ["erase-backups", eraseBackups], ["sweep-retained", sweepRetained]] as const) {
+    try {
+      await step(env);
+    } catch (e) {
+      console.error(JSON.stringify({ event: "nightly.failed", step: name, error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
 }

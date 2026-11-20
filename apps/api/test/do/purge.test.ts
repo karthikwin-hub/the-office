@@ -25,7 +25,11 @@ describe("purging an office", () => {
     expect(kept.books.business.name).toBe("Kaveri Electricals");
     expect(kept.edits.length).toBeGreaterThan(0);
 
-    // A purged office answers nothing more, and its storage is gone.
+    // A purged office answers nothing more, and its storage is gone; purging again only says it is done.
     expect((await stub.fetch(await asSystem(id, "/internal/export"))).status).toBe(404);
+    const again = await stub.fetch(await asSystem(id, "/internal/purge"));
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ purged: true });
+    expect((await env.DOCS.list({ prefix: `retained/${id}/` })).objects).toHaveLength(1);
   });
 });

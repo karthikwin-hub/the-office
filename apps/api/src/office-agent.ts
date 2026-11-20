@@ -444,6 +444,8 @@ export class Office extends Agent<Env> {
       const body = (await request.json().catch(() => ({}))) as { userId?: unknown };
       return json({ closed: this.disconnect(typeof body.userId === "string" && body.userId ? body.userId : null) });
     }
+    // Purging twice is done: the Worker retries a purge whose last steps failed, and must be able to finish it.
+    if (request.method === "POST" && path === "/internal/purge" && this.kv("office:purged")) return json({ purged: true });
     if (this.kv("office:purged")) return json({ error: "Not found" }, 404);
     if (request.method === "POST" && path === "/internal/purge") {
       if (this.office && !this.env.SOCIAL_TOKEN_KEY) return json({ error: "SOCIAL_TOKEN_KEY is not set, so the books cannot be sealed for keeping: the office is not purged." }, 503);

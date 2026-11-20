@@ -30,9 +30,9 @@ async function hmac(key: ArrayBuffer | string, data: string): Promise<ArrayBuffe
   const k = await crypto.subtle.importKey("raw", typeof key === "string" ? enc.encode(key) : key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return crypto.subtle.sign("HMAC", k, enc.encode(data));
 }
-const encodeKey = (key: string) => key.split("/").map((p) => encodeURIComponent(p)).join("/");
-/** RFC 3986, as Signature Version 4 wants query parameters: everything but letters, digits and `-._~` escaped. */
+/** RFC 3986, as Signature Version 4 wants paths and query parameters: everything but letters, digits and `-._~` escaped. */
 const encodeQuery = (v: string) => encodeURIComponent(v).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+const encodeKey = (key: string) => key.split("/").map(encodeQuery).join("/");
 
 type Bytes = ArrayBuffer | Uint8Array;
 
@@ -78,11 +78,15 @@ const unescapeXml = (s: string) => s.replace(/&(lt|gt|quot|apos|amp);/g, (_, e: 
 const tags = (xml: string, name: string) => [...xml.matchAll(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "g"))].map((m) => m[1]!);
 const text = (xml: string, name: string) => tags(xml, name).map(unescapeXml);
 
-/** One page (up to 1,000) of the keys under `prefix`, with the token for the next page, if there is one (ListObjectsV2). */
-export async function listObjects(t: BackupTarget, prefix: string, after?: string, now = new Date()): Promise<{ keys: string[]; next: string | null }> {
+/**
+ * One page (up to 1,000) of the keys under `prefix` (ListObjectsV2): `truncated` when more are left, with the
+ * token for the next page when the store gives one.
+ */
+export async function listObjects(t: BackupTarget, prefix: string, after?: string, now = new Date()): Promise<{ keys: string[]; truncated: boolean; next: string | null }> {
   const xml = await (await signed(t, "GET", "", { "list-type": "2", prefix, ...(after ? { "continuation-token": after } : {}) }, null, {}, now)).text();
   const keys = tags(xml, "Contents").flatMap((c) => text(c, "Key"));
-  return { keys, next: text(xml, "IsTruncated")[0] === "true" ? (text(xml, "NextContinuationToken")[0] ?? null) : null };
+  const truncated = text(xml, "IsTruncated")[0] === "true";
+  return { keys, truncated, next: truncated ? (text(xml, "NextContinuationToken")[0] ?? null) : null };
 }
 
 /** Deletes up to 1,000 keys in one request (DeleteObjects). Throws if the store kept any of them. */

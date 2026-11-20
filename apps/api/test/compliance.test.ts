@@ -128,7 +128,7 @@ describe("the daily copy in India", () => {
       return new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/2026-11-04.json.gz</Key></Contents><Contents><Key>kaveri/a&amp;b</Key></Contents><NextContinuationToken>1/x=</NextContinuationToken></ListBucketResult>");
     });
     const page = await listObjects(backupTarget(env())!, "kaveri/", "0/y=", new Date("2026-11-04T21:30:00Z"));
-    expect(page).toEqual({ keys: ["kaveri/2026-11-04.json.gz", "kaveri/a&b"], next: "1/x=" });
+    expect(page).toEqual({ keys: ["kaveri/2026-11-04.json.gz", "kaveri/a&b"], truncated: true, next: "1/x=" });
     const { url, init } = seen[0]!;
     const qs = "continuation-token=0%2Fy%3D&list-type=2&prefix=kaveri%2F";
     expect(url).toBe(`https://s3.ap-south-1.amazonaws.com/office-books-in?${qs}`);
@@ -139,6 +139,10 @@ describe("the daily copy in India", () => {
     const toSign = ["AWS4-HMAC-SHA256", "20261104T213000Z", scope, createHash("sha256").update(canonical).digest("hex")].join("\n");
     const k = ["20261104", "ap-south-1", "s3", "aws4_request"].reduce<Buffer>((key, part) => createHmac("sha256", key).update(part).digest(), Buffer.from("AWS4test-secret-key"));
     expect(h.authorization).toContain(`Signature=${createHmac("sha256", k).update(toSign).digest("hex")}`);
+
+    // A store that says there is more without a token for it still says there is more.
+    vi.stubGlobal("fetch", async () => new Response("<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>kaveri/1</Key></Contents></ListBucketResult>"));
+    expect(await listObjects(backupTarget(env())!, "kaveri/")).toEqual({ keys: ["kaveri/1"], truncated: true, next: null });
   });
 
   it("deletes in one request with the body's MD5, and fails when the store keeps any key", async () => {
