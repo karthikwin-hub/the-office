@@ -16,13 +16,13 @@ Update a row in the same pull request that changes its control.
 
 | Chapter | Met | Partly | Not met | N/A (rows) |
 | --- | --- | --- | --- | --- |
-| V1 Architecture | 29 | 9 | 0 | 0 |
+| V1 Architecture | 30 | 8 | 0 | 0 |
 | V2 Authentication | 29 | 4 | 6 | 3 |
 | V3 Session management | 11 | 2 | 2 | 0 |
 | V4 Access control | 9 | 0 | 0 | 0 |
 | V5 Validation, sanitisation and encoding | 21 | 2 | 0 | 4 |
 | V6 Stored cryptography | 10 | 4 | 0 | 0 |
-| V7 Errors and logging | 6 | 4 | 2 | 0 |
+| V7 Errors and logging | 7 | 3 | 2 | 0 |
 | V8 Data protection | 9 | 7 | 0 | 0 |
 | V9 Communications | 4 | 3 | 0 | 0 |
 | V10 Malicious code | 2 | 2 | 0 | 0 |
@@ -57,7 +57,7 @@ Update a row in the same pull request that changes its control.
 | 1.6.2 | Key material protected | Met | Worker secrets from Infisical; never in files or logs |
 | 1.6.3 | Keys replaceable | Partly | Token key version exists (`KEY_VERSION`); a versioned root key is open work |
 | 1.6.4 | Client-side secrets treated as insecure | Met | No secret ships to the browser; Turnstile uses a public site key |
-| 1.7.1 | Common logging format | Partly | JSON event lines; structured logs with request ids in progress |
+| 1.7.1 | Common logging format | Met | One structured line per event, with request and office ids (`apps/api/src/log.ts`) |
 | 1.7.2 | Logs sent to a remote system | Met | Workers observability (`apps/api/wrangler.jsonc`) |
 | 1.8.1 | Sensitive data identified | Met | Threat model, section 1; `docs/legal/` |
 | 1.8.2 | Protection levels per class | Partly | Copies sealed (ADR 0007); live files under the provider's key |
@@ -221,15 +221,15 @@ Not applicable: 6.1.2 (no health data).
 | Req | Requirement (short) | Status | Evidence |
 | --- | --- | --- | --- |
 | 7.1.1 | No credentials or session tokens in logs | Met | Log lines are named events with ids and counts; tokens travel only in bodies and cookies |
-| 7.1.2 | No other sensitive data in logs | Partly | No books in logs; some lines carry email addresses; a review lands with structured logs |
+| 7.1.2 | No other sensitive data in logs | Partly | Lines take named fields only and free text is scrubbed (`log.ts`, `test/log.test.ts`); Cloudflare's invocation logs keep URL paths, and withdrawing an invitation puts the invitee's email in one |
 | 7.1.3 | Security-relevant events logged | Partly | Office audit trail (`tenancy.ts`), edit log, `wa.join.paused`; sign-in failures are not logged by us |
-| 7.1.4 | Enough detail for a timeline | Partly | Office ids on office lines; request ids in progress |
+| 7.1.4 | Enough detail for a timeline | Met | Request id (Cloudflare's ray id, `x-request-id`) and office id on the Worker's and the office's lines (`log.ts`) |
 | 7.2.1 | Authentication decisions logged | Not met | Open (structured logs) |
 | 7.2.2 | Access-control failures logged | Not met | Open (structured logs) |
-| 7.3.1 | Log injection prevented | Met | `JSON.stringify` of each event |
+| 7.3.1 | Log injection prevented | Met | Each line is an object of named fields; events and ids are checked for shape (`log.ts`) |
 | 7.3.3 | Logs protected | Met | Cloudflare observability, account access only |
 | 7.3.4 | Time sources synchronised | Met | Platform clock |
-| 7.4.1 | Generic error messages | Met | "Something went wrong in the office" (`onRequest` in `office-agent.ts`) |
+| 7.4.1 | Generic error messages | Met | "Something went wrong in the office" (`onRequest` in `office-agent.ts`); `app.onError` answers "Something went wrong. Try again." (`log.ts`) |
 | 7.4.2 | Exceptions handled throughout | Met | Each route returns its own error; the office reopens the books on failure |
 | 7.4.3 | Last-resort handler | Partly | The office catches every request; the Worker relies on Hono's default handler |
 

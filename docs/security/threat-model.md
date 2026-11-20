@@ -209,7 +209,7 @@ Accepted or open, in no particular order. The open work and its order are in `do
 | People with deploy rights or the Cloudflare account could change code that reads books | Inherent to running the service | CI gates on every pull request; live releases behind a reviewer once the GitHub environments are set; branch protection is an owner step |
 | A model steered by text in a document, email or chat | Models can be steered | Fixed output shapes, engine checks, staged approval; trust levels are the owner's choice |
 | Text layers come from the uploader's browser | CPU budget (ADR 0003) | The engine recomputes totals; the approver sees the highlighted source |
-| Little telemetry: no request ids or error-rate alerts | Structured logs are in progress | Workers observability; the audit trail and edit log |
+| No error-rate alerts yet | Alerts are an owner step in the Cloudflare dashboard (handbook 04, section 9) | Structured logs with request and office ids (`apps/api/src/log.ts`); Workers Issues; the audit trail and edit log |
 | No antivirus scan of stored files | Not available within the free plan | Files never run in the app's origin; other types download as bytes |
 | Limits that protect against guessing can also be tripped to slow legitimate use | A trade of availability for safety | Limits are per number and per hour; trips are logged |
 | No external penetration test yet | Planned before the first enterprise customer | Internal review of 19 November 2026 and the fixes since |
