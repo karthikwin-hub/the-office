@@ -24,7 +24,7 @@ export class BooksStore {
       if (r.id === "_") raw[r.coll] = JSON.parse(r.json);
       else ((raw[r.coll] ??= []) as unknown[]).push(JSON.parse(r.json));
     }
-    for (const [k, v] of Object.entries(Books.shape)) if (raw[k] === undefined && (v as z.ZodTypeAny)._def.typeName === z.ZodFirstPartyTypeKind.ZodArray) raw[k] = [];
+    for (const [k, v] of Object.entries(Books.shape)) if (raw[k] === undefined && v instanceof z.ZodArray) raw[k] = [];
     return Books.parse(raw);
   }
 

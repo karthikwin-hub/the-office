@@ -1,0 +1,4102 @@
+{
+ "seed": 2611,
+ "generatedFor": "2026-11-04",
+ "business": {
+  "id": "kaveri",
+  "name": "Kaveri Electricals",
+  "legalName": "Kaveri Electricals Private Limited",
+  "pan": "AAFCK4821M",
+  "gstin": "27AAFCK4821M1Z9",
+  "tan": "PNEK09382C",
+  "stateCode": "27",
+  "address": "Plot 14, Bhosari MIDC, Pune 411026, Maharashtra",
+  "email": "accounts@kaverielectricals.in",
+  "phone": "+91 20 2712 4480",
+  "bank": "HDFC Bank, Bhosari branch, A/c 50200031127745, IFSC HDFC0001782",
+  "fyStart": "2026-04-01",
+  "asOf": "2026-11-04",
+  "prevYearTurnoverPaise": 108400000000,
+  "owner": "Anil Kaveri",
+  "accountantFirm": "Mehta & Associates, Chartered Accountants",
+  "compliance": {
+   "cin": "",
+   "incorporatedOn": null,
+   "roc": "",
+   "registeredOffice": "",
+   "authorisedCapitalPaise": 0,
+   "paidUpCapitalPaise": null,
+   "holdingOrSubsidiary": false,
+   "netProfitPaise": null,
+   "netWorthPaise": null,
+   "directors": [],
+   "shareholders": [],
+   "loans": [],
+   "auditor": "",
+   "auditorTermEndsFy": null,
+   "agms": [],
+   "plannedAgmOn": null,
+   "boardMeetings": [],
+   "gstFrequency": null,
+   "pf": null,
+   "esi": null,
+   "ptState": "",
+   "taxAudit": "auto",
+   "estimatedTaxPaise": null,
+   "flags": {
+    "foreignInvestment": false,
+    "exportsUnderLut": false,
+    "jobWork": false,
+    "demat": false,
+    "foreignPayments": false,
+    "sft": false,
+    "transferPricing": false,
+    "salaryTds": false
+   },
+   "events": [],
+   "calendarFrom": null,
+   "masterData": null
+  }
+ },
+ "states": {
+  "23": "Madhya Pradesh",
+  "24": "Gujarat",
+  "27": "Maharashtra",
+  "29": "Karnataka",
+  "30": "Goa",
+  "36": "Telangana",
+  "07": "Delhi"
+ },
+ "parties": [
+  {
+   "id": "C01",
+   "kind": "customer",
+   "name": "Sharma Traders",
+   "entity": "firm",
+   "gstin": "27PKXFS1248V1ZW",
+   "pan": "PKXFS1248V",
+   "stateCode": "27",
+   "city": "Pune",
+   "contact": {
+    "name": "Rakesh Sharma",
+    "phone": "+91 9489305653",
+    "email": "accounts@sharmatraders.in"
+   },
+   "paymentTermsDays": 30,
+   "creditLimitPaise": 400000000,
+   "buyerType": "retail",
+   "tan": null
+  },
+  {
+   "id": "C02",
+   "kind": "customer",
+   "name": "Joshi Electricals",
+   "entity": "firm",
+   "gstin": "27AUTFJ2695K1ZD",
+   "pan": "AUTFJ2695K",
+   "stateCode": "27",
+   "city": "Nashik",
+   "contact": {
+    "name": "Mandar Joshi",
+    "phone": "+91 9552358539",
+    "email": "accounts@joshielectricals.in"
+   },
+   "paymentTermsDays": 30,
+   "creditLimitPaise": 150000000,
+   "buyerType": "retail",
+   "tan": null
+  }
+ ],
+ "skus": [
+  {
+   "id": "SKU-101",
+   "name": "FR PVC wire 1.0 sq mm, 90 m coil",
+   "hsn": "8544",
+   "unit": "ROL",
+   "gstRate": 18,
+   "pricePaise": 145000,
+   "costPaise": 118994,
+   "category": "Cables"
+  },
+  {
+   "id": "SKU-102",
+   "name": "FR PVC wire 1.5 sq mm, 90 m coil",
+   "hsn": "8544",
+   "unit": "ROL",
+   "gstRate": 18,
+   "pricePaise": 215000,
+   "costPaise": 163062,
+   "category": "Cables"
+  }
+ ],
+ "documents": [
+  {
+   "id": "doc-s0001",
+   "kind": "sales_invoice",
+   "refId": "inv-0001",
+   "file": "/docs/doc-s0001.pdf",
+   "pages": 1,
+   "receivedAt": "2026-04-01T17:23:00+05:30",
+   "channel": "generated",
+   "from": null,
+   "status": "posted",
+   "regions": [
+    {
+     "key": "number",
+     "label": "Invoice number",
+     "page": 1,
+     "box": [
+      0.063,
+      0.13564,
+      0.12139,
+      0.01865
+     ]
+    },
+    {
+     "key": "date",
+     "label": "Invoice date",
+     "page": 1,
+     "box": [
+      0.28138,
+      0.13564,
+      0.09992,
+      0.01865
+     ]
+    },
+    {
+     "key": "terms",
+     "label": "Payment terms",
+     "page": 1,
+     "box": [
+      0.44937,
+      0.13564,
+      0.06723,
+      0.01865
+     ]
+    },
+    {
+     "key": "dueDate",
+     "label": "Due date",
+     "page": 1,
+     "box": [
+      0.61736,
+      0.13564,
+      0.10645,
+      0.01865
+     ]
+    },
+    {
+     "key": "party",
+     "label": "Customer",
+     "page": 1,
+     "box": [
+      0.063,
+      0.18336,
+      0.14087,
+      0.01992
+     ]
+    },
+    {
+     "key": "gstin",
+     "label": "Customer GSTIN",
+     "page": 1,
+     "box": [
+      0.063,
+      0.21549,
+      0.18535,
+      0.01674
+     ]
+    },
+    {
+     "key": "pos",
+     "label": "Place of supply",
+     "page": 1,
+     "box": [
+      0.55017,
+      0.18434,
+      0.13723,
+      0.01865
+     ]
+    },
+    {
+     "key": "line.0.description",
+     "label": "Line 1 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.27251,
+      0.16711,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.hsn",
+     "label": "Line 1 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.27251,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.qty",
+     "label": "Line 1 quantity",
+     "page": 1,
+     "box": [
+      0.50096,
+      0.27251,
+      0.05761,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.taxable",
+     "label": "Line 1 taxable value",
+     "page": 1,
+     "box": [
+      0.73192,
+      0.27251,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.rate",
+     "label": "Line 1 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.27251,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.tax",
+     "label": "Line 1 tax",
+     "page": 1,
+     "box": [
+      0.86967,
+      0.27251,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.description",
+     "label": "Line 2 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.29151,
+      0.15126,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.hsn",
+     "label": "Line 2 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.29151,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.qty",
+     "label": "Line 2 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.29151,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.taxable",
+     "label": "Line 2 taxable value",
+     "page": 1,
+     "box": [
+      0.73192,
+      0.29151,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.rate",
+     "label": "Line 2 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.29151,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.tax",
+     "label": "Line 2 tax",
+     "page": 1,
+     "box": [
+      0.87761,
+      0.29151,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.description",
+     "label": "Line 3 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.31052,
+      0.1338,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.hsn",
+     "label": "Line 3 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.31052,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.qty",
+     "label": "Line 3 quantity",
+     "page": 1,
+     "box": [
+      0.50096,
+      0.31052,
+      0.05761,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.taxable",
+     "label": "Line 3 taxable value",
+     "page": 1,
+     "box": [
+      0.73986,
+      0.31052,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.rate",
+     "label": "Line 3 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.31052,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.tax",
+     "label": "Line 3 tax",
+     "page": 1,
+     "box": [
+      0.88952,
+      0.31052,
+      0.05206,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.description",
+     "label": "Line 4 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.32952,
+      0.13458,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.hsn",
+     "label": "Line 4 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.32952,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.qty",
+     "label": "Line 4 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.32952,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.taxable",
+     "label": "Line 4 taxable value",
+     "page": 1,
+     "box": [
+      0.72001,
+      0.32952,
+      0.08382,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.rate",
+     "label": "Line 4 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.32952,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.tax",
+     "label": "Line 4 tax",
+     "page": 1,
+     "box": [
+      0.85776,
+      0.32952,
+      0.08382,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.description",
+     "label": "Line 5 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.34853,
+      0.13935,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.hsn",
+     "label": "Line 5 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.34853,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.qty",
+     "label": "Line 5 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.34853,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.taxable",
+     "label": "Line 5 taxable value",
+     "page": 1,
+     "box": [
+      0.73192,
+      0.34853,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.rate",
+     "label": "Line 5 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.34853,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.tax",
+     "label": "Line 5 tax",
+     "page": 1,
+     "box": [
+      0.87761,
+      0.34853,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "totals.taxable",
+     "label": "Taxable value",
+     "page": 1,
+     "box": [
+      0.85332,
+      0.37655,
+      0.08826,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.cgst",
+     "label": "CGST",
+     "page": 1,
+     "box": [
+      0.86593,
+      0.39317,
+      0.07565,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.sgst",
+     "label": "SGST",
+     "page": 1,
+     "box": [
+      0.86593,
+      0.4098,
+      0.07565,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.roundOff",
+     "label": "Round off",
+     "page": 1,
+     "box": [
+      0.90376,
+      0.42643,
+      0.03782,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.total",
+     "label": "Invoice total",
+     "page": 1,
+     "box": [
+      0.83558,
+      0.44824,
+      0.106,
+      0.01992
+     ]
+    },
+    {
+     "key": "totals.words",
+     "label": "Amount in words",
+     "page": 1,
+     "box": [
+      0.063,
+      0.47443,
+      0.38697,
+      0.01674
+     ]
+    }
+   ]
+  },
+  {
+   "id": "doc-s0002",
+   "kind": "sales_invoice",
+   "refId": "inv-0002",
+   "file": "/docs/doc-s0002.pdf",
+   "pages": 1,
+   "receivedAt": "2026-04-01T11:15:00+05:30",
+   "channel": "generated",
+   "from": null,
+   "status": "posted",
+   "regions": [
+    {
+     "key": "number",
+     "label": "Invoice number",
+     "page": 1,
+     "box": [
+      0.063,
+      0.13564,
+      0.12139,
+      0.01865
+     ]
+    },
+    {
+     "key": "date",
+     "label": "Invoice date",
+     "page": 1,
+     "box": [
+      0.28138,
+      0.13564,
+      0.09992,
+      0.01865
+     ]
+    },
+    {
+     "key": "terms",
+     "label": "Payment terms",
+     "page": 1,
+     "box": [
+      0.44937,
+      0.13564,
+      0.06723,
+      0.01865
+     ]
+    },
+    {
+     "key": "dueDate",
+     "label": "Due date",
+     "page": 1,
+     "box": [
+      0.61736,
+      0.13564,
+      0.10645,
+      0.01865
+     ]
+    },
+    {
+     "key": "party",
+     "label": "Customer",
+     "page": 1,
+     "box": [
+      0.063,
+      0.18336,
+      0.19219,
+      0.01992
+     ]
+    },
+    {
+     "key": "gstin",
+     "label": "Customer GSTIN",
+     "page": 1,
+     "box": [
+      0.063,
+      0.21549,
+      0.1925,
+      0.01674
+     ]
+    },
+    {
+     "key": "pos",
+     "label": "Place of supply",
+     "page": 1,
+     "box": [
+      0.55017,
+      0.18434,
+      0.13723,
+      0.01865
+     ]
+    },
+    {
+     "key": "line.0.description",
+     "label": "Line 1 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.27251,
+      0.1338,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.hsn",
+     "label": "Line 1 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.27251,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.qty",
+     "label": "Line 1 quantity",
+     "page": 1,
+     "box": [
+      0.49302,
+      0.27251,
+      0.06554,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.taxable",
+     "label": "Line 1 taxable value",
+     "page": 1,
+     "box": [
+      0.73986,
+      0.27251,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.rate",
+     "label": "Line 1 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.27251,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.0.tax",
+     "label": "Line 1 tax",
+     "page": 1,
+     "box": [
+      0.88952,
+      0.27251,
+      0.05206,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.description",
+     "label": "Line 2 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.29151,
+      0.14331,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.hsn",
+     "label": "Line 2 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.29151,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.qty",
+     "label": "Line 2 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.29151,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.taxable",
+     "label": "Line 2 taxable value",
+     "page": 1,
+     "box": [
+      0.72001,
+      0.29151,
+      0.08382,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.rate",
+     "label": "Line 2 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.29151,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.1.tax",
+     "label": "Line 2 tax",
+     "page": 1,
+     "box": [
+      0.86967,
+      0.29151,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.description",
+     "label": "Line 3 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.31052,
+      0.14569,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.hsn",
+     "label": "Line 3 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.31052,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.qty",
+     "label": "Line 3 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.31052,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.taxable",
+     "label": "Line 3 taxable value",
+     "page": 1,
+     "box": [
+      0.73986,
+      0.31052,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.rate",
+     "label": "Line 3 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.31052,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.2.tax",
+     "label": "Line 3 tax",
+     "page": 1,
+     "box": [
+      0.88952,
+      0.31052,
+      0.05206,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.description",
+     "label": "Line 4 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.32952,
+      0.183,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.hsn",
+     "label": "Line 4 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.32952,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.qty",
+     "label": "Line 4 quantity",
+     "page": 1,
+     "box": [
+      0.50016,
+      0.32952,
+      0.0584,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.taxable",
+     "label": "Line 4 taxable value",
+     "page": 1,
+     "box": [
+      0.72001,
+      0.32952,
+      0.08382,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.rate",
+     "label": "Line 4 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.32952,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.3.tax",
+     "label": "Line 4 tax",
+     "page": 1,
+     "box": [
+      0.86967,
+      0.32952,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.description",
+     "label": "Line 5 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.34853,
+      0.09649,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.hsn",
+     "label": "Line 5 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.34853,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.qty",
+     "label": "Line 5 quantity",
+     "page": 1,
+     "box": [
+      0.49937,
+      0.34853,
+      0.05919,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.taxable",
+     "label": "Line 5 taxable value",
+     "page": 1,
+     "box": [
+      0.73986,
+      0.34853,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.rate",
+     "label": "Line 5 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.34853,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.4.tax",
+     "label": "Line 5 tax",
+     "page": 1,
+     "box": [
+      0.88952,
+      0.34853,
+      0.05206,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.description",
+     "label": "Line 6 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.36753,
+      0.21949,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.hsn",
+     "label": "Line 6 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.36753,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.qty",
+     "label": "Line 6 quantity",
+     "page": 1,
+     "box": [
+      0.49145,
+      0.36753,
+      0.06712,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.taxable",
+     "label": "Line 6 taxable value",
+     "page": 1,
+     "box": [
+      0.73192,
+      0.36753,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.rate",
+     "label": "Line 6 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.36753,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.5.tax",
+     "label": "Line 6 tax",
+     "page": 1,
+     "box": [
+      0.86967,
+      0.36753,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.description",
+     "label": "Line 7 description",
+     "page": 1,
+     "box": [
+      0.09995,
+      0.38653,
+      0.19094,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.hsn",
+     "label": "Line 7 HSN",
+     "page": 1,
+     "box": [
+      0.41577,
+      0.38653,
+      0.04016,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.qty",
+     "label": "Line 7 quantity",
+     "page": 1,
+     "box": [
+      0.49302,
+      0.38653,
+      0.06554,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.taxable",
+     "label": "Line 7 taxable value",
+     "page": 1,
+     "box": [
+      0.73192,
+      0.38653,
+      0.07191,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.rate",
+     "label": "Line 7 GST rate",
+     "page": 1,
+     "box": [
+      0.81053,
+      0.38653,
+      0.03697,
+      0.01674
+     ]
+    },
+    {
+     "key": "line.6.tax",
+     "label": "Line 7 tax",
+     "page": 1,
+     "box": [
+      0.87761,
+      0.38653,
+      0.06397,
+      0.01674
+     ]
+    },
+    {
+     "key": "totals.taxable",
+     "label": "Taxable value",
+     "page": 1,
+     "box": [
+      0.85332,
+      0.41456,
+      0.08826,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.cgst",
+     "label": "CGST",
+     "page": 1,
+     "box": [
+      0.86593,
+      0.43118,
+      0.07565,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.sgst",
+     "label": "SGST",
+     "page": 1,
+     "box": [
+      0.86593,
+      0.44781,
+      0.07565,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.roundOff",
+     "label": "Round off",
+     "page": 1,
+     "box": [
+      0.89872,
+      0.46444,
+      0.04286,
+      0.01738
+     ]
+    },
+    {
+     "key": "totals.total",
+     "label": "Invoice total",
+     "page": 1,
+     "box": [
+      0.83558,
+      0.48625,
+      0.106,
+      0.01992
+     ]
+    },
+    {
+     "key": "totals.words",
+     "label": "Amount in words",
+     "page": 1,
+     "box": [
+      0.063,
+      0.51244,
+      0.45519,
+      0.01674
+     ]
+    }
+   ]
+  }
+ ],
+ "invoices": [
+  {
+   "id": "inv-0001",
+   "number": "KE/26-27/0001",
+   "date": "2026-04-01",
+   "partyId": "C11",
+   "docId": "doc-s0001",
+   "placeOfSupply": "27",
+   "reverseCharge": false,
+   "termsDays": 30,
+   "dueDate": "2026-05-01",
+   "lines": [
+    {
+     "skuId": "SKU-109",
+     "description": "Coaxial cable RG6, 90 m",
+     "hsn": "8544",
+     "qty": 28,
+     "unit": "ROL",
+     "ratePaise": 230000,
+     "discountPct": 0,
+     "taxablePaise": 6440000,
+     "gstRate": 18,
+     "cgstPaise": 579600,
+     "sgstPaise": 579600,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-303",
+     "description": "LED panel 2x2 ft 36 W",
+     "hsn": "9405",
+     "qty": 27,
+     "unit": "NOS",
+     "ratePaise": 115000,
+     "discountPct": 0,
+     "taxablePaise": 3105000,
+     "gstRate": 18,
+     "cgstPaise": 279450,
+     "sgstPaise": 279450,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-504",
+     "description": "PVC insulation tape",
+     "hsn": "3919",
+     "qty": 58,
+     "unit": "ROL",
+     "ratePaise": 2200,
+     "discountPct": 0,
+     "taxablePaise": 127600,
+     "gstRate": 18,
+     "cgstPaise": 11484,
+     "sgstPaise": 11484,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-204",
+     "description": "MCCB 100 A 3 pole",
+     "hsn": "8536",
+     "qty": 82,
+     "unit": "NOS",
+     "ratePaise": 690000,
+     "discountPct": 0,
+     "taxablePaise": 56580000,
+     "gstRate": 18,
+     "cgstPaise": 5092200,
+     "sgstPaise": 5092200,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-403",
+     "description": "Exhaust fan 300 mm",
+     "hsn": "8414",
+     "qty": 15,
+     "unit": "NOS",
+     "ratePaise": 125000,
+     "discountPct": 0,
+     "taxablePaise": 1875000,
+     "gstRate": 18,
+     "cgstPaise": 168750,
+     "sgstPaise": 168750,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 68127600,
+    "cgstPaise": 6131484,
+    "sgstPaise": 6131484,
+    "igstPaise": 0,
+    "roundOffPaise": 32,
+    "totalPaise": 80390600
+   },
+   "status": "posted"
+  },
+  {
+   "id": "inv-0002",
+   "number": "KE/26-27/0002",
+   "date": "2026-04-01",
+   "partyId": "C25",
+   "docId": "doc-s0002",
+   "placeOfSupply": "27",
+   "reverseCharge": false,
+   "termsDays": 45,
+   "dueDate": "2026-05-16",
+   "lines": [
+    {
+     "skuId": "SKU-504",
+     "description": "PVC insulation tape",
+     "hsn": "3919",
+     "qty": 119,
+     "unit": "ROL",
+     "ratePaise": 2200,
+     "discountPct": 0,
+     "taxablePaise": 261800,
+     "gstRate": 18,
+     "cgstPaise": 23562,
+     "sgstPaise": 23562,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-305",
+     "description": "LED street light 60 W",
+     "hsn": "9405",
+     "qty": 51,
+     "unit": "NOS",
+     "ratePaise": 320000,
+     "discountPct": 0,
+     "taxablePaise": 16320000,
+     "gstRate": 18,
+     "cgstPaise": 1468800,
+     "sgstPaise": 1468800,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-201",
+     "description": "MCB single pole 16 A",
+     "hsn": "8536",
+     "qty": 21,
+     "unit": "NOS",
+     "ratePaise": 18500,
+     "discountPct": 0,
+     "taxablePaise": 388500,
+     "gstRate": 18,
+     "cgstPaise": 34965,
+     "sgstPaise": 34965,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-108",
+     "description": "LAN cable Cat6, 305 m box",
+     "hsn": "8544",
+     "qty": 19,
+     "unit": "BOX",
+     "ratePaise": 890000,
+     "discountPct": 0,
+     "taxablePaise": 16910000,
+     "gstRate": 18,
+     "cgstPaise": 1521900,
+     "sgstPaise": 1521900,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-301",
+     "description": "LED bulb 9 W",
+     "hsn": "8539",
+     "qty": 32,
+     "unit": "NOS",
+     "ratePaise": 6800,
+     "discountPct": 0,
+     "taxablePaise": 217600,
+     "gstRate": 18,
+     "cgstPaise": 19584,
+     "sgstPaise": 19584,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-107",
+     "description": "Armoured cable 4 core 25 sq mm",
+     "hsn": "8544",
+     "qty": 100,
+     "unit": "MTR",
+     "ratePaise": 62000,
+     "discountPct": 0,
+     "taxablePaise": 6200000,
+     "gstRate": 18,
+     "cgstPaise": 558000,
+     "sgstPaise": 558000,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-503",
+     "description": "Nylon cable ties, pack of 100",
+     "hsn": "3926",
+     "qty": 310,
+     "unit": "PAC",
+     "ratePaise": 14500,
+     "discountPct": 0,
+     "taxablePaise": 4495000,
+     "gstRate": 18,
+     "cgstPaise": 404550,
+     "sgstPaise": 404550,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 44792900,
+    "cgstPaise": 4031361,
+    "sgstPaise": 4031361,
+    "igstPaise": 0,
+    "roundOffPaise": -22,
+    "totalPaise": 52855600
+   },
+   "status": "posted"
+  }
+ ],
+ "bills": [
+  {
+   "id": "bill-0001",
+   "number": "SCPL/2604/321",
+   "date": "2026-04-06",
+   "partyId": "V01",
+   "docId": "doc-p0001",
+   "kind": "goods",
+   "placeOfSupply": "27",
+   "lines": [
+    {
+     "skuId": "SKU-109",
+     "description": "Coaxial cable RG6, 90 m",
+     "hsn": "8544",
+     "qty": 113,
+     "unit": "ROL",
+     "ratePaise": 176268,
+     "discountPct": 0,
+     "taxablePaise": 19918284,
+     "gstRate": 18,
+     "cgstPaise": 1792646,
+     "sgstPaise": 1792646,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-106",
+     "description": "Armoured cable 4 core 16 sq mm",
+     "hsn": "8544",
+     "qty": 500,
+     "unit": "MTR",
+     "ratePaise": 33425,
+     "discountPct": 0,
+     "taxablePaise": 16712500,
+     "gstRate": 18,
+     "cgstPaise": 1504125,
+     "sgstPaise": 1504125,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-101",
+     "description": "FR PVC wire 1.0 sq mm, 90 m coil",
+     "hsn": "8544",
+     "qty": 168,
+     "unit": "ROL",
+     "ratePaise": 118994,
+     "discountPct": 0,
+     "taxablePaise": 19990992,
+     "gstRate": 18,
+     "cgstPaise": 1799189,
+     "sgstPaise": 1799189,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-503",
+     "description": "Nylon cable ties, pack of 100",
+     "hsn": "3926",
+     "qty": 1686,
+     "unit": "PAC",
+     "ratePaise": 11857,
+     "discountPct": 0,
+     "taxablePaise": 19990902,
+     "gstRate": 18,
+     "cgstPaise": 1799181,
+     "sgstPaise": 1799181,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-103",
+     "description": "FR PVC wire 2.5 sq mm, 90 m coil",
+     "hsn": "8544",
+     "qty": 72,
+     "unit": "ROL",
+     "ratePaise": 274961,
+     "discountPct": 0,
+     "taxablePaise": 19797192,
+     "gstRate": 18,
+     "cgstPaise": 1781747,
+     "sgstPaise": 1781747,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-502",
+     "description": "PVC junction box 4 way",
+     "hsn": "3925",
+     "qty": 6510,
+     "unit": "NOS",
+     "ratePaise": 3072,
+     "discountPct": 0,
+     "taxablePaise": 19998720,
+     "gstRate": 18,
+     "cgstPaise": 1799885,
+     "sgstPaise": 1799885,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 116408590,
+    "cgstPaise": 10476773,
+    "sgstPaise": 10476773,
+    "igstPaise": 0,
+    "roundOffPaise": -36,
+    "totalPaise": 137362100
+   },
+   "itcEligible": true,
+   "tds": null,
+   "status": "posted"
+  },
+  {
+   "id": "bill-0002",
+   "number": "SCPL/2604/780",
+   "date": "2026-04-12",
+   "partyId": "V01",
+   "docId": "doc-p0002",
+   "kind": "goods",
+   "placeOfSupply": "27",
+   "lines": [
+    {
+     "skuId": "SKU-103",
+     "description": "FR PVC wire 2.5 sq mm, 90 m coil",
+     "hsn": "8544",
+     "qty": 72,
+     "unit": "ROL",
+     "ratePaise": 274961,
+     "discountPct": 0,
+     "taxablePaise": 19797192,
+     "gstRate": 18,
+     "cgstPaise": 1781747,
+     "sgstPaise": 1781747,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-107",
+     "description": "Armoured cable 4 core 25 sq mm",
+     "hsn": "8544",
+     "qty": 300,
+     "unit": "MTR",
+     "ratePaise": 51293,
+     "discountPct": 0,
+     "taxablePaise": 15387900,
+     "gstRate": 18,
+     "cgstPaise": 1384911,
+     "sgstPaise": 1384911,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-502",
+     "description": "PVC junction box 4 way",
+     "hsn": "3925",
+     "qty": 6510,
+     "unit": "NOS",
+     "ratePaise": 3072,
+     "discountPct": 0,
+     "taxablePaise": 19998720,
+     "gstRate": 18,
+     "cgstPaise": 1799885,
+     "sgstPaise": 1799885,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-503",
+     "description": "Nylon cable ties, pack of 100",
+     "hsn": "3926",
+     "qty": 1686,
+     "unit": "PAC",
+     "ratePaise": 11857,
+     "discountPct": 0,
+     "taxablePaise": 19990902,
+     "gstRate": 18,
+     "cgstPaise": 1799181,
+     "sgstPaise": 1799181,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-104",
+     "description": "FR PVC wire 4.0 sq mm, 90 m coil",
+     "hsn": "8544",
+     "qty": 46,
+     "unit": "ROL",
+     "ratePaise": 428853,
+     "discountPct": 0,
+     "taxablePaise": 19727238,
+     "gstRate": 18,
+     "cgstPaise": 1775451,
+     "sgstPaise": 1775451,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-102",
+     "description": "FR PVC wire 1.5 sq mm, 90 m coil",
+     "hsn": "8544",
+     "qty": 122,
+     "unit": "ROL",
+     "ratePaise": 163062,
+     "discountPct": 0,
+     "taxablePaise": 19893564,
+     "gstRate": 18,
+     "cgstPaise": 1790421,
+     "sgstPaise": 1790421,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 114795516,
+    "cgstPaise": 10331596,
+    "sgstPaise": 10331596,
+    "igstPaise": 0,
+    "roundOffPaise": -8,
+    "totalPaise": 135458700
+   },
+   "itcEligible": true,
+   "tds": null,
+   "status": "posted"
+  }
+ ],
+ "payments": [
+  {
+   "id": "pay-0008",
+   "date": "2026-04-15",
+   "partyId": "V04",
+   "direction": "out",
+   "amountPaise": 46834500,
+   "mode": "RTGS",
+   "reference": "UTR969523440976",
+   "allocations": [
+    {
+     "billId": "bill-0008",
+     "amountPaise": 46834500,
+     "tdsPaise": 0
+    }
+   ],
+   "tdsDeductedPaise": 0,
+   "tdsSection": null
+  },
+  {
+   "id": "pay-0002",
+   "date": "2026-04-23",
+   "partyId": "V01",
+   "direction": "out",
+   "amountPaise": 135458700,
+   "mode": "RTGS",
+   "reference": "UTR425922530177",
+   "allocations": [
+    {
+     "billId": "bill-0002",
+     "amountPaise": 135458700,
+     "tdsPaise": 0
+    }
+   ],
+   "tdsDeductedPaise": 0,
+   "tdsSection": null
+  }
+ ],
+ "filedReturns": [
+  {
+   "id": "gstr1-2026-04",
+   "period": "2026-04",
+   "status": "filed",
+   "filedOn": "2026-05-10",
+   "sharedOn": null,
+   "dueOn": "2026-05-11",
+   "filedBy": "Mehta & Associates, Chartered Accountants",
+   "form": "GSTR-1",
+   "data": {
+    "gstin": "27AAFCK4821M1Z9",
+    "fp": "042026",
+    "b2b": [
+     {
+      "ctin": "23ZPAFV4126J1ZT",
+      "inv": [
+       {
+        "inum": "KE/26-27/0027",
+        "idt": "17-04-2026",
+        "val": 414180,
+        "pos": "23",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 351000,
+           "iamt": 63180,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0034",
+        "idt": "22-04-2026",
+        "val": 452201,
+        "pos": "23",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 383221.16,
+           "iamt": 68979.81,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0036",
+        "idt": "23-04-2026",
+        "val": 550791,
+        "pos": "23",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 466772.04,
+           "iamt": 84018.97,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27ADLFG2098D1Z5",
+      "inv": [
+       {
+        "inum": "KE/26-27/0015",
+        "idt": "09-04-2026",
+        "val": 939511,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 796196,
+           "iamt": 0,
+           "camt": 71657.64,
+           "samt": 71657.64,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0031",
+        "idt": "20-04-2026",
+        "val": 122191,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 103552,
+           "iamt": 0,
+           "camt": 9319.68,
+           "samt": 9319.68,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27AUTFJ2695K1ZD",
+      "inv": [
+       {
+        "inum": "KE/26-27/0013",
+        "idt": "08-04-2026",
+        "val": 46840,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 39695,
+           "iamt": 0,
+           "camt": 3572.55,
+           "samt": 3572.55,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27CNLFM6981M1ZL",
+      "inv": [
+       {
+        "inum": "KE/26-27/0012",
+        "idt": "07-04-2026",
+        "val": 85821,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 72730,
+           "iamt": 0,
+           "camt": 6545.7,
+           "samt": 6545.7,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0043",
+        "idt": "30-04-2026",
+        "val": 100862,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 85476,
+           "iamt": 0,
+           "camt": 7692.84,
+           "samt": 7692.84,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27DWSCK8081U1ZS",
+      "inv": [
+       {
+        "inum": "KE/26-27/0004",
+        "idt": "02-04-2026",
+        "val": 306263,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 259544.75,
+           "iamt": 0,
+           "camt": 23359.04,
+           "samt": 23359.04,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0011",
+        "idt": "04-04-2026",
+        "val": 145486,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 123292.9,
+           "iamt": 0,
+           "camt": 11096.37,
+           "samt": 11096.37,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0023",
+        "idt": "13-04-2026",
+        "val": 176245,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 149360,
+           "iamt": 0,
+           "camt": 13442.4,
+           "samt": 13442.4,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27FGDCL2821P1ZR",
+      "inv": [
+       {
+        "inum": "KE/26-27/0021",
+        "idt": "13-04-2026",
+        "val": 157802,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 133730.8,
+           "iamt": 0,
+           "camt": 12035.77,
+           "samt": 12035.77,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0042",
+        "idt": "29-04-2026",
+        "val": 110212,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 93400,
+           "iamt": 0,
+           "camt": 8406,
+           "samt": 8406,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27HZCFJ6021C1ZA",
+      "inv": [
+       {
+        "inum": "KE/26-27/0001",
+        "idt": "01-04-2026",
+        "val": 803906,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 681276,
+           "iamt": 0,
+           "camt": 61314.84,
+           "samt": 61314.84,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27KGWCS6656D1Z4",
+      "inv": [
+       {
+        "inum": "KE/26-27/0002",
+        "idt": "01-04-2026",
+        "val": 528556,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 447929,
+           "iamt": 0,
+           "camt": 40313.61,
+           "samt": 40313.61,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0003",
+        "idt": "01-04-2026",
+        "val": 706566,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 598785,
+           "iamt": 0,
+           "camt": 53890.65,
+           "samt": 53890.65,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0007",
+        "idt": "03-04-2026",
+        "val": 83454,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 70724,
+           "iamt": 0,
+           "camt": 6365.16,
+           "samt": 6365.16,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0016",
+        "idt": "10-04-2026",
+        "val": 52906,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 44835.25,
+           "iamt": 0,
+           "camt": 4035.17,
+           "samt": 4035.17,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0019",
+        "idt": "11-04-2026",
+        "val": 190265,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 161241.16,
+           "iamt": 0,
+           "camt": 14511.71,
+           "samt": 14511.71,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0025",
+        "idt": "14-04-2026",
+        "val": 253038,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 214438.7,
+           "iamt": 0,
+           "camt": 19299.48,
+           "samt": 19299.48,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0032",
+        "idt": "21-04-2026",
+        "val": 181076,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 153454,
+           "iamt": 0,
+           "camt": 13810.86,
+           "samt": 13810.86,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0033",
+        "idt": "22-04-2026",
+        "val": 203964,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 172851.09,
+           "iamt": 0,
+           "camt": 15556.61,
+           "samt": 15556.61,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0038",
+        "idt": "24-04-2026",
+        "val": 14821,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 12560,
+           "iamt": 0,
+           "camt": 1130.4,
+           "samt": 1130.4,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27MMYCU6043S1Z1",
+      "inv": [
+       {
+        "inum": "KE/26-27/0009",
+        "idt": "04-04-2026",
+        "val": 435191,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 368806,
+           "iamt": 0,
+           "camt": 33192.54,
+           "samt": 33192.54,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0020",
+        "idt": "11-04-2026",
+        "val": 77762,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 65900,
+           "iamt": 0,
+           "camt": 5931,
+           "samt": 5931,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27PKXFS1248V1ZW",
+      "inv": [
+       {
+        "inum": "KE/26-27/0022",
+        "idt": "13-04-2026",
+        "val": 44047,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 37328,
+           "iamt": 0,
+           "camt": 3359.52,
+           "samt": 3359.52,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0030",
+        "idt": "20-04-2026",
+        "val": 11061,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 9374,
+           "iamt": 0,
+           "camt": 843.66,
+           "samt": 843.66,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0039",
+        "idt": "24-04-2026",
+        "val": 100203,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 84918,
+           "iamt": 0,
+           "camt": 7642.62,
+           "samt": 7642.62,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27SCPFD6470H1ZG",
+      "inv": [
+       {
+        "inum": "KE/26-27/0014",
+        "idt": "08-04-2026",
+        "val": 137654,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 116656,
+           "iamt": 0,
+           "camt": 10499.04,
+           "samt": 10499.04,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0018",
+        "idt": "11-04-2026",
+        "val": 701746,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 594700,
+           "iamt": 0,
+           "camt": 53523.01,
+           "samt": 53523.01,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0028",
+        "idt": "18-04-2026",
+        "val": 27232,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 23078,
+           "iamt": 0,
+           "camt": 2077.02,
+           "samt": 2077.02,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0037",
+        "idt": "24-04-2026",
+        "val": 588803,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 498986,
+           "iamt": 0,
+           "camt": 44908.74,
+           "samt": 44908.74,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27SFUFW7219W1ZU",
+      "inv": [
+       {
+        "inum": "KE/26-27/0041",
+        "idt": "27-04-2026",
+        "val": 125717,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 501,
+          "itm_det": {
+           "rt": 5,
+           "txval": 78596,
+           "iamt": 0,
+           "camt": 1964.9,
+           "samt": 1964.9,
+           "csamt": 0
+          }
+         },
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 36603,
+           "iamt": 0,
+           "camt": 3294.27,
+           "samt": 3294.27,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27SJHFP9827L1ZH",
+      "inv": [
+       {
+        "inum": "KE/26-27/0010",
+        "idt": "04-04-2026",
+        "val": 115118,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 97558,
+           "iamt": 0,
+           "camt": 8780.22,
+           "samt": 8780.22,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27WZSCK7416A1ZF",
+      "inv": [
+       {
+        "inum": "KE/26-27/0040",
+        "idt": "25-04-2026",
+        "val": 683267,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 579040,
+           "iamt": 0,
+           "camt": 52113.6,
+           "samt": 52113.6,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27XMAFA9397H1ZS",
+      "inv": [
+       {
+        "inum": "KE/26-27/0017",
+        "idt": "10-04-2026",
+        "val": 176629,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 149685.2,
+           "iamt": 0,
+           "camt": 13471.67,
+           "samt": 13471.67,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "27YKJFP8366H1ZG",
+      "inv": [
+       {
+        "inum": "KE/26-27/0026",
+        "idt": "16-04-2026",
+        "val": 302145,
+        "pos": "27",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 256055,
+           "iamt": 0,
+           "camt": 23044.95,
+           "samt": 23044.95,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "29DDNCS1914S1Z8",
+      "inv": [
+       {
+        "inum": "KE/26-27/0029",
+        "idt": "20-04-2026",
+        "val": 117041,
+        "pos": "29",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 99187,
+           "iamt": 17853.66,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "29MPDFH4621D1ZI",
+      "inv": [
+       {
+        "inum": "KE/26-27/0005",
+        "idt": "02-04-2026",
+        "val": 810212,
+        "pos": "29",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 686620,
+           "iamt": 123591.6,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "ctin": "30MBDCK1377P1ZZ",
+      "inv": [
+       {
+        "inum": "KE/26-27/0006",
+        "idt": "03-04-2026",
+        "val": 604785,
+        "pos": "30",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 512530,
+           "iamt": 92255.4,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0008",
+        "idt": "03-04-2026",
+        "val": 405058,
+        "pos": "30",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 343269.2,
+           "iamt": 61788.46,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0024",
+        "idt": "14-04-2026",
+        "val": 324990,
+        "pos": "30",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 275415.45,
+           "iamt": 49574.79,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       },
+       {
+        "inum": "KE/26-27/0035",
+        "idt": "23-04-2026",
+        "val": 430750,
+        "pos": "30",
+        "rchrg": "N",
+        "inv_typ": "R",
+        "itms": [
+         {
+          "num": 1801,
+          "itm_det": {
+           "rt": 18,
+           "txval": 365042,
+           "iamt": 65707.56,
+           "camt": 0,
+           "samt": 0,
+           "csamt": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "b2cs": [],
+    "b2cl": [],
+    "hsn": {
+     "data": [
+      {
+       "num": 1,
+       "hsn_sc": "3917",
+       "desc": "Conduit",
+       "uqc": "PCS",
+       "qty": 2980,
+       "rt": 18,
+       "txval": 211743.36,
+       "iamt": 12870.32,
+       "camt": 12621.74,
+       "samt": 12621.74,
+       "csamt": 0
+      },
+      {
+       "num": 2,
+       "hsn_sc": "3919",
+       "desc": "Conduit",
+       "uqc": "ROL",
+       "qty": 1032,
+       "rt": 18,
+       "txval": 22148.5,
+       "iamt": 0,
+       "camt": 1993.37,
+       "samt": 1993.37,
+       "csamt": 0
+      },
+      {
+       "num": 3,
+       "hsn_sc": "3925",
+       "desc": "Conduit",
+       "uqc": "NOS",
+       "qty": 634,
+       "rt": 18,
+       "txval": 24092,
+       "iamt": 752.4,
+       "camt": 1792.08,
+       "samt": 1792.08,
+       "csamt": 0
+      },
+      {
+       "num": 4,
+       "hsn_sc": "3926",
+       "desc": "Conduit",
+       "uqc": "PAC",
+       "qty": 2408,
+       "rt": 18,
+       "txval": 342150.7,
+       "iamt": 33073.67,
+       "camt": 14256.73,
+       "samt": 14256.73,
+       "csamt": 0
+      },
+      {
+       "num": 5,
+       "hsn_sc": "8414",
+       "desc": "Fans",
+       "uqc": "NOS",
+       "qty": 126,
+       "rt": 18,
+       "txval": 264992,
+       "iamt": 6343.56,
+       "camt": 20677.5,
+       "samt": 20677.5,
+       "csamt": 0
+      },
+      {
+       "num": 6,
+       "hsn_sc": "8504",
+       "desc": "Power",
+       "uqc": "NOS",
+       "qty": 44,
+       "rt": 18,
+       "txval": 270596,
+       "iamt": 8827.2,
+       "camt": 19940.04,
+       "samt": 19940.04,
+       "csamt": 0
+      },
+      {
+       "num": 7,
+       "hsn_sc": "8536",
+       "desc": "Switchgear",
+       "uqc": "NOS",
+       "qty": 1464,
+       "rt": 18,
+       "txval": 3048053.8,
+       "iamt": 192364.92,
+       "camt": 178142.4,
+       "samt": 178142.4,
+       "csamt": 0
+      },
+      {
+       "num": 8,
+       "hsn_sc": "8537",
+       "desc": "Switchgear",
+       "uqc": "NOS",
+       "qty": 139,
+       "rt": 18,
+       "txval": 337365,
+       "iamt": 2646,
+       "camt": 29039.85,
+       "samt": 29039.85,
+       "csamt": 0
+      },
+      {
+       "num": 9,
+       "hsn_sc": "8539",
+       "desc": "Lighting",
+       "uqc": "NOS",
+       "qty": 542,
+       "rt": 18,
+       "txval": 36732.24,
+       "iamt": 1434.29,
+       "camt": 2588.76,
+       "samt": 2588.76,
+       "csamt": 0
+      },
+      {
+       "num": 10,
+       "hsn_sc": "8541",
+       "desc": "Solar",
+       "uqc": "NOS",
+       "qty": 4,
+       "rt": 5,
+       "txval": 55664,
+       "iamt": 0,
+       "camt": 1391.6,
+       "samt": 1391.6,
+       "csamt": 0
+      },
+      {
+       "num": 11,
+       "hsn_sc": "8544",
+       "desc": "Cables",
+       "uqc": "BOX",
+       "qty": 171,
+       "rt": 18,
+       "txval": 1475175,
+       "iamt": 59354.1,
+       "camt": 103088.7,
+       "samt": 103088.7,
+       "csamt": 0
+      },
+      {
+       "num": 12,
+       "hsn_sc": "8544",
+       "desc": "Cables",
+       "uqc": "MTR",
+       "qty": 1000,
+       "rt": 18,
+       "txval": 276392.5,
+       "iamt": 7290,
+       "camt": 21230.33,
+       "samt": 21230.33,
+       "csamt": 0
+      },
+      {
+       "num": 13,
+       "hsn_sc": "8544",
+       "desc": "Cables",
+       "uqc": "ROL",
+       "qty": 742,
+       "rt": 18,
+       "txval": 2742967.5,
+       "iamt": 260126.1,
+       "camt": 116804.03,
+       "samt": 116804.03,
+       "csamt": 0
+      },
+      {
+       "num": 14,
+       "hsn_sc": "9405",
+       "desc": "Solar",
+       "uqc": "NOS",
+       "qty": 3,
+       "rt": 5,
+       "txval": 22932,
+       "iamt": 0,
+       "camt": 573.3,
+       "samt": 573.3,
+       "csamt": 0
+      },
+      {
+       "num": 15,
+       "hsn_sc": "9405",
+       "desc": "Lighting",
+       "uqc": "NOS",
+       "qty": 1155,
+       "rt": 18,
+       "txval": 1764407.1,
+       "iamt": 41867.69,
+       "camt": 137862.81,
+       "samt": 137862.81,
+       "csamt": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "gstr3b-2026-04",
+   "period": "2026-04",
+   "status": "filed",
+   "filedOn": "2026-05-19",
+   "sharedOn": null,
+   "dueOn": "2026-05-20",
+   "filedBy": "Mehta & Associates, Chartered Accountants",
+   "form": "GSTR-3B",
+   "data": {
+    "gstin": "27AAFCK4821M1Z9",
+    "ret_period": "042026",
+    "sup_details": {
+     "osup_det": {
+      "iamt": 626950.25,
+      "camt": 662003.24,
+      "samt": 662003.24,
+      "csamt": 0,
+      "txval": 10895411.7
+     }
+    },
+    "itc_elg": {
+     "itc_avl": [
+      {
+       "iamt": 547680.63,
+       "camt": 317283.81,
+       "samt": 317283.81,
+       "csamt": 0,
+       "ty": "OTH"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "gstr2b": [
+  {
+   "period": "2026-04",
+   "data": {
+    "gstin": "27AAFCK4821M1Z9",
+    "rtnprd": "042026",
+    "docdata": {
+     "b2b": [
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2604/321",
+       "idt": "06-04-2026",
+       "val": 1373621,
+       "txval": 1164085.9,
+       "iamt": 0,
+       "camt": 104767.73,
+       "samt": 104767.73
+      },
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2604/780",
+       "idt": "12-04-2026",
+       "val": 1354587,
+       "txval": 1147955.16,
+       "iamt": 0,
+       "camt": 103315.96,
+       "samt": 103315.96
+      },
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2604/529",
+       "idt": "23-04-2026",
+       "val": 1355035,
+       "txval": 1148334.63,
+       "iamt": 0,
+       "camt": 103350.12,
+       "samt": 103350.12
+      },
+      {
+       "ctin": "24HFLCN6981P1Z2",
+       "trdnm": "Narmada Switchgear Ltd",
+       "inum": "NSL/2604/498",
+       "idt": "09-04-2026",
+       "val": 977437,
+       "txval": 828336.85,
+       "iamt": 149100.64,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "24HFLCN6981P1Z2",
+       "trdnm": "Narmada Switchgear Ltd",
+       "inum": "NSL/2604/992",
+       "idt": "12-04-2026",
+       "val": 972637,
+       "txval": 824268.34,
+       "iamt": 148368.3,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "36XENFD1632W1ZT",
+       "trdnm": "Deccan Lighting Co",
+       "inum": "DLC/2604/704",
+       "idt": "05-04-2026",
+       "val": 784747,
+       "txval": 703217.06,
+       "iamt": 81530.43,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "36XENFD1632W1ZT",
+       "trdnm": "Deccan Lighting Co",
+       "inum": "DLC/2604/336",
+       "idt": "12-04-2026",
+       "val": 804642,
+       "txval": 707403.34,
+       "iamt": 97238.77,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "07NWLCB8985X1ZH",
+       "trdnm": "Bharat Fans & Appliances",
+       "inum": "BFA/2604/649",
+       "idt": "03-04-2026",
+       "val": 468345,
+       "txval": 396902.77,
+       "iamt": 71442.49,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "27ERXCK9287H1ZD",
+       "trdnm": "Konkan Logistics Pvt Ltd",
+       "inum": "05/2604/61",
+       "idt": "30-04-2026",
+       "val": 47200,
+       "txval": 40000,
+       "iamt": 0,
+       "camt": 3600,
+       "samt": 3600
+      },
+      {
+       "ctin": "27GCVFM6755X1ZC",
+       "trdnm": "Mehta & Associates",
+       "inum": "06/2604/72",
+       "idt": "30-04-2026",
+       "val": 29500,
+       "txval": 25000,
+       "iamt": 0,
+       "camt": 2250,
+       "samt": 2250
+      }
+     ]
+    }
+   }
+  },
+  {
+   "period": "2026-05",
+   "data": {
+    "gstin": "27AAFCK4821M1Z9",
+    "rtnprd": "052026",
+    "docdata": {
+     "b2b": [
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2605/877",
+       "idt": "03-05-2026",
+       "val": 1411244,
+       "txval": 1195969.74,
+       "iamt": 0,
+       "camt": 107637.28,
+       "samt": 107637.28
+      },
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2605/364",
+       "idt": "12-05-2026",
+       "val": 1313748,
+       "txval": 1113346.15,
+       "iamt": 0,
+       "camt": 100201.15,
+       "samt": 100201.15
+      },
+      {
+       "ctin": "27YNMCS7586Z1Z5",
+       "trdnm": "Sahyadri Cables Pvt Ltd",
+       "inum": "SCPL/2605/826",
+       "idt": "26-05-2026",
+       "val": 1370211,
+       "txval": 1161196.18,
+       "iamt": 0,
+       "camt": 104507.65,
+       "samt": 104507.65
+      },
+      {
+       "ctin": "24HFLCN6981P1Z2",
+       "trdnm": "Narmada Switchgear Ltd",
+       "inum": "NSL/2605/763",
+       "idt": "07-05-2026",
+       "val": 984837,
+       "txval": 834607.84,
+       "iamt": 150229.42,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "24HFLCN6981P1Z2",
+       "trdnm": "Narmada Switchgear Ltd",
+       "inum": "NSL/2605/883",
+       "idt": "16-05-2026",
+       "val": 981900,
+       "txval": 832118.3,
+       "iamt": 149781.29,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "36XENFD1632W1ZT",
+       "trdnm": "Deccan Lighting Co",
+       "inum": "DLC/2605/953",
+       "idt": "04-05-2026",
+       "val": 784965,
+       "txval": 703401.02,
+       "iamt": 81563.54,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "36XENFD1632W1ZT",
+       "trdnm": "Deccan Lighting Co",
+       "inum": "DLC/2605/639",
+       "idt": "15-05-2026",
+       "val": 803695,
+       "txval": 706406.64,
+       "iamt": 97288.72,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "07NWLCB8985X1ZH",
+       "trdnm": "Bharat Fans & Appliances",
+       "inum": "BFA/2605/745",
+       "idt": "03-05-2026",
+       "val": 468345,
+       "txval": 396902.77,
+       "iamt": 71442.49,
+       "camt": 0,
+       "samt": 0
+      },
+      {
+       "ctin": "27ERXCK9287H1ZD",
+       "trdnm": "Konkan Logistics Pvt Ltd",
+       "inum": "05/2605/64",
+       "idt": "31-05-2026",
+       "val": 49560,
+       "txval": 42000,
+       "iamt": 0,
+       "camt": 3780,
+       "samt": 3780
+      },
+      {
+       "ctin": "27GCVFM6755X1ZC",
+       "trdnm": "Mehta & Associates",
+       "inum": "06/2605/97",
+       "idt": "31-05-2026",
+       "val": 29500,
+       "txval": 25000,
+       "iamt": 0,
+       "camt": 2250,
+       "samt": 2250
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "form26as": [
+  {
+   "quarter": "FY2026-27-Q1",
+   "deductorTan": "PNES12093B",
+   "deductorName": "Sahyog Infratech Ltd",
+   "section": "194Q",
+   "invoiceId": "inv-0104",
+   "receiptId": "rcpt-0101",
+   "creditedOn": "2026-06-15",
+   "amountPaidPaise": 14929345,
+   "tdsCreditedPaise": 3074
+  },
+  {
+   "quarter": "FY2026-27-Q1",
+   "deductorTan": "PNES12093B",
+   "deductorName": "Sahyog Infratech Ltd",
+   "section": "194Q",
+   "invoiceId": "inv-0105",
+   "receiptId": "rcpt-0108",
+   "creditedOn": "2026-06-15",
+   "amountPaidPaise": 26250685,
+   "tdsCreditedPaise": 26251
+  }
+ ],
+ "leads": [
+  {
+   "id": "lead-001",
+   "name": "Ostwal Realty",
+   "city": "Pune",
+   "source": "IndiaMART",
+   "stage": "quoted",
+   "valuePaise": 184000000,
+   "need": "Armoured cable and DBs for a 6-storey residential block",
+   "createdOn": "2026-10-20",
+   "lastTouchOn": "2026-11-01",
+   "nextStep": "Follow up on quotation"
+  },
+  {
+   "id": "lead-002",
+   "name": "Mahalaxmi Hospital",
+   "city": "Kolhapur",
+   "source": "Referral",
+   "stage": "contacted",
+   "valuePaise": 98000000,
+   "need": "LED panels and changeover for the new OPD wing",
+   "createdOn": "2026-09-20",
+   "lastTouchOn": "2026-09-28",
+   "nextStep": "Send catalogue and site visit slot"
+  }
+ ],
+ "quotes": [
+  {
+   "id": "quote-001",
+   "number": "KE/Q/26-27/041",
+   "date": "2026-10-19",
+   "leadId": "lead-001",
+   "partyId": null,
+   "status": "sent",
+   "validUntil": "2026-11-03",
+   "lines": [
+    {
+     "skuId": "SKU-106",
+     "description": "Armoured cable 4 core 16 sq mm",
+     "hsn": "8544",
+     "qty": 300,
+     "unit": "MTR",
+     "ratePaise": 41000,
+     "discountPct": 3,
+     "taxablePaise": 11931000,
+     "gstRate": 18,
+     "cgstPaise": 1073790,
+     "sgstPaise": 1073790,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-107",
+     "description": "Armoured cable 4 core 25 sq mm",
+     "hsn": "8544",
+     "qty": 300,
+     "unit": "MTR",
+     "ratePaise": 62000,
+     "discountPct": 3,
+     "taxablePaise": 18042000,
+     "gstRate": 18,
+     "cgstPaise": 1623780,
+     "sgstPaise": 1623780,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-205",
+     "description": "Distribution board 8 way DP",
+     "hsn": "8537",
+     "qty": 40,
+     "unit": "NOS",
+     "ratePaise": 245000,
+     "discountPct": 3,
+     "taxablePaise": 9506000,
+     "gstRate": 18,
+     "cgstPaise": 855540,
+     "sgstPaise": 855540,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-202",
+     "description": "MCB double pole 32 A",
+     "hsn": "8536",
+     "qty": 56,
+     "unit": "NOS",
+     "ratePaise": 62000,
+     "discountPct": 3,
+     "taxablePaise": 3367840,
+     "gstRate": 18,
+     "cgstPaise": 303106,
+     "sgstPaise": 303106,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 42846840,
+    "cgstPaise": 3856216,
+    "sgstPaise": 3856216,
+    "igstPaise": 0,
+    "roundOffPaise": 28,
+    "totalPaise": 50559300
+   }
+  },
+  {
+   "id": "quote-002",
+   "number": "KE/Q/26-27/042",
+   "date": "2026-11-01",
+   "leadId": "lead-004",
+   "partyId": null,
+   "status": "sent",
+   "validUntil": "2026-11-16",
+   "lines": [
+    {
+     "skuId": "SKU-304",
+     "description": "LED floodlight 100 W",
+     "hsn": "9405",
+     "qty": 80,
+     "unit": "NOS",
+     "ratePaise": 235000,
+     "discountPct": 3,
+     "taxablePaise": 18236000,
+     "gstRate": 18,
+     "cgstPaise": 1641240,
+     "sgstPaise": 1641240,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-305",
+     "description": "LED street light 60 W",
+     "hsn": "9405",
+     "qty": 67,
+     "unit": "NOS",
+     "ratePaise": 320000,
+     "discountPct": 3,
+     "taxablePaise": 20796800,
+     "gstRate": 18,
+     "cgstPaise": 1871712,
+     "sgstPaise": 1871712,
+     "igstPaise": 0
+    },
+    {
+     "skuId": "SKU-107",
+     "description": "Armoured cable 4 core 25 sq mm",
+     "hsn": "8544",
+     "qty": 300,
+     "unit": "MTR",
+     "ratePaise": 62000,
+     "discountPct": 3,
+     "taxablePaise": 18042000,
+     "gstRate": 18,
+     "cgstPaise": 1623780,
+     "sgstPaise": 1623780,
+     "igstPaise": 0
+    }
+   ],
+   "totals": {
+    "taxablePaise": 57074800,
+    "cgstPaise": 5136732,
+    "sgstPaise": 5136732,
+    "igstPaise": 0,
+    "roundOffPaise": 36,
+    "totalPaise": 67348300
+   }
+  }
+ ],
+ "campaigns": [
+  {
+   "id": "camp-01",
+   "name": "Diwali dealer scheme on fans",
+   "channel": "WhatsApp broadcast",
+   "skuIds": [
+    "SKU-401",
+    "SKU-402"
+   ],
+   "status": "ended",
+   "start": "2026-10-01",
+   "end": "2026-10-25",
+   "budgetPaise": 4500000,
+   "spentPaise": 4120000,
+   "reach": 1860,
+   "enquiries": 74,
+   "attributedSalesPaise": 186000000
+  },
+  {
+   "id": "camp-02",
+   "name": "Solar rooftop kits for contractors",
+   "channel": "IndiaMART promotion",
+   "skuIds": [
+    "SKU-308",
+    "SKU-309",
+    "SKU-307"
+   ],
+   "status": "running",
+   "start": "2026-10-15",
+   "end": "2026-11-30",
+   "budgetPaise": 6000000,
+   "spentPaise": 2280000,
+   "reach": 5400,
+   "enquiries": 31,
+   "attributedSalesPaise": 41000000
+  }
+ ],
+ "festivalCalendar": [
+  {
+   "date": "2026-11-14",
+   "name": "Children's Day",
+   "relevance": "Low: no trade link"
+  },
+  {
+   "date": "2026-11-24",
+   "name": "Tulsi Vivah, start of wedding season",
+   "relevance": "High: house wiring and lighting demand rises through February"
+  }
+ ],
+ "competitorPrices": [
+  {
+   "skuId": "SKU-102",
+   "marketplace": "Industrybuying",
+   "seller": "Shakti Traders",
+   "pricePaise": 231134,
+   "seenOn": "2026-11-01"
+  },
+  {
+   "skuId": "SKU-102",
+   "marketplace": "Amazon Business",
+   "seller": "VoltMart",
+   "pricePaise": 208340,
+   "seenOn": "2026-11-02"
+  }
+ ],
+ "posts": [
+  {
+   "id": "post-01",
+   "topic": "BLDC fans halve the power bill",
+   "pillar": null,
+   "calendarId": null,
+   "campaignId": null,
+   "status": "published",
+   "at": "2026-10-29T18:30:00+05:30",
+   "skuIds": [
+    "SKU-402"
+   ],
+   "facts": [],
+   "variants": [
+    {
+     "channelId": "ch-instagram",
+     "platform": "instagram",
+     "text": "BLDC fans use about half the power of a regular ceiling fan. The BLDC ceiling fan 1200 mm is ₹4,071 with GST at our Bhosari counter.\n\nLink in bio.\n\n#PuneElectricals #KaveriElectricals",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": null,
+     "error": null,
+     "approvedHash": null,
+     "metrics": null
+    },
+    {
+     "channelId": "ch-facebook",
+     "platform": "facebook",
+     "text": "BLDC fans use about half the power of a regular ceiling fan. The BLDC ceiling fan 1200 mm is ₹4,071 with GST at our Bhosari counter. Dealers, ask us for the price list.\n\nhttps://kaverielectricals.in/fans?utm_source=facebook&utm_medium=social&utm_campaign=post-01\n\n#PuneElectricals",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": null,
+     "error": null,
+     "approvedHash": null,
+     "metrics": null
+    },
+    {
+     "channelId": "ch-threads",
+     "platform": "threads",
+     "text": "BLDC fans use about half the power of a regular ceiling fan. BLDC ceiling fan 1200 mm, ₹4,071 with GST, in stock at Bhosari. #PuneElectricals",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": null,
+     "error": null,
+     "approvedHash": null,
+     "metrics": null
+    }
+   ]
+  },
+  {
+   "id": "post-02",
+   "topic": "LED panels back in stock",
+   "pillar": null,
+   "calendarId": null,
+   "campaignId": null,
+   "status": "published",
+   "at": "2026-10-31T11:00:00+05:30",
+   "skuIds": [
+    "SKU-303"
+   ],
+   "facts": [],
+   "variants": [
+    {
+     "channelId": "ch-google",
+     "platform": "google",
+     "text": "Fresh stock of 2x2 LED panels at our Bhosari godown. Same-day dispatch inside PCMC.",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": null,
+     "error": null,
+     "approvedHash": null,
+     "metrics": null
+    },
+    {
+     "channelId": "ch-facebook",
+     "platform": "facebook",
+     "text": "Fresh stock of 2x2 LED panels at our Bhosari godown: the LED panel 2x2 ft 36 W at ₹1,357 with GST. Same-day dispatch inside PCMC.\n\n#PuneElectricals",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": null,
+     "error": null,
+     "approvedHash": null,
+     "metrics": null
+    }
+   ]
+  },
+  {
+   "id": "post-legacy",
+   "topic": "Old single-platform post",
+   "pillar": "products",
+   "calendarId": "cal-2026-10",
+   "campaignId": null,
+   "status": "published",
+   "at": "2026-10-29T18:30:00+05:30",
+   "skuIds": [],
+   "facts": [],
+   "variants": [
+    {
+     "channelId": "ch-instagram",
+     "platform": "instagram",
+     "text": "Old single-platform post. Second sentence.",
+     "mediaIds": [],
+     "link": null,
+     "status": "published",
+     "externalId": null,
+     "url": null,
+     "publishedAt": "2026-10-29T18:30:00+05:30",
+     "error": null,
+     "approvedHash": null,
+     "metrics": {
+      "views": 4820,
+      "likes": 212,
+      "comments": 18,
+      "saves": 41,
+      "shares": 23,
+      "clicks": 0,
+      "enquiries": 6
+     }
+    }
+   ]
+  }
+ ],
+ "socialInbox": [
+  {
+   "id": "msg-01",
+   "platform": "Google reviews",
+   "channelId": "ch-google",
+   "kind": "review",
+   "author": "Prashant K.",
+   "at": "2026-11-04T09:12:00+05:30",
+   "rating": 2,
+   "text": "Waited 40 minutes at the counter for a simple MCB order. Staff were polite but slow.",
+   "sentiment": "negative",
+   "intent": "complaint",
+   "draftReply": "Prashant, thank you for telling us. Forty minutes is too long for a counter order. We have added a second billing counter from this week; please ask for Leena next time and we will have you out in ten minutes.",
+   "status": "open",
+   "postId": null,
+   "threadId": null,
+   "externalId": null,
+   "leadId": null,
+   "replyBy": null
+  },
+  {
+   "id": "msg-02",
+   "platform": "Instagram",
+   "channelId": "ch-instagram",
+   "kind": "comment",
+   "author": "@sparkline_electricals",
+   "at": "2026-11-04T10:40:00+05:30",
+   "rating": null,
+   "text": "Do you have BLDC fans in brown? Need 24 pieces for a site in Wakad.",
+   "sentiment": "neutral",
+   "intent": "enquiry",
+   "draftReply": "Thanks for asking. Our sales team will send you the details and a quotation shortly.",
+   "status": "open",
+   "postId": null,
+   "threadId": null,
+   "externalId": null,
+   "leadId": null,
+   "replyBy": null
+  },
+  {
+   "id": "msg-legacy",
+   "platform": "facebook",
+   "channelId": "ch-facebook",
+   "kind": "comment",
+   "author": "Prashant K.",
+   "at": "2026-11-04T09:12:00+05:30",
+   "rating": null,
+   "text": "What is the price of 4 sq mm wire?",
+   "sentiment": "neutral",
+   "intent": "enquiry",
+   "draftReply": "",
+   "status": "open",
+   "postId": null,
+   "threadId": null,
+   "externalId": null,
+   "leadId": null,
+   "replyBy": null
+  }
+ ],
+ "channels": [
+  {
+   "id": "ch-instagram",
+   "platform": "instagram",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-facebook",
+   "platform": "facebook",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-threads",
+   "platform": "threads",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-linkedin",
+   "platform": "linkedin",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-x",
+   "platform": "x",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-whatsapp",
+   "platform": "whatsapp",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  },
+  {
+   "id": "ch-google",
+   "platform": "google",
+   "handle": "",
+   "mode": "manual",
+   "status": "manual",
+   "lastError": null,
+   "connectedAt": null,
+   "followers": null,
+   "postingHours": {
+    "from": "09:00",
+    "to": "21:00"
+   }
+  }
+ ],
+ "brandVoice": {
+  "tone": "Plain, warm and practical, like a counter manager who knows the products.",
+  "dos": [
+   "Name the product and what it does for the buyer",
+   "Say where and when stock is available"
+  ],
+  "donts": [
+   "No claims we cannot prove",
+   "No competitor names"
+  ],
+  "samples": [],
+  "languages": [
+   "en"
+  ],
+  "hashtags": [],
+  "emoji": "light",
+  "pillars": [
+   {
+    "id": "products",
+    "name": "Products in stock",
+    "share": 40,
+    "description": "What is on the shelf and who it suits"
+   },
+   {
+    "id": "know-how",
+    "name": "Know-how",
+    "share": 30,
+    "description": "Safety, wiring and energy tips"
+   },
+   {
+    "id": "offers",
+    "name": "Offers and events",
+    "share": 20,
+    "description": "Schemes, meets and festival timings"
+   },
+   {
+    "id": "behind",
+    "name": "Behind the counter",
+    "share": 10,
+    "description": "Team, deliveries and customers"
+   }
+  ],
+  "signoff": ""
+ },
+ "calendars": [],
+ "media": [],
+ "stock": [
+  {
+   "skuId": "SKU-101",
+   "onHand": 79,
+   "reorderPoint": 105,
+   "leadTimeDays": 21,
+   "location": "Bhosari godown",
+   "lastReceivedOn": "2026-10-30"
+  },
+  {
+   "skuId": "SKU-102",
+   "onHand": 304,
+   "reorderPoint": 108,
+   "leadTimeDays": 10,
+   "location": "Bhosari godown",
+   "lastReceivedOn": "2026-11-02"
+  }
+ ],
+ "purchaseOrders": [
+  {
+   "id": "po-01",
+   "number": "KE/PO/26-27/112",
+   "vendorId": "V01",
+   "date": "2026-10-26",
+   "status": "received",
+   "lines": [
+    {
+     "skuId": "SKU-102",
+     "qty": 400,
+     "ratePaise": 163062
+    },
+    {
+     "skuId": "SKU-501",
+     "qty": 3000,
+     "ratePaise": 5491
+    }
+   ],
+   "totalPaise": 81697800
+  },
+  {
+   "id": "po-02",
+   "number": "KE/PO/26-27/113",
+   "vendorId": "V02",
+   "date": "2026-11-01",
+   "status": "sent",
+   "lines": [
+    {
+     "skuId": "SKU-201",
+     "qty": 1200,
+     "ratePaise": 14592
+    }
+   ],
+   "totalPaise": 17510400
+  }
+ ],
+ "rfqs": [
+  {
+   "id": "rfq-01",
+   "title": "BLDC ceiling fans, 300 pieces",
+   "skuId": "SKU-402",
+   "qty": 300,
+   "quotes": [
+    {
+     "vendorName": "Bharat Fans & Appliances",
+     "ratePaise": 271000,
+     "leadDays": 10,
+     "terms": "30 days credit"
+    },
+    {
+     "vendorName": "Ujala Home Appliances",
+     "ratePaise": 264000,
+     "leadDays": 21,
+     "terms": "Advance payment"
+    },
+    {
+     "vendorName": "Swift Air Products",
+     "ratePaise": 279000,
+     "leadDays": 7,
+     "terms": "45 days credit"
+    }
+   ]
+  },
+  {
+   "id": "rfq-02",
+   "title": "RCCB 4 pole 63 A, 150 pieces",
+   "skuId": "SKU-203",
+   "qty": 150,
+   "quotes": [
+    {
+     "vendorName": "Narmada Switchgear Ltd",
+     "ratePaise": 302000,
+     "leadDays": 7,
+     "terms": "30 days credit"
+    },
+    {
+     "vendorName": "Volta Protect",
+     "ratePaise": 296000,
+     "leadDays": 14,
+     "terms": "15 days credit"
+    }
+   ]
+  }
+ ],
+ "compliance": [
+  {
+   "id": "advance-tax:2026-27-15",
+   "date": "2026-06-15",
+   "form": "Advance tax",
+   "description": "Advance tax, first instalment",
+   "authority": "Income Tax",
+   "status": "done",
+   "ruleId": "advance-tax",
+   "period": "2026-27-15",
+   "source": "rule",
+   "filedOn": "2026-06-13",
+   "ack": "CIN 0510308 13062026 41102",
+   "updatedBy": "Rajesh Mehta",
+   "updatedAt": "2026-06-13T18:10:00+05:30"
+  },
+  {
+   "id": "advance-tax:2026-27-45",
+   "date": "2026-09-15",
+   "form": "Advance tax",
+   "description": "Advance tax, second instalment",
+   "authority": "Income Tax",
+   "status": "done",
+   "ruleId": "advance-tax",
+   "period": "2026-27-45",
+   "source": "rule",
+   "filedOn": "2026-09-14",
+   "ack": "CIN 0510308 14092026 52817",
+   "updatedBy": "Rajesh Mehta",
+   "updatedAt": "2026-09-14T18:10:00+05:30"
+  }
+ ],
+ "employees": [
+  {
+   "id": "E01",
+   "name": "Sunil Patwardhan",
+   "role": "Sales manager",
+   "monthlyGrossPaise": 8500000,
+   "joinedOn": "2017-08-01",
+   "pan": null,
+   "attendance": {
+    "period": "2026-10",
+    "workingDays": 26,
+    "present": 24,
+    "paidLeave": 2,
+    "unpaidAbsence": 0
+   }
+  },
+  {
+   "id": "E02",
+   "name": "Pooja Ranade",
+   "role": "Accounts executive",
+   "monthlyGrossPaise": 4200000,
+   "joinedOn": "2025-06-01",
+   "pan": null,
+   "attendance": {
+    "period": "2026-10",
+    "workingDays": 26,
+    "present": 24,
+    "paidLeave": 2,
+    "unpaidAbsence": 0
+   }
+  }
+ ],
+ "orders": [],
+ "customerService": {
+  "facts": {
+   "hours": "",
+   "opensAt": "09:30",
+   "closesAt": "19:00",
+   "openDays": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "address": "",
+   "delivery": "",
+   "returns": "",
+   "payments": "",
+   "humanContact": ""
+  },
+  "answers": [],
+  "widget": {
+   "enabled": false,
+   "key": null
+  },
+  "retentionMonths": 12,
+  "supportEmail": null
+ },
+ "agents": [
+  {
+   "agentId": "office-manager",
+   "hired": true,
+   "trustLevel": "trusted",
+   "hiredOn": "2026-06-02",
+   "accuracy": {
+    "checked": 318,
+    "correct": 311
+   }
+  },
+  {
+   "agentId": "accountant",
+   "hired": true,
+   "trustLevel": "trusted",
+   "hiredOn": "2026-06-02",
+   "accuracy": {
+    "checked": 1146,
+    "correct": 1139
+   }
+  }
+ ],
+ "teamLog": [
+  {
+   "id": "log-001",
+   "at": "2026-11-04T08:30:00+05:30",
+   "agentId": "compliance-officer",
+   "text": "Checked the filing calendar: TDS deducted in October is due on 7 November.",
+   "ref": {
+    "kind": "compliance",
+    "id": "tds-deposit:2026-10"
+   }
+  },
+  {
+   "id": "log-002",
+   "at": "2026-11-04T08:45:00+05:30",
+   "agentId": "office-manager",
+   "text": "Prepared the morning digest and emailed it to Anil Kaveri.",
+   "ref": null
+  }
+ ],
+ "staged": [
+  {
+   "id": "chg-001",
+   "agentId": "accountant",
+   "kind": "ledger_entry",
+   "createdAt": "2026-11-04T09:06:00+05:30",
+   "title": "Post bill SCPL/2611/554 from Sahyadri Cables Pvt Ltd, ₹25,31,364",
+   "summary": "Purchase of 6 items; input tax ₹3,86,140.28. TDS under 194Q of ₹2,145.22 to be deducted on payment.",
+   "evidence": [
+    {
+     "label": "Bill total",
+     "ref": {
+      "kind": "document",
+      "id": "doc-p0086",
+      "region": "totals.total"
+     }
+    },
+    {
+     "label": "Supplier GSTIN",
+     "ref": {
+      "kind": "document",
+      "id": "doc-p0086",
+      "region": "gstin"
+     }
+    }
+   ],
+   "payload": {
+    "billId": "bill-0086"
+   },
+   "status": "pending"
+  },
+  {
+   "id": "chg-002",
+   "agentId": "accountant",
+   "kind": "ledger_entry",
+   "createdAt": "2026-11-04T09:15:00+05:30",
+   "title": "Post bill NSL/2611/876 from Narmada Switchgear Ltd, ₹12,65,285",
+   "summary": "Purchase of 6 items; input tax ₹1,93,009.64. No TDS applies.",
+   "evidence": [
+    {
+     "label": "Bill total",
+     "ref": {
+      "kind": "document",
+      "id": "doc-p0087",
+      "region": "totals.total"
+     }
+    },
+    {
+     "label": "Supplier GSTIN",
+     "ref": {
+      "kind": "document",
+      "id": "doc-p0087",
+      "region": "gstin"
+     }
+    }
+   ],
+   "payload": {
+    "billId": "bill-0087"
+   },
+   "status": "pending"
+  }
+ ]
+}

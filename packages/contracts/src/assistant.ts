@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IsoDate, IsoDateTime } from "./entities";
+import { IsoDate, IsoDateTime, isUrl } from "./entities";
 
 /**
  * The Executive Assistant works for one owner at a time. Everything here is that owner's own:
@@ -84,7 +84,7 @@ export const AssistantView = z.object({
 export type AssistantView = z.infer<typeof AssistantView>;
 
 /** Google Calendar's "Secret address in iCal format", or any private .ics link. */
-export const CalendarLinkInput = z.object({ url: z.string().trim().url().max(2000).refine((u) => /^https:\/\//i.test(u) || /^webcal:\/\//i.test(u), "Use the https or webcal address your calendar gives you.") }).strict();
+export const CalendarLinkInput = z.object({ url: z.string().trim().refine(isUrl, "Invalid url").max(2000).refine((u) => /^https:\/\//i.test(u) || /^webcal:\/\//i.test(u), "Use the https or webcal address your calendar gives you.") }).strict();
 export const TaskInput = z.object({ title: z.string().trim().min(1, "Say what to do.").max(200), due: IsoDate.nullable().optional() }).strict();
 export const TaskChange = z.object({ status: z.enum(["open", "done"]).optional(), due: IsoDate.nullable().optional(), snoozedUntil: IsoDate.nullable().optional() }).strict();
 

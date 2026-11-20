@@ -40,7 +40,7 @@ export const RoutineRun = z.object({
   finishedAt: IsoDateTime,
   outcome: RoutineOutcome,
   summary: z.string(),
-  counts: z.record(z.number()),
+  counts: z.record(z.string(), z.number()),
   error: z.string().nullable(),
 });
 export type RoutineRun = z.infer<typeof RoutineRun>;

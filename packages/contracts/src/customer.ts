@@ -70,8 +70,18 @@ export const CustomerDeskView = z.object({
 });
 export type CustomerDeskView = z.infer<typeof CustomerDeskView>;
 
+/**
+ * zod 3's `.partial()`: a key the change leaves out stays out. zod 4's `.partial()` fills in each key's default, so
+ * a change to one field would reset the others to their defaults.
+ */
+function changeOf<S extends z.ZodRawShape>(o: z.ZodObject<S>) {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [k, s] of Object.entries(o.shape)) shape[k] = (s instanceof z.ZodDefault ? (s.unwrap() as z.ZodType) : (s as z.ZodType)).optional();
+  return o.extend(shape) as unknown as z.ZodObject<{ [K in keyof S]: z.ZodOptional<S[K] extends z.ZodDefault<infer I> ? I : S[K]> }>;
+}
+
 export const AnswerInput = CannedAnswer.omit({ id: true }).extend({ examples: z.array(z.string().trim().min(1).max(300)).max(10).default([]) });
-export const FactsInput = BusinessFacts.partial();
+export const FactsInput = changeOf(BusinessFacts);
 export const CsSettingsInput = z.object({ retentionMonths: z.number().int().min(1).max(36) }).strict();
 export const WidgetChange = z.object({ enabled: z.boolean() }).strict();
 export const OrderInput = z.object({
@@ -86,7 +96,7 @@ export const OrderInput = z.object({
   tracking: z.string().trim().max(500).nullable().optional(),
   note: z.string().trim().max(500).optional(),
 });
-export const OrderChange = OrderInput.partial();
+export const OrderChange = changeOf(OrderInput);
 export const OrdersImport = z.object({ content: z.string().min(1).max(1_000_000) });
 export const OrdersImportResult = z.object({ added: z.number().int(), updated: z.number().int(), skipped: z.array(z.string()) });
 export type OrdersImportResult = z.infer<typeof OrdersImportResult>;

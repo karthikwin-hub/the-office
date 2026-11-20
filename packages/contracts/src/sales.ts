@@ -45,7 +45,7 @@ export const FIELD_LABEL: Record<SalesField, string> = {
 };
 
 /** Which column holds each field, by its header as written in the file. */
-export const ColumnMapping = z.record(SalesField, z.string());
+export const ColumnMapping = z.partialRecord(SalesField, z.string());
 export type ColumnMapping = z.infer<typeof ColumnMapping>;
 
 export const SalesLineStatus = z.enum(["sold", "returned", "cancelled"]);
@@ -141,7 +141,7 @@ export const OnlineSalesReport = z.object({
     }),
   ),
   /** Weeks starting Monday, oldest first, with each channel's sales. */
-  weeks: z.array(z.object({ week: IsoDate, label: z.string(), byChannel: z.record(Money), totalPaise: Money })),
+  weeks: z.array(z.object({ week: IsoDate, label: z.string(), byChannel: z.record(z.string(), Money), totalPaise: Money })),
   skus: z.array(z.object({ key: z.string(), skuId: z.string().nullable(), name: z.string(), units: z.number(), grossPaise: Money, returnedUnits: z.number(), returnsPct: z.number(), channels: z.array(SalesChannel) })),
   /** SKUs in the catalogue that sold nothing online in the period, while others did. */
   unsold: z.array(z.object({ skuId: z.string(), name: z.string() })),

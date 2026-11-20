@@ -6,6 +6,15 @@ export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const IsoDateTime = z.string();
 export const StateCode = z.string().regex(/^\d{2}$/);
 export const Gstin = z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/);
+/** zod 3's `.url()`: the URL parser accepts the text. zod 4's `.url()` also trims it, which would let " https://…" through later checks. */
+export const isUrl = (s: string) => {
+  try {
+    new URL(s);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const Business = z.object({
   id: z.string(),
@@ -151,12 +160,12 @@ export const ComplianceProfile = z.object({
   taxAudit: z.enum(["auto", "yes", "no"]).default("auto"),
   /** The CA's estimate of this year's income tax, which replaces the office's own. */
   estimatedTaxPaise: Paise.nullable().default(null),
-  flags: ComplianceFlags.default({}),
+  flags: ComplianceFlags.prefault({}),
   events: z.array(CompanyEvent).default([]),
   /** Dates before this are not chased: the calendar starts when the company first answered. */
   calendarFrom: IsoDate.nullable().default(null),
   /** The company's master data as last pasted from the MCA portal. */
-  masterData: z.object({ checkedOn: IsoDate, fields: z.record(z.string()) }).nullable().default(null),
+  masterData: z.object({ checkedOn: IsoDate, fields: z.record(z.string(), z.string()) }).nullable().default(null),
 });
 export type ComplianceProfile = z.infer<typeof ComplianceProfile>;
 
@@ -542,7 +551,7 @@ export const Channel = z.object({
   lastError: z.string().nullable().default(null),
   connectedAt: IsoDateTime.nullable().default(null),
   followers: z.number().int().nullable().default(null),
-  postingHours: z.object({ from: z.string(), to: z.string() }).default({ from: "09:00", to: "21:00" }),
+  postingHours: z.object({ from: z.string(), to: z.string() }).prefault({ from: "09:00", to: "21:00" }),
 });
 export type Channel = z.infer<typeof Channel>;
 
@@ -843,7 +852,7 @@ export const CustomerServiceSetup = z.object({
   facts: BusinessFacts,
   answers: z.array(CannedAnswer).default([]),
   /** The chat on the business's website. The key is public; it only finds this office's widget. */
-  widget: z.object({ enabled: z.boolean(), key: z.string().nullable() }).default({ enabled: false, key: null }),
+  widget: z.object({ enabled: z.boolean(), key: z.string().nullable() }).prefault({ enabled: false, key: null }),
   /** Conversations older than this are deleted by the morning round. */
   retentionMonths: z.number().int().min(1).max(36).default(12),
   /** The address the business forwards its support mail to, once the agent is hired. */
@@ -953,7 +962,7 @@ export const StagedChange = z.object({
   title: z.string(),
   summary: z.string(),
   evidence: z.array(z.object({ label: z.string(), ref: Ref })),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   status: z.enum(["pending", "approved", "rejected"]),
   decidedAt: IsoDateTime.optional(),
   decidedBy: z.string().optional(),
@@ -967,7 +976,7 @@ export const Books = z.object({
   seed: z.number().int(),
   generatedFor: IsoDate,
   business: Business,
-  states: z.record(z.string()),
+  states: z.record(z.string(), z.string()),
   parties: z.array(Party),
   skus: z.array(Sku),
   documents: z.array(Document),
@@ -984,8 +993,8 @@ export const Books = z.object({
   competitorPrices: z.array(CompetitorPrice),
   posts: z.array(Post),
   socialInbox: z.array(SocialMessage),
-  channels: z.array(Channel).default(defaultChannels),
-  brandVoice: BrandVoice.default(DEFAULT_VOICE),
+  channels: z.array(Channel).prefault(defaultChannels),
+  brandVoice: BrandVoice.prefault(DEFAULT_VOICE),
   calendars: z.array(ContentCalendar).default([]),
   media: z.array(MediaAsset).default([]),
   stock: z.array(StockLevel),
@@ -994,7 +1003,7 @@ export const Books = z.object({
   compliance: z.array(ComplianceEvent),
   employees: z.array(Employee),
   orders: z.array(Order).default([]),
-  customerService: CustomerServiceSetup.default(DEFAULT_CUSTOMER_SERVICE),
+  customerService: CustomerServiceSetup.prefault(DEFAULT_CUSTOMER_SERVICE),
   agents: z.array(AgentState),
   teamLog: z.array(LogEntry),
   staged: z.array(StagedChange),

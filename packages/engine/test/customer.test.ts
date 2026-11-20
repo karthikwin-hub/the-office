@@ -1,7 +1,7 @@
 import type { TrustLevel } from "@office/contracts";
 import { loadBooks, sampleCustomerService } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
-import { classifyRules, converse, decisive, handleWhatsApp, type Inbound, newSession, OfficeService, parseClassification, parseOrderCommand, render, WEB_THREADS_PER_DAY } from "../src";
+import { classifyRules, converse, decisive, dispatch, handleWhatsApp, type Inbound, newSession, OfficeService, parseClassification, parseOrderCommand, render, WEB_THREADS_PER_DAY } from "../src";
 
 const ASOF = "2026-11-04";
 
@@ -269,5 +269,21 @@ describe("the owner on WhatsApp", () => {
     expect(parseOrderCommand("order 1042 dispatched https://track.example/1")).toMatchObject({ number: "1042", status: "dispatched", tracking: "https://track.example/1" });
     expect(parseOrderCommand("order so-1043 shipped")).toMatchObject({ number: "SO-1043", status: "dispatched", tracking: null });
     expect(parseOrderCommand("hello")).toBeNull();
+  });
+});
+
+describe("changing facts and orders", () => {
+  const send = (o: OfficeService, path: string, body: unknown) => dispatch(o, { method: "PUT", path, query: new URLSearchParams(), body, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });
+
+  it("changes only the fields a change names", () => {
+    const o = office();
+    const before = structuredClone(o.books.customerService.facts);
+    expect(send(o, "/api/customers/facts", { hours: "10 to 7, Monday to Saturday" }).status).toBe(200);
+    expect(o.books.customerService.facts).toEqual({ ...before, hours: "10 to 7, Monday to Saturday" });
+
+    const order = o.books.orders.find((x) => x.phone && x.items)!;
+    const kept = { phone: order.phone, email: order.email, items: order.items };
+    expect(send(o, `/api/orders/${order.id}`, { status: "dispatched" }).status).toBe(200);
+    expect(o.books.orders.find((x) => x.id === order.id)).toMatchObject({ ...kept, status: "dispatched" });
   });
 });

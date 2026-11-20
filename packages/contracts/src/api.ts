@@ -15,6 +15,7 @@ import {
   Invoice,
   IsoDate,
   IsoDateTime,
+  isUrl,
   Lead,
   LogEntry,
   Paise,
@@ -92,7 +93,7 @@ export type DeskView = z.infer<typeof DeskView>;
 export const Decision = z.object({
   action: z.enum(["approve", "reject"]),
   note: z.string().optional(),
-  edits: z.record(z.unknown()).optional(),
+  edits: z.record(z.string(), z.unknown()).optional(),
 });
 export type Decision = z.infer<typeof Decision>;
 
@@ -314,7 +315,7 @@ export const SocialReport = z.object({
   voice: BrandVoice,
   calendars: z.array(ContentCalendar),
   media: z.array(MediaAsset),
-  checks: z.record(z.array(PostCheck)),
+  checks: z.record(z.string(), z.array(PostCheck)),
   performance: SocialPerformance,
 });
 export type SocialReport = z.infer<typeof SocialReport>;
@@ -332,9 +333,9 @@ export const PublishingPack = z.object({
 });
 export type PublishingPack = z.infer<typeof PublishingPack>;
 
-export const VariantEdit = z.object({ text: z.string().min(1).max(5000).optional(), link: z.string().url().nullable().optional(), mediaIds: z.array(z.string()).max(10).optional() });
+export const VariantEdit = z.object({ text: z.string().min(1).max(5000).optional(), link: z.string().refine(isUrl, "Invalid url").nullable().optional(), mediaIds: z.array(z.string()).max(10).optional() });
 /** The link to a post made by hand. The app shows it as a link, so only https: (never javascript: or data:). */
-export const MarkPosted = z.object({ url: z.string().max(500).url().regex(/^https:\/\//i, "Paste the https:// link to the post.") });
+export const MarkPosted = z.object({ url: z.string().max(500).refine(isUrl, "Invalid url").regex(/^https:\/\//i, "Paste the https:// link to the post.") });
 export const ChannelSetup = z.object({ handle: z.string().min(1).max(100).optional(), mode: z.enum(["connected", "manual"]).optional(), postingHours: z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }).optional() });
 export const MetricsImport = z.object({ content: z.string().min(1).max(2_000_000) });
 
@@ -731,7 +732,7 @@ export const Me = z.object({
   /** An open request to delete this account, if they made one. */
   deletionRequested: z.boolean().default(false),
   /** Two-factor sign-in: owners and platform owners must turn it on before anything else opens; for others it is a choice. */
-  twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }).default({ enabled: false, required: false }),
+  twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }).prefault({ enabled: false, required: false }),
 });
 export type Me = z.infer<typeof Me>;
 export const OpenOffice = z.object({ name: z.string().trim().min(2).max(80) });

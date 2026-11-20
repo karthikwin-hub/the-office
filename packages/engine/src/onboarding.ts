@@ -53,7 +53,7 @@ export const OnboardingPayload = z.object({
   skus: z.array(Sku),
   stock: z.array(StockLevel),
   open: z.array(OpenItem),
-  counts: z.record(z.number()),
+  counts: z.record(z.string(), z.number()),
   sample: z.array(z.string()),
 });
 export type OnboardingPayload = z.infer<typeof OnboardingPayload>;
