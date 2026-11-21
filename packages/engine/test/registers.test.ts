@@ -1,6 +1,6 @@
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
-import { type ApiRequest, dispatch, OfficeService } from "../src";
+import { type ApiRequest, dispatch, MAX_PENDING_ROWS, OfficeService } from "../src";
 import { findRegisterHeader, fromLayoutAnswer, guessBillMapping, readRegister, registerKind } from "../src/registers";
 
 const books = loadBooks();
@@ -103,6 +103,34 @@ describe("a register of bills in a spreadsheet", () => {
     expect(failed(bills[0]!)).toContain("party");
   });
 
+  it("reads an item called Total, an Excel percentage, line totals with their tax, and equal line totals", () => {
+    const rows = [
+      ["Invoice No", "Date", "Supplier Name", "Item", "GST Rate", "Tax Amount", "Line Total"],
+      ["T-1", "2026-11-10", local.name, "Total Protection Spray", "0.18", "180.00", "1180.00"],
+      ["T-1", "2026-11-10", local.name, "MCB 32A", "0.18", "180.00", "1180.00"],
+      ["Total", "", "", "", "", "360.00", "2360.00"],
+    ];
+    const { bills, skipped } = readRegister({ name: "S", rows, headerAt: 0, mapping: guessBillMapping(rows[0]!), kind: "purchase_bill", ctx });
+    expect(skipped).toEqual([{ row: 4, reason: "a total row" }]);
+    const e = bills[0]!.extraction;
+    expect(e.lines.map((l) => [l.description, l.gstRate, l.taxablePaise])).toEqual([
+      ["Total Protection Spray", 18, 1000_00],
+      ["MCB 32A", 18, 1000_00],
+    ]);
+    expect(e.totals).toMatchObject({ taxablePaise: 2000_00, totalPaise: 2360_00 });
+    expect(failed(bills[0]!)).toEqual([]);
+
+    // Two identical lines, each with its own total beside a taxable value: summed, not taken as the bill's total.
+    const same = [
+      ["Invoice No", "Date", "Supplier Name", "Taxable Value", "Tax Amount", "Line Total"],
+      ["T-2", "2026-11-10", local.name, "1000.00", "180.00", "1180.00"],
+      ["T-2", "2026-11-10", local.name, "1000.00", "180.00", "1180.00"],
+    ];
+    const two = readRegister({ name: "S", rows: same, headerAt: 0, mapping: guessBillMapping(same[0]!), kind: "purchase_bill", ctx }).bills[0]!;
+    expect(two.extraction.totals.totalPaise).toBe(2360_00);
+    expect(failed(two)).toEqual([]);
+  });
+
   it("skips rows it cannot read and says why", () => {
     const rows = [
       ["Invoice No", "Date", "Party Name", "Taxable Value"],
@@ -203,6 +231,16 @@ describe("the Accountant and a register", () => {
     expect(card.summary).toMatch(/The AI suggested the columns for taxable value, total/);
     // Nothing is read until the owner approves.
     expect(office.books.documents.some((d) => d.file === "/f/c1")).toBe(false);
+  });
+
+  it("says how many rows of a very long sheet were not read", () => {
+    const office = new OfficeService(loadBooks());
+    const head = ["Invoice No", "Invoice Date", "Supplier Name", "Taxable Value"];
+    const rows = [head, ...Array.from({ length: MAX_PENDING_ROWS + 1 }, () => ["L-1", "2026-11-10", local.name, "1"])];
+    const [card] = receive(office, "reg-e1", rows);
+    office.decide(card!.cardId!, { action: "approve" }, "Anil Kaveri");
+    const [again] = receive(office, "reg-e2", rows);
+    expect(again!.skipped.at(-1)).toEqual({ row: MAX_PENDING_ROWS + 1, reason: "2 more rows after row 20,000 were not read; send them in another file" });
   });
 
   it("says when a sheet is not a list of bills, and forgets a rejected layout", () => {

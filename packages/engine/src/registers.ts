@@ -89,7 +89,7 @@ const GUESS: Record<BillField, string[]> = {
   sgst: ["sgst amount", "sgst utgst amount", "state ut tax amount", "state tax amount", "state ut tax", "state tax", "sgst utgst", "sgst", "utgst"],
   igst: ["igst amount", "integrated tax amount", "integrated tax", "igst"],
   tax: ["total tax", "total gst", "tax amount", "gst amount", "tax"],
-  total: ["invoice value", "invoice amount", "bill amount", "total amount", "grand total", "gross total", "net total", "total"],
+  total: ["invoice value", "invoice amount", "bill amount", "total amount", "grand total", "gross total", "net total", "line total", "item total", "total"],
 };
 const AMOUNT_FIELDS = new Set<BillField>(["taxable", "cgst", "sgst", "igst", "tax", "total"]);
 
@@ -245,7 +245,9 @@ export function readRegister(input: { name: string; rows: string[][]; headerAt: 
     const r = rows[i]!;
     const n = i + 1;
     if (!r.some((c) => c.trim())) continue;
-    if (r.some((c) => TOTAL_ROW.test(c))) {
+    // A total row says so in its first cell, or where the number or party would be; an item may be called "Total …".
+    const first = r.findIndex((c) => c.trim());
+    if ([first === col.description ? undefined : r[first], cell(r, "number"), cell(r, "party")].some((c) => c && TOTAL_ROW.test(c))) {
       skipped.push({ row: n, reason: "a total row" });
       last = null;
       continue;
@@ -312,15 +314,35 @@ export function readRegister(input: { name: string; rows: string[][]; headerAt: 
     at("party", kind === "purchase_bill" ? "Supplier" : "Customer", "party", 0);
     at("gstin", kind === "purchase_bill" ? "Supplier GSTIN" : "Customer GSTIN", "gstin", 0);
 
+    const rowTotals = kept.map((x) => paiseOf(cell(x.cells, "total")));
+    const rateOf = (c: string[]) => {
+      const raw = numberOf(cell(c, "gstRate")?.replace("%", ""));
+      // A cell formatted as a percentage in Excel holds 0.18 for 18%.
+      return raw !== null && raw > 0 && raw < 1 ? raw * 100 : raw;
+    };
+    const taxOf = (c: string[]) =>
+      hasSplit && [cell(c, "cgst"), cell(c, "sgst"), cell(c, "igst")].some((v) => v)
+        ? (paiseOf(cell(c, "cgst")) ?? 0) + (paiseOf(cell(c, "sgst")) ?? 0) + (paiseOf(cell(c, "igst")) ?? 0)
+        : paiseOf(cell(c, "tax"));
+    // Equal totals on every line are each line's own when its tax is its GST rate on that total less the tax;
+    // otherwise they are the bill's total, printed on each of its lines.
+    const ownTotal = (x: (typeof kept)[number], t: number) => {
+      const tax = taxOf(x.cells);
+      if (tax === null || t - tax <= 0) return false;
+      const rate = rateOf(x.cells) ?? (tax * 100) / (t - tax);
+      return GST_RATES.some((r) => Math.abs(r - rate) <= 0.5) && Math.abs(pctOf(t - tax, Math.round(rate) * 100) - tax) <= 100;
+    };
+    const repeated =
+      kept.length > 1 &&
+      rowTotals.every((t) => t !== null && t === rowTotals[0]) &&
+      !(col.taxable === undefined && kept.every((x) => ownTotal(x, rowTotals[0]!)));
     const lines: ExtractedLine[] = kept.map((x, k) => {
       const c = x.cells;
-      const rowTax =
-        hasSplit && [cell(c, "cgst"), cell(c, "sgst"), cell(c, "igst")].some((v) => v)
-          ? (paiseOf(cell(c, "cgst")) ?? 0) + (paiseOf(cell(c, "sgst")) ?? 0) + (paiseOf(cell(c, "igst")) ?? 0)
-          : paiseOf(cell(c, "tax"));
+      const rowTax = taxOf(c);
       const rowTotal = paiseOf(cell(c, "total"));
-      const taxable = paiseOf(cell(c, "taxable")) ?? (rowTotal !== null && kept.length === 1 ? rowTotal - (rowTax ?? 0) : (rowTotal ?? 0));
-      const printedRate = numberOf(cell(c, "gstRate")?.replace("%", ""));
+      // Without a taxable column, a line's own total less its tax; a repeated bill total says nothing about the line.
+      const taxable = paiseOf(cell(c, "taxable")) ?? (rowTotal !== null && !repeated ? rowTotal - (rowTax ?? 0) : 0);
+      const printedRate = rateOf(c);
       const implied = rowTax !== null && taxable > 0 ? (rowTax * 100) / taxable : null;
       const gstRate =
         printedRate !== null ? Math.round(printedRate) : implied !== null ? (GST_RATES.find((r) => Math.abs(r - implied) <= 0.5) ?? Math.round(implied)) : 0;
@@ -358,12 +380,11 @@ export function readRegister(input: { name: string; rows: string[][]; headerAt: 
     else if (intra) Object.assign(totals, { cgstPaise: Math.floor(lineTax / 2), sgstPaise: lineTax - Math.floor(lineTax / 2) });
     else totals.igstPaise = lineTax;
     const tax = totals.cgstPaise + totals.sgstPaise + totals.igstPaise;
-    const rowTotals = kept.map((x) => paiseOf(cell(x.cells, "total")));
     if (col.total === undefined || rowTotals.every((t) => t === null)) totals.totalPaise = taxable + tax;
     else {
-      // A total repeated on every line of a bill is the bill's total; otherwise each line has its own.
-      const same = rowTotals.every((t) => t === rowTotals[0]);
-      totals.totalPaise = same ? rowTotals[0]! : rowTotals.reduce<number>((a, t) => a + (t ?? 0), 0);
+      // A total repeated on every line is the bill's total when it adds up to the lines; equal line totals are summed.
+      const billTotal = kept.length === 1 || (repeated && (col.taxable === undefined || Math.abs(rowTotals[0]! - (taxable + tax)) <= 100));
+      totals.totalPaise = billTotal ? rowTotals[0]! : rowTotals.reduce<number>((a, t) => a + (t ?? 0), 0);
       at("totals.total", kind === "purchase_bill" ? "Bill total" : "Invoice total", "total", 0);
       const diff = totals.totalPaise - (taxable + tax);
       if (Math.abs(diff) <= 100) totals.roundOffPaise = diff;

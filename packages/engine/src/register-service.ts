@@ -23,6 +23,8 @@ export type PendingRegister = {
   via: Document["channel"];
   from: string | null;
   auto: boolean;
+  /** Rows of the sheet past what is kept, which are not read. */
+  cut?: number;
 };
 
 /** Where confirmed layouts and waiting registers are kept: the office's SQLite when live, memory in the demo and the tests. */
@@ -68,7 +70,7 @@ export type RegisterResult = {
 };
 
 const MAX_SHEETS = 10;
-const MAX_PENDING_ROWS = 20_000;
+export const MAX_PENDING_ROWS = 20_000;
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-IN")} ${n === 1 ? one : many}`;
 const KIND_NAME: Record<SheetBillKind, string> = { purchase_bill: "purchase bills", sales_invoice: "sales invoices" };
 
@@ -118,6 +120,7 @@ export class RegisterService {
         fileUrl: f.fileUrl,
         sheet: sheet.name,
         rows: sheet.rows.slice(0, MAX_PENDING_ROWS),
+        cut: Math.max(0, sheet.rows.length - MAX_PENDING_ROWS),
         headerAt: at,
         via: f.via,
         from: f.from,
@@ -185,7 +188,7 @@ export class RegisterService {
   }
 
   private read(importId: string, p: PendingRegister, layout: SheetLayout): RegisterResult {
-    const { bills, skipped } = readRegister({
+    const read = readRegister({
       name: p.sheet,
       rows: p.rows,
       headerAt: p.headerAt,
@@ -193,6 +196,16 @@ export class RegisterService {
       kind: layout.kind,
       ctx: this.office.books,
     });
+    const { bills } = read;
+    const skipped = p.cut
+      ? [
+          ...read.skipped,
+          {
+            row: MAX_PENDING_ROWS + 1,
+            reason: `${plural(p.cut, "more row")} after row ${MAX_PENDING_ROWS.toLocaleString("en-IN")} were not read; send them in another file`,
+          },
+        ]
+      : read.skipped;
     let staged = 0;
     let posted = 0;
     let duplicates = 0;
