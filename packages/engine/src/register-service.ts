@@ -109,9 +109,13 @@ export class SheetIntake {
     this.readers[kind] = reader;
   }
 
-  private known(rows: string[][], at: number, kinds: readonly SheetKind[]) {
-    const l = this.store.layout(layoutKey(rows[at] ?? []));
-    return l && kinds.includes(l.sheetKind) ? l : null;
+  /** A layout the owner confirmed for one of the top rows, whichever row the names would have guessed. */
+  knownLayout(rows: string[][], kinds: readonly SheetKind[]): { at: number; layout: SheetLayout } | null {
+    for (let at = 0; at < Math.min(rows.length, 20); at++) {
+      const layout = this.store.layout(layoutKey(rows[at] ?? []));
+      if (layout && kinds.includes(layout.sheetKind)) return { at, layout };
+    }
+    return null;
   }
 
   /** Sheets in a new layout whose header names leave a needed field unfound: a model may suggest those columns. */
@@ -119,7 +123,7 @@ export class SheetIntake {
     return sheets.slice(0, MAX_SHEETS).flatMap((sheet, index) => {
       const r = recognise(sheet.rows, kinds);
       const headers = sheet.rows[r.at] ?? [];
-      if (this.known(sheet.rows, r.at, kinds) || r.score < 0.5 || !missingFor(r.kind, r.mapping).length) return [];
+      if (this.knownLayout(sheet.rows, kinds) || r.score < 0.5 || !missingFor(r.kind, r.mapping).length) return [];
       return [{ index, sheetKind: r.kind, headers, sample: sheet.rows.slice(r.at + 1, r.at + 4), guess: r.mapping as BillMapping }];
     });
   }
@@ -162,8 +166,8 @@ export class SheetIntake {
         auto: f.auto,
         kinds,
       };
-      const known = this.known(sheet.rows, found.at, kinds);
-      if (known) return this.read(importId, pending, known);
+      const known = this.knownLayout(sheet.rows, kinds);
+      if (known) return this.read(importId, { ...pending, headerAt: known.at }, known.layout);
       if (scoreFor(found.kind, mapping) < RECOGNISED) {
         const names = kinds.map((k) => SHEET_KINDS[k].label.toLowerCase()).join(" or ");
         return { ...empty(sheet.name, null), status: "not_recognised", message: `${sheet.name} does not look like ${names}: its columns are not ones I know.` };
