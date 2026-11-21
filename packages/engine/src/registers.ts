@@ -191,6 +191,24 @@ export function registerKind(rows: string[][], headerAt: number, file: string): 
   return "purchase_bill";
 }
 
+const partyFor = (ctx: ExtractContext, kind: "vendor" | "customer", gstin: string | null, name: string | null) =>
+  (gstin && ctx.parties.find((p) => p.gstin === gstin)) ||
+  (name ? ctx.parties.find((p) => p.kind === kind && p.name.toLowerCase() === name.toLowerCase()) : undefined) ||
+  null;
+
+/**
+ * A bill read earlier in the same file may have added its supplier to the books: match the party again, just before
+ * staging, so one new supplier is added once and the duplicate check sees the bills already staged.
+ */
+export function rematch(e: Extraction, ctx: ExtractContext): Extraction {
+  if (e.partyId) return e;
+  const party = partyFor(ctx, e.kind === "purchase_bill" ? "vendor" : "customer", e.partyGstin, e.partyName);
+  if (!party) return e;
+  const out = { ...e, partyId: party.id, partyName: party.name };
+  out.checks = [...checkExtraction(out, ctx), ...e.checks.filter((c) => c.key === "rows")];
+  return out;
+}
+
 export type RegisterBill = {
   extraction: Extraction;
   /** The rows it was read from, for `Document.sheet`. */
@@ -275,10 +293,7 @@ export function readRegister(input: { name: string; rows: string[][]; headerAt: 
       .replace(/[^0-9A-Z]/g, "");
     const gstin = read && !own.has(read) ? read : null;
     const name = firstOf("party");
-    const party =
-      (gstin && ctx.parties.find((p) => p.gstin === gstin)) ||
-      (name ? ctx.parties.find((p) => p.kind === partyKind && p.name.toLowerCase() === name.toLowerCase()) : undefined) ||
-      null;
+    const party = partyFor(ctx, partyKind, gstin, name);
     const partyState = (gstin && gstinValid(gstin) ? gstin.slice(0, 2) : null) ?? party?.stateCode ?? null;
     const placeOfSupply =
       stateOf(firstOf("placeOfSupply") ?? undefined) ?? (kind === "purchase_bill" ? ctx.business.stateCode : (partyState ?? ctx.business.stateCode));

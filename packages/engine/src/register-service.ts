@@ -9,7 +9,7 @@ import {
   type StagedChange,
 } from "@office/contracts";
 import type { OfficeService } from "./office";
-import { findRegisterHeader, layoutKey, type RegisterSkip, readRegister, registerKind, registerScore } from "./registers";
+import { findRegisterHeader, layoutKey, type RegisterSkip, readRegister, registerKind, registerScore, rematch } from "./registers";
 import type { Sheet } from "./sales/parse";
 
 /** A register waiting for the owner to confirm its columns. Kept apart from the books, as a sheet can be large. */
@@ -200,7 +200,7 @@ export class RegisterService {
       const docId = `doc-${importId.replace(/^reg-/, "r")}-${n + 1}`;
       const doc = this.office.receiveDocument({ id: docId, file: p.fileUrl, channel: p.via, from: p.from, pages: 1 });
       doc.sheet = b.sheet;
-      const r = this.office.ingest(docId, b.extraction, p.auto);
+      const r = this.office.ingest(docId, rematch(b.extraction, this.office.books), p.auto);
       if (r.staged?.status === "rejected") duplicates++;
       else if (r.staged?.status === "approved") posted++;
       else if (r.staged) staged++;
