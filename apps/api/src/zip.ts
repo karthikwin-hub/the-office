@@ -151,3 +151,74 @@ export function streamOf(chunks: AsyncGenerator<Uint8Array>, onCancel?: () => vo
     },
   });
 }
+
+/* ---------- Reading an archive back: what an export holds, for the staging import (import.ts) ---------- */
+
+/** One file in an archive, as its central directory lists it. */
+export type ZipEntry = { name: string; crc: number; size: number; offset: number };
+
+/** The end record and the most comment it may carry: an archive's last this many bytes hold where its directory is. */
+export const ZIP_TAIL_BYTES = 22 + 0xffff;
+const dec = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+
+/**
+ * Where the central directory is, from an archive's last bytes (`tail`, which ends at byte `total`). Null for anything
+ * that is not a single-disk ZIP this reader can open.
+ */
+export function zipDirectory(tail: Uint8Array, total: number): { offset: number; size: number; count: number } | null {
+  const v = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+  for (let at = tail.length - 22; at >= 0; at--) {
+    if (v.getUint32(at, true) !== 0x06054b50) continue;
+    if (at + 22 + v.getUint16(at + 20, true) !== tail.length) continue; // a signature inside the comment, not the record
+    if (v.getUint16(at + 4, true) !== 0 || v.getUint16(at + 6, true) !== 0) return null; // split across disks
+    const count = v.getUint16(at + 10, true);
+    const size = v.getUint32(at + 12, true);
+    const offset = v.getUint32(at + 16, true);
+    if (count === 0xffff || size === 0xffffffff || offset === 0xffffffff) return null; // ZIP64
+    const endAt = total - tail.length + at;
+    return offset + size <= endAt ? { offset, size, count } : null;
+  }
+  return null;
+}
+
+/** The files a central directory lists, in order. Only stored (uncompressed) files, as the export writes them; null otherwise. */
+export function zipEntries(directory: Uint8Array, count: number): ZipEntry[] | null {
+  const v = new DataView(directory.buffer, directory.byteOffset, directory.byteLength);
+  const out: ZipEntry[] = [];
+  let at = 0;
+  for (let i = 0; i < count; i++) {
+    if (at + 46 > directory.length || v.getUint32(at, true) !== 0x02014b50) return null;
+    if (v.getUint16(at + 10, true) !== 0) return null; // compressed: not an export
+    const size = v.getUint32(at + 20, true);
+    if (size !== v.getUint32(at + 24, true)) return null;
+    const nameLen = v.getUint16(at + 28, true);
+    const next = at + 46 + nameLen + v.getUint16(at + 30, true) + v.getUint16(at + 32, true);
+    if (next > directory.length) return null;
+    let name: string;
+    try {
+      name = dec.decode(directory.subarray(at + 46, at + 46 + nameLen));
+    } catch {
+      return null;
+    }
+    out.push({ name, crc: v.getUint32(at + 16, true), size, offset: v.getUint32(at + 42, true) });
+    at = next;
+  }
+  return out;
+}
+
+/** The most bytes to read for an entry: its local header, name and extra field (at most), then its data. */
+export const zipEntrySpan = (e: ZipEntry, nameBytes: number) => 30 + nameBytes + 0xffff + e.size;
+
+/**
+ * An entry's bytes, from what was read at its offset (its local header onwards). Null when the header does not match
+ * the directory, the bytes are short, or their CRC-32 is not the one the directory records.
+ */
+export function zipEntryData(e: ZipEntry, read: Uint8Array): Uint8Array | null {
+  if (read.length < 30) return null;
+  const v = new DataView(read.buffer, read.byteOffset, read.byteLength);
+  if (v.getUint32(0, true) !== 0x04034b50 || v.getUint16(8, true) !== 0) return null;
+  const start = 30 + v.getUint16(26, true) + v.getUint16(28, true);
+  if (start + e.size > read.length) return null;
+  const data = read.subarray(start, start + e.size);
+  return crc32(data) === e.crc ? data : null;
+}
