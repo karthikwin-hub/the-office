@@ -9,7 +9,7 @@ import type {
   SocialReport,
   StagedChange,
 } from "@office/contracts";
-import { AGENT_BY_ID, AGENTS, TEAMS } from "@office/contracts";
+import { AGENT_BY_ID, AGENTS, BILL_TYPES, TEAMS } from "@office/contracts";
 import { ApprovalCard, HireCard, LedgerTable, TeamLog, TrustLevel, useFigures } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -365,14 +365,7 @@ function DocumentIntake() {
         <p className="muted">
           PDFs and photos. The Accountant reads each page, keeps a link to where every figure was printed, and prepares the ledger entry for you to approve.
         </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf,image/jpeg,image/png"
-          multiple
-          hidden
-          onChange={(e) => e.target.files && void take(e.target.files)}
-        />
+        <input ref={inputRef} type="file" accept={BILL_TYPES.join(",")} multiple hidden onChange={(e) => e.target.files && void take(e.target.files)} />
       </div>
       {intake.length > 0 && <IntakeList items={intake} />}
     </>
