@@ -39,6 +39,7 @@ import {
   VariantEdit,
   WidgetChange,
 } from "@office/contracts";
+import { RegisterError } from "./register-service";
 import { routinesView } from "./routines";
 import { missingFields } from "./sales/formats";
 import { SalesError } from "./sales/service";
@@ -133,6 +134,20 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
         }
         const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, unknown> };
         if (body.action !== "approve" && body.action !== "reject") return { status: 400, body: { error: "action must be approve or reject" } };
+        if (item.kind === "sheet_layout") {
+          // Only the register's kind and columns can be changed, and they must fit the file.
+          const p = item.payload as { importId: string; kind: unknown; mapping: unknown };
+          const edits = body.edits ? { kind: body.edits.kind ?? p.kind, mapping: body.edits.mapping ?? p.mapping } : undefined;
+          if (body.action === "approve") {
+            try {
+              office.registers.check(p.importId, edits?.kind ?? p.kind, edits?.mapping ?? p.mapping);
+            } catch (e) {
+              if (e instanceof RegisterError) return { status: 409, body: { error: e.message } };
+              throw e;
+            }
+          }
+          body.edits = edits;
+        }
         try {
           return ok(office.decide(a, { action: body.action, note: body.note, edits: body.edits }, req.user.name));
         } catch (e) {

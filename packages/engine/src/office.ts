@@ -58,6 +58,7 @@ import type { OrderSource } from "./customer/orders";
 import { type CsStore, MemoryCsStore } from "./customer/store";
 import { AssistantService } from "./assistant/service";
 import { type AssistantStore, MemoryAssistantStore } from "./assistant/store";
+import { MemoryRegisterStore, RegisterService, type RegisterStore } from "./register-service";
 import { SalesService } from "./sales/service";
 import { MemorySalesStore, type SalesStore } from "./sales/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
@@ -76,6 +77,7 @@ const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = {
 const ALWAYS_ASK = new Set([
   "email_reply",
   "sales_mapping",
+  "sheet_layout",
   "audit_flag",
   "share_file",
   "payroll_run",
@@ -134,6 +136,8 @@ export type OfficeOptions = {
   assistant?: AssistantStore;
   /** Where online sales read from the marketplaces' reports are kept; memory unless the host has storage. */
   sales?: SalesStore;
+  /** Where confirmed register layouts and registers waiting for one are kept; memory unless the host has storage. */
+  registers?: RegisterStore;
   orderSources?: OrderSource[];
   /** Where the books' edit log is kept; memory unless the host has storage. */
   edits?: EditLog;
@@ -149,6 +153,7 @@ export class OfficeService {
   readonly customers: CustomerService;
   readonly assistant: AssistantService;
   readonly sales: SalesService;
+  readonly registers: RegisterService;
   readonly edits: EditLog;
   private snap: Snapshot;
   private backupStatus: () => BooksRecordView["backup"];
@@ -165,6 +170,7 @@ export class OfficeService {
     this.customers = new CustomerService(this, opts.conversations ?? new MemoryCsStore(), opts.orderSources);
     this.assistant = new AssistantService(this, opts.assistant ?? new MemoryAssistantStore());
     this.sales = new SalesService(this, opts.sales ?? new MemorySalesStore());
+    this.registers = new RegisterService(this, opts.registers ?? new MemoryRegisterStore());
     this.settingsState = {
       business: books.business,
       users: [
@@ -1134,6 +1140,7 @@ export class OfficeService {
     }
     if (item.kind === "customer_reply" || item.kind === "handoff") return this.customers.decided(item, false);
     if (item.kind === "sales_mapping") return this.sales.dropPending(String((item.payload as { importId?: string }).importId));
+    if (item.kind === "sheet_layout") return this.registers.drop(String((item.payload as { importId?: string }).importId));
     if (item.kind === "calendar") {
       const cal = this.books.calendars.find((c) => c.id === (item.payload as { calendarId?: string }).calendarId);
       if (!cal) return;
@@ -1285,6 +1292,11 @@ export class OfficeService {
       case "sales_mapping": {
         const m = item.payload as { importId: string; channel: SalesChannel; mapping: ColumnMapping };
         this.sales.applyMapping(m.importId, m.channel, m.mapping);
+        break;
+      }
+      case "sheet_layout": {
+        const m = item.payload as { importId: string; kind: unknown; mapping: unknown };
+        this.registers.applyLayout(m.importId, m.kind, m.mapping);
         break;
       }
     }

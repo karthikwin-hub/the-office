@@ -224,7 +224,14 @@ export type Sku = z.infer<typeof Sku>;
 
 /** [x, y, w, h] as fractions of the page, origin top-left */
 export const Box = z.tuple([z.number(), z.number(), z.number(), z.number()]);
-export const Region = z.object({ key: z.string(), label: z.string(), page: z.number().int(), box: Box });
+/** Where a value was read: a box on a page, or for a spreadsheet the cell (row and column, from 0, as in `Document.sheet`). */
+export const Region = z.object({
+  key: z.string(),
+  label: z.string(),
+  page: z.number().int(),
+  box: Box,
+  cell: z.object({ row: z.number().int(), col: z.number().int() }).optional(),
+});
 export type Region = z.infer<typeof Region>;
 
 /** "filed" is a document kept for the record that never reaches the books, such as a proforma or a delivery note. */
@@ -245,6 +252,17 @@ export const Document = z.object({
   from: z.string().nullable(),
   status: DocumentStatus,
   regions: z.array(Region),
+  /**
+   * A bill or invoice read from a row (or rows) of a spreadsheet: the header and the rows it came from, so each
+   * figure can be shown in its cell. `n` is the row's number in the sheet as the owner sees it (from 1).
+   */
+  sheet: z
+    .object({
+      name: z.string().max(200),
+      headers: z.array(z.string().max(200)).max(200),
+      rows: z.array(z.object({ n: z.number().int(), cells: z.array(z.string().max(500)).max(200) })).max(200),
+    })
+    .optional(),
 });
 export type Document = z.infer<typeof Document>;
 
@@ -984,6 +1002,8 @@ export const RefKind = z.enum([
   "email",
   /** A sales report from a marketplace, read by the Marketplace Manager. */
   "sales_import",
+  /** A register of bills or invoices waiting for the owner to confirm its columns. */
+  "sheet_import",
 ]);
 export const Ref = z.object({ kind: RefKind, id: z.string().nullable(), region: z.string().optional() });
 export type Ref = z.infer<typeof Ref>;
@@ -1019,6 +1039,8 @@ export const StagedKind = z.enum([
   "email_reply",
   /** A sales report in a layout the Marketplace Manager has not seen: which column is which, for the owner to confirm once. */
   "sales_mapping",
+  /** A register of bills or invoices in a layout the Accountant has not seen: which column is which, for the owner to confirm once. */
+  "sheet_layout",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 
