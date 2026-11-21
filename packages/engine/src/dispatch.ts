@@ -197,7 +197,8 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
       if (typeof body.content !== "string" || !body.content.trim() || body.content.length > 5_000_000)
         return { status: 400, body: { error: "Attach the return file." } };
       try {
-        return ok(office.importReturn(body.content, req.user.name, typeof body.filedOn === "string" ? body.filedOn : null));
+        const staged = office.stageReturn(body.content, req.user.name, typeof body.filedOn === "string" ? body.filedOn : null);
+        return ok({ staged, message: "It waits on your desk. Once approved, the Auditor compares it with the books." });
       } catch (e) {
         if (e instanceof ImportError) return { status: 422, body: { error: e.message } };
         throw e;

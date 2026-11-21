@@ -12,10 +12,21 @@ import { gstDueDates } from "./gst";
  */
 
 export type Imported =
-  | { kind: "return"; form: FiledReturn["form"]; period: string; filed: FiledReturn; summary: string }
-  | { kind: "gstr2b"; period: string; statement: Gstr2b; summary: string };
+  | { kind: "return"; form: FiledReturn["form"]; period: string; filed: FiledReturn; summary: string; notes?: string[] }
+  | { kind: "gstr2b"; period: string; statement: Gstr2b; summary: string; notes?: string[] };
 
 export class ImportError extends Error {}
+
+/** GSTR-2B's sections other than B2B, as the portal names them. */
+const SECTION_NAME: Record<string, string> = {
+  cdnr: "credit or debit note",
+  b2ba: "amended invoice",
+  cdnra: "amended credit or debit note",
+  isd: "input service distributor",
+  isda: "amended ISD",
+  impg: "import of goods",
+  impgsez: "import from SEZ",
+};
 
 const periodOf = (fp: string) => {
   if (!/^\d{6}$/.test(fp)) throw new ImportError(`Return period "${fp}" should be MMYYYY.`);
@@ -135,7 +146,10 @@ function parse26q(l: Ledger, text: string): Imported {
     };
   });
   if (!deductions.length) throw new ImportError("The CSV has a header but no deductions.");
-  const quarter = quarterOf(deductions[0]!.paidOn);
+  // One return is one quarter: deductions from another would be counted in the wrong one.
+  const quarters = [...new Set(deductions.map((d) => quarterOf(d.paidOn)))];
+  if (quarters.length > 1) throw new ImportError(`This file has deductions from ${quarters.join(", ")}. Send each quarter's return on its own.`);
+  const quarter = quarters[0]!;
   const filed: FiledReturn = {
     id: `26q-${quarter}`,
     form: "26Q",
@@ -196,6 +210,13 @@ export function importReturn(l: Ledger, content: string, filedOn: string | null)
     return { kind: "return", form: "GSTR-1", period, filed: { ...base("GSTR-1", period), form: "GSTR-1", data: p.data }, summary: `${count} B2B invoices` };
   }
   const twoB = flatten2b(raw);
-  if (twoB) return { kind: "gstr2b", period: twoB.period, statement: twoB, summary: `${twoB.data.docdata.b2b.length} supplier invoices` };
+  if (twoB) {
+    // Only B2B invoices are compared; say what else the statement holds rather than drop it unseen.
+    const docdata = ((raw as { data?: { docdata?: Record<string, unknown> } }).data?.docdata ?? {}) as Record<string, unknown>;
+    const notes = Object.entries(docdata)
+      .filter(([k, v]) => k !== "b2b" && Array.isArray(v) && v.length)
+      .map(([k, v]) => `${(v as unknown[]).length} ${SECTION_NAME[k] ?? k.toUpperCase()} ${(v as unknown[]).length === 1 ? "entry" : "entries"} not compared`);
+    return { kind: "gstr2b", period: twoB.period, statement: twoB, summary: `${twoB.data.docdata.b2b.length} supplier invoices`, notes };
+  }
   throw new ImportError("This file is not a GSTR-1, GSTR-3B or GSTR-2B JSON, or a TDS return CSV (Form 140 or 26Q).");
 }
