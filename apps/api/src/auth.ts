@@ -8,6 +8,7 @@ import type { Env } from "./env";
 import { log } from "./log";
 import { mailSender } from "./mail";
 import * as schema from "./schema";
+import { SESSION_EXPIRES_IN, SESSION_UPDATE_AGE } from "./session";
 import { stepUp } from "./step-up";
 
 /**
@@ -211,7 +212,7 @@ function buildAuth(env: Env, { origins, cookieDomain }: ReturnType<typeof authSc
     user: { additionalFields: { role: { type: "string", required: false, input: false, defaultValue: "accountant" } } },
     // No cookie cache: every request reads D1 for the membership anyway, and a cached session that fails its check signs the person out.
     // A session ends after 12 hours without use; while in use it is renewed at most once an hour. A sign-in counts as fresh for 15 minutes.
-    session: { cookieCache: { enabled: false }, expiresIn: 12 * 60 * 60, updateAge: 60 * 60, freshAge: 15 * 60 },
+    session: { cookieCache: { enabled: false }, expiresIn: SESSION_EXPIRES_IN, updateAge: SESSION_UPDATE_AGE, freshAge: 15 * 60 },
     // A second step at sign-in: an authenticator app's code, or one of ten backup codes. Owners must have it; see step-up.ts.
     // Devices are never trusted for later sign-ins.
     plugins: [twoFactor({ issuer: BRAND.name, trustDeviceMaxAge: 0 }), stepUp((to, subject, lines) => sendMail(env, to, subject, lines.join("\n")))],
