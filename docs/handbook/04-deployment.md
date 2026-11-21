@@ -112,6 +112,12 @@ The Durable Object's own schema steps follow the same rule (section 8).
 
 **By hand, only when CI cannot,** an owner on their own machine (never one a coding agent works on): `deploy.sh staging` through Infisical's `staging` environment, then `deploy.sh live` through `prod`, each as `infisical run --env=<environment> --silent -- sh tools/admin/deploy.sh <target>`. The backup then stays in `backups/` (git-ignored, readable only by you); set `BACKUP_AGE_RECIPIENT` to encrypt it, and delete it once the release has settled. `pnpm run deploy` is `deploy.sh live`. Calling `wrangler deploy` or `wrangler d1 migrations apply` yourself skips the backup.
 
+**A copy of a business on staging.** To test with real books, an owner downloads everything from the business on live (Settings → Office → Download everything), opens a new office on staging with the same name, and loads that zip under Settings → Office → "Copy a business from live". It is there only where `OFFICE_IMPORT` is `on`, which only `env.staging` sets.
+- The books and every stored bill and picture are copied. The office reads them a batch at a time (the page carries on by itself), checks each file against the archive, and stores it with staging's own key. Exports up to 95 MB, the free plan's limit on a request body.
+- People, logins, two-step sign-in, WhatsApp links, email addresses in and connected channels are not: each person signs up on staging, and the owner invites them.
+- So a copy never acts for the business: every agent starts as a trainee and every channel is posted by hand, so nothing is sent to a real customer without someone approving it on staging.
+- The office must be empty: an office with any document, invoice, bill, payment or party refuses an import.
+
 **Free plan.** The Worker runs on Cloudflare's Workers free plan, about 10 ms of CPU per request: nothing may depend on the paid plan's allowance (see the parked item in the roadmap). The free plan's daily allowances (requests, Durable Object requests, D1 rows read, Workers AI) are per account, so staging in the Snilld account would spend live's; that is why `env.staging` recommends an account of its own. Keep staging's traffic to the smoke checks and hand testing.
 
 Every Worker command runs through Infisical or a GitHub environment secret, so the Cloudflare tokens never touch a file.

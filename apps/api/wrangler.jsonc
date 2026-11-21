@@ -96,7 +96,10 @@
         "BETTER_AUTH_URL": "https://the-office-staging.the-office-agents.workers.dev",
         // Empty: everything is on one host, the console at /?platform, and the sign-in cookie is for this host only.
         // The console's owners are the secret PLATFORM_OWNER_EMAILS, as on live.
-        "APP_DOMAIN": ""
+        "APP_DOMAIN": "",
+        // An owner may load an export from live into a new, empty office here, to test with a copy (src/import.ts).
+        // Staging only: live must never set it (a test checks).
+        "OFFICE_IMPORT": "on"
       },
       "d1_databases": [
         {

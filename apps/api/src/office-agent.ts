@@ -15,7 +15,7 @@ import {
   WhatsAppChange,
   type WhatsAppStatus,
 } from "@office/contracts";
-import { assistantAddress, CalendarLinkInput, salesAddress, SalesUploadInput } from "@office/contracts";
+import { assistantAddress, Books, CalendarLinkInput, type ImportProgress, salesAddress, SalesUploadInput, Settings } from "@office/contracts";
 import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
 import {
   digestChannel,
@@ -35,6 +35,7 @@ import {
 import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedCopy } from "./backup";
 import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
+import { ARCHIVE_MAX_BYTES, importAllowed, moveLinks, OfficeImport } from "./import";
 import { fileRoute, OfficeFiles } from "./files";
 // The light entry: the sample business (2.3 MB) is imported only when an office is seeded with it, never at an isolate's start.
 import { emptyBooks, SAMPLE_SEED } from "@office/fixtures/empty";
@@ -136,6 +137,8 @@ export class Office extends Agent<Env> {
   private spentStates!: SpentStates;
   /** Exports being written, part by part, for the Worker (export.ts). */
   private exports: OfficeExports | null = null;
+  /** Staging only: an export being loaded into this office (import.ts). */
+  private imports: OfficeImport | null = null;
   /** The unread documents open browsers were last told of; a new one among them makes them read. */
   private toldUnread = new Set<string>();
   private day = "";
@@ -592,6 +595,8 @@ export class Office extends Agent<Env> {
     const path = url.pathname;
     const post = request.method === "POST";
 
+    if (post && path === ROUTES.officeImport) return this.importStart(request, caller);
+    if (post && path === ROUTES.officeImportNext) return this.importNext(caller);
     if (post && path === "/internal/mail-admit") return json(await this.admitMail((await request.json()) as MailAdmission));
     if (post && path === "/internal/email") return json(await this.receiveEmail((await request.json()) as MailDocs));
     if (post && path === "/internal/social/meta") return json(await this.receiveMeta(await request.json()));
@@ -732,6 +737,79 @@ export class Office extends Agent<Env> {
       this.log("export failed", e);
       return json({ error: "The office could not be read. Try again." }, 500);
     }
+  }
+
+  /* ---------- Staging only: an owner's export loaded into a new office (import.ts) ---------- */
+
+  /** Why this office may not take an import now, or null when it may. Checked here as well as in the Worker. */
+  private importRefused(caller: Caller): Response | null {
+    if (!importAllowed(this.env)) return json({ error: "Not found" }, 404);
+    if (caller.role !== "owner") return json({ error: "Only the owner can import an export." }, 403);
+    return null;
+  }
+
+  private async importStart(request: Request, caller: Caller): Promise<Response> {
+    const refused = this.importRefused(caller);
+    if (refused) return refused;
+    if (this.kv("import:progress")) return json({ error: "An import is already under way here. Carry it on from Settings." }, 409);
+    const b = this.office.books;
+    if (b.documents.length || b.invoices.length || b.bills.length || b.payments.length || b.parties.length)
+      return json({ error: "Import into a new, empty office: this one already has books." }, 409);
+    const length = Number(request.headers.get("content-length"));
+    if (!request.body || !Number.isSafeInteger(length) || length <= 0) return json({ error: "Choose the export's ZIP file." }, 400);
+    if (length > ARCHIVE_MAX_BYTES) return json({ error: "That export is too big to import here (at most 95 MB)." }, 413);
+    this.imports ??= new OfficeImport(this.env.DOCS, this.files);
+    const started = await this.imports.start(request.body, length);
+    if ("error" in started) return json({ error: started.error }, 400);
+    const from = started.exported.office;
+    const parsed =
+      typeof from === "string" && OFFICE_ID.test(from)
+        ? Books.safeParse(JSON.parse(moveLinks(JSON.stringify(started.exported.books ?? null), from, this.officeId!)))
+        : null;
+    if (!parsed?.success) {
+      await this.imports.cancel();
+      return json({ error: "The export's books are not in a shape this app reads. Download it again from Settings → Office." }, 400);
+    }
+    const books = parsed.data;
+    // A copy on staging never acts for the business by itself: every agent waits for approval, every channel is posted by hand.
+    for (const a of books.agents) a.trustLevel = "trainee";
+    for (const c of books.channels) Object.assign(c, { mode: "manual", status: "manual", connectedAt: null, lastError: null });
+    // Replaced in place, so the edit log records the import as one change, by the owner who made it.
+    const target = this.office.books as unknown as Record<string, unknown>;
+    for (const k of Object.keys(target)) delete target[k];
+    Object.assign(target, books);
+    const settings = Settings.pick({ digestTime: true, reminderPolicy: true }).safeParse(started.exported.settings);
+    if (settings.success) this.office.updateSettings(settings.data);
+    this.office.recordEdits(`${caller.name} (import)`);
+    this.store.save(this.office.books);
+    this.open(this.office.books);
+    const named = this.office.books.business.name.trim();
+    if (named) {
+      await this.plane().rename(this.officeId!, named);
+      this.businessName = named;
+    }
+    log("info", "office.imported", { officeId: this.officeId, count: started.files, step: "books" });
+    this.kv("import:progress", JSON.stringify({ done: 0, skipped: 0 }));
+    if (started.files === 0) return this.importNext(caller);
+    return json({ done: 0, total: started.files, skipped: 0, finished: false } satisfies ImportProgress);
+  }
+
+  /** The next batch of the import's files; the page asks again until it is finished. */
+  private async importNext(caller: Caller): Promise<Response> {
+    const refused = this.importRefused(caller);
+    if (refused) return refused;
+    const saved = this.kv("import:progress");
+    if (!saved) return json({ error: "No import is under way here." }, 404);
+    const at = JSON.parse(saved) as { done: number; skipped: number };
+    this.imports ??= new OfficeImport(this.env.DOCS, this.files);
+    const progress = await this.imports.next(at.done, at.skipped);
+    if (!progress) {
+      this.kv("import:progress", "");
+      return json({ error: "The uploaded export is gone. Start the import again." }, 410);
+    }
+    this.kv("import:progress", progress.finished ? "" : JSON.stringify({ done: progress.done, skipped: progress.skipped }));
+    if (progress.finished) log("info", "office.imported", { officeId: this.officeId, count: progress.done - progress.skipped, step: "files" });
+    return json(progress satisfies ImportProgress);
   }
 
   /** The end of a deleted office: its books and edit log are sealed and kept, then its storage and alarms go. The Worker removes its files and rows. */

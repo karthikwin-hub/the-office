@@ -127,8 +127,11 @@ export function ownOrigin(env: Pick<Env, "BETTER_AUTH_URL" | "APP_DOMAIN">, orig
  * a cookie comes with the request, which would let another site sign a visitor into an account of its choosing.
  */
 const CROSS_ORIGIN = /^\/api\/(hooks\/|chat\/|channels\/[a-z]+\/callback$)/;
-/** What the app sends in a body: JSON, file uploads, and a page pictured in the browser for the scanner. */
-const BODY_TYPES = /^(application\/json|multipart\/form-data|image\/(png|jpeg|webp))\s*(;|$)/i;
+/**
+ * What the app sends in a body: JSON, file uploads, a page pictured in the browser for the scanner, and on staging an
+ * export to import. None of them is a type a plain HTML form can send.
+ */
+const BODY_TYPES = /^(application\/json|application\/zip|multipart\/form-data|image\/(png|jpeg|webp))\s*(;|$)/i;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**

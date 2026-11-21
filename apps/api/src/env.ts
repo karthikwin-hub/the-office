@@ -17,6 +17,8 @@ export type Env = {
   INGEST_DOMAIN: string;
   /** "off" lets people open offices and accept invitations without confirming their address (local testing only). */
   EMAIL_VERIFICATION?: string;
+  /** "on" on staging only: an owner may load an export from live into a new, empty office (import.ts). Never set on live. */
+  OFFICE_IMPORT?: string;
   BETTER_AUTH_URL: string;
   /**
    * When set (for example `office.snilld.in`), BETTER_AUTH_URL is where businesses sign in, `app.<APP_DOMAIN>`; the bare domain
