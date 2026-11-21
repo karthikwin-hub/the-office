@@ -51,7 +51,7 @@ import { fromGoogleForwarding, mailSender } from "./mail";
 import { readPrefs, savePrefs } from "./prefs";
 import { meteredAi, QuotaError, take } from "./quota";
 import { readScan, readText } from "./reading";
-import { readRegisterFile, SqlRegisterStore } from "./registers";
+import { readSheetFile, SqlLayoutStore } from "./registers";
 import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
@@ -132,7 +132,7 @@ export class Office extends Agent<Env> {
   private conversations!: SqlCsStore;
   private assistantStore!: SqlAssistantStore;
   private salesStore!: SqlSalesStore;
-  private registerStore!: SqlRegisterStore;
+  private layoutStore!: SqlLayoutStore;
   private office!: OfficeService;
   private vault!: TokenVault;
   /** The office's stored files in R2, sealed with its own key (`files.ts`). */
@@ -202,7 +202,7 @@ export class Office extends Agent<Env> {
     this.conversations = new SqlCsStore(sql);
     this.assistantStore = new SqlAssistantStore(sql);
     this.salesStore = new SqlSalesStore(sql);
-    this.registerStore = new SqlRegisterStore(sql);
+    this.layoutStore = new SqlLayoutStore(sql);
     this.vault = new TokenVault(sql, rootKeys(this.env), id);
     this.files = new OfficeFiles(this.env.DOCS, rootKeys(this.env), id);
     this.spentStates = new SpentStates(sql);
@@ -316,7 +316,7 @@ export class Office extends Agent<Env> {
       conversations: this.conversations,
       assistant: this.assistantStore,
       sales: this.salesStore,
-      registers: this.registerStore,
+      layouts: this.layoutStore,
       edits: this.edits,
       backup: () => this.backupStatus(),
     });
@@ -1647,7 +1647,7 @@ export class Office extends Agent<Env> {
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = newDocId();
     await this.files.put(docKey(this.officeId!, id), bytes, type, { filename: file.name, by: caller.email });
-    const results = await readRegisterFile(this.office, this.ai, {
+    const results = await readSheetFile(this.office, this.ai, {
       docId: id,
       name: file.name,
       bytes,
@@ -1655,6 +1655,7 @@ export class Office extends Agent<Env> {
       via: "upload",
       from: null,
       auto: true,
+      kinds: ["bill_register"],
     });
     return json({ results, message: results.map((r) => r.message).join(" ") });
   }

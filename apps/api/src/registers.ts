@@ -1,5 +1,5 @@
-import type { Document, SheetLayout } from "@office/contracts";
-import type { OfficeService, PendingRegister, RegisterResult, RegisterStore } from "@office/engine";
+import { type Document, SheetLayout, type SheetKind } from "@office/contracts";
+import type { LayoutStore, OfficeService, WaitingSheet, SheetResult } from "@office/engine";
 import { proposeLayout } from "./reading";
 
 /**
@@ -8,23 +8,23 @@ import { proposeLayout } from "./reading";
  */
 const CHUNK = 900_000;
 
-export class SqlRegisterStore implements RegisterStore {
+export class SqlLayoutStore implements LayoutStore {
   constructor(private readonly sql: SqlStorage) {
     sql.exec("CREATE TABLE IF NOT EXISTS sheet_layout (k TEXT PRIMARY KEY, doc TEXT NOT NULL)");
     sql.exec("CREATE TABLE IF NOT EXISTS sheet_pending (import_id TEXT NOT NULL, n INTEGER NOT NULL, part TEXT NOT NULL, PRIMARY KEY (import_id, n))");
   }
   layout(key: string) {
     const r = this.sql.exec<{ doc: string }>("SELECT doc FROM sheet_layout WHERE k = ?", key).toArray()[0];
-    return r ? (JSON.parse(r.doc) as SheetLayout) : null;
+    return r ? SheetLayout.parse(JSON.parse(r.doc)) : null;
   }
   saveLayout(key: string, l: SheetLayout) {
     this.sql.exec("INSERT INTO sheet_layout (k, doc) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET doc = excluded.doc", key, JSON.stringify(l));
   }
   pending(id: string) {
     const parts = this.sql.exec<{ part: string }>("SELECT part FROM sheet_pending WHERE import_id = ? ORDER BY n", id).toArray();
-    return parts.length ? (JSON.parse(parts.map((p) => p.part).join("")) as PendingRegister) : null;
+    return parts.length ? (JSON.parse(parts.map((p) => p.part).join("")) as WaitingSheet) : null;
   }
-  setPending(id: string, p: PendingRegister | null) {
+  setPending(id: string, p: WaitingSheet | null) {
     this.sql.exec("DELETE FROM sheet_pending WHERE import_id = ?", id);
     if (!p) return;
     const text = JSON.stringify(p);
@@ -34,25 +34,34 @@ export class SqlRegisterStore implements RegisterStore {
 }
 
 /**
- * Reads a stored spreadsheet as registers of bills or invoices. For a new layout whose header names leave a field
- * unfound, the text model suggests the column first; the owner confirms on the card either way.
+ * Reads a stored spreadsheet as one of `kinds` (ADR 0010). For a new layout whose header names leave a field unfound,
+ * the text model suggests the column first; the owner confirms on the card either way.
  */
-export async function readRegisterFile(
+export async function readSheetFile(
   office: OfficeService,
   ai: Ai,
-  f: { docId: string; name: string; bytes: ArrayBuffer; fileUrl: string; via: Document["channel"]; from: string | null; auto: boolean },
-): Promise<RegisterResult[]> {
+  f: {
+    docId: string;
+    name: string;
+    bytes: ArrayBuffer;
+    fileUrl: string;
+    via: Document["channel"];
+    from: string | null;
+    auto: boolean;
+    kinds: SheetKind[];
+  },
+): Promise<SheetResult[]> {
   const { readSheets, SheetError } = await import("@office/engine/sheets");
   let sheets: Awaited<ReturnType<typeof readSheets>>;
   try {
     sheets = await readSheets(f.name, f.bytes);
   } catch (e) {
     const message = e instanceof SheetError ? e.message : "The file could not be opened. Send it as XLSX or CSV.";
-    return [{ sheet: f.name.slice(0, 200), status: "not_a_register", staged: 0, posted: 0, duplicates: 0, skipped: [], message }];
+    return [{ sheet: f.name.slice(0, 200), sheetKind: null, status: "not_recognised", staged: 0, posted: 0, duplicates: 0, skipped: [], message }];
   }
   const proposed: Awaited<ReturnType<typeof proposeLayout>>[] = [];
-  for (const u of office.registers.unclear(sheets)) proposed[u.index] = await proposeLayout(ai, u, office.books.business);
-  return office.registers.receive({
+  for (const u of office.intake.unclear(sheets, f.kinds)) proposed[u.index] = await proposeLayout(ai, u, office.books.business);
+  return office.intake.receive({
     id: `reg-${f.docId.replace(/^doc-/, "")}`,
     file: f.name,
     fileUrl: f.fileUrl,
@@ -60,6 +69,7 @@ export async function readRegisterFile(
     via: f.via,
     from: f.from,
     auto: f.auto,
+    kinds: f.kinds,
     proposed,
   });
 }

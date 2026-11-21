@@ -1,21 +1,23 @@
 import {
-  BILL_FIELD_LABEL,
-  type BillField,
   type BillMapping,
   type Document,
-  missingBillFields,
+  missingFor,
+  SHEET_KINDS,
   type SheetBillKind,
+  type SheetKind,
   type SheetLayout,
+  type SheetMapping,
   type StagedChange,
 } from "@office/contracts";
+import { recognise, scoreFor } from "./intake/kinds";
 import type { OfficeService } from "./office";
-import { findRegisterHeader, layoutKey, type RegisterSkip, readRegister, registerKind, registerScore, rematch } from "./registers";
+import { layoutKey, type RegisterSkip, readRegister, registerKind, rematch } from "./registers";
 import type { Sheet } from "./sales/parse";
 
-/** A register waiting for the owner to confirm its columns. Kept apart from the books, as a sheet can be large. */
-export type PendingRegister = {
+/** A sheet waiting for the owner to confirm its columns. Kept apart from the books, as a sheet can be large. */
+export type WaitingSheet = {
   file: string;
-  /** The stored file every bill read from it links to. */
+  /** The stored file every record read from it links to. */
   fileUrl: string;
   sheet: string;
   rows: string[][];
@@ -25,19 +27,21 @@ export type PendingRegister = {
   auto: boolean;
   /** Rows of the sheet past what is kept, which are not read. */
   cut?: number;
+  /** The kinds this sheet may be read as, from where it came in. */
+  kinds?: SheetKind[];
 };
 
-/** Where confirmed layouts and waiting registers are kept: the office's SQLite when live, memory in the demo and the tests. */
-export interface RegisterStore {
+/** Where confirmed layouts and waiting sheets are kept: the office's SQLite when live, memory in the demo and the tests. */
+export interface LayoutStore {
   layout(key: string): SheetLayout | null;
   saveLayout(key: string, l: SheetLayout): void;
-  pending(id: string): PendingRegister | null;
-  setPending(id: string, p: PendingRegister | null): void;
+  pending(id: string): WaitingSheet | null;
+  setPending(id: string, p: WaitingSheet | null): void;
 }
 
-export class MemoryRegisterStore implements RegisterStore {
+export class MemoryLayoutStore implements LayoutStore {
   private layouts = new Map<string, SheetLayout>();
-  private waiting = new Map<string, PendingRegister>();
+  private waiting = new Map<string, WaitingSheet>();
   layout(key: string) {
     return this.layouts.get(key) ?? null;
   }
@@ -47,7 +51,7 @@ export class MemoryRegisterStore implements RegisterStore {
   pending(id: string) {
     return this.waiting.get(id) ?? null;
   }
-  setPending(id: string, p: PendingRegister | null) {
+  setPending(id: string, p: WaitingSheet | null) {
     if (p) this.waiting.set(id, p);
     else this.waiting.delete(id);
   }
@@ -56,10 +60,11 @@ export class MemoryRegisterStore implements RegisterStore {
 export class RegisterError extends Error {}
 
 /** What happened to one sheet of a file. */
-export type RegisterResult = {
+export type SheetResult = {
   sheet: string;
-  status: "read" | "needs_layout" | "not_a_register";
-  /** Bills or invoices read and staged, posted on their own, or set aside as already in the books. */
+  sheetKind: SheetKind | null;
+  status: "read" | "needs_layout" | "not_recognised";
+  /** Records read and staged, posted on their own, or set aside as already in the books. */
   staged: number;
   posted: number;
   duplicates: number;
@@ -69,34 +74,56 @@ export type RegisterResult = {
   message: string;
 };
 
+/** Reads a sheet in a confirmed layout into the books, for one kind. */
+export type SheetReader = (importId: string, p: WaitingSheet, layout: SheetLayout) => SheetResult;
+
 const MAX_SHEETS = 10;
 export const MAX_PENDING_ROWS = 20_000;
+/** A new layout is put to the owner when its names meet at least this much of what the kind needs. */
+const RECOGNISED = 0.75;
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-IN")} ${n === 1 ? one : many}`;
 const KIND_NAME: Record<SheetBillKind, string> = { purchase_bill: "purchase bills", sales_invoice: "sales invoices" };
+const what = (l: Pick<SheetLayout, "sheetKind" | "kind">) =>
+  l.sheetKind === "bill_register" ? KIND_NAME[l.kind ?? "purchase_bill"] : SHEET_KINDS[l.sheetKind].label.toLowerCase();
 
 /**
- * The Accountant's reading of registers: bills or invoices listed in a spreadsheet. A layout seen before is read at
- * once; a new one waits for the owner to confirm its columns on the Desk, once (ADR 0010).
+ * One way in for every spreadsheet (ADR 0010). A sheet is recognised among the kinds allowed where it came in; a
+ * layout seen before is read at once by its kind's reader, and a new one waits for the owner to confirm its columns
+ * on the Desk, once.
  */
-export class RegisterService {
+export class SheetIntake {
+  private readers: Partial<Record<SheetKind, SheetReader>> = {};
+
   constructor(
     private office: OfficeService,
-    readonly store: RegisterStore,
-  ) {}
+    readonly store: LayoutStore,
+  ) {
+    this.readers.bill_register = (id, p, l) => this.readBills(id, p, l);
+  }
+
+  /** Each agent hands in the reader for the kinds it owns. */
+  register(kind: SheetKind, reader: SheetReader) {
+    this.readers[kind] = reader;
+  }
+
+  private known(rows: string[][], at: number, kinds: readonly SheetKind[]) {
+    const l = this.store.layout(layoutKey(rows[at] ?? []));
+    return l && kinds.includes(l.sheetKind) ? l : null;
+  }
 
   /** Sheets in a new layout whose header names leave a needed field unfound: a model may suggest those columns. */
-  unclear(sheets: Sheet[]): { index: number; headers: string[]; sample: string[][]; guess: BillMapping }[] {
+  unclear(sheets: Sheet[], kinds: readonly SheetKind[] = ["bill_register"]) {
     return sheets.slice(0, MAX_SHEETS).flatMap((sheet, index) => {
-      const { at, mapping: guess } = findRegisterHeader(sheet.rows);
-      const headers = sheet.rows[at] ?? [];
-      if (this.store.layout(layoutKey(headers)) || registerScore(guess) < 2 || !missingBillFields(guess).length) return [];
-      return [{ index, headers, sample: sheet.rows.slice(at + 1, at + 4), guess }];
+      const r = recognise(sheet.rows, kinds);
+      const headers = sheet.rows[r.at] ?? [];
+      if (this.known(sheet.rows, r.at, kinds) || r.score < 0.5 || !missingFor(r.kind, r.mapping).length) return [];
+      return [{ index, sheetKind: r.kind, headers, sample: sheet.rows.slice(r.at + 1, r.at + 4), guess: r.mapping as BillMapping }];
     });
   }
 
   /**
-   * Reads each sheet of a file. `proposed` holds, by sheet, columns a model suggested for a new layout
-   * (`fromLayoutAnswer`); the owner still confirms them on the card.
+   * Reads each sheet of a file as one of `kinds`. `proposed` holds, by sheet, columns a model suggested for a new
+   * layout (`fromLayoutAnswer`); the owner still confirms them on the card.
    */
   receive(f: {
     file: string;
@@ -106,77 +133,77 @@ export class RegisterService {
     from: string | null;
     auto: boolean;
     id: string;
-    proposed?: ({ kind: SheetBillKind | null; mapping: BillMapping } | null | undefined)[];
-  }): RegisterResult[] {
+    kinds?: SheetKind[];
+    proposed?: ({ kind: SheetBillKind | null; mapping: SheetMapping } | null | undefined)[];
+  }): SheetResult[] {
+    const kinds = (f.kinds ?? ["bill_register"]).filter((k) => this.readers[k]);
     return f.sheets.slice(0, MAX_SHEETS).map((sheet, n) => {
       const importId = f.sheets.length > 1 ? `${f.id}-${n + 1}` : f.id;
-      const found = findRegisterHeader(sheet.rows);
-      const at = found.at;
+      const found = recognise(sheet.rows, kinds);
       const help = f.proposed?.[n];
-      const guess = help?.mapping ?? found.mapping;
-      const suggested = (Object.keys(guess) as BillField[]).filter((k) => !found.mapping[k]);
-      const pending: PendingRegister = {
+      const mapping = help?.mapping ?? found.mapping;
+      const suggested = Object.keys(mapping).filter((k) => !found.mapping[k]);
+      const pending: WaitingSheet = {
         file: f.file.slice(0, 200),
         fileUrl: f.fileUrl,
         sheet: sheet.name,
         rows: sheet.rows.slice(0, MAX_PENDING_ROWS),
         cut: Math.max(0, sheet.rows.length - MAX_PENDING_ROWS),
-        headerAt: at,
+        headerAt: found.at,
         via: f.via,
         from: f.from,
         auto: f.auto,
+        kinds,
       };
-      const known = this.store.layout(layoutKey(sheet.rows[at] ?? []));
+      const known = this.known(sheet.rows, found.at, kinds);
       if (known) return this.read(importId, pending, known);
-      if (registerScore(guess) < 3) {
-        return {
-          sheet: sheet.name,
-          status: "not_a_register",
-          staged: 0,
-          posted: 0,
-          duplicates: 0,
-          skipped: [],
-          message: `${sheet.name} does not look like a list of bills or invoices: no columns for the number, date, party and amount.`,
-        };
+      if (scoreFor(found.kind, mapping) < RECOGNISED) {
+        const names = kinds.map((k) => SHEET_KINDS[k].label.toLowerCase()).join(" or ");
+        return { ...empty(sheet.name, null), status: "not_recognised", message: `${sheet.name} does not look like ${names}: its columns are not ones I know.` };
       }
-      const kind = help?.kind ?? registerKind(sheet.rows, at, f.file);
+      const layout: SheetLayout = {
+        sheetKind: found.kind,
+        mapping,
+        ...(found.kind === "bill_register" ? { kind: help?.kind ?? registerKind(sheet.rows, found.at, f.file) } : {}),
+      };
       this.store.setPending(importId, pending);
-      const card = this.layoutCard(importId, pending, kind, guess, suggested);
+      const card = this.layoutCard(importId, pending, layout, suggested);
       this.office.books.staged.push(card);
-      this.office.log("accountant", `A list of ${KIND_NAME[kind]} in a new layout came in (${f.file}); it waits for you to confirm its columns.`, {
+      this.office.log(card.agentId, `A list of ${what(layout)} in a new layout came in (${f.file}); it waits for you to confirm its columns.`, {
         kind: "sheet_import",
         id: importId,
       });
       return {
-        sheet: sheet.name,
+        ...empty(sheet.name, found.kind),
         status: "needs_layout",
-        staged: 0,
-        posted: 0,
-        duplicates: 0,
-        skipped: [],
         cardId: card.id,
         message: `${sheet.name} is in a layout I have not seen. Confirm its columns on your desk once; files like it are read on their own after that.`,
       };
     });
   }
 
-  /** Checks the owner's columns before the card is approved; the error says what to fix. */
-  check(importId: string, kind: unknown, mapping: unknown): SheetLayout {
+  /** Checks the owner's choice before the card is approved; the error says what to fix. */
+  check(importId: string, choice: { sheetKind?: unknown; kind?: unknown; mapping?: unknown }): SheetLayout {
     const p = this.store.pending(importId);
     if (!p) throw new RegisterError("This file is no longer waiting. Send it again.");
-    if (kind !== "purchase_bill" && kind !== "sales_invoice") throw new RegisterError("Say whether these are purchase bills or sales invoices.");
+    const sheetKind = (choice.sheetKind ?? "bill_register") as SheetKind;
+    if (!(p.kinds ?? ["bill_register"]).includes(sheetKind) || !this.readers[sheetKind]) throw new RegisterError("This file cannot be read as that.");
+    const kind = choice.kind;
+    if (sheetKind === "bill_register" && kind !== "purchase_bill" && kind !== "sales_invoice")
+      throw new RegisterError("Say whether these are purchase bills or sales invoices.");
     const headers = p.rows[p.headerAt] ?? [];
-    const m = (mapping ?? {}) as BillMapping;
-    const bad = Object.entries(m).find(([f, h]) => !(f in BILL_FIELD_LABEL) || typeof h !== "string" || !headers.includes(h));
+    const fields = SHEET_KINDS[sheetKind].fields;
+    const m = (choice.mapping ?? {}) as SheetMapping;
+    const bad = Object.entries(m).find(([f, h]) => !Object.hasOwn(fields, f) || typeof h !== "string" || !headers.includes(h));
     if (bad) throw new RegisterError(`"${String(bad[1])}" is not a column in this file.`);
-    const missing = missingBillFields(m);
-    if (missing.length) throw new RegisterError(`Choose the column for ${missing.map((x) => BILL_FIELD_LABEL[x].toLowerCase()).join(", ")}.`);
-    return { kind, mapping: m };
+    const missing = missingFor(sheetKind, m);
+    if (missing.length) throw new RegisterError(`Choose the column for ${missing.map((x) => fields[x]!.toLowerCase()).join(", ")}.`);
+    return { sheetKind, mapping: m, ...(sheetKind === "bill_register" ? { kind: kind as SheetBillKind } : {}) };
   }
 
   /** The owner approved the columns: keep the layout, and read the file. */
-  applyLayout(importId: string, kind: unknown, mapping: unknown): RegisterResult {
-    const layout = this.check(importId, kind, mapping);
+  applyLayout(importId: string, choice: { sheetKind?: unknown; kind?: unknown; mapping?: unknown }): SheetResult {
+    const layout = this.check(importId, choice);
     const p = this.store.pending(importId)!;
     this.store.saveLayout(layoutKey(p.rows[p.headerAt] ?? []), layout);
     this.store.setPending(importId, null);
@@ -187,25 +214,23 @@ export class RegisterService {
     this.store.setPending(importId, null);
   }
 
-  private read(importId: string, p: PendingRegister, layout: SheetLayout): RegisterResult {
-    const read = readRegister({
+  private read(importId: string, p: WaitingSheet, layout: SheetLayout): SheetResult {
+    const r = this.readers[layout.sheetKind]!(importId, p, layout);
+    if (!p.cut) return r;
+    const reason = `${plural(p.cut, "more row")} after row ${MAX_PENDING_ROWS.toLocaleString("en-IN")} were not read; send them in another file`;
+    return { ...r, skipped: [...r.skipped, { row: MAX_PENDING_ROWS + 1, reason }], message: `${r.message} ${reason[0]!.toUpperCase()}${reason.slice(1)}.` };
+  }
+
+  private readBills(importId: string, p: WaitingSheet, layout: SheetLayout): SheetResult {
+    const kind = layout.kind ?? "purchase_bill";
+    const { bills, skipped } = readRegister({
       name: p.sheet,
       rows: p.rows,
       headerAt: p.headerAt,
-      mapping: layout.mapping,
-      kind: layout.kind,
+      mapping: layout.mapping as BillMapping,
+      kind,
       ctx: this.office.books,
     });
-    const { bills } = read;
-    const skipped = p.cut
-      ? [
-          ...read.skipped,
-          {
-            row: MAX_PENDING_ROWS + 1,
-            reason: `${plural(p.cut, "more row")} after row ${MAX_PENDING_ROWS.toLocaleString("en-IN")} were not read; send them in another file`,
-          },
-        ]
-      : read.skipped;
     let staged = 0;
     let posted = 0;
     let duplicates = 0;
@@ -218,7 +243,7 @@ export class RegisterService {
       else if (r.staged?.status === "approved") posted++;
       else if (r.staged) staged++;
     });
-    const what = KIND_NAME[layout.kind];
+    const name = KIND_NAME[kind];
     const parts = [
       staged ? `${staged} ${staged === 1 ? "waits on your desk with its checks" : "wait on your desk with their checks"}` : "",
       posted ? `${posted} posted on their own` : "",
@@ -226,33 +251,55 @@ export class RegisterService {
       skipped.length ? `${plural(skipped.length, "row")} left out` : "",
     ].filter(Boolean);
     const message = bills.length
-      ? `Read ${plural(bills.length, what.slice(0, -1), what)} from ${p.sheet}: ${parts.join("; ")}.`
+      ? `Read ${plural(bills.length, name.slice(0, -1), name)} from ${p.sheet}: ${parts.join("; ")}.`
       : `Nothing could be read from ${p.sheet}: ${skipped[0]?.reason ?? "no rows"}.`;
     this.office.log("accountant", message, { kind: "sheet_import", id: importId });
-    return { sheet: p.sheet, status: "read", staged, posted, duplicates, skipped: skipped.slice(0, 200), message };
+    return { ...empty(p.sheet, "bill_register"), status: "read", staged, posted, duplicates, skipped: skipped.slice(0, 200), message };
   }
 
-  private layoutCard(importId: string, p: PendingRegister, kind: SheetBillKind, mapping: BillMapping, suggested: BillField[]): StagedChange {
+  private layoutCard(importId: string, p: WaitingSheet, layout: SheetLayout, suggested: string[]): StagedChange {
+    const spec = SHEET_KINDS[layout.sheetKind];
     const headers = p.rows[p.headerAt] ?? [];
-    const missing = missingBillFields(mapping);
-    const found = (Object.keys(mapping) as BillField[]).map((f) => `${BILL_FIELD_LABEL[f]}: "${mapping[f]}"`);
+    const missing = missingFor(layout.sheetKind, layout.mapping);
+    const found = Object.keys(layout.mapping).map((f) => `${spec.fields[f]}: "${layout.mapping[f]}"`);
     const rows = Math.max(0, p.rows.length - p.headerAt - 1);
+    const label = (f: string) => spec.fields[f]!.toLowerCase();
+    const after = layout.sheetKind === "bill_register" ? "each bill comes to your desk with its checks, and " : "";
     return {
       id: `sheet-layout-${importId}`,
-      agentId: "accountant",
+      agentId: spec.agentId,
       kind: "sheet_layout",
       createdAt: new Date().toISOString(),
-      title: `Read ${p.file} as ${KIND_NAME[kind]}`,
+      title: `Read ${p.file} as ${what(layout)}`,
       summary:
         (missing.length
-          ? `A layout I have not seen. I could not find ${missing.map((m) => BILL_FIELD_LABEL[m].toLowerCase()).join(", ")}: choose the columns before approving.`
-          : `A layout I have not seen. I read it as ${found.join("; ")}. Approve to read its ${plural(rows, "row")}: each bill comes to your desk with its checks, and files in this layout are read on their own after this.`) +
-        (suggested.length
-          ? ` The AI suggested the columns for ${suggested.map((m) => BILL_FIELD_LABEL[m].toLowerCase()).join(", ")} from the first rows; check them against the sample.`
-          : ""),
+          ? `A layout I have not seen. I could not find ${missing.map(label).join(", ")}: choose the columns before approving.`
+          : `A layout I have not seen. I read it as ${found.join("; ")}. Approve to read its ${plural(rows, "row")}: ${after}files in this layout are read on their own after this.`) +
+        (suggested.length ? ` The AI suggested the columns for ${suggested.map(label).join(", ")} from the first rows; check them against the sample.` : ""),
       evidence: [{ label: p.file, ref: { kind: "sheet_import", id: importId } }],
-      payload: { importId, kind, mapping, headers, sample: p.rows.slice(p.headerAt + 1, p.headerAt + 4), missing, suggested, file: p.file, sheet: p.sheet },
+      payload: {
+        importId,
+        sheetKind: layout.sheetKind,
+        kinds: p.kinds ?? [layout.sheetKind],
+        ...(layout.kind ? { kind: layout.kind } : {}),
+        mapping: layout.mapping,
+        headers,
+        sample: p.rows.slice(p.headerAt + 1, p.headerAt + 4),
+        missing,
+        suggested,
+        file: p.file,
+        sheet: p.sheet,
+      },
       status: "pending",
     };
   }
 }
+
+const empty = (sheet: string, sheetKind: SheetKind | null): Omit<SheetResult, "status" | "message"> => ({
+  sheet,
+  sheetKind,
+  staged: 0,
+  posted: 0,
+  duplicates: 0,
+  skipped: [],
+});

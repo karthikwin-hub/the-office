@@ -162,7 +162,7 @@ describe("the Accountant and a register", () => {
     ...numbers.map((n) => [n, "10-11-2026", local.name, local.gstin!, "1000", "90", "90", "", "1180"]),
   ];
   const receive = (office: OfficeService, id: string, rows: string[][], file = "nov.xlsx") =>
-    office.registers.receive({ id, file, fileUrl: `/f/${id}`, sheets: [{ name: "Sheet1", rows }], via: "upload", from: null, auto: true });
+    office.intake.receive({ id, file, fileUrl: `/f/${id}`, sheets: [{ name: "Sheet1", rows }], via: "upload", from: null, auto: true });
 
   it("asks once about a new layout, then reads every bill in it, and the next file in it on its own", () => {
     const fresh = loadBooks();
@@ -222,10 +222,10 @@ describe("the Accountant and a register", () => {
   it("puts columns a model suggested on the card, marked as the AI's, for the owner to confirm", () => {
     const office = new OfficeService(loadBooks());
     const sheets = [{ name: "Sheet1", rows: register(["P-1"]) }];
-    const [unclear] = office.registers.unclear(sheets);
+    const [unclear] = office.intake.unclear(sheets);
     expect(unclear).toMatchObject({ index: 0, headers: register([])[1], guess: { number: "Bill Ref", party: "Supplier" } });
     const proposed = [fromLayoutAnswer({ mapping: { taxable: "Basic", total: "Net", party: "Bill Ref" } }, unclear!.headers, unclear!.guess)];
-    const [r] = office.registers.receive({ id: "reg-c1", file: "nov.xlsx", fileUrl: "/f/c1", sheets, via: "upload", from: null, auto: true, proposed });
+    const [r] = office.intake.receive({ id: "reg-c1", file: "nov.xlsx", fileUrl: "/f/c1", sheets, via: "upload", from: null, auto: true, proposed });
     const card = office.books.staged.find((s) => s.id === r!.cardId)!;
     expect(card.payload).toMatchObject({ missing: [], suggested: ["taxable", "total"], mapping: { party: "Supplier", taxable: "Basic", total: "Net" } });
     expect(card.summary).toMatch(/The AI suggested the columns for taxable value, total/);
@@ -249,10 +249,10 @@ describe("the Accountant and a register", () => {
       ["Item", "Qty"],
       ["Fan", "4"],
     ]);
-    expect(r!.status).toBe("not_a_register");
+    expect(r!.status).toBe("not_recognised");
     const [n] = receive(office, "reg-b2", register(["P-9"]));
     office.decide(n!.cardId!, { action: "reject" }, "Anil Kaveri");
-    expect(office.registers.store.pending("reg-b2")).toBeNull();
+    expect(office.intake.store.pending("reg-b2")).toBeNull();
     expect(office.books.documents.some((d) => d.file === "/f/reg-b2")).toBe(false);
   });
 });
