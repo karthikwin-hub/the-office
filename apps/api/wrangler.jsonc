@@ -75,13 +75,13 @@
   // to main. A Worker of its own with its own D1, R2, offices (Durable Objects), rate-limit counters and secrets: nothing
   // here may name a live resource. It lives on workers.dev, a different site from office.snilld.in, so the live sign-in
   // cookie (set for office.snilld.in) never reaches it. Bindings are not inherited from the top level, so each is listed.
-  // Fill in every REPLACE_WITH_ value (docs/handbook/04-deployment.md, section 7); deploy.sh refuses while one is left.
+  // Its ids are staging's own (docs/handbook/04-deployment.md, section 7); deploy.sh refuses to deploy a placeholder.
   "env": {
     "staging": {
       "name": "the-office-staging",
-      // A separate free Cloudflare account keeps staging's traffic off live's daily free-plan allowance and its token
-      // away from live. The Snilld account's id also works, with a token that can reach live.
-      "account_id": "REPLACE_WITH_STAGING_ACCOUNT_ID",
+      // The agent-office-staging account, separate from Snilld: staging's traffic stays off live's daily free-plan
+      // allowance, and its token cannot reach live.
+      "account_id": "d3b8b7d744513171ea57b5b424391de9",
       // Routes are inherited: without this empty list staging would claim live's custom domains.
       "routes": [],
       "workers_dev": true,
@@ -93,7 +93,7 @@
         "MAIL_FROM": "support@snilldai.com",
         // No Email Routing points here, so staging receives no mail until a catch-all is added for this domain.
         "INGEST_DOMAIN": "in.staging.office.snilld.in",
-        "BETTER_AUTH_URL": "https://the-office-staging.REPLACE_WITH_WORKERS_DEV_SUBDOMAIN.workers.dev",
+        "BETTER_AUTH_URL": "https://the-office-staging.the-office-agents.workers.dev",
         // Empty: everything is on one host, the console at /?platform, and the sign-in cookie is for this host only.
         // The console's owners are the secret PLATFORM_OWNER_EMAILS, as on live.
         "APP_DOMAIN": ""
@@ -102,7 +102,7 @@
         {
           "binding": "DB",
           "database_name": "office-staging",
-          "database_id": "REPLACE_WITH_STAGING_D1_ID",
+          "database_id": "1a779148-c687-49d9-a776-c44b0e448f10",
           "migrations_dir": "migrations"
         }
       ],
