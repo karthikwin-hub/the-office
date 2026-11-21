@@ -303,13 +303,13 @@ describe("talking to the office", () => {
     expect(fake.readImage).not.toHaveBeenCalled();
 
     const sheet = setup({ fetch: fakeGraph(new Uint8Array(new TextEncoder().encode("Order Id,Quantity\n1,2")), "text/html") });
-    sheet.deps.readSales = vi.fn(async () => "Read 1 order.");
+    sheet.deps.readSheet = vi.fn(async () => "Read 1 order.");
     await officeWhatsApp(sheet.deps, msg({ kind: "document", media: { id: "m-3", mimeType: "text/html", filename: "r.csv" } }), person());
     expect(sheet.stored).toEqual([{ key: "o/off_kaveri/docs/doc-wa1", contentType: "text/csv" }]);
 
     // A zip sent without a name is known by its bytes.
     const zip = setup({ fetch: fakeGraph(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0]), "application/zip") });
-    zip.deps.readSales = vi.fn(async () => "Read 1 order.");
+    zip.deps.readSheet = vi.fn(async () => "Read 1 order.");
     await officeWhatsApp(zip.deps, msg({ kind: "document", media: { id: "m-4", mimeType: "application/zip", filename: null } }), person());
     expect(zip.stored).toEqual([{ key: "o/off_kaveri/docs/doc-wa1", contentType: "application/zip" }]);
   });

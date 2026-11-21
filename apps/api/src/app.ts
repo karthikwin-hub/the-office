@@ -823,7 +823,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     message.setReject("There is no office at this address.");
     return;
   }
-  const mail = await parseInbound(message.raw, { results: authResults(message) });
+  const mail = await parseInbound(message.raw, { both: true, results: authResults(message) });
   if (!(await admitted(env, officeId, "email", mail, message.from))) return;
   const docs = await storeAttachments(env, officeId, mail, mail.from ?? message.from);
   const body: MailDocs = { from: mail.from ?? message.from, subject: mail.subject, docs, skipped: mail.skipped, authenticated: mail.authenticated };

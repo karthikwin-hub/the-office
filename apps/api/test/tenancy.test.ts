@@ -771,14 +771,16 @@ describe("the assistant's address", () => {
     expect(w.docs.map.size).toBe(0);
     expect(w.seen.map((s) => s.path)).toEqual(["/internal/mail-admit", "/internal/mail-admit", "/internal/mail-admit"]);
     expect(w.seen.map((s) => JSON.parse(s.body) as { kind: string; bytes: number; from: string })).toMatchObject([
-      { kind: "email", bytes: 15, from: "x@attacker.test" },
+      // The accounts address keeps the bill and the spreadsheet (ADR 0010); the sales address only the spreadsheet.
+      { kind: "email", bytes: 19, from: "x@attacker.test" },
       { kind: "sales", bytes: 4 },
       { kind: "assistant", bytes: 15 },
     ]);
     w.mail.admit = true;
     await send(admin.ingestEmail);
     expect(w.mail.storedBeforeAsked).toEqual([0, 0, 0, 0]);
-    expect(w.docs.map.size).toBe(1);
+    // Admitted: the bill and the spreadsheet are both kept.
+    expect(w.docs.map.size).toBe(2);
   });
 });
 

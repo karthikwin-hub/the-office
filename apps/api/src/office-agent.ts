@@ -15,8 +15,19 @@ import {
   WhatsAppChange,
   type WhatsAppStatus,
 } from "@office/contracts";
-import { assistantAddress, Books, CalendarLinkInput, type ImportProgress, salesAddress, SalesUploadInput, Settings, SheetKind } from "@office/contracts";
-import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
+import {
+  assistantAddress,
+  BILL_TYPES,
+  type BillType,
+  Books,
+  CalendarLinkInput,
+  type ImportProgress,
+  salesAddress,
+  SalesUploadInput,
+  Settings,
+  SheetKind,
+} from "@office/contracts";
+import { gmailConfirmation, parseCommand, readForward, recognise } from "@office/engine";
 import {
   digestChannel,
   dispatch,
@@ -1313,12 +1324,7 @@ export class Office extends Agent<Env> {
         await this.files.put(key, bytes, contentType, meta);
       },
       readImage: (id, image, auto) => this.readImage(id, image, auto),
-      ...(this.office.hired("marketplace-manager")
-        ? {
-            readSales: async (_id: string, name: string, bytes: ArrayBuffer) =>
-              salesReply(await readSalesFile(this.office, { name, bytes, via: "whatsapp", sender: null })),
-          }
-        : {}),
+      readSheet: (id: string, name: string, bytes: ArrayBuffer) => this.readAnySheet(id, name, bytes, "whatsapp", null, false),
       readItems: (id, items, auto) => this.readItems(id, items, auto),
     };
   }
@@ -1529,8 +1535,15 @@ export class Office extends Agent<Env> {
   private async receiveEmail(mail: MailDocs) {
     const auto = postsAlone(this.office.books.parties, mail.from, mail.authenticated === true);
     const results = [];
+    const sheets: string[] = [];
     for (const d of mail.docs) {
       if (mail.authenticated === true) this.kv(`mail:verified:${d.id}`, "1");
+      if (!BILL_TYPES.includes(d.mimeType as BillType)) {
+        // A spreadsheet: recognised as a list of bills or a sales report, and read by the agent whose work it is.
+        const bytes = await this.files.bytes(docKey(this.officeId!, d.id));
+        if (bytes) sheets.push(await this.readAnySheet(d.id, d.filename ?? `${d.id}.xlsx`, bytes, "email", mail.from, auto));
+        continue;
+      }
       this.office.receiveDocument({ id: d.id, file: fileUrl(this.officeId!, d.id), channel: "email", from: mail.from, pages: 1 });
       if (d.mimeType.startsWith("image/")) {
         const bytes = await this.files.bytes(docKey(this.officeId!, d.id));
@@ -1538,11 +1551,37 @@ export class Office extends Agent<Env> {
       }
     }
     if (mail.skipped.length)
-      this.office.log("accountant", `Left out ${mail.skipped.join(", ")} from ${mail.from ?? "an email"}: only PDFs and photos up to 10 MB are read.`);
+      this.office.log(
+        "accountant",
+        `Left out ${mail.skipped.join(", ")} from ${mail.from ?? "an email"}: only PDFs, photos and spreadsheets up to 10 MB are read.`,
+      );
     if (!mail.docs.length && !mail.skipped.length)
       this.office.log("accountant", `An email from ${mail.from ?? "an unknown sender"} ("${mail.subject.slice(0, 80)}") had nothing attached.`);
     this.commit();
-    return { received: mail.docs.length, read: results.length };
+    return { received: mail.docs.length, read: results.length, sheets };
+  }
+
+  /**
+   * A spreadsheet that came by email or WhatsApp: a sales report goes to the Marketplace Manager when one is hired,
+   * anything else is read as a list of bills (ADR 0010). Says in one line what happened.
+   */
+  private async readAnySheet(docId: string, name: string, bytes: ArrayBuffer, via: "email" | "whatsapp", from: string | null, auto: boolean): Promise<string> {
+    const { readSheets } = await import("@office/engine/sheets");
+    const first = await readSheets(name, bytes).catch(() => []);
+    const kinds: SheetKind[] = this.office.hired("marketplace-manager") ? ["bill_register", "sales_report"] : ["bill_register"];
+    const seen = first[0] ? recognise(first[0].rows, kinds) : null;
+    if (seen?.kind === "sales_report" && seen.score >= 0.5) return salesReply(await readSalesFile(this.office, { name, bytes, via, sender: from }));
+    const results = await readSheetFile(this.office, this.ai, {
+      docId,
+      name,
+      bytes,
+      fileUrl: fileUrl(this.officeId!, docId),
+      via,
+      from,
+      auto,
+      kinds: ["bill_register"],
+    });
+    return results.map((r) => r.message).join(" ");
   }
 
   /**

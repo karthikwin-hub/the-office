@@ -38,7 +38,8 @@ export type WaDeps = {
   readImage: (docId: string, image: ArrayBuffer, auto: boolean) => Promise<IngestResult>;
   readItems: (docId: string, items: TextItem[], auto: boolean) => Promise<IngestResult>;
   /** A spreadsheet for the Marketplace Manager; answers what it read. Absent when the agent is not on the team. */
-  readSales?: (docId: string, filename: string, bytes: ArrayBuffer) => Promise<string>;
+  /** A spreadsheet: a list of bills to the Accountant, a sales report to the Marketplace Manager (ADR 0010). */
+  readSheet?: (docId: string, filename: string, bytes: ArrayBuffer) => Promise<string>;
 };
 export type WaOutcome = { to: string; text: string; decided: StagedChange[] } | null;
 
@@ -90,7 +91,7 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
     const isPdf = m.media.mimeType === "application/pdf" || /\.pdf$/i.test(m.media.filename ?? "");
     const isImage = /^image\/(png|jpe?g|webp)$/.test(m.media.mimeType);
     const isSheet = m.kind === "document" && isSheetFile(m.media.filename, m.media.mimeType);
-    if (deps.keys && isSheet && deps.readSales) {
+    if (deps.keys && isSheet && deps.readSheet) {
       try {
         const file = await downloadMedia(deps.keys, m.media.id, MAX_DOC, deps.fetch);
         const id = deps.newDocId();
@@ -98,7 +99,7 @@ export async function officeWhatsApp(deps: WaDeps, m: WaIncoming, link: WaPerson
         const type = sheetType(m.media.filename, file.bytes);
         if (!type) throw new Error("not a spreadsheet");
         await deps.store(docKey(deps.officeId, id), file.bytes, type, { filename: name, by: link.email });
-        parts = [{ text: await deps.readSales(id, name, file.bytes), translate: true }];
+        parts = [{ text: await deps.readSheet(id, name, file.bytes), translate: true }];
       } catch {
         parts = [{ text: phrase("unreadable", session.language) }];
       }
