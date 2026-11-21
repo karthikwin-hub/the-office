@@ -197,6 +197,7 @@ function routeRequest(office: OfficeService, req: ApiRequest): ApiResult {
       if (a === "unread") return ok(office.unread());
       return l.doc(a) ? ok(office.documentView(a)) : notFound("Document");
     }
+    if (get && head === "parties" && !a) return ok(office.partiesView());
     if (get && head === "parties" && a) return l.findParty(a) ? ok(office.partyView(a)) : notFound("Party");
     if (req.method === "PUT" && head === "parties" && a && b === "msme") {
       const party = l.findParty(a);
