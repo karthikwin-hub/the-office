@@ -493,27 +493,24 @@ function Orders({ readOnly }: { readOnly: boolean }) {
             </div>
           </form>
           <div className="cs-form">
-            <label htmlFor="ord-csv">Import orders from a CSV file</label>
+            <label htmlFor="ord-csv">Import orders from Excel or CSV</label>
             <input
               id="ord-csv"
               type="file"
-              accept=".csv,text/csv"
-              onChange={async (e) => {
+              accept=".csv,.xlsx,.xlsm,text/csv"
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const content = await file.text();
-                change.mutate(() => api.importOrders(content), {
-                  onSuccess: (r) => {
-                    const x = r as Awaited<ReturnType<typeof api.importOrders>>;
-                    setImported(
-                      `${count(x.added, "order")} added, ${x.updated} updated${x.skipped.length ? `; skipped: ${x.skipped.slice(0, 3).join("; ")}` : ""}.`,
-                    );
-                  },
+                change.mutate(() => api.uploadSheet(file, "orders"), {
+                  onSuccess: (r) => setImported((r as Awaited<ReturnType<typeof api.uploadSheet>>).message),
                 });
                 e.target.value = "";
               }}
             />
-            <p className="muted">Columns: order number, customer, phone, email, items, status, placed, expected, tracking. A number already here is updated.</p>
+            <p className="muted">
+              Any export with an order number column: your shop's, Shopify's or your own sheet. A layout seen for the first time asks you once, on your desk,
+              which column is which. A number already here is updated.
+            </p>
             {imported ? <p aria-live="polite">{imported}</p> : null}
           </div>
           {change.error ? <p className="form-error">{change.error.message}</p> : null}

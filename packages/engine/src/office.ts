@@ -171,6 +171,7 @@ export class OfficeService {
     this.assistant = new AssistantService(this, opts.assistant ?? new MemoryAssistantStore());
     this.sales = new SalesService(this, opts.sales ?? new MemorySalesStore());
     this.intake = new SheetIntake(this, opts.layouts ?? new MemoryLayoutStore());
+    this.intake.register("orders", (_id, p, l) => this.customers.readOrderSheet(p, l));
     this.settingsState = {
       business: books.business,
       users: [

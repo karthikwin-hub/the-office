@@ -35,7 +35,10 @@ import {
   scoreAnswers,
   verifyPrompt,
 } from "./brain";
-import { BooksOrderSource, importOrders, type OrderSource, orderBelongsTo, STATUS_WORDS } from "./orders";
+import type { SheetLayout } from "@office/contracts";
+import type { SheetResult, WaitingSheet } from "../register-service";
+import { parseDelimited } from "../sales/parse";
+import { BooksOrderSource, type OrderSource, orderBelongsTo, readOrders, STATUS_WORDS } from "./orders";
 import type { CsCode, CsStore } from "./store";
 
 export const CS_AGENT = "customer-service";
@@ -914,10 +917,32 @@ export class CustomerService {
     return { removed: id };
   }
 
-  importOrders(content: string, by: string) {
-    const r = importOrders(this.office.books, content, this.office.asOf, (o) => this.linkParty(o));
-    this.office.log(CS_AGENT, `${by} imported orders: ${r.added} added, ${r.updated} updated${r.skipped.length ? `, ${r.skipped.length} rows skipped` : ""}.`);
-    return r;
+  /** Orders sent as CSV text go through the office's one reader: a new layout is confirmed once on the Desk (ADR 0010). */
+  importOrders(content: string): SheetResult {
+    const sheets = [{ name: "Orders", rows: parseDelimited(content) }];
+    const [r] = this.office.intake.receive({
+      id: `ords-${Date.now().toString(36)}`,
+      file: "orders.csv",
+      fileUrl: "",
+      sheets,
+      via: "upload",
+      from: null,
+      auto: true,
+      kinds: ["orders"],
+    });
+    return r!;
+  }
+
+  /** The intake's reader for orders, once their columns are known. */
+  readOrderSheet(p: WaitingSheet, layout: SheetLayout): SheetResult {
+    const r = readOrders(this.office.books, { rows: p.rows, headerAt: p.headerAt, mapping: layout.mapping }, this.office.asOf, (o) => this.linkParty(o));
+    const message = `Orders from ${p.file}: ${r.added} added, ${r.updated} updated${r.skipped.length ? `; ${r.skipped.length} ${r.skipped.length === 1 ? "row" : "rows"} left out (${r.skipped.slice(0, 3).join("; ")})` : ""}.`;
+    this.office.log(CS_AGENT, message);
+    const skipped = r.skipped.map((s) => {
+      const m = /^Row (\d+): (.*)$/.exec(s);
+      return { row: Number(m?.[1] ?? 0), reason: m?.[2] ?? s };
+    });
+    return { sheet: p.sheet, sheetKind: "orders", status: "read", staged: 0, posted: 0, duplicates: 0, added: r.added, updated: r.updated, skipped, message };
   }
 }
 

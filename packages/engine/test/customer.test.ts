@@ -300,6 +300,39 @@ describe("the owner on WhatsApp", () => {
   });
 });
 
+describe("orders from a spreadsheet", () => {
+  const post = (o: OfficeService, path: string, body: unknown) =>
+    dispatch(o, { method: "POST", path, query: new URLSearchParams(), body, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });
+
+  it("reads a Shopify export once its columns are confirmed, and leaves out what it cannot read", () => {
+    const o = office();
+    const kept = o.books.orders[0]!;
+    kept.status = "dispatched";
+    const content = [
+      "Name,Email,Fulfillment Status,Created at,Lineitem name,Phone",
+      "#S-1001,meera@example.com,unfulfilled,2026-11-18 10:22:31 +0530,Ceiling fan,+91 98450 11111",
+      "#S-1002,ravi@example.com,fulfilled,sometime last week,LED panel,",
+      `${kept.number},,,,,`,
+    ].join("\n");
+    const first = post(o, "/api/orders/import", { content });
+    expect(first.body).toMatchObject({ status: "needs_layout", sheetKind: "orders" });
+    const card = o.books.staged.find((s) => s.id === (first.body as { cardId: string }).cardId)!;
+    expect(card.payload.mapping).toMatchObject({ number: "Name", status: "Fulfillment Status", placed: "Created at", items: "Lineitem name" });
+    expect(post(o, `/api/desk/${card.id}`, { action: "approve" }).status).toBe(200);
+
+    expect(o.books.orders.find((x) => x.number === "S-1001")).toMatchObject({ status: "received", placedOn: "2026-11-18", items: "Ceiling fan" });
+    // A date it cannot read leaves the row out rather than becoming today.
+    expect(o.books.orders.find((x) => x.number === "S-1002")).toBeUndefined();
+    // A row with no status keeps the order's status rather than setting it back to received.
+    expect(o.books.orders.find((x) => x.id === kept.id)!.status).toBe("dispatched");
+    // The same layout again is read at once.
+    const again = post(o, "/api/orders/import", {
+      content: "Name,Email,Fulfillment Status,Created at,Lineitem name,Phone\n#S-1003,,fulfilled,18/11/2026,Fan,",
+    });
+    expect(again.body).toMatchObject({ status: "read", added: 1 });
+  });
+});
+
 describe("changing facts and orders", () => {
   const send = (o: OfficeService, path: string, body: unknown) =>
     dispatch(o, { method: "PUT", path, query: new URLSearchParams(), body, role: "owner", user: { name: "Anil Kulkarni", email: "a@x" }, mode: "mock" });

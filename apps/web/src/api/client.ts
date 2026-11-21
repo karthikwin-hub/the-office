@@ -306,6 +306,18 @@ export const api = {
     }
     return res.json() as Promise<{ results: SheetResult[]; message: string }>;
   },
+  /** Any other spreadsheet, read as the kind named: orders or post results. */
+  uploadSheet: async (file: File, kind: "orders" | "social_metrics"): Promise<{ results: SheetResult[]; message: string }> => {
+    const form = new FormData();
+    form.set("file", file, file.name);
+    form.set("kind", kind);
+    const res = await fetch(officePath(ROUTES.sheets), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new ApiError(res.status, err.error ?? res.statusText);
+    }
+    return res.json() as Promise<{ results: SheetResult[]; message: string }>;
+  },
   document: (id: string) => call<DocumentView>(ROUTES.document(id)),
   parties: () => call<PartiesView>(ROUTES.parties),
   party: (id: string) => call<PartyView>(ROUTES.party(id)),

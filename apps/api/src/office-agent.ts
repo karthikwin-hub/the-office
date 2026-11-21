@@ -15,7 +15,7 @@ import {
   WhatsAppChange,
   type WhatsAppStatus,
 } from "@office/contracts";
-import { assistantAddress, Books, CalendarLinkInput, type ImportProgress, salesAddress, SalesUploadInput, Settings } from "@office/contracts";
+import { assistantAddress, Books, CalendarLinkInput, type ImportProgress, salesAddress, SalesUploadInput, Settings, SheetKind } from "@office/contracts";
 import { gmailConfirmation, parseCommand, readForward } from "@office/engine";
 import {
   digestChannel,
@@ -632,6 +632,7 @@ export class Office extends Agent<Env> {
     }
     if (post && path === "/api/documents") return this.upload(request, caller);
     if (post && path === ROUTES.registers) return this.uploadRegister(request, caller);
+    if (post && path === ROUTES.sheets) return this.uploadRegister(request, caller, true);
     if (post && path === ROUTES.complianceProof) return this.uploadProof(request, caller);
     if (post && (path === ROUTES.onboardingCheck || path === ROUTES.onboardingStage)) return this.onboarding(request, caller, path === ROUTES.onboardingStage);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
@@ -1636,8 +1637,14 @@ export class Office extends Agent<Env> {
   }
 
   /** A spreadsheet that lists bills or invoices: kept with the office's files, then read as registers (ADR 0010). */
-  private async uploadRegister(request: Request, caller: Caller): Promise<Response> {
+  private async uploadRegister(request: Request, caller: Caller, sheets = false): Promise<Response> {
     const form = await request.formData();
+    // /api/sheets names the kind: orders and post results change what the owner keeps, so only the owner sends them.
+    const kind = sheets
+      ? SheetKind.extract(["bill_register", "orders", "social_metrics"]).safeParse(form.get("kind"))
+      : ({ success: true, data: "bill_register" } as const);
+    if (!kind.success) return json({ error: "Say what the file is." }, 400);
+    if (kind.data !== "bill_register" && caller.role !== "owner") return json({ error: "Only the owner can send this file." }, 403);
     const file = form.get("file") as File | string | null;
     if (!(file instanceof File)) return json({ error: "Attach a file." }, 400);
     if (file.size > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
@@ -1655,7 +1662,7 @@ export class Office extends Agent<Env> {
       via: "upload",
       from: null,
       auto: true,
-      kinds: ["bill_register"],
+      kinds: [kind.data],
     });
     return json({ results, message: results.map((r) => r.message).join(" ") });
   }

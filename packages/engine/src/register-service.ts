@@ -69,6 +69,9 @@ export type SheetResult = {
   posted: number;
   duplicates: number;
   skipped: RegisterSkip[];
+  /** For kinds that keep records rather than stage them (orders, post results): how many were added and updated. */
+  added?: number;
+  updated?: number;
   /** The `sheet_layout` card waiting for the owner, when the layout is new. */
   cardId?: string;
   message: string;
@@ -137,6 +140,10 @@ export class SheetIntake {
     proposed?: ({ kind: SheetBillKind | null; mapping: SheetMapping } | null | undefined)[];
   }): SheetResult[] {
     const kinds = (f.kinds ?? ["bill_register"]).filter((k) => this.readers[k]);
+    if (!kinds.length)
+      return f.sheets
+        .slice(0, 1)
+        .map((s) => ({ ...empty(s.name, null), status: "not_recognised", message: "No one in the office reads this kind of file yet." }));
     return f.sheets.slice(0, MAX_SHEETS).map((sheet, n) => {
       const importId = f.sheets.length > 1 ? `${f.id}-${n + 1}` : f.id;
       const found = recognise(sheet.rows, kinds);
