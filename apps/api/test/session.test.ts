@@ -133,6 +133,34 @@ describe("reading the session without Better Auth", () => {
     expect((await readSession(env, headers(cookie))).state).toBe("ok");
   });
 
+  it("answers a session due for renewal itself when the person chose not to be remembered, as Better Auth does", async () => {
+    const env = makeEnv();
+    const email = `ravi-${crypto.randomUUID().slice(0, 8)}@kaveri.test`;
+    await signedUp(env, email);
+    const res = await app.request(
+      `${BASE}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: { origin: BASE, "content-type": "application/json" },
+        body: JSON.stringify({ email, password: "a-long-password-1", rememberMe: false }),
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const cookie = withCookies("", res);
+    expect(cookie).toContain("better-auth.dont_remember=");
+    const due = Math.floor(Date.now() / 1000) + SESSION_EXPIRES_IN - 2 * 3600;
+    env.DB.sqlite.exec(`UPDATE session SET expires_at = ${due}`);
+    const read = await readSession(env, headers(cookie));
+    expect(read.state).toBe("ok");
+    // Better Auth gives the same person and leaves the expiry as it was.
+    expect((await betterAuth(env, cookie))?.user.email).toBe(email);
+    expect(env.DB.sqlite.prepare("SELECT expires_at FROM session").get()).toEqual({ expires_at: due });
+    // A forged "not remembered" cookie changes nothing: Better Auth still decides.
+    const forged = cookie.replace(/better-auth\.dont_remember=[^;]*/, `better-auth.dont_remember=true.${"A".repeat(43)}%3D`);
+    expect(await readSession(env, headers(forged))).toEqual({ state: "ask" });
+  });
+
   it("leaves rotated secrets, or none, to Better Auth", async () => {
     const env = makeEnv();
     const cookie = await signedUp(env);

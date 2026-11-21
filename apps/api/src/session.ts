@@ -132,8 +132,14 @@ export async function readSession(
   const row = (found?.results as Row[] | undefined)?.[0];
   if (!row) return { state: "none" };
   const expiresAt = row.expires_at * 1000;
-  // Expired, or due for renewal (Better Auth's own test, with our settings): Better Auth deletes or renews it.
-  if (expiresAt < now || expiresAt - SESSION_EXPIRES_IN * 1000 + SESSION_UPDATE_AGE * 1000 <= now) return { state: "ask" };
+  // Expired: Better Auth deletes it.
+  if (expiresAt < now) return { state: "ask" };
+  // Due for renewal (Better Auth's own test, with our settings): Better Auth renews it, unless the person chose not to be
+  // remembered, when it returns the session as it is; so do we, or every later request would ask it again.
+  if (expiresAt - SESSION_EXPIRES_IN * 1000 + SESSION_UPDATE_AGE * 1000 <= now) {
+    const notRemembered = cookieValue(headers.get("cookie"), sessionCookieName(env).replace("session_token", "dont_remember"));
+    if (!notRemembered || !(await signedToken(notRemembered, secret))) return { state: "ask" };
+  }
   return {
     state: "ok",
     token,
