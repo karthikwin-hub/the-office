@@ -1,7 +1,7 @@
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
 import { type ApiRequest, dispatch, MAX_PENDING_ROWS, OfficeService } from "../src";
-import { findRegisterHeader, fromLayoutAnswer, guessBillMapping, readRegister, registerKind } from "../src/registers";
+import { findRegisterHeader, fromLayoutAnswer, guessBillMapping, layoutKey, readRegister, registerKind } from "../src/registers";
 
 const books = loadBooks();
 const local = books.parties.find((p) => p.kind === "vendor" && p.gstin?.startsWith(books.business.stateCode))!;
@@ -241,6 +241,20 @@ describe("the Accountant and a register", () => {
     office.decide(card!.cardId!, { action: "approve" }, "Anil Kaveri");
     const [again] = receive(office, "reg-e2", rows);
     expect(again!.skipped.at(-1)).toEqual({ row: MAX_PENDING_ROWS + 1, reason: "2 more rows after row 20,000 were not read; send them in another file" });
+  });
+
+  it("finds a confirmed layout on whichever top row it is, not only the row the names would pick", () => {
+    const office = new OfficeService(loadBooks());
+    const weird = ["Ref", "Dt", "Vendor", "Amt"];
+    const rows = (n: string) => [["Invoice No", "Date", "Party", "Total"], weird, [n, "2026-11-10", local.name, "1000"]];
+    office.intake.store.saveLayout(layoutKey(weird), {
+      sheetKind: "bill_register",
+      kind: "purchase_bill",
+      mapping: { number: "Ref", date: "Dt", party: "Vendor", total: "Amt" },
+    });
+    const [r] = receive(office, "reg-f1", rows("W-1"));
+    expect(r!.status).toBe("read");
+    expect(r!.staged + r!.posted).toBe(1);
   });
 
   it("says when a sheet is not a list of bills, and forgets a rejected layout", () => {
