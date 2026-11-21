@@ -111,6 +111,22 @@ test("upload an invoice, and approve what the Accountant prepared", async () => 
   await expect(page.getByRole("link", { name: "Your desk" })).not.toContainText("waiting");
 });
 
+test("find the customer that invoice brought in, under Customers and suppliers", async () => {
+  await page.goto("/boardroom/accounts");
+  await page.getByRole("navigation", { name: "Accounts reports" }).getByRole("link", { name: "Customers and suppliers" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Customers and suppliers" })).toBeVisible();
+  const table = page.getByRole("table", { name: "Customers and suppliers" });
+  await expect(table.getByRole("row")).toHaveCount(3); // the header, one customer, the totals
+  await expect(table.getByRole("cell", { name: "Customer", exact: true })).toBeVisible();
+  await checkA11y(page, "customers and suppliers");
+  await page.getByLabel("Search customers and suppliers").fill("no such party");
+  await expect(page.getByText("No customer or supplier matches.")).toBeVisible();
+  await page.getByLabel("Search customers and suppliers").fill("");
+  await table.getByRole("row").nth(1).getByRole("link").click();
+  await expect(page).toHaveURL(/\/parties\/[^/]+$/);
+  await expect(page.getByRole("link", { name: "Customers and suppliers" })).toBeVisible();
+});
+
 test("invite the accountant", async () => {
   await page.goto("/settings");
   await checkA11y(page, "settings");
