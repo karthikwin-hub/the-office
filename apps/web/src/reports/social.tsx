@@ -1,13 +1,14 @@
 import type { Post, SocialMessage, SocialReport, StagedChange } from "@office/contracts";
 import { PLATFORM_NAMES } from "@office/contracts";
 import { nextMonth } from "@office/engine";
-import { Amount, CalendarGrid, ChannelStrip, CoveringNote, Figure, LedgerTable, PostChecks, PostPreview } from "@office/ui";
+import { Amount, type ApprovalBody, CalendarGrid, ChannelStrip, CoveringNote, Figure, LedgerTable, PostChecks, PostPreview } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import { q, useSocial } from "../api/queries";
 import { count, isOwner, Section, shortDate } from "../screens/common";
+import { SheetLayoutBody } from "../screens/SheetLayoutBody";
 import { FrameMaker, MetricsImport, PublishingPackCard } from "./social-manual";
 
 const pct = (n: number) => `${n.toLocaleString("en-IN", { maximumFractionDigits: 1 })}%`;
@@ -48,7 +49,8 @@ export function PostCard({ post, report, editable }: { post: Post; report: Socia
 export function useApprovalBody() {
   const social = useQuery(q.social());
   const marketing = useQuery(q.marketing());
-  return (i: StagedChange): ReactNode => {
+  return (i: StagedChange): ApprovalBody => {
+    if (i.kind === "sheet_layout") return (setEdits) => <SheetLayoutBody item={i} onChange={setEdits} />;
     const r = social.data;
     if (!r) return null;
     const p = i.payload as { postId?: string; calendarId?: string; audience?: number; costPaise?: number; text?: string };

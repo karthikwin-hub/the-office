@@ -71,6 +71,28 @@ const handler = http.all("/api/*", async ({ request }) => {
       return HttpResponse.json({ error: e instanceof SheetError ? e.message : "The file could not be opened. Send it as CSV or XLSX." }, { status: 422 });
     }
   }
+  if (request.method === "POST" && url.pathname === ROUTES.registers) {
+    // A list of bills read by the same engine as the live office; there is no model here, so only header names count.
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) return HttpResponse.json({ error: "Attach a file." }, { status: 400 });
+    const { readSheets, SheetError } = await import("@office/engine/sheets");
+    try {
+      const sheets = await readSheets(file.name, await file.arrayBuffer());
+      const results = getOffice().registers.receive({
+        id: `reg-u${Date.now().toString(36)}`,
+        file: file.name,
+        fileUrl: URL.createObjectURL(file),
+        sheets,
+        via: "upload",
+        from: null,
+        auto: true,
+      });
+      return HttpResponse.json({ results, message: results.map((r) => r.message).join(" ") });
+    } catch (e) {
+      return HttpResponse.json({ error: e instanceof SheetError ? e.message : "The file could not be opened. Send it as XLSX or CSV." }, { status: 422 });
+    }
+  }
   if (request.method === "POST" && url.pathname === "/api/documents") {
     const form = await request.formData();
     const file = form.get("file");

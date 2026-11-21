@@ -971,6 +971,28 @@
   outline-offset: 2px;
   background: var(--carbon-wash);
 }
+/* The rows of a spreadsheet a bill was read from, with the figure's cell marked as a PDF region is. */
+.source-sheet {
+  overflow-x: auto;
+  max-width: 100%;
+  background: var(--sheet);
+}
+.source-sheet table {
+  border-collapse: collapse;
+  font-size: var(--step--1);
+}
+.source-sheet th,
+.source-sheet td {
+  border: var(--rule);
+  padding: var(--s-1) var(--s-2);
+  white-space: nowrap;
+  text-align: left;
+}
+.source-sheet td.is-marked {
+  outline: 2px solid var(--carbon);
+  outline-offset: -2px;
+  background: var(--carbon-wash);
+}
 @media (max-width: 760px) {
   .source-viewer {
     width: 100vw;

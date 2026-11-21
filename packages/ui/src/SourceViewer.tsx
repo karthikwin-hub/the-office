@@ -96,6 +96,53 @@ export function PdfPage({
   );
 }
 
+type Sheet = NonNullable<DocumentView["document"]["sheet"]>;
+
+/** The rows of a spreadsheet a bill was read from, with the cell of the figure being looked at marked. */
+function SheetRows({ sheet, regions, highlight, onRegion }: { sheet: Sheet; regions: Region[]; highlight: Region | null; onRegion?: (key: string) => void }) {
+  const at = (row: number, col: number) => regions.find((r) => r.cell?.row === row && r.cell.col === col);
+  return (
+    <div className="source-sheet" role="region" aria-label={`Rows from ${sheet.name}`} tabIndex={0}>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Row</th>
+            {sheet.headers.map((h, i) => (
+              <th key={`${h}-${i}`} scope="col">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sheet.rows.map((r, i) => (
+            <tr key={r.n}>
+              <th scope="row" className="num">
+                {r.n}
+              </th>
+              {sheet.headers.map((_, j) => {
+                const region = at(i, j);
+                const marked = highlight?.cell?.row === i && highlight.cell.col === j;
+                return (
+                  <td key={j} className={marked ? "is-marked" : undefined} aria-current={marked ? "true" : undefined}>
+                    {region && onRegion ? (
+                      <button type="button" className="btn-link" onClick={() => onRegion(region.key)} title={region.label}>
+                        {r.cells[j] ?? ""}
+                      </button>
+                    ) : (
+                      (r.cells[j] ?? "")
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -209,10 +256,19 @@ export function SourceViewer({ open, onClose, trace, traceLoading, doc, docLoadi
               </div>
               {highlight ? (
                 <p className="source-doc-region">
-                  Boxed on the page: <strong>{highlight.label}</strong>
+                  {doc.document.sheet ? "Marked in the sheet" : "Boxed on the page"}: <strong>{highlight.label}</strong>
                 </p>
               ) : null}
-              {doc.document.channel === "import" ? (
+              {doc.document.sheet ? (
+                <>
+                  <SheetRows sheet={doc.document.sheet} regions={doc.document.regions} highlight={highlight} onRegion={onRegion} />
+                  <p className="source-doc-foot">
+                    <a href={doc.document.file} target="_blank" rel="noreferrer">
+                      Download the file it came from
+                    </a>
+                  </p>
+                </>
+              ) : doc.document.channel === "import" ? (
                 <>
                   <p className="source-doc-import">{(inv ?? bill)?.lines[0]?.description}</p>
                   <p className="muted">

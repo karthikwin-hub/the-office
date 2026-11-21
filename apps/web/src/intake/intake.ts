@@ -70,6 +70,22 @@ export async function readStored(doc: Document): Promise<IngestResult> {
 
 const touchesBooks = (key: readonly unknown[]) => key[0] !== "session";
 
+/** A spreadsheet, which the Accountant reads as a list of bills or invoices; anything else is read as one bill. */
+export const isRegisterFile = (f: File) => /\.(csv|tsv|xlsx|xlsm|zip)$/i.test(f.name);
+export const REGISTER_ACCEPT = ".csv,.xlsx,.xlsm";
+
+export function useUploadRegister() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.set("file", file, file.name);
+      return api.uploadRegister(form);
+    },
+    onSettled: () => qc.invalidateQueries({ predicate: (x) => touchesBooks(x.queryKey) }),
+  });
+}
+
 export function useUpload() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: uploadDocument, onSettled: () => qc.invalidateQueries({ predicate: (x) => touchesBooks(x.queryKey) }) });

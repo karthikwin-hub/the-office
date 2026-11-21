@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
 import { q, useDecide, useHire } from "../api/queries";
-import { useReadStored, useUpload } from "../intake/intake";
+import { isRegisterFile, REGISTER_ACCEPT, useReadStored, useUpload, useUploadRegister } from "../intake/intake";
 import { AgeingView, FilingList } from "../reports/accounts";
 import { InboxThreads, SocialRoomPanel, useApprovalBody } from "../reports/social";
 import { ComplianceReport, ComplianceRoomCard } from "../reports/compliance";
@@ -320,10 +320,20 @@ function docLabel(d: Document): string {
   }
 }
 
-type Intake = { key: string; name: string; state: "reading" | "done" | "failed"; message: string; staged?: StagedChange | null; docId?: string };
+type Intake = {
+  key: string;
+  name: string;
+  state: "reading" | "done" | "failed";
+  message: string;
+  staged?: StagedChange | null;
+  docId?: string;
+  /** A register left work on the desk: a layout to confirm, or bills to approve. */
+  waiting?: boolean;
+};
 
 function DocumentIntake() {
   const upload = useUpload();
+  const uploadRegister = useUploadRegister();
   const [over, setOver] = useState(false);
   const [intake, setIntake] = useState<Intake[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -333,8 +343,13 @@ function DocumentIntake() {
       const key = `${file.name}-${file.size}-${Date.now()}`;
       setIntake((xs) => [{ key, name: file.name, state: "reading", message: "Reading the page" }, ...xs]);
       try {
-        const r = await upload.mutateAsync(file);
-        update(key, { state: "done", message: r.message, staged: r.staged, docId: r.document.id });
+        if (isRegisterFile(file)) {
+          const r = await uploadRegister.mutateAsync(file);
+          update(key, { state: "done", message: r.message, waiting: r.results.some((x) => x.cardId || x.staged > 0) });
+        } else {
+          const r = await upload.mutateAsync(file);
+          update(key, { state: "done", message: r.message, staged: r.staged, docId: r.document.id });
+        }
       } catch (e) {
         update(key, { state: "failed", message: e instanceof Error ? e.message : "Could not send the file." });
       }
@@ -363,9 +378,17 @@ function DocumentIntake() {
           , or forward them by email.
         </p>
         <p className="muted">
-          PDFs and photos. The Accountant reads each page, keeps a link to where every figure was printed, and prepares the ledger entry for you to approve.
+          PDFs and photos, or an Excel or CSV list of bills. The Accountant reads each page or row, keeps a link to where every figure was printed, and prepares
+          the ledger entry for you to approve. A list in a new layout asks you once which column is which.
         </p>
-        <input ref={inputRef} type="file" accept={BILL_TYPES.join(",")} multiple hidden onChange={(e) => e.target.files && void take(e.target.files)} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept={`${BILL_TYPES.join(",")},${REGISTER_ACCEPT}`}
+          multiple
+          hidden
+          onChange={(e) => e.target.files && void take(e.target.files)}
+        />
       </div>
       {intake.length > 0 && <IntakeList items={intake} />}
     </>
@@ -386,7 +409,7 @@ function IntakeList({ items }: { items: Intake[] }) {
                 See what was read
               </button>
             )}
-            {x.staged?.status === "pending" && <Link to="/desk">On your desk</Link>}
+            {(x.staged?.status === "pending" || x.waiting) && <Link to="/desk">On your desk</Link>}
           </span>
         </li>
       ))}
