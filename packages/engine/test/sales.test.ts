@@ -1,6 +1,6 @@
 import { loadBooks } from "@office/fixtures";
 import { beforeAll, describe, expect, it } from "vitest";
-import { dateOf, dispatch, findHeader, OfficeService, paiseOf, parseDelimited, stateOf, type ApiRequest } from "../src";
+import { type ApiRequest, dateOf, dispatch, findHeader, layoutKey, OfficeService, paiseOf, parseDelimited, stateOf } from "../src";
 import { readSheets } from "../src/sales/sheets";
 
 const ASOF = "2026-11-04";
@@ -368,6 +368,16 @@ describe("repeats and new layouts", () => {
     );
     expect(next[0]).toMatchObject({ status: "read", format: "mapped", channel: "blinkit", lines: 1 });
     expect(o.books.staged.filter((s) => s.kind === "sales_mapping")).toHaveLength(1);
+    // The layout is kept in the office's one layout memory, with every other kind of sheet.
+    expect(o.intake.store.layout(layoutKey(head))).toMatchObject({ sheetKind: "sales_report", channel: "blinkit", mapping: { order: "PO Number" } });
+  });
+
+  it("still reads a layout kept in the sales store before there was one layout memory", () => {
+    const o = office();
+    const head = ["Day", "Ref", "Units", "Value"];
+    o.sales.store.saveMapping(layoutKey(head), { channel: "zepto", mapping: { date: "Day", order: "Ref", qty: "Units", gross: "Value" } });
+    const [imp] = file(o, "z.csv", csv([head, ["05/10/2026", "Z-1", "2", "500"]]));
+    expect(imp).toMatchObject({ status: "read", channel: "zepto", lines: 1 });
   });
 
   it("will not read a mapping that misses a needed column, and lets the owner fix it from the room", () => {
