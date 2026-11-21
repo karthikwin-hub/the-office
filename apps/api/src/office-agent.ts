@@ -751,7 +751,8 @@ export class Office extends Agent<Env> {
   private async importStart(request: Request, caller: Caller): Promise<Response> {
     const refused = this.importRefused(caller);
     if (refused) return refused;
-    if (this.kv("import:progress")) return json({ error: "An import is already under way here. Carry it on from Settings." }, 409);
+    // An import already under way (its page was closed part way) carries on; the file sent again is not needed.
+    if (this.kv("import:progress")) return this.importNext(caller);
     const b = this.office.books;
     if (b.documents.length || b.invoices.length || b.bills.length || b.payments.length || b.parties.length)
       return json({ error: "Import into a new, empty office: this one already has books." }, 409);
@@ -778,11 +779,14 @@ export class Office extends Agent<Env> {
     const target = this.office.books as unknown as Record<string, unknown>;
     for (const k of Object.keys(target)) delete target[k];
     Object.assign(target, books);
-    const settings = Settings.pick({ digestTime: true, reminderPolicy: true }).safeParse(started.exported.settings);
-    if (settings.success) this.office.updateSettings(settings.data);
     this.office.recordEdits(`${caller.name} (import)`);
     this.store.save(this.office.books);
+    // The settings saved for the empty office hold its blank business details, which opening would lay over the
+    // imported ones: they go, and the engine opens on the imported books, then takes the export's own settings.
+    this.kv("settings", "");
     this.open(this.office.books);
+    const settings = Settings.pick({ digestTime: true, reminderPolicy: true }).safeParse(started.exported.settings);
+    if (settings.success) this.office.updateSettings(settings.data);
     const named = this.office.books.business.name.trim();
     if (named) {
       await this.plane().rename(this.officeId!, named);

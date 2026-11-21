@@ -91,6 +91,35 @@ describe("loading an export from live into a new office (staging)", () => {
     expect(again.status).toBe(409);
   });
 
+  it("keeps the business details from the export, even after the new office saved its own settings", async () => {
+    const { id, owner, stub: office } = await openOffice();
+    // Anything the owner changes first saves the empty office's settings, business details and all.
+    const prefs = await office.fetch(
+      await asCaller(callerFor(id, owner), "/api/prefs", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ skin: "loft" }),
+      }),
+    );
+    expect(prefs.status).toBe(200);
+    expect((await office.fetch(await upload(id, owner, await exportZip([])))).status).toBe(200);
+    const sample = loadBooks();
+    const books = await booksOf(office);
+    expect(books.business.name).toBe(sample.business.name);
+    expect(books.business.gstin).toBe(sample.business.gstin);
+    expect(books.business.address).toBe(sample.business.address);
+  });
+
+  it("carries on an import already under way rather than refusing it", async () => {
+    const { id, owner, stub: office } = await openOffice();
+    const zip = await exportZip([["files/docs/doc-3", PDF]]);
+    expect(await (await office.fetch(await upload(id, owner, zip))).json()).toEqual({ done: 0, total: 1, skipped: 0, finished: false });
+    // The page was closed before the files were copied; choosing the export again carries on.
+    const again = await office.fetch(await upload(id, owner, zip));
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ done: 1, total: 1, skipped: 0, finished: true });
+  });
+
   it("is for the owner only", async () => {
     const { id } = await openOffice();
     const accountant = await person("Bina");
