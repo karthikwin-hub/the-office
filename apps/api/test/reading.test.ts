@@ -34,6 +34,8 @@ describe("a model's suggestion for a register's columns", () => {
 
   it("falls back to the names it found when the model fails or answers nonsense", async () => {
     expect(await proposeLayout(fakeAi(new Error("quota spent")).ai, { headers, sample, guess }, business)).toEqual({ kind: null, mapping: guess });
+    // No Workers AI binding at all, as when the Worker runs locally.
+    expect(await proposeLayout(undefined as unknown as Ai, { headers, sample, guess }, business)).toEqual({ kind: null, mapping: guess });
     expect(await proposeLayout(fakeAi({ response: "no idea" }).ai, { headers, sample, guess }, business)).toEqual({ kind: null, mapping: guess });
     expect((await proposeLayout(fakeAi({ response: { kind: "refund", mapping: null } }).ai, { headers, sample, guess }, business)).kind).toBeNull();
   });
