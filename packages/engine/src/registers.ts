@@ -206,6 +206,9 @@ export function rematch(e: Extraction, ctx: ExtractContext): Extraction {
   if (!party) return e;
   const out = { ...e, partyId: party.id, partyName: party.name };
   out.checks = [...checkExtraction(out, ctx), ...e.checks.filter((c) => c.key === "rows")];
+  // A party another bill in this file added is not known yet: the check says so until the owner approves it.
+  if (party.id.endsWith("-new"))
+    out.checks = out.checks.map((c) => (c.key === "party" ? { ...c, ok: false, detail: `${party.name} is new: another bill from this file adds them.` } : c));
   return out;
 }
 

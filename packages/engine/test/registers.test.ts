@@ -184,6 +184,9 @@ describe("the Accountant and a register", () => {
     const added = office.books.parties.slice(vendors);
     expect(added.map((p) => p.name)).toEqual(["Nayak Hardware Hubli"]);
     expect(office.books.bills.filter((b) => b.partyId === added[0]!.id)).toHaveLength(2);
+    // The second bill does not call the supplier known: they are new until the owner approves.
+    const second = office.books.staged.find((s) => s.kind === "ledger_entry" && /N-2/.test(s.title))!;
+    expect(second.summary).toMatch(/Nayak Hardware Hubli is new/);
     const [again] = receive(office, "reg-d2", rows(["N-2", "N-3"]));
     expect(again).toMatchObject({ status: "read", staged: 1, duplicates: 1 });
   });
