@@ -113,11 +113,12 @@ The security review of November 2026, what it fixed and what is still open: [`do
 
 ## 7. Reading documents
 
-1. **Text layer first, in the browser.** Uploaded PDFs are opened with pdf.js and their text layer is extracted on the person's device. This keeps CPU off the Worker.
-2. **Model reads the text.** The Worker asks the text model to extract header, lines and tax into a strict JSON shape.
-3. **Scans go to the vision model.** Documents without a text layer are rendered to an image and read by the vision model.
-4. **Deterministic checks.** The engine recomputes every line and tax amount, checks the result against the stated totals, and detects duplicates.
-5. **Staged, never posted.** The result becomes a staged change on the Desk with a link to the document and the highlighted region.
+1. **Text layer first, in the browser.** Uploaded PDFs are opened with pdf.js and their text layer, with each run's place on the page, is extracted on the person's device (up to 6 pages). This keeps CPU off the Worker.
+2. **Layout rules read it.** The engine reads the title, the party, the number and date, the line table (found by its HSN column) and the totals by tested rules (`packages/engine/src/extract.ts`).
+3. **A model only when the rules fall short.** When the rules find no number, no lines, or totals that do not add up, the Worker asks the text model for the same fields in a strict JSON shape, citing the run each value came from (`apps/api/src/reading.ts`). It sees the first 600 runs and returns at most 60 lines. Its reading is kept only if it fails no more checks than the rules' reading.
+4. **Scans go to the vision model.** A PDF without a text layer is rendered to an image of page 1 only, and a photo is sent as it is, to the vision model. Nothing on a scan can be highlighted.
+5. **Deterministic checks.** The engine recomputes every line and tax amount, checks the result against the stated totals, and detects duplicates.
+6. **Staged, never posted.** The result becomes a staged change on the Desk with a link to the document and the highlighted region. A reading that failed a check waits for the owner at every trust level.
 
 ## 8. The engine
 

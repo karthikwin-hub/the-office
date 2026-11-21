@@ -184,10 +184,10 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 
 ## 7. Reading documents, and keeping AI away from the figures
 
-1. **Text first, in the browser.** A PDF's text layer is extracted on the person's own device with pdf.js.
-2. **A model reads the text** into a strict JSON shape (Llama 3.3 70B on Workers AI). Scans go to a vision model (Llama 3.2 11B Vision). Voice notes go to Whisper.
+1. **Text first, in the browser.** A PDF's text layer (up to 6 pages) is extracted on the person's own device with pdf.js.
+2. **Tested rules read it first.** The number, date, party, lines and totals are found by layout rules. Only when they fall short does a model read the text into a strict JSON shape (Llama 3.3 70B on Workers AI), citing where each value was printed; it sees the first 600 pieces of text and up to 60 lines. Scans go to a vision model (Llama 3.2 11B Vision), page 1 only. Voice notes go to Whisper.
 3. **Tested code checks it.** The engine recomputes every line and tax amount, checks the totals and the GSTIN, and looks for duplicates.
-4. **Staged, never posted.** The result becomes a card on the Desk linked to the document and its highlighted region.
+4. **Staged, never posted.** The result becomes a card on the Desk linked to the document and its highlighted region. A reading that failed a check always waits for the owner, whatever the Accountant's trust level.
 
 Money is held in integer paise. Tax is never decided by a model.
 
@@ -731,6 +731,7 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Legal review of the privacy notice, terms and data processing terms | Drafts published; a lawyer in India has not reviewed them yet |
 | The old Cloudflare account ("the-office-agents") | Its Workers, database and bucket were deleted on 18 Nov 2026; revoke its API token and remove `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` from Infisical |
 | Emailed documents | Read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments; no spreadsheets or zip files by email |
+| Reading bills | A scanned PDF is read from page 1 only; a PDF's text from its first 6 pages; bills or invoices sent as a spreadsheet, and old `.xls` files, cannot be read yet |
 | Several GST registrations, credit notes, stock movements, e-commerce settlements | Partly built (other registrations recognised on invoices); fuller support planned |
 | Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
 | Agents that do less than their job description | Shown in each agent's "Not yet" line in **How the work flows**. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, and stock moving with sales and bills |
