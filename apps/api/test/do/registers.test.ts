@@ -1,7 +1,9 @@
 import { ROUTES } from "@office/contracts";
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { asCaller, callerFor, openOffice } from "./office";
+import { system } from "../../src/caller";
+import { attachmentRequest } from "../../src/files";
+import { asCaller, asSystem, callerFor, openOffice } from "./office";
 
 type Results = { results: { status: string; staged: number; duplicates: number; cardId?: string }[]; message: string };
 type Desk = { items: { id: string; kind: string; status: string; payload: Record<string, unknown> }[] };
@@ -65,5 +67,27 @@ describe("another kind of spreadsheet, named by the owner", () => {
     expect((await send("owner", "sales_report")).status).toBe(400);
     const r = (await (await send("owner", "orders")).json()) as Results;
     expect(r.results).toMatchObject([{ status: "needs_layout", sheetKind: "orders" }]);
+  });
+});
+
+describe("a register sent to the accounts address", () => {
+  it("is recognised and reaches the Accountant, not the bill reader", async () => {
+    const { id, owner, stub } = await openOffice();
+    const bytes = new TextEncoder().encode(csv(["E-1"]));
+    const r = attachmentRequest("doc-mail-reg", { content: bytes, mimeType: "text/csv", filename: "purchases.csv" }, "bills@supplier.test");
+    expect((await stub.fetch(await asCaller(system(id), new URL(r.url).pathname, { method: "PUT", body: bytes, headers: r.headers }))).status).toBe(200);
+    const res = await stub.fetch(
+      await asSystem(id, "/internal/email", {
+        from: "owner@example.test",
+        subject: "November purchases",
+        docs: [{ id: "doc-mail-reg", mimeType: "text/csv", filename: "purchases.csv" }],
+        skipped: [],
+      }),
+    );
+    expect(((await res.json()) as { sheets: string[] }).sheets[0]).toMatch(/layout I have not seen/);
+    const desk = (await (await stub.fetch(await asCaller(callerFor(id, owner), ROUTES.desk))).json()) as Desk;
+    expect(desk.items.find((i) => i.kind === "sheet_layout")?.payload).toMatchObject({ sheetKind: "bill_register", file: "purchases.csv" });
+    // It is not taken for a bill waiting to be read.
+    expect(desk.items.some((i) => i.kind === "ledger_entry")).toBe(false);
   });
 });

@@ -24,4 +24,5 @@ export * from "./bookslog";
 export * from "./assistant";
 export * from "./sales";
 export * from "./registers";
+export * from "./intake/kinds";
 export * from "./register-service";

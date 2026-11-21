@@ -144,9 +144,13 @@ export const envelopeProven = (mail: Pick<Inbound, "signedBy" | "spfFor">, envel
 
 /**
  * Keeps the PDFs and pictures of an email; anything else is listed as skipped so the log can say so.
- * With `sheets`, for the sales address, it keeps spreadsheets, CSV, text exports and zips instead.
+ * With `sheets`, for the sales address, it keeps spreadsheets, CSV, text exports and zips instead; with `both`, for
+ * the accounts address, it keeps either, and a spreadsheet is recognised in the office (ADR 0010).
  */
-export async function parseInbound(raw: ReadableStream | ArrayBuffer, opts: { sheets?: boolean; results?: string | null } = {}): Promise<Inbound> {
+export async function parseInbound(
+  raw: ReadableStream | ArrayBuffer,
+  opts: { sheets?: boolean; both?: boolean; results?: string | null } = {},
+): Promise<Inbound> {
   const mail = await PostalMime.parse(raw instanceof ArrayBuffer ? raw : await new Response(raw).arrayBuffer());
   const attachments: Attachment[] = [];
   const skipped: string[] = [];
@@ -154,7 +158,8 @@ export async function parseInbound(raw: ReadableStream | ArrayBuffer, opts: { sh
     const name = a.filename ?? "attachment";
     const content = typeof a.content === "string" ? (new TextEncoder().encode(a.content).buffer as ArrayBuffer) : (a.content as ArrayBuffer);
     // The sender's type is only a hint; what is stored comes from the name and the bytes.
-    const kind = opts.sheets ? (isSheetFile(name, a.mimeType) ? sheetType(name, content) : null) : billType(name, a.mimeType, content);
+    const sheet = () => (isSheetFile(name, a.mimeType) ? sheetType(name, content) : null);
+    const kind = opts.sheets ? sheet() : opts.both ? (billType(name, a.mimeType, content) ?? sheet()) : billType(name, a.mimeType, content);
     if (!kind || content.byteLength > MAX_BYTES || attachments.length >= (opts.sheets ? 10 : MAX_ATTACHMENTS)) skipped.push(name);
     else attachments.push({ filename: name, mimeType: kind, content });
   }
