@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { crc32 as zlibCrc32 } from "node:zlib";
 import { afterAll, describe, expect, it } from "vitest";
 import { exportArchive } from "../src/export";
-import { crc32, streamOf, ZipWriter } from "../src/zip";
+import { crc32, streamOf, ZIP_TAIL_BYTES, zipDirectory, zipEntries, zipEntryData, ZipWriter } from "../src/zip";
 
 const dir = mkdtempSync(join(tmpdir(), "office-zip-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -96,5 +96,53 @@ describe("the export archive", () => {
     );
     await expect(collect(failing.body)).rejects.toThrow();
     await failing.done;
+  });
+});
+
+describe("reading an export back", () => {
+  async function archive(files: [string, string][]): Promise<Uint8Array> {
+    const zip = new ZipWriter();
+    const parts: Uint8Array[] = [];
+    for (const [name, text] of files) for await (const c of zip.entry(name, text)) parts.push(c);
+    parts.push(zip.finish());
+    return Uint8Array.from(parts.flatMap((p) => [...p]));
+  }
+  const read = (zip: Uint8Array) => {
+    const dir = zipDirectory(zip.subarray(Math.max(0, zip.length - ZIP_TAIL_BYTES)), zip.length);
+    return dir ? zipEntries(zip.subarray(dir.offset, dir.offset + dir.size), dir.count) : null;
+  };
+
+  it("lists every file the writer wrote, and gives back each one's bytes, checked", async () => {
+    const zip = await archive([
+      ["books.json", '{"books":{}}'],
+      ["files/docs/doc-1", "%PDF-1.4 a bill"],
+      ["files/media/media-1", "a picture"],
+    ]);
+    const entries = read(zip);
+    expect(entries?.map((e) => e.name)).toEqual(["books.json", "files/docs/doc-1", "files/media/media-1"]);
+    const text = (name: string) => {
+      const e = entries!.find((x) => x.name === name)!;
+      const data = zipEntryData(e, zip.subarray(e.offset));
+      return data ? new TextDecoder().decode(data) : null;
+    };
+    expect(text("files/docs/doc-1")).toBe("%PDF-1.4 a bill");
+    expect(text("books.json")).toBe('{"books":{}}');
+  });
+
+  it("refuses bytes that do not match their CRC, archives it cannot read, and anything that is not one", async () => {
+    const zip = await archive([["files/docs/doc-1", "%PDF-1.4 a bill"]]);
+    const e = read(zip)![0]!;
+    const spoiled = zip.slice();
+    const at = e.offset + 30 + e.name.length + 2;
+    spoiled[at] = (spoiled[at] ?? 0) ^ 0xff;
+    expect(zipEntryData(e, spoiled.subarray(e.offset))).toBeNull();
+    // A compressed (deflated) entry is not what an export holds.
+    const deflated = zip.slice();
+    const dv = new DataView(deflated.buffer);
+    const cd = dv.getUint32(deflated.length - 6, true);
+    dv.setUint16(cd + 10, 8, true);
+    expect(read(deflated)).toBeNull();
+    expect(read(new TextEncoder().encode("not an archive at all, just some text"))).toBeNull();
+    expect(zipDirectory(new Uint8Array(0), 0)).toBeNull();
   });
 });
