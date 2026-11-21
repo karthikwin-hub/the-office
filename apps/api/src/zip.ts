@@ -206,9 +206,6 @@ export function zipEntries(directory: Uint8Array, count: number): ZipEntry[] | n
   return out;
 }
 
-/** The most bytes to read for an entry: its local header, name and extra field (at most), then its data. */
-export const zipEntrySpan = (e: ZipEntry, nameBytes: number) => 30 + nameBytes + 0xffff + e.size;
-
 /**
  * An entry's bytes, from what was read at its offset (its local header onwards). Null when the header does not match
  * the directory, the bytes are short, or their CRC-32 is not the one the directory records.

@@ -5,7 +5,7 @@ import { IMPORT_PART_FILES, importKey } from "../../src/import";
 import { officePrefix } from "../../src/keys";
 import type { Office } from "../../src/office-agent";
 import { ZipWriter } from "../../src/zip";
-import { asCaller, callerFor, openOffice, person } from "./office";
+import { asCaller, asSystem, callerFor, openOffice, person } from "./office";
 
 /** The office id the export came from, on live. */
 const FROM = "off_abcdefghijkmnpqr";
@@ -114,6 +114,10 @@ describe("loading an export from live into a new office (staging)", () => {
     const { id, owner, stub: office } = await openOffice();
     const zip = await exportZip([["files/docs/doc-3", PDF]]);
     expect(await (await office.fetch(await upload(id, owner, zip))).json()).toEqual({ done: 0, total: 1, skipped: 0, finished: false });
+    // Meanwhile the upload waits in R2, and an export of this office leaves it out.
+    const plan = (await (await office.fetch(await asSystem(id, "/internal/export/plan"))).json()) as { entries: number };
+    expect(await env.DOCS.head(importKey(id))).not.toBeNull();
+    expect(plan.entries).toBe(1);
     // The page was closed before the files were copied; choosing the export again carries on.
     const again = await office.fetch(await upload(id, owner, zip));
     expect(again.status).toBe(200);

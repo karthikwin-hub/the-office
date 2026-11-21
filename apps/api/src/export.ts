@@ -58,7 +58,8 @@ export class OfficeExports {
     listing: do {
       const page = await this.docs.list({ prefix, cursor });
       for (const o of page.objects) {
-        if (!o.key.startsWith(prefix)) continue;
+        // An import's upload (staging, import.ts) is not the office's file: a copy of another export, kept unsealed.
+        if (!o.key.startsWith(prefix) || o.key.startsWith(`${prefix}import/`)) continue;
         if (keys.length >= most) break listing;
         if (total + o.size > EXPORT_MAX_BYTES) continue; // too big for what is left; smaller files after it still fit
         total += o.size;
