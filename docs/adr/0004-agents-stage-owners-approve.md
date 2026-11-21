@@ -14,7 +14,7 @@ be steered by text inside a document. The books are legal records, and the owner
 Every change an agent proposes is a staged item on the Desk, with a link to its source. It is applied when a person
 approves it, or when the owner has set the agent's trust level to let routine work through
 (`packages/engine/src/office.ts`, `routine`: trusted agents under ₹1 lakh with every check passed, autonomous agents
-for routine and unusual work). Some kinds always wait for the owner whatever the trust level (`ALWAYS_ASK`: email replies, payroll,
+for routine and unusual work, except that a bill or invoice that failed a check always waits). Some kinds always wait for the owner whatever the trust level (`ALWAYS_ASK`: email replies, payroll,
 shared files, campaigns, broadcasts, hand-overs, bringing in existing books, compliance actions and more). Accountants may decide only some kinds
 (`packages/engine/src/dispatch.ts`). Models answer in a fixed JSON shape (`MODEL_SCHEMA`, `CS_SCHEMA`); amounts and tax
 come from the engine, and the Customer Service agent never sends model-written text to a customer.
