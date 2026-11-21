@@ -124,6 +124,7 @@ export function BoardroomScreen() {
       <div className="board">
         <nav className="board-reports" aria-label={`${team.name} reports`}>
           {hiredTabs.map(reportLink)}
+          {team.id === "accounts" ? <Link to="/parties">Customers and suppliers</Link> : null}
           {others ? (
             <details className="board-others" open={!hired || !hiredTabs.length}>
               <summary>Reports from agents you haven't hired ({others})</summary>
