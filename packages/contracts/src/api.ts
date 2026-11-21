@@ -1016,6 +1016,8 @@ export const ROUTES = {
   documents: "/api/documents",
   /** A spreadsheet listing bills or invoices, read by the Accountant (ADR 0010). */
   registers: "/api/registers",
+  /** Any other spreadsheet the owner sends, with its kind named: orders or post results (ADR 0010). */
+  sheets: "/api/sheets",
   unread: "/api/documents/unread",
   readDocument: (id: string) => `/api/documents/${id}/read`,
   file: (id: string) => `/api/files/${id}`,

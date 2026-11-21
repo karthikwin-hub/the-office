@@ -605,7 +605,7 @@ function orders(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
     const parsed = OrdersImport.safeParse(req.body ?? {});
     if (!parsed.success) return bad("Attach the orders file.");
     try {
-      return ok(cs.importOrders(parsed.data.content, req.user.name));
+      return ok(cs.importOrders(parsed.data.content));
     } catch (e) {
       return { status: 422, body: { error: e instanceof Error ? e.message : String(e) } };
     }

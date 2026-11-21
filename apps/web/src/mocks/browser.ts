@@ -1,4 +1,15 @@
-import { ambientFrom, checkPersonaNames, DEFAULT_PREFS, Prefs, PrefsChange, ReadRequest, readPersonaNames, type Role, ROUTES } from "@office/contracts";
+import {
+  ambientFrom,
+  checkPersonaNames,
+  DEFAULT_PREFS,
+  Prefs,
+  PrefsChange,
+  ReadRequest,
+  readPersonaNames,
+  type Role,
+  ROUTES,
+  SheetKind,
+} from "@office/contracts";
 import { dispatch, mockConnect, OfficeService, runMockEffects } from "@office/engine";
 import { loadBooks } from "@office/fixtures";
 import { delay, http, HttpResponse, passthrough } from "msw";
@@ -71,7 +82,7 @@ const handler = http.all("/api/*", async ({ request }) => {
       return HttpResponse.json({ error: e instanceof SheetError ? e.message : "The file could not be opened. Send it as CSV or XLSX." }, { status: 422 });
     }
   }
-  if (request.method === "POST" && url.pathname === ROUTES.registers) {
+  if (request.method === "POST" && (url.pathname === ROUTES.registers || url.pathname === ROUTES.sheets)) {
     // A list of bills read by the same engine as the live office; there is no model here, so only header names count.
     const form = await request.formData();
     const file = form.get("file");
@@ -87,6 +98,7 @@ const handler = http.all("/api/*", async ({ request }) => {
         via: "upload",
         from: null,
         auto: true,
+        kinds: url.pathname === ROUTES.sheets ? [SheetKind.parse(form.get("kind"))] : ["bill_register"],
       });
       return HttpResponse.json({ results, message: results.map((r) => r.message).join(" ") });
     } catch (e) {

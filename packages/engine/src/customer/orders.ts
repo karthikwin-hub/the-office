@@ -1,5 +1,5 @@
-import { type Books, type Order, OrderStatus, type OrdersImportResult } from "@office/contracts";
-import { parseCsv } from "../imports";
+import { type Books, type Order, OrderStatus, type OrdersImportResult, type SheetMapping } from "@office/contracts";
+import { dateOf } from "../sales/parse";
 import { samePhone } from "./brain";
 
 /**
@@ -48,43 +48,6 @@ export const STATUS_WORDS: Record<OrderStatus, string> = {
   cancelled: "cancelled",
 };
 
-const HEADERS: Record<string, keyof Order | "placed" | "expected"> = {
-  number: "number",
-  order: "number",
-  "order number": "number",
-  "order no": "number",
-  "order id": "number",
-  customer: "customer",
-  name: "customer",
-  "customer name": "customer",
-  phone: "phone",
-  mobile: "phone",
-  "phone number": "phone",
-  whatsapp: "phone",
-  email: "email",
-  "e-mail": "email",
-  items: "items",
-  item: "items",
-  products: "items",
-  description: "items",
-  status: "status",
-  state: "status",
-  placed: "placed",
-  date: "placed",
-  "order date": "placed",
-  "placed on": "placed",
-  expected: "expected",
-  "expected on": "expected",
-  "delivery date": "expected",
-  eta: "expected",
-  tracking: "tracking",
-  "tracking link": "tracking",
-  awb: "tracking",
-  "tracking number": "tracking",
-  note: "note",
-  notes: "note",
-};
-
 const STATUS_ALIASES: Record<string, OrderStatus> = {
   new: "received",
   received: "received",
@@ -106,42 +69,52 @@ const STATUS_ALIASES: Record<string, OrderStatus> = {
   cancelled: "cancelled",
   canceled: "cancelled",
   refunded: "cancelled",
+  // Shopify's fulfilment words.
+  unfulfilled: "received",
+  partial: "dispatched",
+  "partially fulfilled": "dispatched",
 };
 export const statusFrom = (s: string): OrderStatus | null =>
   STATUS_ALIASES[s.trim().toLowerCase()] ?? (OrderStatus.safeParse(s.trim().toLowerCase()).success ? (s.trim().toLowerCase() as OrderStatus) : null);
 
-/** Accepts 2026-11-05, 05/11/2026 and 5-11-2026, Indian order. */
-function dateFrom(s: string): string | null {
-  const t = s.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t);
-  return m ? `${m[3]}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}` : null;
-}
-
-/** Adds or updates orders from a spreadsheet saved as CSV. A row with the number of an order already here updates it. */
-export function importOrders(books: Books, content: string, today: string, link: (o: Order) => string | null): OrdersImportResult {
-  const rows = parseCsv(content).filter((r) => r.some((c) => c.trim()));
-  if (rows.length < 2) throw new Error("The file needs a header row and at least one order.");
-  const cols = rows[0]!.map((h) => HEADERS[h.trim().toLowerCase()] ?? null);
-  if (!cols.includes("number")) throw new Error('No order number column. Name one of the columns "Order number".');
+/**
+ * Adds or updates orders from a sheet's rows, with the columns found by their names or confirmed by the owner. A row
+ * with the number of an order already here updates it; a value that cannot be read leaves the row out, with why.
+ */
+export function readOrders(
+  books: Books,
+  input: { rows: string[][]; headerAt: number; mapping: SheetMapping },
+  today: string,
+  link: (o: Order) => string | null,
+): OrdersImportResult {
+  const headers = input.rows[input.headerAt] ?? [];
+  const col = (f: string) => (input.mapping[f] ? headers.indexOf(input.mapping[f]!) : -1);
+  if (col("number") < 0) throw new Error('No order number column. Name one of the columns "Order number".');
   const out: OrdersImportResult = { added: 0, updated: 0, skipped: [] };
   const now = new Date().toISOString();
-  for (const [i, r] of rows.slice(1).entries()) {
-    const get = (k: string) => {
-      const at = cols.indexOf(k as never);
-      return at >= 0 ? (r[at] ?? "").trim() : "";
-    };
+  for (let i = input.headerAt + 1; i < input.rows.length; i++) {
+    const r = input.rows[i]!;
+    if (!r.some((c) => c.trim())) continue;
+    const row = i + 1;
+    const get = (f: string) => (col(f) >= 0 ? (r[col(f)] ?? "").trim() : "");
     const number = norm(get("number"));
     if (!number || number.length > 40) {
-      out.skipped.push(`Row ${i + 2}: no order number`);
-      continue;
-    }
-    const status = get("status") ? statusFrom(get("status")) : "received";
-    if (!status) {
-      out.skipped.push(`Row ${i + 2}: "${get("status").slice(0, 30)}" is not a status we know`);
+      out.skipped.push(`Row ${row}: no order number`);
       continue;
     }
     const existing = books.orders.find((o) => norm(o.number) === number);
+    const status = get("status") ? statusFrom(get("status")) : (existing?.status ?? "received");
+    if (!status) {
+      out.skipped.push(`Row ${row}: "${get("status").slice(0, 30)}" is not a status we know`);
+      continue;
+    }
+    const placed = get("placed") ? dateOf(get("placed")) : null;
+    const expected = get("expected") ? dateOf(get("expected")) : null;
+    const unreadable = (get("placed") && !placed && get("placed")) || (get("expected") && !expected && get("expected"));
+    if (unreadable) {
+      out.skipped.push(`Row ${row}: "${unreadable.slice(0, 30)}" is not a date I can read`);
+      continue;
+    }
     const o: Order = {
       id: existing?.id ?? `ord-${number.toLowerCase().replace(/[^a-z0-9]/g, "")}-${books.orders.length + 1}`,
       number,
@@ -151,8 +124,8 @@ export function importOrders(books: Books, content: string, today: string, link:
       email: (get("email") || existing?.email || "").toLowerCase().slice(0, 200),
       items: (get("items") || existing?.items || "").slice(0, 500),
       status,
-      placedOn: dateFrom(get("placed")) ?? existing?.placedOn ?? today,
-      expectedOn: dateFrom(get("expected")) ?? existing?.expectedOn ?? null,
+      placedOn: placed ?? existing?.placedOn ?? today,
+      expectedOn: expected ?? existing?.expectedOn ?? null,
       tracking: (get("tracking") || existing?.tracking || null)?.slice(0, 500) ?? null,
       note: (get("note") || existing?.note || "").slice(0, 500),
       updatedAt: now,

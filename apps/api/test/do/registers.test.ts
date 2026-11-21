@@ -51,3 +51,19 @@ describe("a register of bills uploaded to the Accountant", () => {
     expect(second.results).toMatchObject([{ status: "read", staged: 1, duplicates: 1 }]);
   });
 });
+
+describe("another kind of spreadsheet, named by the owner", () => {
+  it("reads an orders file once its columns are confirmed, and only from the owner", async () => {
+    const { id, owner, stub } = await openOffice();
+    const send = async (who: "owner" | "accountant", kind: string) => {
+      const form = new FormData();
+      form.set("file", new File(["Name,Created at,Fulfillment Status\n#S-1,2026-11-18,unfulfilled"], "orders_export.csv", { type: "text/csv" }));
+      form.set("kind", kind);
+      return stub.fetch(await asCaller(callerFor(id, owner, who), ROUTES.sheets, { method: "POST", body: form }));
+    };
+    expect((await send("accountant", "orders")).status).toBe(403);
+    expect((await send("owner", "sales_report")).status).toBe(400);
+    const r = (await (await send("owner", "orders")).json()) as Results;
+    expect(r.results).toMatchObject([{ status: "needs_layout", sheetKind: "orders" }]);
+  });
+});
