@@ -27,7 +27,7 @@ import { makeAuth, sendMail, verificationRequired } from "./auth";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId, system } from "./caller";
 import { CALLER_SEAL_HEADER, sealCaller } from "./caller-seal";
 import type { Env } from "./env";
-import { AccountRecords } from "./account";
+import { AccountRecords, consentFrom, deletionFrom } from "./account";
 import { backupTarget, deleteObjects, listObjects, officeBackupPrefix, retainedKeepUntil, retainedOffice } from "./backup";
 import type { AssistantInbound } from "./assistant";
 import { CHAT_FULL, type SupportMail, turnstileOk, widgetScript } from "./customer/channels";
@@ -40,18 +40,25 @@ import { attachmentRequest } from "./files";
 import { currentRequestId, inOffice, log, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
-import { readSession, type SignedIn } from "./session";
+import { readSession, type SignedIn, type Who } from "./session";
 import { verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
 import { isFresh, STEP_UP_NEEDED, TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
 import { metaChallenge, verifyMetaSignature } from "./social/webhooks";
-import { ControlPlane, ingestAddress, OFFICE_ID, type OfficeRow, PURGE_AFTER_MS } from "./tenancy";
+import { ControlPlane, ingestAddress, membershipOf, OFFICE_ID, type OfficeRow, officesFrom, PURGE_AFTER_MS } from "./tenancy";
 import { sendText } from "./whatsapp/cloud";
 import { WaDirectory } from "./whatsapp/links";
 import { weatherFor, type Where } from "./weather";
 
 type User = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled: boolean };
-type Vars = { user: User; caller: Caller; office: OfficeRow; session: { createdAt: Date; stepUpAt: Date | null } };
+type Vars = {
+  user: User;
+  caller: Caller;
+  office: OfficeRow;
+  session: { createdAt: Date; stepUpAt: Date | null };
+  /** Reads that came back with the session, by name (see `sessionReads`); a route that finds none asks D1 itself. */
+  read?: Map<string, D1Result>;
+};
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 /** Not "forbidden": someone outside an office cannot tell whether it exists. */
@@ -256,26 +263,52 @@ async function askBetterAuth(c: Ctx): Promise<SignedIn | null> {
   };
 }
 
+const IN_OFFICE = /^\/api\/o\/([^/]+)\//;
+
+/**
+ * What a route reads anyway, sent in the session's own D1 round trip: each D1 call costs a Worker 2 to 3 ms of CPU, of
+ * the free plan's 10. Each statement names its person by the session token, so it finds rows only for whoever holds it.
+ * Office routes still check the membership on every request; it only travels with the session.
+ */
+function sessionReads(c: Ctx): [name: string, statement: (who: Who) => D1PreparedStatement][] {
+  const path = new URL(c.req.url).pathname;
+  const office = IN_OFFICE.exec(path)?.[1];
+  if (office && OFFICE_ID.test(office)) return [[`membership:${office}`, (who) => cp(c.env).membershipStatement(office, who)]];
+  if (c.req.method === "GET" && path === "/api/me") {
+    const records = new AccountRecords(c.env.DB);
+    return [
+      ["offices", (who) => cp(c.env).officesOfStatement(who)],
+      ["consent", (who) => records.consentStatement(who)],
+      ["deletion", (who) => records.deletionStatement(who)],
+    ];
+  }
+  return [];
+}
+
 app.use("/api/*", async (c, next) => {
-  const read = await readSession(c.env, c.req.raw.headers);
+  const reads = sessionReads(c);
+  const read = await readSession(c.env, c.req.raw.headers, (token) => reads.map(([, statement]) => statement({ token })));
   const signedIn = read.state === "ok" ? read.signedIn : read.state === "ask" ? await askBetterAuth(c) : null;
   if (!signedIn) return c.json({ error: "Sign in to continue." }, 401);
   c.set("user", signedIn.user);
   c.set("session", signedIn.session);
+  if (read.state === "ok") c.set("read", new Map(reads.map(([name], i) => [name, read.extra[i] as D1Result])));
   await next();
 });
 
 app.get("/api/me", async (c) => {
   const user = c.get("user");
   const records = new AccountRecords(c.env.DB);
-  const offices = await cp(c.env).officesOf(user.id);
+  const read = c.get("read");
+  const [had, consent, deletion] = [read?.get("offices"), read?.get("consent"), read?.get("deletion")];
+  const offices = had ? officesFrom(had) : await cp(c.env).officesOf(user.id);
   return c.json({
     user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified },
     offices,
     twoFactor: { enabled: user.twoFactorEnabled, required: platformOwners(c.env).has(user.email.toLowerCase()) || offices.some((o) => o.role === "owner") },
     verificationRequired: verificationRequired(c.env),
-    consentNeeded: await records.consentNeeded(user.id),
-    deletionRequested: await records.deletionRequested(user.id),
+    consentNeeded: consent ? consentFrom(consent) : await records.consentNeeded(user.id),
+    deletionRequested: deletion ? deletionFrom(deletion) : await records.deletionRequested(user.id),
   } satisfies Me);
 });
 
@@ -463,7 +496,8 @@ app.use("/api/o/:office/*", async (c, next) => {
   const id = c.req.param("office");
   if (!OFFICE_ID.test(id)) return c.json(NOT_FOUND, 404);
   const user = c.get("user");
-  const m = await cp(c.env).membership(id, user.id);
+  const had = c.get("read")?.get(`membership:${id}`);
+  const m = had ? membershipOf(had) : await cp(c.env).membership(id, user.id);
   if (!m) return c.json(NOT_FOUND, 404);
   inOffice(id);
   const rest = new URL(c.req.url).pathname.slice(`/api/o/${id}`.length);

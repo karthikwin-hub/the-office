@@ -13,10 +13,12 @@ vi.mock("better-auth", async (original) => {
   };
 });
 
+import { AccountRecords } from "../src/account";
 import { app } from "../src/app";
 import { makeAuth } from "../src/auth";
 import type { Env } from "../src/env";
 import { cookieValue, readSession, SESSION_EXPIRES_IN, sessionCookieName, signedToken } from "../src/session";
+import { ControlPlane } from "../src/tenancy";
 import { d1 } from "./d1";
 import { withCookies } from "./two-factor";
 
@@ -188,5 +190,113 @@ describe("cookieValue", () => {
     expect(cookieValue("ab=1", "b")).toBeNull();
     expect(cookieValue("b=%E0%A4%A", "b")).toBe("%E0%A4%A");
     expect(cookieValue(null, "b")).toBeNull();
+  });
+});
+
+/** The D1 calls a request makes: a batch counts once, as it is one round trip. */
+function counting(db: ReturnType<typeof d1>) {
+  const calls = { n: 0 };
+  type S = ReturnType<ReturnType<typeof d1>["prepare"]>;
+  const wrap = (s: S): S =>
+    ({
+      ...s,
+      bind: (...a: unknown[]) => wrap(s.bind(...a)),
+      first: (col?: string) => (calls.n++, col === undefined ? s.first() : s.first(col)),
+      all: () => (calls.n++, s.all()),
+      run: () => (calls.n++, s.run()),
+      raw: () => (calls.n++, s.raw()),
+    }) as S;
+  const counted = { ...db, prepare: (q: string) => wrap(db.prepare(q)), batch: (st: S[]) => (calls.n++, db.batch(st)) } as typeof db;
+  return { db: counted, calls };
+}
+
+describe("one D1 round trip per request", () => {
+  async function office(db: ReturnType<typeof d1>, cookie: string, role = "accountant") {
+    const env = makeEnv(db);
+    const read = await readSession(env, headers(cookie));
+    if (read.state !== "ok") throw new Error("not signed in");
+    const made = await new ControlPlane(db).createOffice({
+      name: "Kaveri Electricals",
+      owner: { id: "someone-else", name: "Someone", email: "someone@kaveri.test", emailVerified: true },
+      ingestDomain: "in.office.test",
+    });
+    if ("error" in made) throw new Error(made.error);
+    db.sqlite
+      .prepare("INSERT INTO membership (office_id, user_id, role, created_at) VALUES (?, ?, ?, ?)")
+      .run(made.id, read.signedIn.user.id, role, Date.now());
+    return made.id;
+  }
+  const officeNs = (seen: string[]) => ({
+    idFromName: (n: string) => n,
+    get: (n: string) => ({ fetch: async () => (seen.push(n), Response.json({ ok: true })) }),
+  });
+
+  it("answers /api/me with one, the same as asking for each", async () => {
+    const plain = d1();
+    plain.sqlite.exec(
+      "INSERT INTO user (id, name, email, email_verified, role, created_at, updated_at) VALUES ('someone-else', 'Someone', 'someone@kaveri.test', 1, 'owner', 0, 0)",
+    );
+    const cookie = await signedUp(makeEnv(plain));
+    const id = await office(plain, cookie);
+    const { db, calls } = counting(plain);
+    const res = await app.request(`${BASE}/api/me`, { headers: { cookie } }, makeEnv(db));
+    expect(res.status).toBe(200);
+    expect(calls.n).toBe(1);
+    const me = (await res.json()) as { offices: { id: string }[]; consentNeeded: unknown[]; deletionRequested: boolean };
+    expect(me.offices.map((o) => o.id)).toEqual([id]);
+    // The same answer the separate queries give.
+    const read = await readSession(makeEnv(plain), headers(cookie));
+    if (read.state !== "ok") throw new Error("not signed in");
+    const user = read.signedIn.user.id;
+    const records = new AccountRecords(plain);
+    expect(me.offices).toEqual(JSON.parse(JSON.stringify(await new ControlPlane(plain).officesOf(user))));
+    expect(me.consentNeeded).toEqual(await records.consentNeeded(user));
+    expect(me.deletionRequested).toBe(await records.deletionRequested(user));
+  });
+
+  it("checks the membership in the session's round trip before an office route reaches the office", async () => {
+    const plain = d1();
+    plain.sqlite.exec(
+      "INSERT INTO user (id, name, email, email_verified, role, created_at, updated_at) VALUES ('someone-else', 'Someone', 'someone@kaveri.test', 1, 'owner', 0, 0)",
+    );
+    const cookie = await signedUp(makeEnv(plain));
+    const id = await office(plain, cookie);
+    const { db, calls } = counting(plain);
+    const seen: string[] = [];
+    const env = { ...makeEnv(db), Office: officeNs(seen) } as unknown as Env;
+    expect((await app.request(`${BASE}/api/o/${id}/documents/unread`, { headers: { cookie } }, env)).status).toBe(200);
+    expect(calls.n).toBe(1);
+    expect(seen).toEqual([id]);
+  });
+
+  it("finds no membership for another person's session", async () => {
+    const plain = d1();
+    plain.sqlite.exec(
+      "INSERT INTO user (id, name, email, email_verified, role, created_at, updated_at) VALUES ('someone-else', 'Someone', 'someone@kaveri.test', 1, 'owner', 0, 0)",
+    );
+    const member = await signedUp(makeEnv(plain));
+    const id = await office(plain, member);
+    const outsider = await signedUp(makeEnv(plain));
+    const seen: string[] = [];
+    const env = { ...makeEnv(plain), Office: officeNs(seen) } as unknown as Env;
+    expect((await app.request(`${BASE}/api/o/${id}/documents/unread`, { headers: { cookie: outsider } }, env)).status).toBe(404);
+    expect(seen).toEqual([]);
+  });
+
+  it("still checks the membership when Better Auth answers for the session", async () => {
+    const plain = d1();
+    plain.sqlite.exec(
+      "INSERT INTO user (id, name, email, email_verified, role, created_at, updated_at) VALUES ('someone-else', 'Someone', 'someone@kaveri.test', 1, 'owner', 0, 0)",
+    );
+    const member = await signedUp(makeEnv(plain));
+    const id = await office(plain, member);
+    const outsider = await signedUp(makeEnv(plain));
+    // Every session due for renewal: readSession leaves them to Better Auth, and nothing comes back with the session.
+    plain.sqlite.exec(`UPDATE session SET expires_at = ${Math.floor(Date.now() / 1000) + SESSION_EXPIRES_IN - 2 * 3600}`);
+    const seen: string[] = [];
+    const env = { ...makeEnv(plain), Office: officeNs(seen) } as unknown as Env;
+    expect((await app.request(`${BASE}/api/o/${id}/documents/unread`, { headers: { cookie: outsider } }, env)).status).toBe(404);
+    expect((await app.request(`${BASE}/api/o/${id}/documents/unread`, { headers: { cookie: member } }, env)).status).toBe(200);
+    expect(seen).toEqual([id]);
   });
 });

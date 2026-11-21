@@ -1,7 +1,19 @@
 import { LEGAL_DOCUMENTS, type LegalDocument, type RightsRequestView } from "@office/contracts";
+import { type Who, whoIs } from "./session";
 
 type RequestDb = { id: string; kind: "delete"; status: "open" | "done" | "withdrawn"; created_at: number };
 const toView = (r: RequestDb): RightsRequestView => ({ id: r.id, kind: r.kind, status: r.status, createdAt: new Date(r.created_at).toISOString() });
+
+/** A consent statement's result: the documents whose current version this person has not accepted yet. */
+export function consentFrom(r: D1Result): { document: LegalDocument; version: string }[] {
+  const have = new Set((r.results as { document: string; version: string }[]).map((c) => `${c.document}|${c.version}`));
+  return (Object.keys(LEGAL_DOCUMENTS) as LegalDocument[])
+    .filter((d) => !have.has(`${d}|${LEGAL_DOCUMENTS[d].version}`))
+    .map((d) => ({ document: d, version: LEGAL_DOCUMENTS[d].version }));
+}
+
+/** A deletion statement's result: whether an open request to delete the account is waiting. */
+export const deletionFrom = (r: D1Result): boolean => r.results.length > 0;
 
 /** Who did something, in an office's audit trail, once their account is gone. */
 export const DELETED_ACCOUNT = "a deleted account";
@@ -19,14 +31,13 @@ export class AccountRecords {
 
   /** The documents whose current version this person has not accepted yet. */
   async consentNeeded(userId: string): Promise<{ document: LegalDocument; version: string }[]> {
-    const { results } = await this.db
-      .prepare("SELECT document, version FROM consent WHERE user_id = ?")
-      .bind(userId)
-      .all<{ document: string; version: string }>();
-    const have = new Set(results.map((r) => `${r.document}|${r.version}`));
-    return (Object.keys(LEGAL_DOCUMENTS) as LegalDocument[])
-      .filter((d) => !have.has(`${d}|${LEGAL_DOCUMENTS[d].version}`))
-      .map((d) => ({ document: d, version: LEGAL_DOCUMENTS[d].version }));
+    return consentFrom(await this.consentStatement({ userId }).all());
+  }
+
+  /** The statement behind `consentNeeded`, to send in a batch; `consentFrom` reads its result. */
+  consentStatement(who: Who): D1PreparedStatement {
+    const [user, arg] = whoIs(who);
+    return this.db.prepare(`SELECT document, version FROM consent WHERE user_id = ${user}`).bind(arg);
   }
 
   /** Only the current version of a document can be accepted, so nobody records agreeing to a text they were not shown. */
@@ -52,7 +63,13 @@ export class AccountRecords {
   }
 
   async deletionRequested(userId: string): Promise<boolean> {
-    return Boolean(await this.db.prepare("SELECT 1 AS x FROM rights_request WHERE user_id = ? AND kind = 'delete' AND status = 'open'").bind(userId).first());
+    return deletionFrom(await this.deletionStatement({ userId }).all());
+  }
+
+  /** The statement behind `deletionRequested`, to send in a batch; `deletionFrom` reads its result. */
+  deletionStatement(who: Who): D1PreparedStatement {
+    const [user, arg] = whoIs(who);
+    return this.db.prepare(`SELECT 1 AS x FROM rights_request WHERE user_id = ${user} AND kind = 'delete' AND status = 'open' LIMIT 1`).bind(arg);
   }
 
   /**
