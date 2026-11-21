@@ -1045,7 +1045,8 @@ export class OfficeService {
     const level = this.state(item.agentId)?.trustLevel ?? "trainee";
     if (level === "trainee") return null;
     if (item.kind === "post" || item.kind === "social_reply") return this.socialRoutine(item, level);
-    if (level === "autonomous") return { level, reason: "it acts on routine and unusual work alike" };
+    // A reading that failed a check always waits, however trusted the Accountant is.
+    if (level === "autonomous" && item.kind !== "ledger_entry") return { level, reason: "it acts on routine and unusual work alike" };
     const p = item.payload as { billId?: string; invoiceId?: string; checks?: { ok: boolean }[]; tone?: string; quoteId?: string; poId?: string };
     const under = (paise: number | undefined) => paise !== undefined && paise < TRUSTED_LIMIT_PAISE;
     const ok = (reason: string) => ({ level, reason });
@@ -1054,6 +1055,7 @@ export class OfficeService {
         const rec = p.billId ? this.books.bills.find((b) => b.id === p.billId) : this.books.invoices.find((i) => i.id === p.invoiceId);
         const party = rec ? this.ledger.findParty(rec.partyId) : undefined;
         const clean = Boolean(p.checks?.length) && (p.checks ?? []).every((c) => c.ok) && party && !party.id.endsWith("-new");
+        if (clean && level === "autonomous") return ok("every check passed for a known party");
         return clean && under(rec?.totals.totalPaise) ? ok("every check passed for a known party, under ₹1 lakh") : null;
       }
       case "reminder":

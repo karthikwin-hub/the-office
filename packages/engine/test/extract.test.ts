@@ -135,6 +135,29 @@ describe("intake", () => {
     expect(office.books.agents.find((a) => a.agentId === "accountant")!.accuracy.checked).toBe(checked);
   });
 
+  it("never lets an autonomous Accountant post a bill that failed a check", async () => {
+    const fresh = loadBooks();
+    const target = fresh.bills.find((b) => b.status === "posted" && b.totals.totalPaise > 1_00_000_00 && fresh.parties.find((p) => p.id === b.partyId)?.gstin)!;
+    const clean = fresh.bills.find((b) => b !== target && b.status === "posted" && fresh.parties.find((p) => p.id === b.partyId)?.gstin)!;
+    fresh.bills = fresh.bills.filter((b) => b !== target && b !== clean);
+    for (const a of fresh.agents) a.trustLevel = "autonomous";
+    const office = new OfficeService(fresh);
+    const items = await read(fresh.documents.find((d) => d.id === target.docId)!.file);
+    const total = items.find((i) => i.str === (target.totals.totalPaise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 }))!;
+    office.receiveDocument({ id: "doc-u0013", file: "/x.pdf", channel: "upload", from: null, pages: 1 });
+    const bad = office.read(
+      "doc-u0013",
+      items.map((i) => (i === total ? { ...i, str: "99,99,999.00" } : i)),
+    );
+    expect((bad.staged!.payload.checks as { ok: boolean }[]).some((c) => !c.ok)).toBe(true);
+    expect(bad.staged?.status).toBe("pending");
+    expect(office.books.bills.find((b) => b.docId === "doc-u0013")?.status).toBe("staged");
+    // A clean bill of any size still goes through at this level.
+    office.receiveDocument({ id: "doc-u0014", file: "/x.pdf", channel: "upload", from: null, pages: 1 });
+    office.read("doc-u0014", await read(fresh.documents.find((d) => d.id === clean.docId)!.file));
+    expect(office.books.bills.find((b) => b.docId === "doc-u0014")?.status).toBe("posted");
+  });
+
   it("keeps mail from a sender not in the books waiting, even at the next trusted round", async () => {
     const fresh = loadBooks();
     const small = fresh.bills.find((b) => b.status === "posted" && b.totals.totalPaise < 1_00_000_00 && fresh.parties.find((p) => p.id === b.partyId)?.gstin)!;
