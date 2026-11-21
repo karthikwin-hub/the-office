@@ -36,7 +36,8 @@ import { backupKey, backupTarget, putObject, retainedKey, retainedUntil, sealedC
 import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
 import { fileRoute, OfficeFiles } from "./files";
-import { emptyBooks, loadBooks, SAMPLE_SEED } from "@office/fixtures";
+// The light entry: the sample business (2.3 MB) is imported only when an office is seeded with it, never at an isolate's start.
+import { emptyBooks, SAMPLE_SEED } from "@office/fixtures/empty";
 import { Agent, type Connection, type ConnectionContext } from "agents";
 import { CALLER_HEADER, type Caller, type InboundDocs, newDocId } from "./caller";
 import { CALLER_SEAL_HEADER, callerSealed } from "./caller-seal";
@@ -292,7 +293,7 @@ export class Office extends Agent<Env> {
 
   /** A new office starts empty, with the name it was opened with and its owner; the sample business is for demos and tests. */
   private async seed(officeId: string, name: string): Promise<OfficeService["books"]> {
-    if (this.env.OFFICE_SEED === "sample") return loadBooks();
+    if (this.env.OFFICE_SEED === "sample") return (await import("@office/fixtures")).loadBooks();
     const owner = (await this.plane().members(officeId)).find((u) => u.role === "owner");
     const books = emptyBooks({ owner: owner?.name ?? "", email: owner?.email, asOf: istDate() });
     books.business.name = name;
