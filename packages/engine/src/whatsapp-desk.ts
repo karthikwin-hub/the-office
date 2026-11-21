@@ -19,7 +19,18 @@ export const WA_MAX = 4096;
 /** How many waiting items one list shows; more than nine stops being easy to answer by number. */
 export const WA_LIST = 9;
 /** Work that needs reading in full before it goes; on WhatsApp it is opened on the desk, not approved by number. */
-export const REVIEW_ON_DESK = new Set(["audit_flag", "share_file", "payroll_run", "campaign", "calendar", "broadcast", "post"]);
+// A new sheet layout is chosen column by column, which only the desk can show.
+export const REVIEW_ON_DESK = new Set([
+  "audit_flag",
+  "share_file",
+  "payroll_run",
+  "campaign",
+  "calendar",
+  "broadcast",
+  "post",
+  "sales_mapping",
+  "sheet_layout",
+]);
 
 export type WaPerson = { name: string; email: string; role: Role };
 export type WaListed = { n: number; id: string; print: string };

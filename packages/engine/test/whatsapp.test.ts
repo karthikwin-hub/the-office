@@ -194,6 +194,32 @@ describe("WhatsApp: the desk", () => {
     expect(text(t)).toContain(`${review!.n} needs a proper look before it goes. Open it on your desk: https://office.example/desk`);
   });
 
+  it("sends a new register or sales layout to the desk, where its columns are chosen", () => {
+    const office = new OfficeService(loadBooks());
+    const [r] = office.registers.receive({
+      id: "reg-wa1",
+      file: "nov.csv",
+      fileUrl: "/f/wa1",
+      sheets: [
+        {
+          name: "nov.csv",
+          rows: [
+            ["Bill No", "Bill Date", "Supplier", "Basic"],
+            ["B-1", "2026-11-10", "Nayak Hardware", "100"],
+          ],
+        },
+      ],
+      via: "upload",
+      from: null,
+      auto: true,
+    });
+    const s = say(office, owner, newSession(), "desk").session;
+    const listed = s.list.find((l) => l.id === r!.cardId)!;
+    const t = say(office, owner, s, `yes ${listed.n}`);
+    expect(office.allStaged().find((x) => x.id === r!.cardId)!.status).toBe("pending");
+    expect(text(t)).toContain(`${listed.n} needs a proper look`);
+  });
+
   it("handles a repeated delivery only once", () => {
     const office = new OfficeService(loadBooks());
     const s = say(office, owner, newSession(), "desk").session;
