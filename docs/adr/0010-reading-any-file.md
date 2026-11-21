@@ -1,6 +1,7 @@
 # 0010. Reading any file: convert, recognise, map
 
-- **Status:** proposed (bills and invoices in a sheet are the first part built)
+- **Status:** accepted for spreadsheets (bills registers, sales reports, orders, post results and opening books);
+  `toMarkdown` for other formats is still proposed
 - **Date:** 2026-11-21
 - **Deciders:** founders
 
@@ -32,17 +33,29 @@ Every file goes through three steps.
    through the same `checkExtraction` and `stageExtraction` as a PDF bill. Sales stay `SalesLine`s; parties, items
    and balances go through the onboarding import.
 
-A new sheet layout always asks the owner once, on a `sheet_layout` Desk card (in `ALWAYS_ASK`). The confirmed
-columns are kept per office (`sheet_layout` in the office's SQLite, by `layoutKey` of the headers), so the next file
-in the same layout is read without asking. Every bill or invoice read from it is still a staged item with its checks,
-and each figure links to the cell it was read from (`Document.sheet`, `Region.cell`).
+Each kind of sheet is declared once: `SheetKind` and `SHEET_KINDS` in `packages/contracts/src/sheets.ts` (its fields
+and what it needs) and its header aliases in `packages/engine/src/intake/kinds.ts`. `recognise()` finds the header
+row and the kind among those allowed where the file came in: the Accountant's room reads bills registers, the orders
+and post-results pickers name their kind, and the accounts address and WhatsApp tell a bills register from a sales
+report. `SheetIntake` (`packages/engine/src/register-service.ts`) keeps the layouts and the waiting sheets, and hands
+a sheet in a confirmed layout to the reader its agent registered.
+
+A new sheet layout asks the owner once, on a `sheet_layout` Desk card (in `ALWAYS_ASK`, and sent to the Desk from
+WhatsApp). The confirmed columns are kept per office (`sheet_layout` in the office's SQLite, by `layoutKey` of the
+headers), so the next file in the same layout is read without asking. Every bill or invoice read from it is still a
+staged item with its checks, and each figure links to the cell it was read from (`Document.sheet`, `Region.cell`).
+
+Two kinds keep their own confirmation. A sales report in a new layout keeps its `sales_mapping` card, which also
+names the platform, but its layout is saved in the same memory. Opening books keep their preview: the owner checks
+every row before one `onboarding` card is staged.
 
 ## Consequences
 
 - One AI call at most per new layout, whatever the number of rows, and no figures written by a model.
 - Owners confirm each new layout once; until then nothing from that file is read.
-- Every spreadsheet path (sales, bills, onboarding) shares one layout memory and one card, so a layout cannot be read
-  as two things.
+- Every spreadsheet path shares one reader and one layout memory, so a layout cannot be kept as two things.
+- Filed returns brought from a file are a fixed format (portal JSON, 26Q CSV) and are not sheets in this sense; they
+  are staged as a `return_import` card instead of being written directly.
 - `toMarkdown`'s handling of tables is not documented and must be checked on real files before old `.xls` is read
   this way; images are never sent to it, so it spends no Workers AI allowance.
 - Tally's XML export and ledger exports are later steps and are not covered yet.
