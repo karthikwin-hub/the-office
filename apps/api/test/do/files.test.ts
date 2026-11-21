@@ -99,3 +99,21 @@ describe("an office's stored files", () => {
     expect(zip).not.toContain("OFB1");
   });
 });
+
+describe("a bill uploaded from the browser", () => {
+  it("is refused when its bytes are not the PDF or picture it claims to be", async () => {
+    const { id, owner, stub } = await openOffice();
+    const upload = async (file: File, items?: string) => {
+      const form = new FormData();
+      form.set("file", file);
+      if (items !== undefined) form.set("items", items);
+      return stub.fetch(await asCaller(callerFor(id, owner), ROUTES.documents, { method: "POST", body: form }));
+    };
+    expect((await upload(new File(["<html><script>alert(1)</script>"], "bill.pdf", { type: "application/pdf" }))).status).toBe(415);
+    expect((await upload(new File(["MZ not a picture"], "bill.png", { type: "image/png" }))).status).toBe(415);
+    expect((await upload(new File(["%PDF-1.4 a bill"], "bill.pdf", { type: "application/pdf" }), "{not json")).status).toBe(400);
+    const proof = new FormData();
+    proof.set("file", new File(["<svg onload=alert(1)>"], "challan.pdf", { type: "application/pdf" }));
+    expect((await stub.fetch(await asCaller(callerFor(id, owner), ROUTES.complianceProof, { method: "POST", body: proof }))).status).toBe(415);
+  });
+});
