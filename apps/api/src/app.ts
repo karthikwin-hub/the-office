@@ -40,6 +40,7 @@ import { attachmentRequest } from "./files";
 import { currentRequestId, inOffice, log, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
 import { planMeta } from "./routing";
+import { readSession, type SignedIn } from "./session";
 import { verifyMedia } from "./social/media";
 import { readState } from "./social/oauth";
 import { isFresh, STEP_UP_NEEDED, TWO_FACTOR_NEEDED, twoFactorMissing } from "./step-up";
@@ -244,12 +245,23 @@ app.post(ACCOUNT_ROUTES.peekInvitation, async (c) => {
 
 /* ---------- Everything else needs someone signed in ---------- */
 
-app.use("/api/*", async (c, next) => {
+/** Better Auth's own answer, for what readSession leaves to it (an expired session, one due for renewal). */
+async function askBetterAuth(c: Ctx): Promise<SignedIn | null> {
   const session = await makeAuth(c.env, new URL(c.req.url).host).api.getSession({ headers: c.req.raw.headers });
-  if (!session) return c.json({ error: "Sign in to continue." }, 401);
+  if (!session) return null;
   const u = session.user;
-  c.set("user", { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified), twoFactorEnabled: Boolean(u.twoFactorEnabled) });
-  c.set("session", { createdAt: session.session.createdAt, stepUpAt: session.session.stepUpAt ?? null });
+  return {
+    user: { id: u.id, name: u.name, email: u.email, emailVerified: Boolean(u.emailVerified), twoFactorEnabled: Boolean(u.twoFactorEnabled) },
+    session: { createdAt: session.session.createdAt, stepUpAt: session.session.stepUpAt ?? null },
+  };
+}
+
+app.use("/api/*", async (c, next) => {
+  const read = await readSession(c.env, c.req.raw.headers);
+  const signedIn = read.state === "ok" ? read.signedIn : read.state === "ask" ? await askBetterAuth(c) : null;
+  if (!signedIn) return c.json({ error: "Sign in to continue." }, 401);
+  c.set("user", signedIn.user);
+  c.set("session", signedIn.session);
   await next();
 });
 
