@@ -21,6 +21,7 @@ import {
   type MarketingReport,
   type OfficeView,
   type OperationsReport,
+  type PartiesView,
   type PartyView,
   type PeopleReport,
   type Prefs,
@@ -292,6 +293,7 @@ export const api = {
     return res.json() as Promise<IngestResult>;
   },
   document: (id: string) => call<DocumentView>(ROUTES.document(id)),
+  parties: () => call<PartiesView>(ROUTES.parties),
   party: (id: string) => call<PartyView>(ROUTES.party(id)),
   saveMsme: (id: string, m: PartyMsme) => call<PartyView>(ROUTES.partyMsme(id), { method: "PUT", body: m }),
   ask: (question: string) => call<AskResponse>(ROUTES.ask, { method: "POST", body: { question } }),

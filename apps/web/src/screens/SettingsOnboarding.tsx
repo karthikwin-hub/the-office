@@ -52,7 +52,7 @@ export function OnboardingSettings({ b }: { b: Business }) {
       <p className="section-lede">
         Already keeping books in Tally, Excel or a notebook? Fill in the templates with your customers and suppliers, your products and stock, and the invoices
         and bills still unpaid. The Accountant checks every row; nothing goes into the books until {owner ? "you approve" : "the owner approves"} it on the
-        Desk.
+        Desk. Once approved, everyone you brought in is listed under <Link to="/parties">Customers and suppliers</Link>.
       </p>
       {b.booksFrom ? (
         <p>

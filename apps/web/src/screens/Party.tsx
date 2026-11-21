@@ -20,7 +20,7 @@ export function PartyScreen() {
       {v && p ? (
         <>
           <PageHead
-            back={{ to: "/boardroom/accounts/ageing", label: "Who owes you" }}
+            back={{ to: "/parties", label: "Customers and suppliers" }}
             title={p.name}
             lede={`${p.city}. ${p.kind === "customer" ? `Pays on ${p.paymentTermsDays ?? 30}-day terms` : "Supplier"}${p.gstin ? `, GSTIN ${p.gstin}` : ""}. ${p.contact.name}, ${p.contact.phone}, ${p.contact.email}.`}
           />

@@ -23,6 +23,7 @@ export const q = {
   trace: (figureId: string) => queryOptions({ queryKey: ["trace", figureId], queryFn: () => api.trace(figureId) }),
   documents: () => queryOptions({ queryKey: ["documents"], queryFn: api.documents }),
   document: (id: string) => queryOptions({ queryKey: ["document", id], queryFn: () => api.document(id), staleTime: 60_000 }),
+  parties: () => queryOptions({ queryKey: ["parties"], queryFn: api.parties }),
   party: (id: string) => queryOptions({ queryKey: ["party", id], queryFn: () => api.party(id) }),
   hiring: () => queryOptions({ queryKey: ["hiring"], queryFn: api.hiring }),
   settings: () => queryOptions({ queryKey: ["settings"], queryFn: api.settings }),

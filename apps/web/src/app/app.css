@@ -287,6 +287,9 @@
   font-size: var(--step--1);
   max-width: 34ch;
 }
+.parties-search {
+  max-width: 280px;
+}
 .toolbar-error {
   color: var(--stamp-red);
   font-size: var(--step--1);

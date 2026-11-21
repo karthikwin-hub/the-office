@@ -6,6 +6,7 @@ import { DeskScreen } from "../screens/Desk";
 import { FloorScreen } from "../screens/Floor";
 import { HiringScreen } from "../screens/Hiring";
 import { NotFound } from "../screens/common";
+import { PartiesScreen } from "../screens/Parties";
 import { PartyScreen } from "../screens/Party";
 import { RoomScreen } from "../screens/Room";
 import { RoutinesScreen } from "../screens/Routines";
@@ -38,11 +39,12 @@ const desk = createRoute({ getParentRoute: () => root, path: "/desk", component:
 const hiring = createRoute({ getParentRoute: () => root, path: "/hiring", component: HiringScreen });
 const settings = createRoute({ getParentRoute: () => root, path: "/settings", component: SettingsScreen });
 const routines = createRoute({ getParentRoute: () => root, path: "/routines", component: RoutinesScreen });
+const parties = createRoute({ getParentRoute: () => root, path: "/parties", component: PartiesScreen });
 const party = createRoute({ getParentRoute: () => root, path: "/parties/$partyId", component: PartyScreen });
 const legal = createRoute({ getParentRoute: () => root, path: "/legal/$page", component: LegalScreen });
 
 export const router = createRouter({
-  routeTree: root.addChildren([floor, room, boardroom, boardroomTeam, boardroomTab, audit, desk, hiring, routines, settings, party, legal]),
+  routeTree: root.addChildren([floor, room, boardroom, boardroomTeam, boardroomTab, audit, desk, hiring, routines, settings, parties, party, legal]),
   context: { queryClient: undefined! },
   defaultPreload: "intent",
   scrollRestoration: true,
