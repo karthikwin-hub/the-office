@@ -1,4 +1,13 @@
-import { type BillField, type BillMapping, type Document, missingBillFields, type Region, type SheetBillKind, type Totals } from "@office/contracts";
+import {
+  BILL_FIELD_LABEL,
+  BillField,
+  type BillMapping,
+  type Document,
+  missingBillFields,
+  type Region,
+  type SheetBillKind,
+  type Totals,
+} from "@office/contracts";
 import { checkExtraction, type ExtractContext, type ExtractedLine, type Extraction, gstinValid } from "./extract";
 import { pctOf } from "./money";
 import { layoutKey } from "./sales/formats";
@@ -125,6 +134,54 @@ export function findRegisterHeader(rows: string[][]): { at: number; mapping: Bil
     if (score > best.score) best = { at: i, mapping, score };
   }
   return { at: best.at, mapping: best.mapping };
+}
+
+/**
+ * When the header names leave a field unfound, a language model may say which column holds it. It sees the header
+ * row and three rows under it, and may only name headers that are there: it copies no figures.
+ */
+export function layoutPrompt(
+  headers: string[],
+  sample: string[][],
+  business: { legalName: string; gstin: string },
+): { system: string; user: string; schema: object } {
+  const fields = BillField.options;
+  const cols = headers.map((h) => h.slice(0, 80));
+  return {
+    system: [
+      "You map the columns of a spreadsheet that lists Indian GST bills or invoices, for an accounts office. Answer only with JSON in the given schema.",
+      `Our business is ${business.legalName}, GSTIN ${business.gstin}. If the rows are bills from suppliers, kind is purchase_bill; if they are invoices we issued, sales_invoice.`,
+      `For each field, give the column header that holds it, copied exactly from this list, or null if no column holds it: ${JSON.stringify(cols)}.`,
+      "Each header may be used for one field only. Never write a header that is not in the list, and never write a figure.",
+      `The fields: ${fields.map((f) => `${f} (${BILL_FIELD_LABEL[f]})`).join(", ")}.`,
+    ].join("\n"),
+    user: [JSON.stringify(cols), ...sample.slice(0, 3).map((r) => JSON.stringify(r.slice(0, cols.length).map((c) => c.slice(0, 60))))].join("\n"),
+    schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["purchase_bill", "sales_invoice"] },
+        mapping: { type: "object", properties: Object.fromEntries(fields.map((f) => [f, { type: ["string", "null"] }])) },
+      },
+      required: ["kind", "mapping"],
+    },
+  };
+}
+
+/**
+ * The model's answer, kept only where it names a real header not already taken; what the header names found stays.
+ * Anything else in the answer is ignored.
+ */
+export function fromLayoutAnswer(answer: unknown, headers: string[], guess: BillMapping): { kind: SheetBillKind | null; mapping: BillMapping } {
+  const a = (answer ?? {}) as { kind?: unknown; mapping?: Record<string, unknown> };
+  const out: BillMapping = { ...guess };
+  const used = new Set(Object.values(guess));
+  for (const f of BillField.options) {
+    const h = a.mapping?.[f];
+    if (out[f] || typeof h !== "string" || !headers.includes(h) || used.has(h)) continue;
+    out[f] = h;
+    used.add(h);
+  }
+  return { kind: a.kind === "purchase_bill" || a.kind === "sales_invoice" ? a.kind : null, mapping: out };
 }
 
 /** Purchase or sales, from the headers and any title rows above them; purchases when nothing says. */

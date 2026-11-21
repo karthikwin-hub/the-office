@@ -1,7 +1,7 @@
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
 import { type ApiRequest, dispatch, OfficeService } from "../src";
-import { findRegisterHeader, guessBillMapping, readRegister, registerKind } from "../src/registers";
+import { findRegisterHeader, fromLayoutAnswer, guessBillMapping, readRegister, registerKind } from "../src/registers";
 
 const books = loadBooks();
 const local = books.parties.find((p) => p.kind === "vendor" && p.gstin?.startsWith(books.business.stateCode))!;
@@ -168,6 +168,20 @@ describe("the Accountant and a register", () => {
     const [second] = receive(office, "reg-a2", register(["P-2", "P-3"]), "dec.xlsx");
     expect(second).toMatchObject({ status: "read", staged: 1, duplicates: 1 });
     expect(office.books.staged.filter((s) => s.kind === "sheet_layout")).toHaveLength(1);
+  });
+
+  it("puts columns a model suggested on the card, marked as the AI's, for the owner to confirm", () => {
+    const office = new OfficeService(loadBooks());
+    const sheets = [{ name: "Sheet1", rows: register(["P-1"]) }];
+    const [unclear] = office.registers.unclear(sheets);
+    expect(unclear).toMatchObject({ index: 0, headers: register([])[1], guess: { number: "Bill Ref", party: "Supplier" } });
+    const proposed = [fromLayoutAnswer({ mapping: { taxable: "Basic", total: "Net", party: "Bill Ref" } }, unclear!.headers, unclear!.guess)];
+    const [r] = office.registers.receive({ id: "reg-c1", file: "nov.xlsx", fileUrl: "/f/c1", sheets, via: "upload", from: null, auto: true, proposed });
+    const card = office.books.staged.find((s) => s.id === r!.cardId)!;
+    expect(card.payload).toMatchObject({ missing: [], suggested: ["taxable", "total"], mapping: { party: "Supplier", taxable: "Basic", total: "Net" } });
+    expect(card.summary).toMatch(/The AI suggested the columns for taxable value, total/);
+    // Nothing is read until the owner approves.
+    expect(office.books.documents.some((d) => d.file === "/f/c1")).toBe(false);
   });
 
   it("says when a sheet is not a list of bills, and forgets a rejected layout", () => {

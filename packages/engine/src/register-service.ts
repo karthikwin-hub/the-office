@@ -82,10 +82,37 @@ export class RegisterService {
     readonly store: RegisterStore,
   ) {}
 
-  receive(f: { file: string; fileUrl: string; sheets: Sheet[]; via: Document["channel"]; from: string | null; auto: boolean; id: string }): RegisterResult[] {
+  /** Sheets in a new layout whose header names leave a needed field unfound: a model may suggest those columns. */
+  unclear(sheets: Sheet[]): { index: number; headers: string[]; sample: string[][]; guess: BillMapping }[] {
+    return sheets.slice(0, MAX_SHEETS).flatMap((sheet, index) => {
+      const { at, mapping: guess } = findRegisterHeader(sheet.rows);
+      const headers = sheet.rows[at] ?? [];
+      if (this.store.layout(layoutKey(headers)) || registerScore(guess) < 2 || !missingBillFields(guess).length) return [];
+      return [{ index, headers, sample: sheet.rows.slice(at + 1, at + 4), guess }];
+    });
+  }
+
+  /**
+   * Reads each sheet of a file. `proposed` holds, by sheet, columns a model suggested for a new layout
+   * (`fromLayoutAnswer`); the owner still confirms them on the card.
+   */
+  receive(f: {
+    file: string;
+    fileUrl: string;
+    sheets: Sheet[];
+    via: Document["channel"];
+    from: string | null;
+    auto: boolean;
+    id: string;
+    proposed?: ({ kind: SheetBillKind | null; mapping: BillMapping } | null | undefined)[];
+  }): RegisterResult[] {
     return f.sheets.slice(0, MAX_SHEETS).map((sheet, n) => {
       const importId = f.sheets.length > 1 ? `${f.id}-${n + 1}` : f.id;
-      const { at, mapping: guess } = findRegisterHeader(sheet.rows);
+      const found = findRegisterHeader(sheet.rows);
+      const at = found.at;
+      const help = f.proposed?.[n];
+      const guess = help?.mapping ?? found.mapping;
+      const suggested = (Object.keys(guess) as BillField[]).filter((k) => !found.mapping[k]);
       const pending: PendingRegister = {
         file: f.file.slice(0, 200),
         fileUrl: f.fileUrl,
@@ -109,9 +136,9 @@ export class RegisterService {
           message: `${sheet.name} does not look like a list of bills or invoices: no columns for the number, date, party and amount.`,
         };
       }
-      const kind = registerKind(sheet.rows, at, f.file);
+      const kind = help?.kind ?? registerKind(sheet.rows, at, f.file);
       this.store.setPending(importId, pending);
-      const card = this.layoutCard(importId, pending, kind, guess);
+      const card = this.layoutCard(importId, pending, kind, guess, suggested);
       this.office.books.staged.push(card);
       this.office.log("accountant", `A list of ${KIND_NAME[kind]} in a new layout came in (${f.file}); it waits for you to confirm its columns.`, {
         kind: "sheet_import",
@@ -192,7 +219,7 @@ export class RegisterService {
     return { sheet: p.sheet, status: "read", staged, posted, duplicates, skipped: skipped.slice(0, 200), message };
   }
 
-  private layoutCard(importId: string, p: PendingRegister, kind: SheetBillKind, mapping: BillMapping): StagedChange {
+  private layoutCard(importId: string, p: PendingRegister, kind: SheetBillKind, mapping: BillMapping, suggested: BillField[]): StagedChange {
     const headers = p.rows[p.headerAt] ?? [];
     const missing = missingBillFields(mapping);
     const found = (Object.keys(mapping) as BillField[]).map((f) => `${BILL_FIELD_LABEL[f]}: "${mapping[f]}"`);
@@ -203,11 +230,15 @@ export class RegisterService {
       kind: "sheet_layout",
       createdAt: new Date().toISOString(),
       title: `Read ${p.file} as ${KIND_NAME[kind]}`,
-      summary: missing.length
-        ? `A layout I have not seen. I could not find ${missing.map((m) => BILL_FIELD_LABEL[m].toLowerCase()).join(", ")}: choose the columns before approving.`
-        : `A layout I have not seen. I read it as ${found.join("; ")}. Approve to read its ${plural(rows, "row")}: each bill comes to your desk with its checks, and files in this layout are read on their own after this.`,
+      summary:
+        (missing.length
+          ? `A layout I have not seen. I could not find ${missing.map((m) => BILL_FIELD_LABEL[m].toLowerCase()).join(", ")}: choose the columns before approving.`
+          : `A layout I have not seen. I read it as ${found.join("; ")}. Approve to read its ${plural(rows, "row")}: each bill comes to your desk with its checks, and files in this layout are read on their own after this.`) +
+        (suggested.length
+          ? ` The AI suggested the columns for ${suggested.map((m) => BILL_FIELD_LABEL[m].toLowerCase()).join(", ")} from the first rows; check them against the sample.`
+          : ""),
       evidence: [{ label: p.file, ref: { kind: "sheet_import", id: importId } }],
-      payload: { importId, kind, mapping, headers, sample: p.rows.slice(p.headerAt + 1, p.headerAt + 4), missing, file: p.file, sheet: p.sheet },
+      payload: { importId, kind, mapping, headers, sample: p.rows.slice(p.headerAt + 1, p.headerAt + 4), missing, suggested, file: p.file, sheet: p.sheet },
       status: "pending",
     };
   }
