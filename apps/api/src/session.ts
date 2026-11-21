@@ -23,6 +23,14 @@ export type SignedIn = {
 /** `none`: nobody is signed in. `ask`: Better Auth must decide. `ok`: signed in, with the results of any statements sent alongside. */
 export type SessionRead = { state: "none" } | { state: "ask" } | { state: "ok"; signedIn: SignedIn; token: string; extra: D1Result[] };
 
+/**
+ * Who a control-plane statement is about: a person's id, or the person whose session has this token. The second lets a
+ * statement go in the session's own D1 round trip (readSession's `extra`) and find rows only for that session's person.
+ */
+export type Who = { userId: string } | { token: string };
+export const whoIs = (who: Who): [sql: string, arg: string] =>
+  "token" in who ? ["(SELECT user_id FROM session WHERE token = ?)", who.token] : ["?", who.userId];
+
 /** Better Auth's name for the cookie: `__Secure-` on an https BETTER_AUTH_URL, as its cookie getter decides. */
 export const sessionCookieName = (env: Pick<Env, "BETTER_AUTH_URL">) =>
   `${env.BETTER_AUTH_URL?.startsWith("https://") ? "__Secure-" : ""}better-auth.session_token`;

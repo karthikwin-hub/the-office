@@ -1,4 +1,5 @@
 import { INDIA, type OfficeLocale, readLocale, type Role } from "@office/contracts";
+import { type Who, whoIs } from "./session";
 import { b64url } from "./social/tokens";
 
 /**
@@ -94,6 +95,25 @@ const toOffice = (r: OfficeDb): OfficeRow => ({
   subdomain: r.subdomain ?? null,
 });
 
+export type OfficeOf = { id: string; name: string; role: Role; status: OfficeStatus; locale: OfficeLocale; subdomain: string | null };
+
+/** A membership statement's result: the office and the person's role in it, or null if they are not in it. */
+export function membershipOf(r: D1Result): { office: OfficeRow; role: Role } | null {
+  const row = (r.results as (OfficeDb & { member_role: Role })[])[0];
+  return row ? { office: toOffice(row), role: row.member_role } : null;
+}
+
+/** An offices-of statement's result. */
+export const officesFrom = (r: D1Result): OfficeOf[] =>
+  (r.results as ({ id: string; name: string; status: OfficeStatus; role: Role; subdomain: string | null } & LocaleDb)[]).map((o) => ({
+    id: o.id,
+    name: o.name,
+    role: o.role,
+    status: o.status,
+    locale: localeOf(o),
+    subdomain: o.subdomain ?? null,
+  }));
+
 export class ControlPlane {
   constructor(
     private readonly db: D1Database,
@@ -109,22 +129,30 @@ export class ControlPlane {
 
   /** The caller's role in this office, or null if they are not in it. */
   async membership(officeId: string, userId: string): Promise<{ office: OfficeRow; role: Role } | null> {
-    const r = await this.db
-      .prepare("SELECT o.*, m.role AS member_role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.office_id = ? AND m.user_id = ?")
-      .bind(officeId, userId)
-      .first<OfficeDb & { member_role: Role }>();
-    return r ? { office: toOffice(r), role: r.member_role } : null;
+    return membershipOf(await this.membershipStatement(officeId, { userId }).all());
+  }
+
+  /** The statement behind `membership`, to send in a batch; `membershipOf` reads its result. */
+  membershipStatement(officeId: string, who: Who): D1PreparedStatement {
+    const [user, arg] = whoIs(who);
+    return this.db
+      .prepare(`SELECT o.*, m.role AS member_role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.office_id = ? AND m.user_id = ${user}`)
+      .bind(officeId, arg);
   }
 
   /** An office being deleted disappears for everyone but its owners, who may still restore it. */
-  async officesOf(userId: string): Promise<{ id: string; name: string; role: Role; status: OfficeStatus; locale: OfficeLocale; subdomain: string | null }[]> {
-    const { results } = await this.db
+  async officesOf(userId: string): Promise<OfficeOf[]> {
+    return officesFrom(await this.officesOfStatement({ userId }).all());
+  }
+
+  /** The statement behind `officesOf`, to send in a batch; `officesFrom` reads its result. */
+  officesOfStatement(who: Who): D1PreparedStatement {
+    const [user, arg] = whoIs(who);
+    return this.db
       .prepare(
-        "SELECT o.id, o.name, o.status, o.country, o.currency, o.locale, o.time_zone, o.subdomain, m.role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ? AND (o.status != 'deleting' OR m.role = 'owner') ORDER BY o.name",
+        `SELECT o.id, o.name, o.status, o.country, o.currency, o.locale, o.time_zone, o.subdomain, m.role FROM membership m JOIN office o ON o.id = m.office_id WHERE m.user_id = ${user} AND (o.status != 'deleting' OR m.role = 'owner') ORDER BY o.name`,
       )
-      .bind(userId)
-      .all<{ id: string; name: string; status: OfficeStatus; role: Role; subdomain: string | null } & LocaleDb>();
-    return results.map((r) => ({ id: r.id, name: r.name, role: r.role, status: r.status, locale: localeOf(r), subdomain: r.subdomain ?? null }));
+      .bind(arg);
   }
 
   /** Opens a new, empty office owned by this person, with its own email-in address. */
