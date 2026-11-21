@@ -94,9 +94,10 @@ export async function proposeLayout(
   sheet: { headers: string[]; sample: string[][]; guess: BillMapping },
   business: Business,
 ): Promise<{ kind: SheetBillKind | null; mapping: BillMapping }> {
-  const run = ai.run.bind(ai) as unknown as Run;
   const { system, user, schema } = layoutPrompt(sheet.headers, sheet.sample, business);
   try {
+    // Inside the try: where Workers AI is not bound (local runs), the names' guess stands.
+    const run = ai.run.bind(ai) as unknown as Run;
     const answer = await run(TEXT_MODEL, {
       messages: [
         { role: "system", content: system },
