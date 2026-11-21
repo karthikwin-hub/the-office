@@ -91,3 +91,26 @@ describe("a register sent to the accounts address", () => {
     expect(desk.items.some((i) => i.kind === "ledger_entry")).toBe(false);
   });
 });
+
+describe("a sales report sent to the accounts address", () => {
+  it("is read as sales only from someone the sales address would take it from", async () => {
+    const { id, owner, stub } = await openOffice();
+    const hire = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ hired: true }) };
+    expect((await stub.fetch(await asCaller(callerFor(id, owner), "/api/hiring/marketplace-manager", hire))).status).toBe(200);
+    const report = new TextEncoder().encode("Order Id,Order Date,SKU,Quantity,Invoice Amount\nAMZ-1,10-11-2026,FAN-1,1,99999.00");
+    const r = attachmentRequest("doc-mail-sales", { content: report, mimeType: "text/csv", filename: "orders.csv" }, "x@attacker.test");
+    await stub.fetch(await asCaller(system(id), new URL(r.url).pathname, { method: "PUT", body: report, headers: r.headers }));
+    const res = await stub.fetch(
+      await asSystem(id, "/internal/email", {
+        from: "x@attacker.test",
+        subject: "report",
+        docs: [{ id: "doc-mail-sales", mimeType: "text/csv", filename: "orders.csv" }],
+        skipped: [],
+      }),
+    );
+    // Not proven, and neither a member nor a platform: it is not added to the owner's sales.
+    expect(((await res.json()) as { sheets: string[] }).sheets[0]).not.toMatch(/^Read /);
+    const sales = (await (await stub.fetch(await asCaller(callerFor(id, owner), ROUTES.onlineSales))).json()) as { imports: unknown[] };
+    expect(sales.imports).toEqual([]);
+  });
+});

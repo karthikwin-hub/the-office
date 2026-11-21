@@ -27,7 +27,7 @@ import {
   Settings,
   SheetKind,
 } from "@office/contracts";
-import { gmailConfirmation, parseCommand, readForward, recognise } from "@office/engine";
+import { findHeader, gmailConfirmation, layoutKey, parseCommand, readForward, recognise } from "@office/engine";
 import {
   digestChannel,
   dispatch,
@@ -1324,7 +1324,8 @@ export class Office extends Agent<Env> {
         await this.files.put(key, bytes, contentType, meta);
       },
       readImage: (id, image, auto) => this.readImage(id, image, auto),
-      readSheet: (id: string, name: string, bytes: ArrayBuffer) => this.readAnySheet(id, name, bytes, "whatsapp", null, false),
+      // A linked WhatsApp number is a member of the office, as the sales address's rule asks.
+      readSheet: (id: string, name: string, bytes: ArrayBuffer) => this.readAnySheet(id, name, bytes, "whatsapp", null, false, true),
       readItems: (id, items, auto) => this.readItems(id, items, auto),
     };
   }
@@ -1541,7 +1542,7 @@ export class Office extends Agent<Env> {
       if (!BILL_TYPES.includes(d.mimeType as BillType)) {
         // A spreadsheet: recognised as a list of bills or a sales report, and read by the agent whose work it is.
         const bytes = await this.files.bytes(docKey(this.officeId!, d.id));
-        if (bytes) sheets.push(await this.readAnySheet(d.id, d.filename ?? `${d.id}.xlsx`, bytes, "email", mail.from, auto));
+        if (bytes) sheets.push(await this.readAnySheet(d.id, d.filename ?? `${d.id}.xlsx`, bytes, "email", mail.from, auto, await this.salesFrom(mail)));
         continue;
       }
       this.office.receiveDocument({ id: d.id, file: fileUrl(this.officeId!, d.id), channel: "email", from: mail.from, pages: 1 });
@@ -1561,16 +1562,42 @@ export class Office extends Agent<Env> {
     return { received: mail.docs.length, read: results.length, sheets };
   }
 
+  /** The sales address's rule for who may send sales reports, applied to mail at the accounts address. */
+  private async salesFrom(mail: MailDocs): Promise<boolean> {
+    const members = new Set((await this.plane().members(this.officeId!)).map((u) => u.email.toLowerCase()));
+    return Boolean(salesSender(members, mail));
+  }
+
+  /** A known platform's report, a sales layout the owner confirmed, or a sheet whose names look like sales and not like bills. */
+  private looksLikeSales(rows: string[][]): boolean {
+    if (findHeader(rows).format) return true;
+    for (const row of rows.slice(0, 20)) {
+      const key = layoutKey(row);
+      if (this.office.intake.store.layout(key)?.sheetKind === "sales_report" || this.office.sales.store.mapping(key)) return true;
+    }
+    if (this.office.intake.knownLayout(rows, ["bill_register"])) return false;
+    const seen = recognise(rows, ["bill_register", "sales_report"]);
+    return seen.kind === "sales_report" && seen.score >= 0.5;
+  }
+
   /**
    * A spreadsheet that came by email or WhatsApp: a sales report goes to the Marketplace Manager when one is hired,
    * anything else is read as a list of bills (ADR 0010). Says in one line what happened.
    */
-  private async readAnySheet(docId: string, name: string, bytes: ArrayBuffer, via: "email" | "whatsapp", from: string | null, auto: boolean): Promise<string> {
+  private async readAnySheet(
+    docId: string,
+    name: string,
+    bytes: ArrayBuffer,
+    via: "email" | "whatsapp",
+    from: string | null,
+    auto: boolean,
+    /** Whether this sender may send sales reports: the sales address's own rule (`salesSender`). */
+    salesOk: boolean,
+  ): Promise<string> {
     const { readSheets } = await import("@office/engine/sheets");
-    const first = await readSheets(name, bytes).catch(() => []);
-    const kinds: SheetKind[] = this.office.hired("marketplace-manager") ? ["bill_register", "sales_report"] : ["bill_register"];
-    const seen = first[0] ? recognise(first[0].rows, kinds) : null;
-    if (seen?.kind === "sales_report" && seen.score >= 0.5) return salesReply(await readSalesFile(this.office, { name, bytes, via, sender: from }));
+    const rows = (await readSheets(name, bytes).catch(() => []))[0]?.rows ?? [];
+    if (salesOk && this.office.hired("marketplace-manager") && this.looksLikeSales(rows))
+      return salesReply(await readSalesFile(this.office, { name, bytes, via, sender: from }));
     const results = await readSheetFile(this.office, this.ai, {
       docId,
       name,
