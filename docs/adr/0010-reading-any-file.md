@@ -26,7 +26,7 @@ Every file goes through three steps.
    Object, and their tables will be read back into rows. Markdown is used only to show a file to a model, never as
    the record.
 2. **Recognise** what the file is. Known layouts are matched by rules first. A sheet in a layout the office has not
-   seen is matched by header names (`packages/engine/src/sheets/bills.ts`), and a model may only propose which column
+   seen is matched by header names (`packages/engine/src/registers.ts`), and a model may only propose which column
    holds which field from the header row and a few sample rows: it never copies figures.
 3. **Map to the canonical records the books already use.** A bill or invoice becomes an `Extraction`, which goes
    through the same `checkExtraction` and `stageExtraction` as a PDF bill. Sales stay `SalesLine`s; parties, items

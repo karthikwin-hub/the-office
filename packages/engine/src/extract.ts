@@ -33,8 +33,8 @@ export type Extraction = {
   totals: Totals;
   regions: Region[];
   checks: Check[];
-  /** "rules" when read from the layout alone, "model" when a language model located the fields */
-  method: "rules" | "model";
+  /** "rules" when read from the layout alone, "model" when a language model located the fields, "sheet" from a register's cells */
+  method: "rules" | "model" | "sheet";
 };
 
 const GSTIN_RE = /\b(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b/;
