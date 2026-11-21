@@ -1,4 +1,12 @@
-import { type Assignee, type ComplianceCheck, type ComplianceView as View, type MasterCheck, type Obligation, type SrnStatus } from "@office/contracts";
+import {
+  type Assignee,
+  BILL_TYPES,
+  type ComplianceCheck,
+  type ComplianceView as View,
+  type MasterCheck,
+  type Obligation,
+  type SrnStatus,
+} from "@office/contracts";
 import { Amount, CoveringNote, LedgerTable, type LedgerColumn } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -484,13 +492,7 @@ function FiledForm({ o }: { o: Obligation }) {
       </div>
       <div className="field">
         <label htmlFor={`proof-${o.id}`}>Proof (PDF or picture, up to 10 MB)</label>
-        <input
-          id={`proof-${o.id}`}
-          className="input"
-          type="file"
-          accept="application/pdf,image/png,image/jpeg,image/webp"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
+        <input id={`proof-${o.id}`} className="input" type="file" accept={BILL_TYPES.join(",")} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </div>
       <button type="submit" className="btn btn-primary" disabled={change.isPending || !filedOn}>
         Mark filed

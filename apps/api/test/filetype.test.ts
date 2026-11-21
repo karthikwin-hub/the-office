@@ -1,3 +1,4 @@
+import { BILL_TYPES } from "@office/contracts";
 import { describe, expect, it } from "vitest";
 import { audioType, billType, sheetType } from "../src/filetype";
 import { parseInbound } from "../src/mail";
@@ -23,6 +24,16 @@ describe("the type a received file is stored under", () => {
     expect(sheetType("r.txt", new Uint8Array([0xff, 0xfe, 0x61, 0, 0x2c, 0]))).toBe("text/plain");
     expect(sheetType("r.txt", new Uint8Array([0x61, 0, 0x2c, 0, 0x62, 0]))).toBe("text/plain");
     expect(sheetType("r.csv", new Uint8Array([0, 0, 1, 0, 0, 7, 0, 0]))).toBeNull();
+  });
+
+  it("takes every type the upload picker offers, by its bytes", () => {
+    const sample: Record<(typeof BILL_TYPES)[number], Uint8Array> = {
+      "application/pdf": enc("%PDF-1.7"),
+      "image/png": PNG,
+      "image/jpeg": new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0]),
+      "image/webp": enc("RIFF\x00\x00\x00\x00WEBPVP8 "),
+    };
+    for (const t of BILL_TYPES) expect(billType(`bill.${t.split("/")[1]}`, t, sample[t])).toBe(t);
   });
 
   it("takes a bill's type from its bytes", () => {

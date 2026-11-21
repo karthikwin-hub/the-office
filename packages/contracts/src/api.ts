@@ -720,6 +720,10 @@ export type AskResponse = z.infer<typeof AskResponse>;
 /** A run of text from a PDF's text layer; positions are page fractions, origin top left. */
 export const TextItem = z.object({ str: z.string().max(500), page: z.number().int().min(1), x: z.number(), y: z.number(), w: z.number(), h: z.number() });
 export type TextItem = z.infer<typeof TextItem>;
+/** The files a bill or invoice may come as: what the upload picker offers and what the server takes by its bytes. */
+export const BILL_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] as const;
+export type BillType = (typeof BILL_TYPES)[number];
+
 export const ReadRequest = z.object({ items: z.array(TextItem).max(6000) });
 export const IngestResult = z.object({ document: Document, staged: StagedChange.nullable(), message: z.string() });
 export type IngestResult = z.infer<typeof IngestResult>;

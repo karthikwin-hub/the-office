@@ -1,3 +1,5 @@
+import type { BillType } from "@office/contracts";
+
 /**
  * The content type a received file is stored under. A sender's own type is never kept: it is
  * chosen from a fixed list by the file's extension and its first bytes, and a file that fits
@@ -12,8 +14,6 @@ export const SHEET_TYPES = {
   xls: "application/vnd.ms-excel",
   zip: "application/zip",
 } as const;
-export const BILL_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] as const;
-export type BillType = (typeof BILL_TYPES)[number];
 
 const head = (bytes: ArrayBuffer | Uint8Array, n: number) => (bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).subarray(0, n);
 const startsWith = (b: Uint8Array, sig: number[], at = 0) => sig.every((x, i) => b[at + i] === x);
