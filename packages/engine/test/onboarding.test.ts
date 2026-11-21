@@ -213,6 +213,26 @@ describe("bringing in existing books", () => {
     expect(call(office, "/api/onboarding/stage", all()).status).toBe(422);
   });
 
+  it("reads a Tally ledger list and outstanding report by their own column names, under a title row", () => {
+    const office = fresh();
+    const ledgers = [
+      "Kaveri Electricals,,,",
+      "Name of Ledger,Under,GSTIN/UIN,State Name",
+      "Shakti Cables,Sundry Creditors,,Karnataka",
+      "Lakshmi Stores,Sundry Debtors,,Karnataka",
+    ].join("\n");
+    const outstanding = ["Voucher Type,Ref No,Date,Party Name,Opening Amount,Pending Amount", "Sales,S-9,20/10/2026,Lakshmi Stores,1180,1180"].join("\n");
+    const p = office.checkOnboarding({
+      booksFrom: "2026-11-01",
+      files: [
+        { kind: "parties", name: "ledgers.csv", csv: ledgers },
+        { kind: "open-items", name: "outstanding.csv", csv: outstanding },
+      ],
+    });
+    expect(p.issues).toEqual([]);
+    expect(p.counts).toMatchObject({ customers: 1, suppliers: 1, invoices: 1 });
+  });
+
   it("limits a file to 2,000 rows", () => {
     const rows = Array.from({ length: 2001 }, (_, i) => `customer,Customer ${i},,29,`);
     const p = fresh().checkOnboarding(only("parties", ["type,name,gstin,state,city", ...rows].join("\n")));
