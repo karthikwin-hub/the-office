@@ -1014,6 +1014,8 @@ export const ROUTES = {
   trace: (figureId: string) => `/api/trace/${encodeURIComponent(figureId)}`,
   document: (id: string) => `/api/documents/${id}`,
   documents: "/api/documents",
+  /** A spreadsheet listing bills or invoices, read by the Accountant (ADR 0010). */
+  registers: "/api/registers",
   unread: "/api/documents/unread",
   readDocument: (id: string) => `/api/documents/${id}/read`,
   file: (id: string) => `/api/files/${id}`,

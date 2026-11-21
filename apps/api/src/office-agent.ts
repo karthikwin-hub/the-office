@@ -37,7 +37,7 @@ import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
 import { ARCHIVE_MAX_BYTES, importAllowed, moveLinks, OfficeImport } from "./import";
 import { fileRoute, OfficeFiles } from "./files";
-import { billType } from "./filetype";
+import { billType, sheetType } from "./filetype";
 // The light entry: the sample business (2.3 MB) is imported only when an office is seeded with it, never at an isolate's start.
 import { emptyBooks, SAMPLE_SEED } from "@office/fixtures/empty";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -51,6 +51,7 @@ import { fromGoogleForwarding, mailSender } from "./mail";
 import { readPrefs, savePrefs } from "./prefs";
 import { meteredAi, QuotaError, take } from "./quota";
 import { readScan, readText } from "./reading";
+import { readRegisterFile, SqlRegisterStore } from "./registers";
 import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
@@ -76,7 +77,7 @@ import {
   provenSender,
   salesSender,
 } from "./inbound";
-import { readSalesFile, salesReply, SqlSalesStore } from "./sales";
+import { isSheetFile, readSalesFile, salesReply, SqlSalesStore } from "./sales";
 import { CustomerDesk } from "./customer/desk";
 import { CS_AGENT, splitCustomerDms, type ChatPostBody, type SupportMail, supportAddress, toSupportInbound } from "./customer/channels";
 import { ControlPlane, ingestAddress, OFFICE_ID, type RouteKind } from "./tenancy";
@@ -131,6 +132,7 @@ export class Office extends Agent<Env> {
   private conversations!: SqlCsStore;
   private assistantStore!: SqlAssistantStore;
   private salesStore!: SqlSalesStore;
+  private registerStore!: SqlRegisterStore;
   private office!: OfficeService;
   private vault!: TokenVault;
   /** The office's stored files in R2, sealed with its own key (`files.ts`). */
@@ -200,6 +202,7 @@ export class Office extends Agent<Env> {
     this.conversations = new SqlCsStore(sql);
     this.assistantStore = new SqlAssistantStore(sql);
     this.salesStore = new SqlSalesStore(sql);
+    this.registerStore = new SqlRegisterStore(sql);
     this.vault = new TokenVault(sql, rootKeys(this.env), id);
     this.files = new OfficeFiles(this.env.DOCS, rootKeys(this.env), id);
     this.spentStates = new SpentStates(sql);
@@ -313,6 +316,7 @@ export class Office extends Agent<Env> {
       conversations: this.conversations,
       assistant: this.assistantStore,
       sales: this.salesStore,
+      registers: this.registerStore,
       edits: this.edits,
       backup: () => this.backupStatus(),
     });
@@ -627,6 +631,7 @@ export class Office extends Agent<Env> {
       return json({ thread: this.office.customers.threadView(r.thread.id), notes: r.notes });
     }
     if (post && path === "/api/documents") return this.upload(request, caller);
+    if (post && path === ROUTES.registers) return this.uploadRegister(request, caller);
     if (post && path === ROUTES.complianceProof) return this.uploadProof(request, caller);
     if (post && (path === ROUTES.onboardingCheck || path === ROUTES.onboardingStage)) return this.onboarding(request, caller, path === ROUTES.onboardingStage);
     if (post && path === "/api/social/media" && request.headers.get("content-type")?.includes("multipart")) return this.uploadMedia(request, caller);
@@ -1628,6 +1633,30 @@ export class Office extends Agent<Env> {
       lastError: last.error ?? null,
       where: target ? `${new URL(target.endpoint).host}, region ${target.region}` : "Not set up yet: the platform owner adds the bucket in India.",
     };
+  }
+
+  /** A spreadsheet that lists bills or invoices: kept with the office's files, then read as registers (ADR 0010). */
+  private async uploadRegister(request: Request, caller: Caller): Promise<Response> {
+    const form = await request.formData();
+    const file = form.get("file") as File | string | null;
+    if (!(file instanceof File)) return json({ error: "Attach a file." }, 400);
+    if (file.size > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
+    const bytes = await file.arrayBuffer();
+    const type = isSheetFile(file.name, file.type) ? sheetType(file.name, bytes) : null;
+    if (!type) return json({ error: "Send the list as an Excel (.xlsx) or CSV file." }, 415);
+    take(this.kv.bind(this), istDate(), "upload", file.size);
+    const id = newDocId();
+    await this.files.put(docKey(this.officeId!, id), bytes, type, { filename: file.name, by: caller.email });
+    const results = await readRegisterFile(this.office, this.ai, {
+      docId: id,
+      name: file.name,
+      bytes,
+      fileUrl: fileUrl(this.officeId!, id),
+      via: "upload",
+      from: null,
+      auto: true,
+    });
+    return json({ results, message: results.map((r) => r.message).join(" ") });
   }
 
   /** Proof of filing for a calendar item: the challan, acknowledgement or approval letter, kept with the office's files. */

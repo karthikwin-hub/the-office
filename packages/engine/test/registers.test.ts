@@ -170,6 +170,24 @@ describe("the Accountant and a register", () => {
     expect(office.books.staged.filter((s) => s.kind === "sheet_layout")).toHaveLength(1);
   });
 
+  it("adds a new supplier once for all its bills in a file, and sees their bills when the file comes again", () => {
+    const fresh = loadBooks();
+    fresh.agents.find((a) => a.agentId === "accountant")!.trustLevel = "trainee";
+    const office = new OfficeService(fresh);
+    const rows = (numbers: string[]) => [
+      ["Invoice No", "Invoice Date", "Supplier Name", "Taxable Value", "Invoice Value"],
+      ...numbers.map((n) => [n, "2026-11-10", "Nayak Hardware Hubli", "1000", "1000"]),
+    ];
+    const vendors = office.books.parties.length;
+    const [card] = receive(office, "reg-d1", rows(["N-1", "N-2"]));
+    office.decide(card!.cardId!, { action: "approve" }, "Anil Kaveri");
+    const added = office.books.parties.slice(vendors);
+    expect(added.map((p) => p.name)).toEqual(["Nayak Hardware Hubli"]);
+    expect(office.books.bills.filter((b) => b.partyId === added[0]!.id)).toHaveLength(2);
+    const [again] = receive(office, "reg-d2", rows(["N-2", "N-3"]));
+    expect(again).toMatchObject({ status: "read", staged: 1, duplicates: 1 });
+  });
+
   it("puts columns a model suggested on the card, marked as the AI's, for the owner to confirm", () => {
     const office = new OfficeService(loadBooks());
     const sheets = [{ name: "Sheet1", rows: register(["P-1"]) }];
