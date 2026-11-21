@@ -697,6 +697,18 @@ export const PartyView = z.object({
 });
 export type PartyView = z.infer<typeof PartyView>;
 
+/** One customer or supplier in the list of parties, whether or not anything has been sold or bought yet. */
+export const PartyRow = Party.pick({ id: true, kind: true, name: true, gstin: true, stateCode: true, city: true, tdsSection: true }).extend({
+  /** The state's name, as the GST state codes give it. */
+  state: z.string(),
+  /** A customer: what they still owe you. A supplier: what you still owe them, after TDS. */
+  owedPaise: Paise,
+});
+export type PartyRow = z.infer<typeof PartyRow>;
+
+export const PartiesView = z.object({ parties: z.array(PartyRow) });
+export type PartiesView = z.infer<typeof PartiesView>;
+
 /* ---------- Office Manager ---------- */
 
 export const AskRequest = z.object({ question: z.string().min(1).max(500) });
@@ -996,6 +1008,7 @@ export const ROUTES = {
   importReturn: "/api/returns/import",
   onboardingCheck: "/api/onboarding/check",
   onboardingStage: "/api/onboarding/stage",
+  parties: "/api/parties",
   party: (id: string) => `/api/parties/${id}`,
   partyMsme: (id: string) => `/api/parties/${encodeURIComponent(id)}/msme`,
   ask: "/api/ask",

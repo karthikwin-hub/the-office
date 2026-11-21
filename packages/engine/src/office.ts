@@ -20,6 +20,7 @@ import type {
   Obligation,
   OfficeView,
   Paper,
+  PartiesView,
   PartyView,
   BrandVoice,
   Channel,
@@ -61,7 +62,7 @@ import { SalesService } from "./sales/service";
 import { MemorySalesStore, type SalesStore } from "./sales/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 import { buildObligations, complianceProposals, complianceView } from "./compliance";
-import { fyOf } from "./compliance/profile";
+import { billOpenPaise, fyOf } from "./compliance/profile";
 import { baselineEntry, diffSnapshots, type EditLog, MemoryEditLog, RETENTION_YEARS, type Snapshot, snapshot, verifyChain } from "./bookslog";
 
 /** Always the owner's call, whatever the agent's trust level: spending, payroll, what goes to the accountant, the month's plan, a customer the agent handed over, and bringing in existing books. */
@@ -1731,6 +1732,28 @@ export class OfficeService {
       party: partyId ? this.ledger.party(partyId) : null,
       outstandingPaise: invoice ? this.ledger.outstanding(invoice.id) : null,
     };
+  }
+
+  /** Every customer and supplier, with what is owed either way: a party brought in with nothing sold or bought yet is listed too. */
+  partiesView(): PartiesView {
+    const l = this.ledger;
+    const owed = new Map<string, number>();
+    const add = (partyId: string, paise: number) => owed.set(partyId, (owed.get(partyId) ?? 0) + paise);
+    for (const o of openInvoices(l)) add(o.partyId, o.outstandingPaise);
+    for (const b of l.payableBills) add(b.partyId, billOpenPaise(l, b));
+    const parties = this.books.parties.map((p) => ({
+      id: p.id,
+      kind: p.kind,
+      name: p.name,
+      gstin: p.gstin,
+      stateCode: p.stateCode,
+      state: l.stateName(p.stateCode),
+      city: p.city,
+      tdsSection: p.kind === "vendor" ? (p.tdsSection ?? null) : null,
+      owedPaise: owed.get(p.id) ?? 0,
+    }));
+    parties.sort((a, b) => a.name.localeCompare(b.name, "en-IN"));
+    return { parties };
   }
 
   partyView(id: string): PartyView {
