@@ -33,6 +33,7 @@ import {
   type InvitationPeek,
   type InviteResult,
   type Me,
+  type ImportProgress,
   type OfficeAdmin,
   type OfficeSummary,
   type SalesReport,
@@ -239,6 +240,9 @@ export const officeAdmin = {
   deleteOffice: (confirm: string) => call<{ ok: true; purgeAt: string }>(ROUTES.officeAdmin, { method: "DELETE", body: { confirm } }),
   restore: () => call<{ ok: true }>(ROUTES.officeRestore, { method: "POST" }),
   exportAll: () => download(ROUTES.officeExport, "office-export.zip"),
+  /** Staging only: loads an export into this empty office; then `importNext` until it says finished. */
+  importStart: (file: Blob) => sendFile<ImportProgress>(ROUTES.officeImport, file, "application/zip"),
+  importNext: () => call<ImportProgress>(ROUTES.officeImportNext, { method: "POST" }),
 };
 
 export const api = {
@@ -428,6 +432,19 @@ export function savePaper(p: Paper) {
  * Fetches a file and hands it to the browser as a download. A plain link would
  * skip the role header, and in mockups the service worker never sees navigations.
  */
+/** A file sent as the whole body, as it is (not a form): the office reads it. */
+async function sendFile<T>(path: string, file: Blob, type: string): Promise<T> {
+  const send = () =>
+    fetch(officePath(path), { method: "POST", headers: { "content-type": type, "x-office-as": viewingAs() }, body: file, credentials: "include" });
+  let res = await send();
+  if (await confirmedAgain(res)) res = await send();
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new ApiError(res.status, err.error ?? res.statusText, err.code);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function download(path: string, fallbackName: string): Promise<void> {
   const send = () => fetch(officePath(path), { headers: { "x-office-as": viewingAs() }, credentials: "include" });
   let res = await send();

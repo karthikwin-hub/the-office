@@ -1,4 +1,4 @@
-import type { InviteResult, OfficeAdmin, Role } from "@office/contracts";
+import type { ImportProgress, InviteResult, OfficeAdmin, Role } from "@office/contracts";
 import { dateLabel } from "@office/engine";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -255,6 +255,7 @@ function OwnerTools({ a }: { a: OfficeAdmin }) {
         <span className="field-help">The books as JSON and every stored bill and picture, in one zip.</span>
       </p>
       {exportAll.error ? <p className="form-error">{exportAll.error.message}</p> : null}
+      {a.importable ? <ImportFromLive /> : null}
 
       {a.status === "deleting" ? (
         <p>
@@ -296,6 +297,7 @@ const ACTIONS: Record<string, string> = {
   "office.suspended": "suspended the office",
   "office.transferred": "handed the office over",
   "office.exported": "downloaded everything",
+  "office.imported": "imported an export from live",
   "office.subdomain": "set the office's own address:",
   "invitation.sent": "invited",
   "office.onboarded": "opened the office from the platform console:",
@@ -307,6 +309,57 @@ const ACTIONS: Record<string, string> = {
   "member.left": "left the office",
   "whatsapp.linked": "linked WhatsApp",
 };
+
+/**
+ * Staging only: an owner loads an export downloaded from live into this new, empty office, to test with a copy of the
+ * business. The office copies the files in batches; this asks for the next batch until it is done.
+ */
+function ImportFromLive() {
+  const qc = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const run = useMutation({
+    mutationFn: async (zip: File) => {
+      let p = await officeAdmin.importStart(zip);
+      setProgress(p);
+      while (!p.finished) {
+        p = await officeAdmin.importNext();
+        setProgress(p);
+      }
+      return p;
+    },
+    onSettled: () => qc.invalidateQueries(),
+  });
+  return (
+    <>
+      <h3 className="settings-sub">Copy a business from live (staging only)</h3>
+      <p className="field-help">
+        Download everything from the business on live, then load that zip here, into this new, empty office. People, logins and connected channels are not
+        copied: every agent starts as a trainee and nothing is sent without approval.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (file) run.mutate(file);
+        }}
+      >
+        <label htmlFor="import-file">Export (zip)</label>{" "}
+        <input id="import-file" type="file" accept=".zip,application/zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={run.isPending} />{" "}
+        <button type="submit" className="btn" disabled={!file || run.isPending}>
+          {run.isPending ? "Importing" : "Import"}
+        </button>
+      </form>
+      {progress ? (
+        <p role="status">
+          {progress.finished ? "Imported: " : "Copying files: "}
+          {progress.done} of {progress.total}
+          {progress.skipped ? `, ${progress.skipped} could not be read` : ""}.
+        </p>
+      ) : null}
+      {run.error ? <p className="form-error">{run.error.message}</p> : null}
+    </>
+  );
+}
 
 function auditLine(e: OfficeAdmin["audit"][number]): string {
   const what = ACTIONS[e.action] ?? e.action;
