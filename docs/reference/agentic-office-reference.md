@@ -64,7 +64,7 @@ The Compliance Officer builds the company's own filing calendar from a short pro
 
 ## 6. Bringing in the books a business already keeps
 
-A business moving from Tally or spreadsheets fills in three CSV templates in Settings, under **Bring in your books**: customers and suppliers, products and stock, and unpaid invoices and bills. The check reads every row and says exactly what to fix, by row number: a GSTIN whose check digit is wrong is refused with a hint, for example that a letter I was typed for the digit 1. When everything reads correctly, one card goes to the Desk; the owner approves it all at once. The first approved import fixes the date the books start from.
+A business moving from Tally or spreadsheets brings three lists in Settings, under **Bring in your books**: customers and suppliers, products and stock, and unpaid invoices and bills. Each can be the template, or a Tally or other export in Excel or CSV with its own column names. The check reads every row and says exactly what to fix, by row number: a GSTIN whose check digit is wrong is refused with a hint, for example that a letter I was typed for the digit 1. When everything reads correctly, one card goes to the Desk; the owner approves it all at once. The first approved import fixes the date the books start from.
 
 ## 7. Approving from WhatsApp, in the owner's language
 
@@ -188,7 +188,8 @@ Every office API lives under `/api/o/<officeId>/`. Account routes (`/api/me`, `/
 2. **Tested rules read it first.** The number, date, party, lines and totals are found by layout rules. Only when they fall short does a model read the text into a strict JSON shape (Llama 3.3 70B on Workers AI), citing where each value was printed; it sees the first 600 pieces of text and up to 60 lines. Scans go to a vision model (Llama 3.2 11B Vision), page 1 only. Voice notes go to Whisper.
 3. **Tested code checks it.** The engine recomputes every line and tax amount, checks the totals and the GSTIN, and looks for duplicates.
 4. **Staged, never posted.** The result becomes a card on the Desk linked to the document and its highlighted region. A reading that failed a check always waits for the owner, whatever the Accountant's trust level.
-5. **Lists of bills in a spreadsheet.** An Excel or CSV list of bills or invoices is read row by row by tested code. A layout the office has not seen waits on the Desk until the owner confirms which column is which, once; the AI may suggest a column from the header row and the first three rows, but never copies a figure. Each bill then goes through the same checks, and each figure opens on its cell (ADR 0010).
+5. **Spreadsheets, of any kind.** An Excel or CSV file is recognised as a list of bills, a sales report, orders, post results or opening books, whether it was uploaded, emailed to the accounts address or sent on WhatsApp, and read row by row by tested code. A layout the office has not seen waits on the Desk until the owner confirms which column is which, once; the AI may suggest a column from the header row and the first three rows, but never copies a figure. Each bill then goes through the same checks, and each figure opens on its cell (ADR 0010).
+6. **Filed returns** brought from a file (GSTR-1, GSTR-3B, GSTR-2B, 26Q) wait on the Desk; once the owner approves, the Auditor compares them with the books.
 
 Money is held in integer paise. Tax is never decided by a model.
 
@@ -731,10 +732,11 @@ In Infisical, the deploy token is `CLOUDFLARE_API_TOKEN_SNILLD_OFFICE`. The rule
 | Long-term logs | Not set up; needed before wider pilots |
 | Legal review of the privacy notice, terms and data processing terms | Drafts published; a lawyer in India has not reviewed them yet |
 | The old Cloudflare account ("the-office-agents") | Its Workers, database and bucket were deleted on 18 Nov 2026; revoke its API token and remove `CLOUDFLARE_API_TOKEN_OFFICE_AGENTS` from Infisical |
-| Emailed documents | Read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments; no spreadsheets or zip files by email |
-| Reading bills | A scanned PDF is read from page 1 only; a PDF's text from its first 6 pages. A list of bills in Excel or CSV is read when uploaded in the Accountant's room (a new layout asks once which column is which), not yet by email or WhatsApp; old `.xls`, `.ods` and Tally's XML are not read yet |
+| Emailed documents | PDFs are read when someone in the office next has the app open, not on the server as they arrive; at most 5 attachments. Spreadsheets at the accounts address are read as they arrive |
+| Reading bills | A scanned PDF is read from page 1 only; a PDF's text from its first 6 pages. Old `.xls`, `.ods` and Tally's XML are not read yet |
+| Spreadsheets | Lists of bills, sales reports, orders, post results and opening books are read in any layout; a new layout asks once which column is which. Bank statements, payments and receipts cannot be brought in yet: that is the next step |
 | Several GST registrations, credit notes, stock movements, e-commerce settlements | Partly built (other registrations recognised on invoices); fuller support planned |
-| Tally | Parties and open items come in through the CSV templates; no direct Tally import or export yet |
+| Tally | Ledger lists, stock summaries and outstanding reports come in through Bring in your books, in Excel or CSV, by Tally's own column names; no Tally XML import or export yet |
 | Agents that do less than their job description | Shown in each agent's "Not yet" line in **How the work flows**. Reports only today: the Sales Rep, Quote Desk, Account Manager, Marketer, Market Watcher, Buyer, Tax Clerk and Payroll Clerk draft nothing. Not yet anywhere: matching bank receipts, sending files to the accountant, contacting anyone about an audit finding, emailing purchase orders to suppliers, and stock moving with sales and bills |
 | Filing on government portals | Out of scope by design: the office prepares, the owner or CA files |
 | The Lived-in office | Not shown on phones by design; needs WebGL 2 |
