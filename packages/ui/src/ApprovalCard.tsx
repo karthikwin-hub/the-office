@@ -45,14 +45,21 @@ type Props = {
   showAgent?: boolean;
   /** Extra text resolved by the app, e.g. a social message being replied to. */
   context?: Record<string, string>;
-  /** What is being approved, drawn by the app: a post's versions, a month's calendar. */
-  body?: ReactNode;
+  /**
+   * What is being approved, drawn by the app: a post's versions, a month's calendar. A function is given a setter
+   * for changes the body collects (a register's columns), which go with the approval.
+   */
+  body?: ApprovalBody;
 };
+
+/** A card's body, or one that collects changes to send with the approval. */
+export type ApprovalBody = ReactNode | ((setEdits: (edits: Record<string, unknown> | undefined) => void) => ReactNode);
 
 export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true, context, body }: Props) {
   const handoff = item.kind === "handoff";
   const [mode, setMode] = useState<"view" | "edit" | "reject">(handoff ? "edit" : "view");
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [bodyEdits, setBodyEdits] = useState<Record<string, unknown> | undefined>(undefined);
   const [note, setNote] = useState("");
   const [save, setSave] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
@@ -86,7 +93,7 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
           ))}
         </dl>
       ) : null}
-      {body}
+      {typeof body === "function" ? body(setBodyEdits) : body}
       {mode === "edit" ? (
         <div className="approval-edit">
           {editable.map(([k, v]) => (
@@ -202,11 +209,11 @@ export function ApprovalCard({ item, onDecide, busy, readOnly, showAgent = true,
             className="btn btn-primary"
             disabled={busy || (handoff && save && !saveTitle.trim())}
             onClick={() => {
-              const all = { ...edits, ...(handoff && save && saveTitle.trim() ? { saveAs: saveTitle.trim() } : {}) };
+              const all = { ...edits, ...bodyEdits, ...(handoff && save && saveTitle.trim() ? { saveAs: saveTitle.trim() } : {}) };
               onDecide?.({ action: "approve", edits: Object.keys(all).length ? all : undefined });
             }}
           >
-            {mode === "edit" && !handoff ? `${action.verb} with changes` : action.verb}
+            {(mode === "edit" && !handoff) || bodyEdits ? `${action.verb} with changes` : action.verb}
           </button>
           {editable.length && mode !== "edit" ? (
             <button type="button" className="btn" onClick={() => setMode("edit")}>

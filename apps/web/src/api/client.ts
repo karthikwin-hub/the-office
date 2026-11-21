@@ -1,3 +1,4 @@
+import type { RegisterResult } from "@office/engine";
 import {
   type AgeingReport,
   type AgentRoomView,
@@ -295,6 +296,15 @@ export const api = {
       throw new ApiError(res.status, err.error ?? res.statusText);
     }
     return res.json() as Promise<IngestResult>;
+  },
+  /** A spreadsheet that lists bills or invoices, read by the Accountant as a register. */
+  uploadRegister: async (form: FormData): Promise<{ results: RegisterResult[]; message: string }> => {
+    const res = await fetch(officePath(ROUTES.registers), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new ApiError(res.status, err.error ?? res.statusText);
+    }
+    return res.json() as Promise<{ results: RegisterResult[]; message: string }>;
   },
   document: (id: string) => call<DocumentView>(ROUTES.document(id)),
   parties: () => call<PartiesView>(ROUTES.parties),

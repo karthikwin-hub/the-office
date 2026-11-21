@@ -127,6 +127,35 @@ test("find the customer that invoice brought in, under Customers and suppliers",
   await expect(page.getByRole("link", { name: "Customers and suppliers" })).toBeVisible();
 });
 
+test("send a list of bills as a spreadsheet, confirm its columns once, and see the row a bill came from", async () => {
+  await page.goto("/rooms/accountant");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "choose files" }).click();
+  // Headers the Accountant does not know for the amounts: it asks for them once.
+  const csv = ["Bill Ref,Bill Dt,Supplier,Basic,CGST,SGST,Net", "R-1,12-11-2026,Nayak Hardware,1000.00,90.00,90.00,1180.00"].join("\n");
+  await (await chooser).setFiles({ name: "purchases-november.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  const intake = page.locator(".intake li").first();
+  await expect(intake).toHaveClass(/intake-done/, { timeout: 30_000 });
+  await intake.getByRole("link", { name: "On your desk" }).click();
+
+  const card = page.getByRole("article", { name: /^Read purchases-november\.csv as purchase bills/ });
+  await expect(card.getByText(/Choose the column for taxable value/)).toBeVisible();
+  await card.getByRole("combobox", { name: "Taxable value", exact: true }).selectOption("Basic");
+  await card.getByRole("combobox", { name: "Total", exact: true }).selectOption("Net");
+  await checkA11y(page, "a new register layout");
+  await card.getByRole("button", { name: "Read these bills with changes" }).click();
+  await expect(card).toBeHidden();
+
+  const bill = page.getByRole("article", { name: /^Post bill R-1 from Nayak Hardware/ });
+  await bill.getByRole("button", { name: "Bill total" }).click();
+  const viewer = page.getByRole("dialog", { name: "Where this figure comes from" });
+  await expect(viewer.locator("td.is-marked")).toHaveText("1180.00");
+  await checkA11y(page, "a bill read from a sheet");
+  await viewer.getByRole("button", { name: "Close" }).click();
+  await bill.getByRole("button", { name: "Post bill" }).click();
+  await expect(bill).toBeHidden();
+});
+
 test("invite the accountant", async () => {
   await page.goto("/settings");
   await checkA11y(page, "settings");
@@ -147,9 +176,11 @@ test("export the office, and the archive opens", async () => {
   expect(saved.books.business.name).toBe(business);
   // The approved invoice is in the books, and the PDF it came from is in the archive byte for byte.
   expect(saved.books.invoices.map((i: { number: string }) => i.number)).toContain("SCPL/2604/321");
-  const pdf = names.find((n) => n.startsWith("files/") && !n.endsWith(".txt"));
-  expect(pdf, names.join(", ")).toBeTruthy();
-  expect(zip.get(pdf!)!.equals(await readFile(SAMPLE_PDF))).toBe(true);
+  // The register sent as a spreadsheet is in the archive too, so the PDF is found by its bytes.
+  const sample = await readFile(SAMPLE_PDF);
+  const files = names.filter((n) => n.startsWith("files/") && !n.endsWith(".txt"));
+  expect(files.length, names.join(", ")).toBe(2);
+  expect(files.some((n) => zip.get(n)!.equals(sample))).toBe(true);
 });
 
 test("sign out, and back in with a code from the app", async () => {
