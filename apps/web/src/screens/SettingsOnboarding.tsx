@@ -42,7 +42,14 @@ export function OnboardingSettings({ b }: { b: Business }) {
     }
     setTooBig(null);
     setFiles((x) => ({ ...x, [kind]: { name: f.name, csv: "" } }));
-    const csv = await f.text();
+    let csv: string;
+    try {
+      csv = await csvOf(f);
+    } catch (err) {
+      e.target.value = "";
+      setFiles((x) => ({ ...x, [kind]: undefined }));
+      return setTooBig(err instanceof Error ? err.message : `${f.name} could not be opened. Save it as .xlsx or CSV.`);
+    }
     setFiles((x) => ({ ...x, [kind]: { name: f.name, csv } }));
   };
   const chosen = KINDS.filter((k) => files[k]?.csv);
@@ -91,12 +98,20 @@ export function OnboardingSettings({ b }: { b: Business }) {
             </span>
           </div>
           <p className="field-help field-wide">
-            Fill in any of the templates in Excel or Google Sheets and save each as CSV. Leave out a template you do not need.
+            Fill in any of the templates, or send a list exported from Tally or another package: Excel or CSV, with columns named as in the template or as Tally
+            names them. Leave out a template you do not need.
           </p>
           {KINDS.map((kind) => (
             <div className="field" key={kind}>
               <label htmlFor={`ob-${kind}`}>{IMPORT_FILES[kind].label}</label>
-              <input id={`ob-${kind}`} className="input" type="file" accept=".csv,text/csv" onChange={pick(kind)} aria-describedby={`ob-${kind}-help`} />
+              <input
+                id={`ob-${kind}`}
+                className="input"
+                type="file"
+                accept=".csv,.xlsx,.xlsm,text/csv"
+                onChange={pick(kind)}
+                aria-describedby={`ob-${kind}-help`}
+              />
               <span id={`ob-${kind}-help`} className="field-help">
                 <a href={IMPORT_FILES[kind].template} download>
                   Download the template
@@ -200,4 +215,13 @@ function Preview({ p }: { p: ImportPreview }) {
       </table>
     </div>
   );
+}
+
+/** A spreadsheet as CSV text: an Excel file is opened in the browser with the office's own reader. */
+async function csvOf(f: File): Promise<string> {
+  if (!/\.(xlsx|xlsm)$/i.test(f.name)) return f.text();
+  const { readSheets } = await import("@office/engine/sheets");
+  const [sheet] = await readSheets(f.name, await f.arrayBuffer());
+  const cell = (c: string) => (/[",\r\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+  return (sheet?.rows ?? []).map((r) => r.map(cell).join(",")).join("\n");
 }

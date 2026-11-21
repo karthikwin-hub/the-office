@@ -12,12 +12,14 @@ import {
   IsoDate,
   Party,
   Sku,
+  type SheetKind,
   StockLevel,
   TdsSection,
 } from "@office/contracts";
 import { z } from "zod";
 import { addDays, dateLabel, daysBetween } from "./dates";
 import { gstinValid, parseAmount, parseDate } from "./extract";
+import { recognise } from "./intake/kinds";
 import { ImportError } from "./imports";
 import { inr, inrShort } from "./money";
 
@@ -92,11 +94,7 @@ function records(text: string): string[][] {
   return out;
 }
 
-const header = (h: string) =>
-  h
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "");
+const SHEET_KIND_OF: Record<ImportKind, SheetKind> = { parties: "parties", products: "products", "open-items": "open_items" };
 
 const COLUMNS: Record<ImportKind, { required: string[]; optional: string[] }> = {
   parties: {
@@ -142,16 +140,24 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const f = req.files.find((x) => x.kind === kind);
     if (!f) return [];
     const recs = records(f.csv);
-    const head = (recs[0] ?? []).map(header);
-    const missing = COLUMNS[kind].required.filter((c) => !head.includes(c));
+    // The template's names, and the names Tally and other exports use, by the shared reader; a title row above is skipped.
+    const found = recognise(recs, [SHEET_KIND_OF[kind]]);
+    const headers = recs[found.at] ?? [];
+    const at = Object.fromEntries(Object.entries(found.mapping).map(([field, h]) => [field, headers.indexOf(h)]));
+    const missing = COLUMNS[kind].required.filter((c) => at[c] === undefined);
     const rows: Row[] = [];
-    recs.slice(1).forEach((cells, i) => {
-      if (cells.some((c) => c)) rows.push({ row: i + 2, get: (c) => cells[head.indexOf(c)] ?? "" });
+    recs.slice(found.at + 1).forEach((cells, i) => {
+      if (cells.some((c) => c)) rows.push({ row: found.at + i + 2, get: (c) => (at[c] === undefined ? "" : (cells[at[c]!] ?? "")) });
     });
     files.push({ kind, name: f.name, rows: rows.length });
     if (!recs.length) issue(kind, 1, "", "The file is empty.");
     else if (missing.length)
-      issue(kind, 1, missing.join(", "), `The first row needs the column${missing.length === 1 ? "" : "s"} ${missing.join(", ")}. Start from the template.`);
+      issue(
+        kind,
+        found.at + 1,
+        missing.join(", "),
+        `No column for ${missing.join(", ")}. Name ${missing.length === 1 ? "it" : "them"} as in the template, or start from the template.`,
+      );
     else if (rows.length > IMPORT_MAX_ROWS)
       issue(kind, IMPORT_MAX_ROWS + 2, "", `Up to ${IMPORT_MAX_ROWS.toLocaleString("en-IN")} rows in one file, please. Split it and bring in the rest after.`);
     else return rows;
@@ -168,7 +174,9 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
     const before = issues.length;
     const bad = (column: string, message: string) => issue("parties", r.row, column, message);
     const type = r.get("type").toLowerCase();
-    const kind = type === "customer" ? "customer" : type === "supplier" || type === "vendor" ? "vendor" : null;
+    // Tally's groups: Sundry Debtors are customers, Sundry Creditors suppliers.
+    const kind =
+      type === "customer" || type === "sundry debtors" ? "customer" : type === "supplier" || type === "vendor" || type === "sundry creditors" ? "vendor" : null;
     if (!kind) bad("type", 'Write "customer" or "supplier".');
     const name = r.get("name").replace(/\s+/g, " ");
     if (!name) bad("name", "The name is missing.");
@@ -269,7 +277,9 @@ export function checkImport(books: Books, asOf: string, req: ImportCheck): { pre
   for (const r of rowsOf("open-items")) {
     const before = issues.length;
     const bad = (column: string, message: string) => issue("open-items", r.row, column, message);
-    const type = r.get("type").toLowerCase();
+    const raw = r.get("type").toLowerCase();
+    // Tally's voucher types: a sales voucher is an invoice, a purchase voucher a bill.
+    const type = raw === "sales" ? "invoice" : raw === "purchase" ? "bill" : raw;
     if (type !== "invoice" && type !== "bill") bad("type", 'Write "invoice" for what a customer owes you, or "bill" for what you owe a supplier.');
     const kind = type === "bill" ? "vendor" : "customer";
     const number = r.get("number");
