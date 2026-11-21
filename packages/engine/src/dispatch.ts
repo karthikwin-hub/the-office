@@ -42,8 +42,9 @@ import {
 import { RegisterError } from "./register-service";
 import { routinesView } from "./routines";
 import { missingFields } from "./sales/formats";
+import { parseDelimited } from "./sales/parse";
 import { SalesError } from "./sales/service";
-import { importMetrics, publishingPack } from "./social/manual";
+import { publishingPack } from "./social/manual";
 import { ageingReport } from "./ageing";
 import { auditReport } from "./audit";
 import { computeGstr1 } from "./gst";
@@ -661,11 +662,18 @@ function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
     const parsed = MetricsImport.safeParse(req.body ?? {});
     if (!parsed.success) return bad("Attach the metrics file.");
     try {
-      const r = importMetrics(office.books, parsed.data.content);
-      office.log(
-        "social-media-manager",
-        `${req.user.name} imported results for ${r.matched} post${r.matched === 1 ? "" : "s"}${r.unmatched ? `; ${r.unmatched} rows did not match a post` : ""}.`,
-      );
+      // Through the office's one reader: a new export layout is confirmed once on the Desk (ADR 0010).
+      const sheets = [{ name: "Post results", rows: parseDelimited(parsed.data.content) }];
+      const [r] = office.intake.receive({
+        id: `mets-${Date.now().toString(36)}`,
+        file: "post results.csv",
+        fileUrl: "",
+        sheets,
+        via: "upload",
+        from: null,
+        auto: true,
+        kinds: ["social_metrics"],
+      });
       return ok(r);
     } catch (e) {
       return { status: 422, body: { error: e instanceof Error ? e.message : String(e) } };

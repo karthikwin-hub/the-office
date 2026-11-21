@@ -1,6 +1,7 @@
-import type { Books, PostMetrics, PublishingPack } from "@office/contracts";
+import type { Books, PostMetrics, PublishingPack, SheetMapping } from "@office/contracts";
 import { PLATFORM_NAMES } from "@office/contracts";
-import { parseCsv } from "../imports";
+import { recognise } from "../intake/kinds";
+import { parseDelimited } from "../sales/parse";
 import { RULES } from "./channels";
 
 /** Everything needed to post by hand on a channel that is not connected. */
@@ -26,18 +27,6 @@ export function publishingPack(books: Books, postId: string, channelId: string):
   return { postId, channelId, platform: v.platform, handle: ch.handle, text: v.text, media, at: post.at, steps };
 }
 
-const HEADERS: Record<keyof PostMetrics | "url" | "id", RegExp> = {
-  url: /^(permalink|post link|link|url|post url|tweet permalink)$/i,
-  id: /^(post id|id|media id|tweet id)$/i,
-  views: /^(views|impressions|reach|plays)$/i,
-  likes: /^(likes|reactions|like count)$/i,
-  comments: /^(comments|replies|comment count)$/i,
-  saves: /^(saves|saved)$/i,
-  shares: /^(shares|reposts|retweets|forwards)$/i,
-  clicks: /^(clicks|link clicks|url clicks|website clicks)$/i,
-  enquiries: /^(enquiries|messages|conversations started)$/i,
-};
-
 const norm = (u: string) =>
   u
     .trim()
@@ -46,25 +35,22 @@ const norm = (u: string) =>
     .replace(/\/$/, "")
     .toLowerCase();
 
+const METRICS = ["views", "likes", "comments", "saves", "shares", "clicks", "enquiries"] as const;
+
 /**
- * Reads a metrics export from Instagram, Facebook, LinkedIn or X and attaches the numbers to the posts
- * they belong to, matched by the URL pasted at "Mark as posted" or the platform's post id.
+ * Attaches a metrics export's numbers to the posts they belong to, matched by the URL pasted at "Mark as posted" or
+ * the platform's post id. A number the file does not have, or cannot be read, leaves the one already kept.
  */
-export function importMetrics(books: Books, content: string): { matched: number; unmatched: number } {
-  const rows = parseCsv(content.replace(/^\uFEFF/, "")).filter((r) => r.some((c) => c.trim()));
-  if (rows.length < 2) throw new Error("No rows found. Export the post-level metrics as CSV and try again.");
-  const header = rows[0]!.map((h) => h.trim());
-  const col = (k: keyof typeof HEADERS) => header.findIndex((h) => HEADERS[k].test(h));
+export function readMetrics(books: Books, input: { rows: string[][]; headerAt: number; mapping: SheetMapping }): { matched: number; unmatched: number } {
+  const headers = input.rows[input.headerAt] ?? [];
+  const col = (f: string) => (input.mapping[f] ? headers.indexOf(input.mapping[f]!) : -1);
   const urlCol = col("url");
   const idCol = col("id");
   if (urlCol < 0 && idCol < 0) throw new Error("The file needs a permalink or post id column to match posts.");
-  const num = (r: string[], k: keyof PostMetrics) => {
-    const i = col(k);
-    return i < 0 ? 0 : Number((r[i] ?? "").replace(/[,\s]/g, "")) || 0;
-  };
   let matched = 0;
   let unmatched = 0;
-  for (const r of rows.slice(1)) {
+  for (const r of input.rows.slice(input.headerAt + 1)) {
+    if (!r.some((c) => c.trim())) continue;
     const url = urlCol >= 0 ? norm(r[urlCol] ?? "") : "";
     const id = idCol >= 0 ? (r[idCol] ?? "").trim() : "";
     const v = books.posts.flatMap((p) => p.variants).find((x) => (url && x.url && norm(x.url) === url) || (id && x.externalId === id));
@@ -72,16 +58,21 @@ export function importMetrics(books: Books, content: string): { matched: number;
       unmatched++;
       continue;
     }
-    v.metrics = {
-      views: num(r, "views"),
-      likes: num(r, "likes"),
-      comments: num(r, "comments"),
-      saves: num(r, "saves"),
-      shares: num(r, "shares"),
-      clicks: num(r, "clicks"),
-      enquiries: num(r, "enquiries"),
+    const before = v.metrics;
+    const num = (k: (typeof METRICS)[number]) => {
+      const raw = col(k) >= 0 ? (r[col(k)] ?? "").replace(/[,\s]/g, "") : "";
+      return /^\d+(\.\d+)?$/.test(raw) ? Math.round(Number(raw)) : (before?.[k] ?? 0);
     };
+    v.metrics = Object.fromEntries(METRICS.map((k) => [k, num(k)])) as PostMetrics;
     matched++;
   }
   return { matched, unmatched };
+}
+
+/** A metrics export as CSV text, its columns found by their names. */
+export function importMetrics(books: Books, content: string): { matched: number; unmatched: number } {
+  const rows = parseDelimited(content);
+  const r = recognise(rows, ["social_metrics"]);
+  if (rows.length < r.at + 2) throw new Error("No rows found. Export the post-level metrics as CSV and try again.");
+  return readMetrics(books, { rows, headerAt: r.at, mapping: r.mapping });
 }
