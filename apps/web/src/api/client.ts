@@ -269,8 +269,7 @@ export const api = {
   trace: (figureId: string) => call<Trace>(ROUTES.trace(figureId)),
   documents: () => call<Document[]>(ROUTES.documents),
   unread: () => call<Document[]>(ROUTES.unread),
-  importReturn: (body: { content: string; filedOn?: string }) =>
-    call<{ form: string; period: string; summary: string; findings: number }>(ROUTES.importReturn, { method: "POST", body }),
+  importReturn: (body: { content: string; filedOn?: string }) => call<{ staged: StagedChange; message: string }>(ROUTES.importReturn, { method: "POST", body }),
   checkImport: (body: ImportCheck) => call<ImportPreview>(ROUTES.onboardingCheck, { method: "POST", body }),
   stageImport: (body: ImportCheck) => call<{ preview: ImportPreview; item: StagedChange }>(ROUTES.onboardingStage, { method: "POST", body }),
   readDocument: (id: string, items: TextItem[]) => call<IngestResult>(ROUTES.readDocument(id), { method: "POST", body: { items } }),

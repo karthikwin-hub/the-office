@@ -16,7 +16,7 @@ function ImportReturn({ onImported }: { onImported: (period: string) => void }) 
   const input = useRef<HTMLInputElement>(null);
   const take = async (file: File) => {
     const r = await imp.mutateAsync({ content: await file.text() }).catch(() => null);
-    if (r) onImported(r.period);
+    if (r) onImported(String(r.staged.payload.period));
     if (input.current) input.current.value = "";
   };
   return (
@@ -35,7 +35,7 @@ function ImportReturn({ onImported }: { onImported: (period: string) => void }) 
         {imp.isError
           ? imp.error.message
           : imp.data
-            ? `${imp.data.form} for ${periodLabel(imp.data.period)}: ${imp.data.summary}. ${imp.data.findings ? `${imp.data.findings} difference${imp.data.findings === 1 ? "" : "s"}.` : "Matches the books."}`
+            ? `${imp.data.staged.title}. ${imp.data.message}`
             : "GSTR-1, GSTR-3B or GSTR-2B JSON from the portal, or the TDS return (Form 140 or 26Q) as CSV."}
       </span>
     </div>

@@ -1041,6 +1041,8 @@ export const StagedKind = z.enum([
   "sales_mapping",
   /** A register of bills or invoices in a layout the Accountant has not seen: which column is which, for the owner to confirm once. */
   "sheet_layout",
+  /** A filed return or GSTR-2B brought from a file, kept once the owner approves. */
+  "return_import",
 ]);
 export type StagedKind = z.infer<typeof StagedKind>;
 

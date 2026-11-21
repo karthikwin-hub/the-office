@@ -60,6 +60,25 @@ describe("importing filed returns", () => {
       "Rajesh Mehta",
     );
     expect(forms(o, "FY2026-27-Q2")).toContain("26Q");
+    // A row from another quarter would be counted in this one: the file is refused, naming both.
+    const mixed = `${csv((d) => d.expectedPaise)}\n194C,${rep.deductions[0]!.pan},X,,2026-12-02,1000.00,10.00,2026-12-28`;
+    expect(() => o.importReturn(mixed, "Rajesh Mehta")).toThrow(/FY2026-27-Q2, FY2026-27-Q3/);
+  });
+
+  it("puts a return brought from a file on the Desk, and keeps it only once the owner approves", () => {
+    const o = fresh();
+    const period = "2026-10";
+    const before = o.books.filedReturns.find((f) => f.form === "GSTR-1" && f.period === period);
+    const post = (path: string, body: unknown, role: "owner" | "accountant" = "owner") =>
+      dispatch(o, { method: "POST", path, query: new URLSearchParams(), body, role, user: { name: "Rajesh Mehta", email: "r@x" }, mode: "mock" });
+    const r = post("/api/returns/import", { content: JSON.stringify(computeGstr1(o.ledger, period)) }, "accountant");
+    expect(r.status).toBe(200);
+    const card = (r.body as { staged: { id: string; kind: string; summary: string } }).staged;
+    expect(card.kind).toBe("return_import");
+    expect(o.books.filedReturns.find((f) => f.form === "GSTR-1" && f.period === period)).toBe(before);
+    expect(post(`/api/desk/${card.id}`, { action: "approve" }, "accountant").status).toBe(403);
+    expect(post(`/api/desk/${card.id}`, { action: "approve" }).status).toBe(200);
+    expect(o.books.filedReturns.find((f) => f.form === "GSTR-1" && f.period === period)).not.toBe(before);
   });
 
   it("flattens the portal's nested GSTR-2B", () => {
@@ -75,12 +94,16 @@ describe("importing filed returns", () => {
             trdnm: e.trdnm,
             inv: [{ inum: e.inum, dt: e.idt, val: e.val, items: [{ num: 1, rt: 18, txval: e.txval, igst: e.iamt, cgst: e.camt, sgst: e.samt }] }],
           })),
+          cdnr: [{ ctin: "x" }, { ctin: "y" }],
+          isd: [],
         },
       },
     };
     const r = importReturn(o.ledger, JSON.stringify(portal), null);
     expect(r.kind).toBe("gstr2b");
     if (r.kind === "gstr2b") expect(r.statement.data.docdata.b2b).toEqual(s.data.docdata.b2b);
+    // What is not compared is said, not dropped unseen.
+    expect(r.notes).toEqual(["2 credit or debit note entries not compared"]);
   });
 
   it("refuses another business's return and unknown files", () => {

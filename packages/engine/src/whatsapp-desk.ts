@@ -30,6 +30,7 @@ export const REVIEW_ON_DESK = new Set([
   "post",
   "sales_mapping",
   "sheet_layout",
+  "return_import",
 ]);
 
 export type WaPerson = { name: string; email: string; role: Role };

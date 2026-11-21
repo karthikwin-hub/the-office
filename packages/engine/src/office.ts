@@ -42,7 +42,7 @@ import { isThankYou, leadFrom, newMessage } from "./social/inbox";
 import { draftCalendar, planMonth } from "./social/planner";
 import { ageingReport, DEFAULT_POLICY, draftReminders, openInvoices } from "./ageing";
 import { auditAll, auditFlags, auditReport } from "./audit";
-import { ImportError, importReturn } from "./imports";
+import { ImportError, type Imported, importReturn } from "./imports";
 import { applyImport, checkImport, importConflict, importSummary, type OnboardingPayload } from "./onboarding";
 import { addDays, dateLabel, monthKey, monthLabel } from "./dates";
 import { Ledger } from "./ledger";
@@ -77,6 +77,7 @@ const FILED_NAMES: Record<Exclude<DocType, "invoice">, string> = {
 };
 const ALWAYS_ASK = new Set([
   "email_reply",
+  "return_import",
   "sales_mapping",
   "sheet_layout",
   "audit_flag",
@@ -974,7 +975,39 @@ export class OfficeService {
 
   /** Files what the accountant actually filed (or a GSTR-2B statement) so the Auditor can compare it with the books. */
   importReturn(content: string, by: string, filedOn: string | null = null): { form: string; period: string; summary: string; findings: number } {
+    return this.keepReturn(importReturn(this.ledger, content, filedOn), by);
+  }
+
+  /**
+   * A filed return or GSTR-2B brought in from a file waits on the Desk: approving it replaces what is kept for that
+   * form and period, which the Auditor compares with the books (ADR 0004).
+   */
+  stageReturn(content: string, by: string, filedOn: string | null = null): StagedChange {
     const r = importReturn(this.ledger, content, filedOn);
+    const form = r.kind === "gstr2b" ? "GSTR-2B" : r.form;
+    const period = r.period.startsWith("FY") ? r.period : monthLabel(r.period);
+    const replaces =
+      r.kind === "gstr2b"
+        ? this.books.gstr2b.some((g) => g.period === r.period)
+        : this.books.filedReturns.some((f) => f.form === r.form && f.period === r.period);
+    const n = this.books.staged.filter((s) => s.kind === "return_import").length;
+    const item: StagedChange = {
+      id: `chg-return-${form.toLowerCase().replace(/[^a-z0-9]/g, "")}-${r.period}-${n + 1}`,
+      agentId: "auditor",
+      kind: "return_import",
+      createdAt: istNow(this.asOf),
+      title: `Keep ${form} for ${period} as filed`,
+      summary: `${by} brought ${form} for ${period}: ${r.summary}.${replaces ? " It replaces the one kept for that period." : ""} The Auditor compares it with the books once you approve.${r.notes?.length ? ` ${r.notes.join("; ")}.` : ""}`,
+      evidence: [{ label: `${form}, ${period}`, ref: { kind: "audit", id: r.period } }],
+      payload: { imported: r, by, form, period: r.period, replaces },
+      status: "pending",
+    };
+    this.books.staged.push(item);
+    this.log("auditor", `${by} brought ${form} for ${period}; it waits on the Desk.`, { kind: "audit", id: r.period });
+    return item;
+  }
+
+  private keepReturn(r: Imported, by: string): { form: string; period: string; summary: string; findings: number } {
     if (r.kind === "gstr2b") {
       this.books.gstr2b = [...this.books.gstr2b.filter((g) => g.period !== r.period), r.statement];
     } else {
@@ -1311,6 +1344,11 @@ export class OfficeService {
       case "sales_mapping": {
         const m = item.payload as { importId: string; channel: SalesChannel; mapping: ColumnMapping };
         this.sales.applyMapping(m.importId, m.channel, m.mapping);
+        break;
+      }
+      case "return_import": {
+        const p = item.payload as { imported: Imported; by: string };
+        this.keepReturn(p.imported, p.by);
         break;
       }
       case "sheet_layout": {
