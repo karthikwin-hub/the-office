@@ -32,6 +32,7 @@ Local-only settings, passed with `--var` to `wrangler dev`, never set on live:
 | --- | --- |
 | `OFFICE_SEED` | `sample` opens new offices with the Kaveri Electricals books |
 | `EMAIL_VERIFICATION` | `off` skips email confirmation. Never on live: it would also let sign-up show which addresses have accounts |
+| `OFFICE_IMPORT` | `on` lets an owner load an export from live into a new, empty office (Settings → Office). Set in `env.staging` only; a test keeps it off live |
 
 The web build reads one flag: `VITE_DATA=mock` builds the demo; anything else builds the live app.
 

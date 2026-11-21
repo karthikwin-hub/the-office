@@ -36,6 +36,7 @@ import { docKey, officePrefix } from "./keys";
 import { sameOrigin, securityHeaders } from "./edge";
 import type { MailAdmission, MailDocs, MailKind } from "./inbound";
 import { exportArchive, type ExportPlan } from "./export";
+import { ARCHIVE_MAX_BYTES, importAllowed } from "./import";
 import { attachmentRequest } from "./files";
 import { currentRequestId, inOffice, log, newRequestId, REQUEST_ID_HEADER, requestFailed, requestLog } from "./log";
 import { envelopeProven, type Inbound, parseInbound } from "./mail";
@@ -553,6 +554,7 @@ app.get("/api/o/:office/office-admin", async (c) => {
     members: members.map((m) => ({ userId: m.userId, name: m.name, email: m.email, role: m.role, since: iso(m.since), you: m.userId === caller.userId })),
     invitations: invitations.map((i) => ({ email: i.email, role: i.role, invitedBy: i.invitedBy, expiresAt: iso(i.expiresAt) })),
     audit: audit.map((a) => ({ actor: a.actor, action: a.action, detail: a.detail, at: iso(a.at) })),
+    importable: owner && importAllowed(c.env),
   } satisfies OfficeAdmin);
 });
 
@@ -640,6 +642,30 @@ app.post("/api/o/:office/office-admin/transfer", async (c) => {
  * Everything the office holds, in one archive: the books as JSON and every stored file. The office's Durable Object
  * reads the files and writes the archive in parts (export.ts); the Worker only joins the parts into the download.
  */
+/**
+ * Staging only (OFFICE_IMPORT, import.ts): the owner loads an export from live into this new, empty office. Off, the
+ * routes do not exist. The Worker only checks who is asking and pipes the upload through; the office does the work.
+ */
+const importGate = (c: Ctx) => (importAllowed(c.env) ? (ownerOnly(c) ?? freshOnly(c)) : c.json(NOT_FOUND, 404));
+
+app.post(`/api/o/:office${ROUTES.officeImport.slice(4)}`, async (c) => {
+  const denied = importGate(c);
+  if (denied) return denied;
+  const length = Number(c.req.header("content-length"));
+  if (!Number.isSafeInteger(length) || length <= 0) return c.json({ error: "Choose the export's ZIP file." }, 411);
+  if (length > ARCHIVE_MAX_BYTES) return c.json({ error: "That export is too big to import here (at most 95 MB)." }, 413);
+  const caller = c.get("caller");
+  const res = await toOffice(c.env, c.req.raw, caller, ROUTES.officeImport);
+  if (res.ok) await cp(c.env).audit(caller.officeId, caller.email, "office.imported", null);
+  return res;
+});
+
+app.post(`/api/o/:office${ROUTES.officeImportNext.slice(4)}`, async (c) => {
+  const denied = importGate(c);
+  if (denied) return denied;
+  return toOffice(c.env, c.req.raw, c.get("caller"), ROUTES.officeImportNext);
+});
+
 app.get("/api/o/:office/office-admin/export", async (c) => {
   const denied = ownerOnly(c) ?? freshOnly(c);
   if (denied) return denied;

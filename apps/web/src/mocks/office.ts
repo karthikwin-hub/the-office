@@ -71,6 +71,8 @@ export async function mockOfficeAdmin(
     members: s.members.map((m) => ({ ...m, you: m.userId === me })),
     invitations: role === "owner" ? s.invitations : [],
     audit: role === "owner" ? s.audit : [],
+    // The demo is not staging: it never offers the import from live.
+    importable: false,
   });
   const log = (action: string, detail: string | null = null) => s.audit.unshift({ actor: by, action, detail, at: now });
 

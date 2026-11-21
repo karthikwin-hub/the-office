@@ -908,8 +908,13 @@ export const OfficeAdmin = z.object({
   members: z.array(z.object({ userId: z.string(), name: z.string(), email: z.string(), role: Role, since: IsoDateTime, you: z.boolean() })),
   invitations: z.array(z.object({ email: z.string(), role: Role, invitedBy: z.string(), expiresAt: IsoDateTime })),
   audit: z.array(z.object({ actor: z.string(), action: z.string(), detail: z.string().nullable(), at: IsoDateTime })),
+  /** Staging only: the owner may load an export from live into this office while it is empty. */
+  importable: z.boolean().default(false),
 });
 export type OfficeAdmin = z.infer<typeof OfficeAdmin>;
+/** How far an import has got: files copied (`done`) of `total`, and any that could not be read (`skipped`). */
+export const ImportProgress = z.object({ done: z.number().int(), total: z.number().int(), skipped: z.number().int(), finished: z.boolean() });
+export type ImportProgress = z.infer<typeof ImportProgress>;
 export const OfficeRename = z.object({ name: z.string().trim().min(2).max(80) });
 export const InviteRequest = z.object({ email: z.string().trim().email().max(200), role: Role.default("accountant") });
 /** The link works once, for 14 days; the owner can pass it on themselves if the email does not arrive. Its token is after `#`, so it never reaches a server log. */
@@ -983,6 +988,9 @@ export const ROUTES = {
   officeTransfer: "/api/office-admin/transfer",
   officeLeave: "/api/office-admin/leave",
   officeExport: "/api/office-admin/export",
+  /** Staging only: an owner's export loaded into a new, empty office, then its files copied a batch at a time. */
+  officeImport: "/api/office-admin/import",
+  officeImportNext: "/api/office-admin/import/next",
   session: "/api/session",
   office: "/api/office",
   agent: (id: string) => `/api/agents/${id}`,

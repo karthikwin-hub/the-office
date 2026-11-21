@@ -32,6 +32,11 @@ describe("the staging environment", () => {
   const live = read();
   const staging = read("staging");
 
+  it("offers the import from live (OFFICE_IMPORT) on staging only", () => {
+    expect(staging.vars.OFFICE_IMPORT).toBe("on");
+    expect(live.vars.OFFICE_IMPORT).toBeUndefined();
+  });
+
   it("is its own Worker on workers.dev, with no custom domain", () => {
     expect(staging.name).toBe("the-office-staging");
     expect(staging.name).not.toBe(live.name);
@@ -60,7 +65,12 @@ describe("the staging environment", () => {
       c.ai?.binding,
       ...Object.keys(c.vars),
     ];
-    expect(names(staging).sort()).toEqual(names(live).sort());
+    // OFFICE_IMPORT is staging's alone (the test above).
+    expect(
+      names(staging)
+        .filter((n) => n !== "OFFICE_IMPORT")
+        .sort(),
+    ).toEqual(names(live).sort());
     expect(staging.durable_objects.bindings).toEqual(live.durable_objects.bindings);
   });
 

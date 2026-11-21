@@ -231,6 +231,38 @@ describe("changes come only from the app's own pages", () => {
     expect(w.seen).toEqual([]);
   });
 
+  it("offers the import from live only where OFFICE_IMPORT is on, to the owner, and pipes the export to the office", async () => {
+    const zip = new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)]);
+    const send = (w: World, office: string, cookie: string, headers: Record<string, string> = {}) =>
+      req(
+        w,
+        `/api/o/${office}/office-admin/import`,
+        { method: "POST", headers: { origin: BASE, "content-type": "application/zip", "content-length": String(zip.length), ...headers }, body: zip },
+        cookie,
+      );
+    const view = async (w: World, office: string, cookie: string) =>
+      ((await (await req(w, `/api/o/${office}/office-admin`, {}, cookie)).json()) as { importable: boolean }).importable;
+
+    // Live: no such route, and the office is never asked.
+    const live = makeEnv();
+    const a = await owner(live);
+    expect((await send(live, a.office, a.cookie)).status).toBe(404);
+    expect((await req(live, `/api/o/${a.office}/office-admin/import/next`, { method: "POST", headers: { origin: BASE } }, a.cookie)).status).toBe(404);
+    expect(live.seen.filter((x) => x.includes("import"))).toEqual([]);
+    expect(await view(live, a.office, a.cookie)).toBe(false);
+
+    // Staging: the owner's upload goes to the office as it is; a ZIP is a body the app's pages may send.
+    const staging = makeEnv();
+    (staging.env as { OFFICE_IMPORT?: string }).OFFICE_IMPORT = "on";
+    const b = await owner(staging);
+    expect(await view(staging, b.office, b.cookie)).toBe(true);
+    expect((await send(staging, b.office, b.cookie)).status).toBe(200);
+    expect(staging.seen).toContain("POST /api/office-admin/import");
+    expect((await send(staging, b.office, b.cookie, { "content-length": String(96 * 1024 * 1024) })).status).toBe(413);
+    // From another site it is refused like any other change.
+    expect((await send(staging, b.office, b.cookie, { origin: "https://evil.test" })).status).toBe(403);
+  });
+
   it("checks uploads and body-less changes by Origin too", async () => {
     const w = makeEnv();
     const { cookie, office } = await owner(w);

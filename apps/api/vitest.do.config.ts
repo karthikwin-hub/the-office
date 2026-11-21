@@ -30,6 +30,8 @@ export default defineWorkersConfig(async () => {
               SOCIAL_TOKEN_KEY: "office-do-test-secret-not-a-real-one",
               X_CLIENT_ID: "x-client-for-tests",
               X_CLIENT_SECRET: "x-secret-for-tests",
+              // As on staging: the import from an export is on (import.ts). The Worker's own gate is tested in Node.
+              OFFICE_IMPORT: "on",
             },
           },
         },
