@@ -174,7 +174,7 @@ export class SalesService {
       return this.finish({ ...base, channel: format.channel, format: format.id, formatName: format.name, status: "read", note: "" }, r, extra);
     }
 
-    const known = this.store.mapping(layoutKey(headers));
+    const known = this.layout(layoutKey(headers));
     if (known) {
       const r = readLines({
         rows: sheet.rows,
@@ -207,6 +207,16 @@ export class SalesService {
     this.office.books.staged.push(this.mappingCard(imp, headers, guess, sheet.rows.slice(at + 1, at + 4)));
     this.office.log(SALES_AGENT, `A sales report in a new layout came in (${f.file}); it waits for you to confirm its columns.`, { kind: "sales_import", id });
     return imp;
+  }
+
+  /**
+   * A layout the owner confirmed, from the office's one layout memory (ADR 0010); layouts kept before it existed are
+   * still read from the sales store.
+   */
+  private layout(key: string): { channel: SalesChannel; mapping: ColumnMapping } | null {
+    const l = this.office.intake.store.layout(key);
+    if (l?.sheetKind === "sales_report") return { channel: l.channel ?? "other", mapping: l.mapping as ColumnMapping };
+    return this.store.mapping(key);
   }
 
   private mappingCard(imp: SalesImport, headers: string[], mapping: ColumnMapping, sample: string[][]): StagedChange {
@@ -262,7 +272,7 @@ export class SalesService {
     if (missing.length) throw new SalesError(`Choose the column for ${missing.map((m) => FIELD_LABEL[m].toLowerCase()).join(", ")}.`);
     const bad = Object.entries(mapping).find(([, h]) => !sheet.headers.includes(h));
     if (bad) throw new SalesError(`"${bad[1]}" is not a column in this file.`);
-    this.store.saveMapping(layoutKey(sheet.headers), { channel, mapping });
+    this.office.intake.store.saveLayout(layoutKey(sheet.headers), { sheetKind: "sales_report", channel, mapping });
     const r = readLines({ rows: sheet.rows, headerAt: sheet.headerAt, channel, file: sheet.file, format: null, mapping, skus: this.office.books.skus });
     this.store.setPending(importId, null);
     const done = this.finish({ ...imp, channel, format: "mapped", formatName: `${CHANNEL_NAME[channel]} report`, status: "read" }, r);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FIELD_LABEL as SALES_FIELD_LABEL, REQUIRED_FIELDS as SALES_REQUIRED } from "./sales";
+import { SalesChannel, FIELD_LABEL as SALES_FIELD_LABEL, REQUIRED_FIELDS as SALES_REQUIRED } from "./sales";
 
 /**
  * Bills and invoices that arrive as a spreadsheet: a register with one bill per row, or one line per row with the
@@ -166,7 +166,13 @@ export function missingFor(kind: SheetKind, m: SheetMapping): string[] {
  * A layout the owner confirmed, kept per office by its header row. `kind` says whether a register holds purchase
  * bills or sales invoices; layouts kept before other kinds existed are registers.
  */
-export const SheetLayout = z.object({ sheetKind: SheetKind.default("bill_register"), kind: SheetBillKind.optional(), mapping: SheetMapping });
+export const SheetLayout = z.object({
+  sheetKind: SheetKind.default("bill_register"),
+  kind: SheetBillKind.optional(),
+  /** For a sales report: the platform it comes from. */
+  channel: SalesChannel.optional(),
+  mapping: SheetMapping,
+});
 export type SheetLayout = z.infer<typeof SheetLayout>;
 
 /** The fields still to choose before a register can be read. */
