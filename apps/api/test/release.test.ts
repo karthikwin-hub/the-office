@@ -107,7 +107,13 @@ function sandbox(opts: { placeholders?: boolean } = {}) {
     copyFileSync(join(ROOT, f), join(dir, f));
   }
   const config = readFileSync(CONFIG, "utf8");
-  put("apps/api/wrangler.jsonc", opts.placeholders ? config : config.replaceAll("REPLACE_WITH_", "filled-in-"));
+  // The real file has its ids now: put one placeholder back to see deploy.sh refuse it.
+  put(
+    "apps/api/wrangler.jsonc",
+    opts.placeholders
+      ? config.replace('"database_id": "1a779148', '"database_id": "REPLACE_WITH_STAGING_D1_ID')
+      : config.replaceAll("REPLACE_WITH_", "filled-in-"),
+  );
   const stub = (name: string) => `#!/bin/sh
 echo "${name} $* token=\${CLOUDFLARE_API_TOKEN:-}" >> "${log}"
 if [ "${name}" = wrangler ] && [ "$1 $2" = "d1 export" ]; then
