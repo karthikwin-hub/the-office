@@ -101,27 +101,21 @@ export function MetricsImport() {
   return (
     <Section title="Add results from a platform export">
       <p className="section-lede">
-        For channels that are not connected, export post results as CSV from the platform's insights page. Rows are matched to posts by the link you pasted at
-        Mark as posted.
+        For channels that are not connected, export post results from the platform's insights page. Rows are matched to posts by the link you pasted at Mark as
+        posted; an export in a layout seen for the first time asks you once, on your desk, which column is which.
       </p>
       <div className="field">
-        <label htmlFor={id}>Results file (CSV)</label>
+        <label htmlFor={id}>Results file (Excel or CSV)</label>
         <input
           id={id}
           type="file"
-          accept=".csv,text/csv"
-          onChange={async (e) => {
+          accept=".csv,.xlsx,.xlsm,text/csv"
+          onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
             setResult(null);
-            const content = await file.text();
-            social.mutate(() => api.importMetrics(content), {
-              onSuccess: (r) => {
-                const x = r as { matched: number; unmatched: number };
-                setResult(
-                  `Added results for ${x.matched} ${x.matched === 1 ? "post" : "posts"}${x.unmatched ? `. ${x.unmatched} rows matched no post: check that each was marked as posted with its link.` : "."}`,
-                );
-              },
+            social.mutate(() => api.uploadSheet(file, "social_metrics"), {
+              onSuccess: (r) => setResult((r as Awaited<ReturnType<typeof api.uploadSheet>>).message),
             });
             e.target.value = "";
           }}

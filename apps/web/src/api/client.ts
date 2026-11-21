@@ -64,7 +64,6 @@ import {
   type CannedAnswer,
   type Order,
   type OrdersView,
-  type OrdersImportResult,
   type TryResult,
   type RightsRequestView,
   type AccountDeleted,
@@ -341,7 +340,6 @@ export const api = {
     call<Post>(ROUTES.socialVariant(postId, channelId), { method: "PUT", body: edit }),
   markPosted: (postId: string, channelId: string, url: string) => call<Post>(ROUTES.socialPosted(postId, channelId), { method: "POST", body: { url } }),
   pack: (postId: string, channelId: string) => call<PublishingPack>(ROUTES.socialPack(postId, channelId)),
-  importMetrics: (content: string) => call<{ matched: number; unmatched: number }>(ROUTES.socialMetricsImport, { method: "POST", body: { content } }),
   draftCalendar: (month: string) => call<StagedChange>(ROUTES.socialCalendarDraft, { method: "POST", body: { month } }),
   saveVoice: (voice: BrandVoice) => call<BrandVoice>(ROUTES.socialVoice, { method: "PUT", body: voice }),
   setupChannel: (id: string, change: { handle?: string; mode?: "manual"; postingHours?: { from: string; to: string } }) =>
@@ -385,7 +383,6 @@ export const api = {
   addOrder: (o: Partial<Order> & { number: string; customer: string }) => call<Order>(ROUTES.orders, { method: "POST", body: o }),
   saveOrder: (id: string, o: Partial<Order>) => call<Order>(ROUTES.order(id), { method: "PUT", body: o }),
   removeOrder: (id: string) => call<{ removed: string }>(ROUTES.order(id), { method: "DELETE" }),
-  importOrders: (content: string) => call<OrdersImportResult>(ROUTES.ordersImport, { method: "POST", body: { content } }),
   uploadMedia: async (form: FormData): Promise<MediaAsset> => {
     const res = await fetch(officePath(ROUTES.socialMedia), { method: "POST", body: form, headers: { "x-office-as": viewingAs() }, credentials: "include" });
     if (!res.ok) {

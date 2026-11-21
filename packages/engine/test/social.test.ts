@@ -271,5 +271,8 @@ describe("manual publishing", () => {
     const r = importMetrics(b, `Permalink,Impressions,Likes,Comments,Saves\n${v.url},1200,80,6,14\nhttps://example.com/nope,1,1,1,1\n`);
     expect(r).toEqual({ matched: 1, unmatched: 1 });
     expect(v.metrics).toMatchObject({ views: 1200, likes: 80, saves: 14 });
+    // A later export with a title row above its header and no saves column keeps the saves already counted.
+    importMetrics(b, `LinkedIn post analytics, 1-30 Nov 2026\nPost link,Impressions,Reactions,Comments\n${v.url},1500,95,n/a\n`);
+    expect(v.metrics).toMatchObject({ views: 1500, likes: 95, comments: 6, saves: 14 });
   });
 });

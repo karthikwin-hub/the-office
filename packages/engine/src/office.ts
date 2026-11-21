@@ -60,6 +60,7 @@ import { AssistantService } from "./assistant/service";
 import { type AssistantStore, MemoryAssistantStore } from "./assistant/store";
 import { type LayoutStore, MemoryLayoutStore, SheetIntake } from "./register-service";
 import { SalesService } from "./sales/service";
+import { readMetrics } from "./social/manual";
 import { MemorySalesStore, type SalesStore } from "./sales/store";
 import { DEFAULT_CUSTOMER_SERVICE } from "@office/contracts";
 import { buildObligations, complianceProposals, complianceView } from "./compliance";
@@ -172,6 +173,23 @@ export class OfficeService {
     this.sales = new SalesService(this, opts.sales ?? new MemorySalesStore());
     this.intake = new SheetIntake(this, opts.layouts ?? new MemoryLayoutStore());
     this.intake.register("orders", (_id, p, l) => this.customers.readOrderSheet(p, l));
+    this.intake.register("social_metrics", (_id, p, l) => {
+      const r = readMetrics(this.books, { rows: p.rows, headerAt: p.headerAt, mapping: l.mapping });
+      const message = `Results for ${r.matched} ${r.matched === 1 ? "post" : "posts"} from ${p.file}${r.unmatched ? `; ${r.unmatched} rows matched no post (check each was marked as posted with its link)` : ""}.`;
+      this.log("social-media-manager", message);
+      return {
+        sheet: p.sheet,
+        sheetKind: "social_metrics",
+        status: "read",
+        staged: 0,
+        posted: 0,
+        duplicates: 0,
+        added: 0,
+        updated: r.matched,
+        skipped: [],
+        message,
+      };
+    });
     this.settingsState = {
       business: books.business,
       users: [
