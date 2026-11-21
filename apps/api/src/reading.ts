@@ -1,5 +1,16 @@
-import type { Business } from "@office/contracts";
-import { type ExtractContext, type Extraction, extractInvoice, fromModel, MODEL_SCHEMA, modelPrompt, needsModel, type TextItem } from "@office/engine";
+import type { BillMapping, Business, SheetBillKind } from "@office/contracts";
+import {
+  type ExtractContext,
+  type Extraction,
+  extractInvoice,
+  fromLayoutAnswer,
+  fromModel,
+  layoutPrompt,
+  MODEL_SCHEMA,
+  modelPrompt,
+  needsModel,
+  type TextItem,
+} from "@office/engine";
 
 type Run = (model: string, input: unknown) => Promise<unknown>;
 
@@ -71,4 +82,32 @@ export async function readScan(ai: Ai, image: ArrayBuffer, ctx: ExtractContext &
     answer = await run(VISION_MODEL, input);
   }
   return fromModel(modelJson(answer), [], ctx);
+}
+
+/**
+ * A register in a new layout whose header names leave a field unfound: the text model suggests which column holds
+ * it, from the headers and three rows. Only real, unused headers are kept, and the owner confirms them on the card.
+ * Any error leaves the guess from the names as it was.
+ */
+export async function proposeLayout(
+  ai: Ai,
+  sheet: { headers: string[]; sample: string[][]; guess: BillMapping },
+  business: Business,
+): Promise<{ kind: SheetBillKind | null; mapping: BillMapping }> {
+  const run = ai.run.bind(ai) as unknown as Run;
+  const { system, user, schema } = layoutPrompt(sheet.headers, sheet.sample, business);
+  try {
+    const answer = await run(TEXT_MODEL, {
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_schema", json_schema: schema },
+      max_tokens: 512,
+      temperature: 0,
+    });
+    return fromLayoutAnswer(modelJson(answer), sheet.headers, sheet.guess);
+  } catch {
+    return { kind: null, mapping: sheet.guess };
+  }
 }
