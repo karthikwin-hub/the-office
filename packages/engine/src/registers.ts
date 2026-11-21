@@ -1,14 +1,16 @@
 import {
-  BILL_FIELD_LABEL,
-  BillField,
+  type BillField,
   type BillMapping,
   type Document,
-  missingBillFields,
   type Region,
+  SHEET_KINDS,
   type SheetBillKind,
+  type SheetKind,
+  type SheetMapping,
   type Totals,
 } from "@office/contracts";
 import { checkExtraction, type ExtractContext, type ExtractedLine, type Extraction, gstinValid } from "./extract";
+import { guessFor, recognise } from "./intake/kinds";
 import { pctOf } from "./money";
 import { layoutKey } from "./sales/formats";
 import { dateOf, norm, numberOf, paiseOf, stateOf } from "./sales/parse";
@@ -27,113 +29,13 @@ export const MAX_REGISTER_BILLS = 500;
 /** Rows kept with each bill to show where its figures came from. */
 const MAX_ROWS_PER_BILL = 60;
 
-/** Header names that usually mean each field, compared after `norm`. More specific names come first. */
-const GUESS: Record<BillField, string[]> = {
-  number: [
-    "invoice no",
-    "invoice number",
-    "bill no",
-    "bill number",
-    "supplier invoice no",
-    "supplier invoice number",
-    "voucher no",
-    "voucher number",
-    "vch no",
-    "inv no",
-    "document no",
-    "document number",
-    "doc no",
-    "invoice",
-    "bill",
-  ],
-  date: ["invoice date", "bill date", "voucher date", "document date", "doc date", "invoice dt", "inv dt", "bill dt", "vch dt", "date", "dt"],
-  party: [
-    "supplier name",
-    "name of supplier",
-    "vendor name",
-    "customer name",
-    "name of customer",
-    "buyer name",
-    "party name",
-    "ledger name",
-    "trade name",
-    "supplier",
-    "vendor",
-    "customer",
-    "buyer",
-    "party",
-    "billed to",
-    "particulars",
-  ],
-  gstin: [
-    "gstin uin",
-    "gstin",
-    "supplier gstin",
-    "customer gstin",
-    "party gstin",
-    "gstin of supplier",
-    "gstin of recipient",
-    "gst no",
-    "gst number",
-    "gstin no",
-  ],
-  placeOfSupply: ["place of supply", "pos", "state"],
-  description: ["item description", "item name", "description of goods", "stock item", "product name", "item", "description", "product", "goods"],
-  hsn: ["hsn sac", "hsn code", "hsn", "sac"],
-  qty: ["quantity", "billed quantity", "billed qty", "qty"],
-  unit: ["uqc", "uom", "unit"],
-  rate: ["unit price", "rate per unit", "rate", "price"],
-  taxable: ["taxable value", "taxable amount", "assessable value", "amount before tax", "value before tax", "basic amount", "taxable"],
-  gstRate: ["gst rate", "tax rate", "rate of tax", "gst"],
-  cgst: ["cgst amount", "central tax amount", "central tax", "cgst"],
-  sgst: ["sgst amount", "sgst utgst amount", "state ut tax amount", "state tax amount", "state ut tax", "state tax", "sgst utgst", "sgst", "utgst"],
-  igst: ["igst amount", "integrated tax amount", "integrated tax", "igst"],
-  tax: ["total tax", "total gst", "tax amount", "gst amount", "tax"],
-  total: ["invoice value", "invoice amount", "bill amount", "total amount", "grand total", "gross total", "net total", "line total", "item total", "total"],
-};
-const AMOUNT_FIELDS = new Set<BillField>(["taxable", "cgst", "sgst", "igst", "tax", "total"]);
-
-/**
- * The columns that look like each field, from their names. Exact names are taken before names that only start with
- * one, and each column is used once, so "IGST Rate" is not taken for the IGST amount.
- */
-export function guessBillMapping(headers: string[]): BillMapping {
-  const ns = headers.map(norm);
-  const used = new Set<number>();
-  const out: BillMapping = {};
-  const take = (f: BillField, i: number) => {
-    out[f] = headers[i]!;
-    used.add(i);
-  };
-  for (const f of Object.keys(GUESS) as BillField[]) {
-    const i = GUESS[f].map((a) => ns.findIndex((h, k) => h === a && !used.has(k))).find((k) => k >= 0);
-    if (i !== undefined) take(f, i);
-  }
-  for (const f of Object.keys(GUESS) as BillField[]) {
-    if (out[f]) continue;
-    for (const a of GUESS[f]) {
-      const i = ns.findIndex((h, k) => !used.has(k) && h.startsWith(`${a} `) && !(AMOUNT_FIELDS.has(f) && /\b(rate|percent|pct)\b/.test(h)));
-      if (i >= 0) {
-        take(f, i);
-        break;
-      }
-    }
-  }
-  return out;
-}
-
-/** How many of the fields a register needs these headers seem to have, out of four. */
-export const registerScore = (m: BillMapping) => 4 - missingBillFields(m).length;
+/** The columns that look like each field, from their names (the shared guess, `intake/kinds.ts`). */
+export const guessBillMapping = (headers: string[]): BillMapping => guessFor("bill_register", headers) as BillMapping;
 
 /** The header row: the one of the top rows whose names look most like a register's. */
 export function findRegisterHeader(rows: string[][]): { at: number; mapping: BillMapping } {
-  let best = { at: 0, mapping: {} as BillMapping, score: -1 };
-  for (let i = 0; i < Math.min(rows.length, 20); i++) {
-    const mapping = guessBillMapping(rows[i]!);
-    const score = registerScore(mapping) * 10 + Object.keys(mapping).length;
-    if (score > best.score) best = { at: i, mapping, score };
-  }
-  return { at: best.at, mapping: best.mapping };
+  const r = recognise(rows, ["bill_register"]);
+  return { at: r.at, mapping: r.mapping as BillMapping };
 }
 
 /**
@@ -144,25 +46,30 @@ export function layoutPrompt(
   headers: string[],
   sample: string[][],
   business: { legalName: string; gstin: string },
+  sheetKind: SheetKind = "bill_register",
 ): { system: string; user: string; schema: object } {
-  const fields = BillField.options;
+  const spec = SHEET_KINDS[sheetKind];
+  const fields = Object.keys(spec.fields);
+  const bills = sheetKind === "bill_register";
   const cols = headers.map((h) => h.slice(0, 80));
   return {
     system: [
-      "You map the columns of a spreadsheet that lists Indian GST bills or invoices, for an accounts office. Answer only with JSON in the given schema.",
-      `Our business is ${business.legalName}, GSTIN ${business.gstin}. If the rows are bills from suppliers, kind is purchase_bill; if they are invoices we issued, sales_invoice.`,
+      `You map the columns of a spreadsheet of ${spec.label.toLowerCase()}, for an Indian business's office. Answer only with JSON in the given schema.`,
+      bills
+        ? `Our business is ${business.legalName}, GSTIN ${business.gstin}. If the rows are bills from suppliers, kind is purchase_bill; if they are invoices we issued, sales_invoice.`
+        : `Our business is ${business.legalName}.`,
       `For each field, give the column header that holds it, copied exactly from this list, or null if no column holds it: ${JSON.stringify(cols)}.`,
       "Each header may be used for one field only. Never write a header that is not in the list, and never write a figure.",
-      `The fields: ${fields.map((f) => `${f} (${BILL_FIELD_LABEL[f]})`).join(", ")}.`,
+      `The fields: ${fields.map((f) => `${f} (${spec.fields[f]})`).join(", ")}.`,
     ].join("\n"),
     user: [JSON.stringify(cols), ...sample.slice(0, 3).map((r) => JSON.stringify(r.slice(0, cols.length).map((c) => c.slice(0, 60))))].join("\n"),
     schema: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["purchase_bill", "sales_invoice"] },
+        ...(bills ? { kind: { type: "string", enum: ["purchase_bill", "sales_invoice"] } } : {}),
         mapping: { type: "object", properties: Object.fromEntries(fields.map((f) => [f, { type: ["string", "null"] }])) },
       },
-      required: ["kind", "mapping"],
+      required: bills ? ["kind", "mapping"] : ["mapping"],
     },
   };
 }
@@ -171,11 +78,16 @@ export function layoutPrompt(
  * The model's answer, kept only where it names a real header not already taken; what the header names found stays.
  * Anything else in the answer is ignored.
  */
-export function fromLayoutAnswer(answer: unknown, headers: string[], guess: BillMapping): { kind: SheetBillKind | null; mapping: BillMapping } {
+export function fromLayoutAnswer(
+  answer: unknown,
+  headers: string[],
+  guess: SheetMapping,
+  sheetKind: SheetKind = "bill_register",
+): { kind: SheetBillKind | null; mapping: SheetMapping } {
   const a = (answer ?? {}) as { kind?: unknown; mapping?: Record<string, unknown> };
-  const out: BillMapping = { ...guess };
+  const out: SheetMapping = { ...guess };
   const used = new Set(Object.values(guess));
-  for (const f of BillField.options) {
+  for (const f of Object.keys(SHEET_KINDS[sheetKind].fields)) {
     const h = a.mapping?.[f];
     if (out[f] || typeof h !== "string" || !headers.includes(h) || used.has(h)) continue;
     out[f] = h;

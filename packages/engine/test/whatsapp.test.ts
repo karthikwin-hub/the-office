@@ -196,7 +196,7 @@ describe("WhatsApp: the desk", () => {
 
   it("sends a new register or sales layout to the desk, where its columns are chosen", () => {
     const office = new OfficeService(loadBooks());
-    const [r] = office.registers.receive({
+    const [r] = office.intake.receive({
       id: "reg-wa1",
       file: "nov.csv",
       fileUrl: "/f/wa1",

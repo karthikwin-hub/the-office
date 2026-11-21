@@ -79,7 +79,7 @@ const handler = http.all("/api/*", async ({ request }) => {
     const { readSheets, SheetError } = await import("@office/engine/sheets");
     try {
       const sheets = await readSheets(file.name, await file.arrayBuffer());
-      const results = getOffice().registers.receive({
+      const results = getOffice().intake.receive({
         id: `reg-u${Date.now().toString(36)}`,
         file: file.name,
         fileUrl: URL.createObjectURL(file),

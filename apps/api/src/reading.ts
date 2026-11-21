@@ -1,4 +1,4 @@
-import type { BillMapping, Business, SheetBillKind } from "@office/contracts";
+import type { Business, SheetBillKind, SheetKind, SheetMapping } from "@office/contracts";
 import {
   type ExtractContext,
   type Extraction,
@@ -91,10 +91,11 @@ export async function readScan(ai: Ai, image: ArrayBuffer, ctx: ExtractContext &
  */
 export async function proposeLayout(
   ai: Ai,
-  sheet: { headers: string[]; sample: string[][]; guess: BillMapping },
+  sheet: { sheetKind?: SheetKind; headers: string[]; sample: string[][]; guess: SheetMapping },
   business: Business,
-): Promise<{ kind: SheetBillKind | null; mapping: BillMapping }> {
-  const { system, user, schema } = layoutPrompt(sheet.headers, sheet.sample, business);
+): Promise<{ kind: SheetBillKind | null; mapping: SheetMapping }> {
+  const sheetKind = sheet.sheetKind ?? "bill_register";
+  const { system, user, schema } = layoutPrompt(sheet.headers, sheet.sample, business, sheetKind);
   try {
     // Inside the try: where Workers AI is not bound (local runs), the names' guess stands.
     const run = ai.run.bind(ai) as unknown as Run;
@@ -107,7 +108,7 @@ export async function proposeLayout(
       max_tokens: 512,
       temperature: 0,
     });
-    return fromLayoutAnswer(modelJson(answer), sheet.headers, sheet.guess);
+    return fromLayoutAnswer(modelJson(answer), sheet.headers, sheet.guess, sheetKind);
   } catch {
     return { kind: null, mapping: sheet.guess };
   }
