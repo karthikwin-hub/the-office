@@ -37,6 +37,7 @@ import { SqlEditLog } from "./edits";
 import { OfficeExports } from "./export";
 import { ARCHIVE_MAX_BYTES, importAllowed, moveLinks, OfficeImport } from "./import";
 import { fileRoute, OfficeFiles } from "./files";
+import { billType } from "./filetype";
 // The light entry: the sample business (2.3 MB) is imported only when an office is seeded with it, never at an isolate's start.
 import { emptyBooks, SAMPLE_SEED } from "@office/fixtures/empty";
 import { Agent, type Connection, type ConnectionContext } from "agents";
@@ -1375,22 +1376,26 @@ export class Office extends Agent<Env> {
     const file = form.get("file") as File | string | null;
     if (!(file instanceof File)) return json({ error: "Attach a file." }, 400);
     if (file.size > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
-    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-    const isImage = /^image\/(png|jpe?g|webp)$/.test(file.type);
-    if (!isPdf && !isImage) return json({ error: "Send a PDF or a photo (PNG, JPEG or WebP)." }, 415);
-    const parsed = ReadRequest.safeParse({ items: JSON.parse(String(form.get("items") ?? "[]")) });
+    // The bytes must agree with what the sender says the file is, as for mail and WhatsApp.
+    const bytes = await file.arrayBuffer();
+    const type = billType(file.name, file.type, bytes);
+    if (!type) return json({ error: "Send a PDF or a photo (PNG, JPEG or WebP)." }, 415);
+    const isImage = type !== "application/pdf";
+    const parsed = ReadRequest.safeParse({ items: parseJson(String(form.get("items") ?? "[]")) });
     if (!parsed.success) return json({ error: "The text layer could not be read." }, 400);
+    const image = form.get("image") as File | string | null;
+    const picture = image instanceof File ? await image.arrayBuffer() : null;
+    if (picture && !billType(null, "image/jpeg", picture)) return json({ error: "The picture of the page is not a PNG, JPEG or WebP." }, 415);
     take(this.kv.bind(this), istDate(), "upload", file.size);
 
     const id = newDocId();
-    await this.files.put(docKey(this.officeId!, id), await file.arrayBuffer(), isPdf ? "application/pdf" : file.type, {
+    await this.files.put(docKey(this.officeId!, id), bytes, type, {
       filename: file.name,
       by: caller.email,
     });
     this.office.receiveDocument({ id, file: fileUrl(this.officeId!, id), channel: "upload", from: null, pages: Number(form.get("pages") ?? 1) || 1 });
-    const image = form.get("image") as File | string | null;
     if (parsed.data.items.length) return json(await this.readItems(id, parsed.data.items));
-    const scan = image instanceof File ? await image.arrayBuffer() : isImage ? await file.arrayBuffer() : null;
+    const scan = picture ?? (isImage ? bytes : null);
     if (!scan) {
       this.office.failDocument(id, "it has no text and no picture of the page came with it.");
       return json({ error: "This PDF has no text, and the page could not be pictured. Try a photo of it." }, 422);
@@ -1631,11 +1636,12 @@ export class Office extends Agent<Env> {
     const file = form.get("file") as File | string | null;
     if (!(file instanceof File)) return json({ error: "Attach a file." }, 400);
     if (file.size > MAX_UPLOAD) return json({ error: "Files up to 10 MB, please." }, 413);
-    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-    if (!isPdf && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PDF or a picture (PNG, JPEG or WebP)." }, 415);
+    const bytes = await file.arrayBuffer();
+    const type = billType(file.name, file.type, bytes);
+    if (!type) return json({ error: "Send a PDF or a picture (PNG, JPEG or WebP)." }, 415);
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `proof-${crypto.randomUUID()}`;
-    await this.files.put(docKey(this.officeId!, id), await file.arrayBuffer(), isPdf ? "application/pdf" : file.type, {
+    await this.files.put(docKey(this.officeId!, id), bytes, type, {
       filename: file.name,
       by: caller.email,
     });
