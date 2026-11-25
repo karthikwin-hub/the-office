@@ -4,9 +4,9 @@ import type { Kv } from "./whatsapp/links";
  * One office's daily allowance, so a busy or misused office cannot spend everyone's. The Customer
  * Service agent has its own model allowance, so a busy chat cannot use up the Accountant's reading.
  */
-export const QUOTA = { aiCalls: 400, csAiCalls: 150, eaAiCalls: 100, uploadBytes: 250 * 1024 * 1024 };
+export const QUOTA = { aiCalls: 400, csAiCalls: 150, eaAiCalls: 100, socialAiCalls: 150, uploadBytes: 250 * 1024 * 1024 };
 
-type What = "ai" | "cs_ai" | "ea_ai" | "upload";
+type What = "ai" | "cs_ai" | "ea_ai" | "social_ai" | "upload";
 
 export class QuotaError extends Error {
   constructor(what: What) {
@@ -17,7 +17,9 @@ export class QuotaError extends Error {
           ? "The Customer Service agent has used today's model allowance; it answers from its rules until tomorrow."
           : what === "ea_ai"
             ? "The assistant has used today's model allowance; it drafts plain holding replies until tomorrow."
-            : "This office has stored as much as it can today. Try again tomorrow.",
+            : what === "social_ai"
+              ? "The Social Media Manager has used today's model allowance; it writes from templates until tomorrow."
+              : "This office has stored as much as it can today. Try again tomorrow.",
     );
   }
 }
@@ -26,7 +28,16 @@ export class QuotaError extends Error {
 export function take(kv: Kv, day: string, what: What, amount = 1): void {
   const key = `quota:${day}:${what}`;
   const used = Number(kv(key) ?? 0);
-  const limit = what === "ai" ? QUOTA.aiCalls : what === "cs_ai" ? QUOTA.csAiCalls : what === "ea_ai" ? QUOTA.eaAiCalls : QUOTA.uploadBytes;
+  const limit =
+    what === "ai"
+      ? QUOTA.aiCalls
+      : what === "cs_ai"
+        ? QUOTA.csAiCalls
+        : what === "ea_ai"
+          ? QUOTA.eaAiCalls
+          : what === "social_ai"
+            ? QUOTA.socialAiCalls
+            : QUOTA.uploadBytes;
   if (used + amount > limit) throw new QuotaError(what);
   kv(key, String(used + amount));
 }

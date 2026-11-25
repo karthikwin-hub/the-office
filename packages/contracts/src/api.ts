@@ -357,6 +357,7 @@ export const SocialReport = z.object({
   ratings: z.object({ average: z.number(), count: z.number().int() }),
   channels: z.array(Channel),
   voice: BrandVoice,
+  festivals: z.array(FestivalDate).default([]),
   calendars: z.array(ContentCalendar),
   media: z.array(MediaAsset),
   checks: z.record(z.string(), z.array(PostCheck)),
@@ -421,6 +422,8 @@ export const OwnerPostWarning = z.object({ row: z.number().int(), channelId: z.s
 export const OwnerPostResult = z.object({ saved: z.boolean(), posts: z.array(Post), warnings: z.array(OwnerPostWarning) });
 export type OwnerPostResult = z.infer<typeof OwnerPostResult>;
 export const PostTime = z.object({ at: IsoDateTime });
+/** The festivals the Social Media Manager plans for: built-in ones the owner kept, and their own. */
+export const FestivalsInput = z.object({ festivals: z.array(FestivalDate).max(100) });
 
 export const OperationsReport = z.object({
   note: Note,
@@ -1074,6 +1077,7 @@ export const ROUTES = {
   socialMedia: "/api/social/media",
   socialPosts: "/api/social/posts",
   socialPost: (postId: string) => `/api/social/posts/${postId}`,
+  socialFestivals: "/api/social/festivals",
   routines: "/api/routines",
   routine: (id: string) => `/api/routines/${encodeURIComponent(id)}`,
   routineRuns: (id: string) => `/api/routines/${encodeURIComponent(id)}/runs`,

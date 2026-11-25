@@ -548,6 +548,7 @@ export const Campaign = z.object({
 export type Campaign = z.infer<typeof Campaign>;
 
 export const FestivalDate = z.object({ date: IsoDate, name: z.string(), relevance: z.string() });
+export type FestivalDate = z.infer<typeof FestivalDate>;
 export const CompetitorPrice = z.object({
   skuId: z.string(),
   marketplace: z.string(),
@@ -619,6 +620,15 @@ export const BrandVoice = z.object({
   emoji: z.enum(["none", "light", "free"]),
   pillars: z.array(Pillar),
   signoff: z.string(),
+  /** The brand kit: who the posts are for, how pictures should look, and names never to mention. */
+  audience: z.string().max(500).default(""),
+  colours: z
+    .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+    .max(5)
+    .default([]),
+  imageStyle: z.string().max(500).default(""),
+  logoMediaId: z.string().nullable().default(null),
+  competitors: z.array(z.string().max(100)).max(20).default([]),
 });
 export type BrandVoice = z.infer<typeof BrandVoice>;
 
@@ -637,7 +647,38 @@ export const DEFAULT_VOICE: BrandVoice = {
     { id: "behind", name: "Behind the counter", share: 10, description: "Team, deliveries and customers" },
   ],
   signoff: "",
+  audience: "",
+  colours: [],
+  imageStyle: "",
+  logoMediaId: null,
+  competitors: [],
 };
+
+/**
+ * Festivals and national days the Social Media Manager can plan for, offered in Settings to turn on or off.
+ * Only dates two published Indian calendars (timeanddate.com and calendarlabs.com, read 25 November 2026) agree
+ * on; the Eids depend on the moon. Festivals whose date differs by region or source (Pongal, Ugadi, Onam,
+ * Dussehra and others) are left for the owner to add with their own date.
+ */
+export const INDIA_FESTIVALS: { date: string; name: string; relevance: string }[] = [
+  { date: "2026-12-25", name: "Christmas", relevance: "Gifting, lights and year-end offers" },
+  { date: "2027-01-01", name: "New Year's Day", relevance: "Greetings and new-year offers" },
+  { date: "2027-01-14", name: "Makar Sankranti", relevance: "Harvest festival greetings" },
+  { date: "2027-01-26", name: "Republic Day", relevance: "National day greetings and sales" },
+  { date: "2027-03-06", name: "Maha Shivaratri", relevance: "Greetings" },
+  { date: "2027-03-10", name: "Eid al-Fitr (date depends on the moon)", relevance: "Greetings, gifting and new clothes" },
+  { date: "2027-03-22", name: "Holi", relevance: "Colours, greetings and spring offers" },
+  { date: "2027-03-26", name: "Good Friday", relevance: "Holiday timings" },
+  { date: "2027-04-15", name: "Ram Navami", relevance: "Greetings" },
+  { date: "2027-05-17", name: "Eid al-Adha (date depends on the moon)", relevance: "Greetings and holiday timings" },
+  { date: "2027-08-15", name: "Independence Day", relevance: "National day greetings and sales" },
+  { date: "2027-08-17", name: "Raksha Bandhan", relevance: "Gifting between siblings" },
+  { date: "2027-08-25", name: "Janmashtami", relevance: "Greetings and decorations" },
+  { date: "2027-09-04", name: "Ganesh Chaturthi", relevance: "Decorations, lights and pandal timings" },
+  { date: "2027-10-29", name: "Diwali", relevance: "Lights, decor, gifting and the year's biggest offers" },
+  { date: "2027-11-14", name: "Guru Nanak Jayanti", relevance: "Greetings" },
+  { date: "2027-12-25", name: "Christmas", relevance: "Gifting, lights and year-end offers" },
+];
 
 export const MediaAsset = z.object({
   id: z.string(),

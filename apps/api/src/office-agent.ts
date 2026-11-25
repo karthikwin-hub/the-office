@@ -66,6 +66,7 @@ import { readSheetFile, SqlLayoutStore } from "./registers";
 import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
+import { writeWithAi } from "./social/write";
 import { MEDIA_ID } from "./social/media";
 import { callbackUrl, newState, readState, SpentStates } from "./social/oauth";
 import { TokenVault } from "./social/tokens";
@@ -168,6 +169,7 @@ export class Office extends Agent<Env> {
   private ai!: Ai;
   private csAi!: Ai;
   private eaAi!: Ai;
+  private socialAi!: Ai;
 
   private ownName(): string | null {
     try {
@@ -208,6 +210,7 @@ export class Office extends Agent<Env> {
     this.ai = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "ai"));
     this.csAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "cs_ai"));
     this.eaAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "ea_ai"));
+    this.socialAi = meteredAi(this.env.AI, () => take(this.kv.bind(this), istDate(), "social_ai"));
 
     this.store = new BooksStore(sql);
     this.edits = new SqlEditLog(sql);
@@ -703,6 +706,7 @@ export class Office extends Agent<Env> {
       else await this.send([item]);
     }
     if (path.startsWith("/api/channels") && request.method !== "GET") await this.syncRoutes();
+    if (post && path === ROUTES.socialCalendarDraft) await this.writeCalendar((res.body as StagedChange).payload as { calendarId?: string });
     if (request.method !== "GET" && (path === `/api/hiring/${CS_AGENT}` || path === "/api/customers/widget")) await this.syncCustomerRoutes();
     if (request.method !== "GET" && path === "/api/hiring/executive-assistant") await this.syncAssistantRoute();
     if (request.method !== "GET" && path === "/api/hiring/marketplace-manager") await this.syncSalesRoute();
@@ -1851,6 +1855,12 @@ export class Office extends Agent<Env> {
    * The Social Media Manager's morning: numbers and comments from each connected channel,
    * anything overdue published or held back, and from the 25th, next month's calendar drafted for the desk.
    */
+  /** The model rewrites a freshly drafted month's captions; checks keep only those the books back up. */
+  private async writeCalendar(payload: { calendarId?: string }) {
+    if (!payload.calendarId || !this.env.AI) return;
+    await writeWithAi(this.socialAi, this.office, payload.calendarId);
+  }
+
   private async socialMorning(): Promise<StepResult> {
     const pulled = await this.social().pull();
     if (pulled.metrics)
@@ -1858,7 +1868,7 @@ export class Office extends Agent<Env> {
     const published = await this.publishNow();
     const month = nextMonth(this.day.slice(0, 7));
     const draft = Number(this.day.slice(8, 10)) >= 25 && !this.office.books.calendars.some((c) => c.month === month && c.status !== "superseded");
-    if (draft) this.office.draftCalendar(month);
+    if (draft) await this.writeCalendar(this.office.draftCalendar(month).payload as { calendarId?: string });
     await this.afterChange();
     const parts = [
       pulled.metrics ? `results for ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"}` : "",

@@ -224,7 +224,7 @@ export function checkPost(l: Ledger, post: Post, voice: BrandVoice, opts: { now?
     else if (st) out.push({ key: "stock", label: "In stock", ok: true, detail: `${st.onHand} of ${name} on hand`, channelId: null });
   }
 
-  const rivals = [...new Set(l.books.competitorPrices.flatMap((c) => [c.marketplace, c.seller]))].filter((x) => x.length > 2);
+  const rivals = [...new Set([...l.books.competitorPrices.flatMap((c) => [c.marketplace, c.seller]), ...voice.competitors])].filter((x) => x.length > 2);
   for (const v of active) {
     const comp = COMPARATIVE.exec(v.text);
     const named = rivals.find((r) => new RegExp(`\\b${r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(v.text));

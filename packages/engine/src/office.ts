@@ -11,6 +11,7 @@ import type {
   DocType,
   Document,
   DocumentView,
+  FestivalDate,
   ImportCheck,
   ImportPreview,
   IngestResult,
@@ -38,7 +39,8 @@ import type {
   TrustLevel,
 } from "@office/contracts";
 import { AGENT_BY_ID, AGENTS, BOOKS_PROVIDER, BRAND, PLATFORM_NAMES, PROMOTION_RULES } from "@office/contracts";
-import { textHash } from "./social/channels";
+import { fit, textHash } from "./social/channels";
+import { type DraftPrompt, draftPrompt, fromDraft } from "./social/drafts";
 import { checkPost, factsFor } from "./social/checks";
 import { claimDays, nextFreeTime, skusNamed } from "./social/own";
 import { isThankYou, leadFrom, newMessage } from "./social/inbox";
@@ -1425,6 +1427,61 @@ export class OfficeService {
     return item;
   }
 
+  /**
+   * Every channel version of a calendar's unapproved drafts, each with the prompt for the model. The host runs the
+   * model (the engine never calls one) and hands each answer to `applyAiDraft`.
+   */
+  aiDraftJobs(calendarId: string): { postId: string; channelId: string; prompt: DraftPrompt }[] {
+    const cal = this.books.calendars.find((c) => c.id === calendarId);
+    if (!cal || cal.status !== "draft") return [];
+    const ids = new Set(cal.slots.map((s) => s.postId).filter(Boolean));
+    return this.books.posts
+      .filter((p) => ids.has(p.id) && p.source === "agent" && p.status === "draft")
+      .flatMap((p) =>
+        p.variants
+          .filter((v) => v.status === "draft")
+          .map((v) => ({ postId: p.id, channelId: v.channelId, prompt: draftPrompt(p.topic, p.facts, this.books.brandVoice, v.platform) })),
+      );
+  }
+
+  /**
+   * A model's caption for one version, kept only if every figure is a cited fact (`fromDraft`) and it fails no check
+   * the template version passed. Otherwise the template stays, and this answers false.
+   */
+  applyAiDraft(postId: string, channelId: string, answer: unknown): boolean {
+    const post = this.post(postId);
+    const v = post.variants.find((x) => x.channelId === channelId);
+    if (!v || v.status !== "draft" || post.status !== "draft") return false;
+    const got = fromDraft(answer, post.facts);
+    if (!got) return false;
+    const text = fit(v.platform, got.text, { hashtags: this.books.brandVoice.hashtags }).text;
+    const failing = (p: Post) =>
+      new Set(
+        checkPost(this.ledger, p, this.books.brandVoice)
+          .filter((c) => !c.ok && (c.channelId === null || c.channelId === channelId))
+          .map((c) => c.key),
+      );
+    const before = failing(post);
+    const trial = structuredClone(post);
+    trial.variants.find((x) => x.channelId === channelId)!.text = text;
+    if ([...failing(trial)].some((k) => !before.has(k))) return false;
+    v.text = text;
+    return true;
+  }
+
+  /** Tells the calendar's desk card how many versions the model wrote. */
+  noteAiDrafts(calendarId: string, written: number, tried: number) {
+    const item = this.books.staged.find(
+      (s) => s.kind === "calendar" && s.status === "pending" && (s.payload as { calendarId?: string }).calendarId === calendarId,
+    );
+    if (!item || !tried) return;
+    item.summary = `${item.summary} Written with AI: ${written} of ${tried} versions${written < tried ? "; the rest from templates, because the AI's version stated a figure the books don't back up or failed a check" : ""}.`;
+    this.log("social-media-manager", `Wrote ${written} of ${tried} versions with AI; every figure in them is from the books.`, {
+      kind: "calendar",
+      id: calendarId,
+    });
+  }
+
   /** Plans a month, drafts every slot, and puts the calendar on the desk as one card. */
   draftCalendar(month: string): StagedChange {
     const existing = this.books.calendars.find((c) => c.month === month && c.status !== "superseded");
@@ -1442,7 +1499,7 @@ export class OfficeService {
       kind: "calendar",
       createdAt: istNow(this.asOf),
       title: `Approve the ${monthLabel(month)} calendar: ${posts.length} posts across ${channels.size} channels`,
-      summary: `${byPillar}.${failing ? ` ${failing} draft${failing === 1 ? " fails" : "s fail"} a check and will wait for you after approval.` : ""} Approving lets a trusted Social Media Manager publish each post at its time, if it is unchanged and passes every check again then.`,
+      summary: `${byPillar}.${this.books.festivalCalendar.length ? "" : " No festivals are chosen yet: pick them in Settings, Social media."}${failing ? ` ${failing} draft${failing === 1 ? " fails" : "s fail"} a check and will wait for you after approval.` : ""} Approving lets a trusted Social Media Manager publish each post at its time, if it is unchanged and passes every check again then.`,
       evidence: [{ label: "The calendar", ref: { kind: "calendar", id: calendar.id } }],
       payload: { calendarId: calendar.id, postIds: posts.map((p) => p.id) },
       status: "pending",
@@ -1806,6 +1863,16 @@ export class OfficeService {
     };
     this.books.staged.push(item);
     return item;
+  }
+
+  /** The festivals the agent plans for, in date order, one per date and name. */
+  setFestivals(list: FestivalDate[]): FestivalDate[] {
+    const seen = new Set<string>();
+    this.books.festivalCalendar = list
+      .filter((f) => !seen.has(`${f.date}|${f.name}`) && seen.add(`${f.date}|${f.name}`))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    this.log("social-media-manager", `Festivals to plan for: ${this.books.festivalCalendar.length}.`);
+    return this.books.festivalCalendar;
   }
 
   updateVoice(voice: BrandVoice): BrandVoice {

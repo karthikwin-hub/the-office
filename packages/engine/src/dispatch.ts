@@ -15,6 +15,7 @@ import {
   CsSettingsInput,
   EventInput,
   FactsInput,
+  FestivalsInput,
   HiringChange,
   ImportCheck,
   MarkPosted,
@@ -648,6 +649,10 @@ function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
   if (what === "voice" && write) {
     const parsed = BrandVoice.safeParse(req.body);
     return parsed.success ? ok(office.updateVoice(parsed.data)) : bad("Check the brand voice: it needs a tone, at least one language and pillars that add up.");
+  }
+  if (what === "festivals" && write) {
+    const parsed = FestivalsInput.safeParse(req.body ?? {});
+    return parsed.success ? ok(office.setFestivals(parsed.data.festivals)) : bad("Each festival needs a date (YYYY-MM-DD) and a name.");
   }
   if (what === "channels" && id && write) {
     const parsed = ChannelSetup.safeParse(req.body ?? {});
