@@ -1,15 +1,14 @@
 import type { Books, BusinessFacts, CannedAnswer, FactKey, SocialMessage } from "@office/contracts";
 import { type Classification, classifierPrompt, classifyRules, decisive, FACT_NAMES, HUMAN_TOPIC_NAMES, MIN_CONFIDENCE, scoreAnswers } from "../customer/brain";
 import { figuresIn } from "./checks";
-import { draftReply } from "./inbox";
+import { draftReply, greetName } from "./inbox";
 
 /** Text that tries to steer the agent instead of asking the business something. It always goes to the owner. */
 const STEERING =
-  /\b(ignore (all |any |the |your )?(previous|prior|above|earlier|other) (instructions|rules|prompts?)|system prompt|disregard (your|the|all)|you are now|act as an? |pretend (to be|you are)|new instructions)\b/i;
+  /\b(ignore (all |any |the |your )?(previous|prior|above|earlier|other) (instructions|rules|prompts?)|system prompt|disregard (your|the|all) (instructions|rules)|you are now (an? )?(ai|assistant|bot|chatbot)|pretend (to be|you are) (an? )?(ai|assistant|bot)|new instructions)\b/i;
 
 export type ReplyPlan = Pick<SocialMessage, "draftReply" | "basis" | "answerId" | "toOwner" | "sortedBy">;
 
-const firstName = (author: string) => (author.replace(/^@/, "").split(/\s+/)[0] ?? author).slice(0, 40);
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The owner's words a reply quotes: a saved answer, or a business fact. */
@@ -32,10 +31,14 @@ export function backedBySource(reply: string, source: string | null): boolean {
  */
 export function planReply(
   books: Pick<Books, "customerService" | "business">,
-  m: Pick<SocialMessage, "author" | "intent" | "sentiment" | "kind" | "platform" | "text">,
+  m: Pick<SocialMessage, "author" | "intent" | "sentiment" | "kind" | "platform" | "text" | "rating">,
   c: Classification,
 ): ReplyPlan {
-  const first = firstName(m.author);
+  const name = greetName(m.author);
+  const first = name ?? "They";
+  const thanks = `Thanks for asking${name ? `, ${name}` : ""}.`;
+  // A rules match that is not certain waits for the model's look, or for the owner where there is no model.
+  const unsure = c.method === "rules" && !decisive(c);
   const held = (why: string): ReplyPlan => ({
     draftReply: draftReply(m, books.business.name, books.business.phone),
     basis: "template",
@@ -44,28 +47,37 @@ export function planReply(
     sortedBy: c.method,
   });
   if (STEERING.test(m.text)) return held("it tries to give the agent instructions");
-  if (c.intent === "sensitive") return held(`${first} ${HUMAN_TOPIC_NAMES[c.topic ?? "complaint"]}`);
+  // A 4 or 5 star review is praise even when its words also name a price.
+  const praise = m.sentiment === "positive" && (m.intent === "praise" || (m.kind === "review" && (m.rating ?? 0) >= 4));
+  // "Best price, thank you!" is praise, not haggling; a refund, legal threat or anger never is.
+  if (c.intent === "sensitive" && !(praise && c.topic === "negotiation")) return held(`${first} ${HUMAN_TOPIC_NAMES[c.topic ?? "complaint"]}`);
   if (c.intent === "human") return held(`${first} asks for a person`);
   if (m.intent === "complaint" || m.sentiment === "negative") return held(`${first} is unhappy`);
-  if (m.intent === "praise" && m.sentiment === "positive")
-    return { draftReply: draftReply(m, books.business.name, books.business.phone), basis: "thanks", answerId: null, toOwner: null, sortedBy: c.method };
+  if (praise)
+    return {
+      draftReply: draftReply({ ...m, intent: "praise" }, books.business.name, books.business.phone),
+      basis: "thanks",
+      answerId: null,
+      toOwner: null,
+      sortedBy: c.method,
+    };
   if (c.intent === "answer" && c.answerId) {
     const a = books.customerService.answers.find((x) => x.id === c.answerId && x.enabled);
     if (a)
       return {
-        draftReply: `Thanks for asking, ${first}. ${a.answer}`,
+        draftReply: `${thanks} ${a.answer}`,
         basis: "saved_answer",
         answerId: a.id,
-        toOwner: c.confidence < MIN_CONFIDENCE ? `not sure your saved answer "${a.title}" fits` : null,
+        toOwner: c.confidence < MIN_CONFIDENCE || unsure ? `not sure your saved answer "${a.title}" fits` : null,
         sortedBy: c.method,
       };
   }
   if (c.intent === "fact" && c.fact && books.customerService.facts[c.fact])
     return {
-      draftReply: `Thanks for asking, ${first}. ${sentence(FACT_NAMES[c.fact])}: ${books.customerService.facts[c.fact]}`,
+      draftReply: `${thanks} ${sentence(FACT_NAMES[c.fact])}: ${books.customerService.facts[c.fact]}`,
       basis: "fact",
       answerId: `fact:${c.fact}`,
-      toOwner: c.confidence < MIN_CONFIDENCE ? `not sure your ${FACT_NAMES[c.fact]} answers it` : null,
+      toOwner: c.confidence < MIN_CONFIDENCE || unsure ? `not sure your ${FACT_NAMES[c.fact]} answers it` : null,
       sortedBy: c.method,
     };
   if (c.intent === "thanks" || c.intent === "greeting")
