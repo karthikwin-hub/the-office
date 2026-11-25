@@ -43,6 +43,8 @@ import { fit, textHash } from "./social/channels";
 import { type DraftPrompt, draftPrompt, fromDraft } from "./social/drafts";
 import { checkPost, factsFor, figuresIn } from "./social/checks";
 import { claimDays, nextFreeTime, skusNamed } from "./social/own";
+import { backedBySource, inboxPrompt, planReply, sortByRules, sourceText, worthAsking } from "./social/reply";
+import { parseClassification } from "./customer/brain";
 import { isThankYou, leadFrom, newMessage } from "./social/inbox";
 import { draftCalendar, planMonth } from "./social/planner";
 import { ageingReport, DEFAULT_POLICY, draftReminders, openInvoices } from "./ageing";
@@ -1158,9 +1160,14 @@ export class OfficeService {
     const p = item.payload as { messageId?: string; reply?: string; postId?: string };
     if (item.kind === "social_reply") {
       const m = this.books.socialInbox.find((x) => x.id === p.messageId);
-      return m && m.status === "open" && isThankYou(m, p.reply ?? m.draftReply)
-        ? { level, reason: "it is a thank-you to a positive review or comment, with no figures or promises" }
-        : null;
+      if (!m || m.status !== "open" || m.toOwner) return null;
+      const reply = p.reply ?? m.draftReply;
+      if (isThankYou(m, reply)) return { level, reason: "it is a thank-you to a positive review or comment, with no figures or promises" };
+      // A reply that quotes the owner's own saved answer or business fact, unchanged, with no figure it does not hold.
+      const source = sourceText(this.books, m.answerId);
+      if ((m.basis === "saved_answer" || m.basis === "fact") && reply === m.draftReply && source && reply.includes(source) && backedBySource(reply, source))
+        return { level, reason: m.basis === "fact" ? "it answers with a business fact you wrote" : "it answers with one of your saved answers, word for word" };
+      return null;
     }
     const post = this.books.posts.find((x) => x.id === p.postId);
     if (!post) return null;
@@ -1927,6 +1934,7 @@ export class OfficeService {
     for (const raw of raws) {
       if (this.books.socialInbox.some((m) => m.id === raw.id || (raw.externalId && m.externalId === raw.externalId))) continue;
       const m = newMessage(this.ledger, raw);
+      if (m.intent !== "spam") Object.assign(m, planReply(this.books, m, sortByRules(this.books, m.text)));
       this.books.socialInbox.push(m);
       added.push(m);
       if (m.intent === "spam") continue;
@@ -1965,11 +1973,42 @@ export class OfficeService {
         { label: "The message", ref: { kind: "social", id: m.id } },
         ...(m.leadId ? [{ label: "The lead", ref: { kind: "lead" as const, id: m.leadId } }] : []),
       ],
-      payload: { messageId: m.id, reply: m.draftReply },
+      payload: { messageId: m.id, reply: m.draftReply, basis: m.basis, answerId: m.answerId, ...(m.toOwner ? { holdForOwner: true } : {}) },
       status: "pending",
     };
+    if (m.toOwner) item.summary = `Needs you: ${m.toOwner}. ${item.summary}`;
     this.books.staged.push(item);
     return item;
+  }
+
+  /**
+   * Open messages the rules were unsure of, each with the prompt for the model. The host runs the model and hands
+   * each answer to `applyInboxSort`; the engine never calls one.
+   */
+  inboxSortJobs(): { messageId: string; system: string; user: string }[] {
+    return this.books.socialInbox
+      .filter((m) => m.status === "open" && m.intent !== "spam" && m.sortedBy === "rules")
+      .filter((m) => this.books.staged.some((s) => s.id === `chg-reply-${m.id}` && s.status === "pending"))
+      .filter((m) => worthAsking(m, sortByRules(this.books, m.text)))
+      .map((m) => ({ messageId: m.id, ...inboxPrompt(this.books, m.text) }));
+  }
+
+  /**
+   * The model's reading of one message, checked like the Customer Service agent's (an answer id it made up or a
+   * fact the owner never wrote is dropped; the rules win on the always-human topics). The reply is rebuilt from the
+   * owner's own words and, if it may go alone, goes now.
+   */
+  applyInboxSort(messageId: string, raw: unknown): boolean {
+    const m = this.books.socialInbox.find((x) => x.id === messageId);
+    const item = this.books.staged.find((s) => s.id === `chg-reply-${messageId}` && s.status === "pending");
+    if (!m || !item || m.status !== "open") return false;
+    const rules = sortByRules(this.books, m.text);
+    const { candidates, facts } = inboxPrompt(this.books, m.text);
+    Object.assign(m, planReply(this.books, m, parseClassification(raw, rules, candidates, facts)), { sortedBy: "model" });
+    const fresh = this.books.staged.indexOf(item);
+    this.books.staged.splice(fresh, 1);
+    this.runTrusted([this.stageReply(m)]);
+    return true;
   }
 
   /** The festivals the agent plans for, in date order, one per date and name. */

@@ -8,7 +8,7 @@ import { type Kv, type Link, sessionFor } from "../whatsapp/links";
 type Run = (model: string, input: unknown) => Promise<unknown>;
 
 /** What the model may answer, and nothing more. */
-const CS_SCHEMA = {
+export const CS_SCHEMA = {
   type: "object",
   properties: {
     intent: { type: "string", enum: ["order_status", "balance", "answer", "fact", "greeting", "thanks", "human", "sensitive", "other"] },

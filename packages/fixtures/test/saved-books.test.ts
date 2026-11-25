@@ -23,6 +23,8 @@ function withLaterDefaults(book: unknown): unknown {
     for (const v of (p.variants as Loose[] | undefined) ?? []) v.takenDownAt ??= null;
   }
   for (const c of (b.channels as Loose[] | undefined) ?? []) c.notice ??= null;
+  for (const m of (b.socialInbox as Loose[] | undefined) ?? [])
+    for (const [k, v] of Object.entries({ basis: "template", answerId: null, toOwner: null, sortedBy: "rules" })) m[k] ??= v;
   const voice = b.brandVoice as Loose | undefined;
   if (voice) for (const [k, v] of Object.entries({ audience: "", colours: [], imageStyle: "", logoMediaId: null, competitors: [] })) voice[k] ??= v;
   return b;
