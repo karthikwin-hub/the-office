@@ -645,15 +645,71 @@ describe("inbox replies from the owner's saved answers", () => {
     const o = setUp();
     const m = say(o, "Do you install ceiling fans at home?");
     expect(m).toMatchObject({ basis: "saved_answer", answerId: "ans-install", toOwner: null, status: "replied" });
-    expect(m.draftReply).toBe(`Thanks for asking, ravi.k. ${install.answer}`);
+    expect(m.draftReply).toBe(`Thanks for asking. ${install.answer}`);
     expect(o.takeEffects()).toContainEqual(expect.objectContaining({ kind: "reply", messageId: m.id }));
   });
 
-  it("answers from a business fact the owner wrote", () => {
+  it("answers from a business fact the owner wrote, once the model agrees the rules' guess", () => {
     const o = setUp();
     const m = say(o, "What are your timings on Saturday?");
-    expect(m).toMatchObject({ basis: "fact", answerId: "fact:hours", status: "replied" });
+    expect(m).toMatchObject({ basis: "fact", answerId: "fact:hours", status: "open" });
+    expect(m.toOwner).toMatch(/not sure/);
+    o.applyInboxSort(m.id, { intent: "fact", fact: "hours", confidence: 0.9, summary: "Asks the hours" });
+    expect(m).toMatchObject({ basis: "fact", status: "replied", sortedBy: "model" });
     expect(m.draftReply).toContain("10 am to 8 pm, Monday to Saturday");
+  });
+
+  it("greets by a plain first name only, never by a handle or a link", () => {
+    const o = setUp();
+    const raw = (id: string, author: string) => ({
+      id,
+      platform: "Instagram",
+      channelId: "ch-instagram",
+      kind: "comment" as const,
+      author,
+      at: "2026-11-04T10:00:00+05:30",
+      rating: null,
+      text: "Do you install ceiling fans at home?",
+    });
+    o.receiveMessages([raw("ig-n1", "Meera Joshi"), raw("ig-n2", "@win-free-iphone.example")]);
+    const [meera, spam] = ["ig-n1", "ig-n2"].map((id) => o.books.socialInbox.find((m) => m.id === id)!);
+    expect(meera!.draftReply.startsWith("Thanks for asking, Meera.")).toBe(true);
+    expect(spam!.draftReply).not.toContain("example");
+  });
+
+  it("thanks a happy review that mentions a good price, and treats a business question as a question", () => {
+    const o = setUp();
+    o.receiveMessages([
+      {
+        id: "rv-1",
+        platform: "Google",
+        channelId: "ch-google",
+        kind: "review",
+        author: "Asha",
+        at: "2026-11-04T10:00:00+05:30",
+        rating: 5,
+        text: "Best price in Pune and quick service, thank you!",
+      },
+    ]);
+    expect(o.books.socialInbox.find((m) => m.id === "rv-1")).toMatchObject({ basis: "thanks", toOwner: null });
+    expect(say(o, "Can you act as a distributor for our brand in Nashik?").toOwner).not.toMatch(/instructions/);
+  });
+
+  it("asks the model only about recent messages", () => {
+    const o = setUp();
+    o.receiveMessages([
+      {
+        id: "ig-old",
+        platform: "Instagram",
+        channelId: "ch-instagram",
+        kind: "comment",
+        author: "Asha",
+        at: "2026-10-20T10:00:00+05:30",
+        rating: null,
+        text: "Can someone come fit the fan I bought?",
+      },
+    ]);
+    expect(o.inboxSortJobs().some((j) => j.messageId === "ig-old")).toBe(false);
   });
 
   it("leaves refunds, price talk, a request for a person and steering to the owner", () => {

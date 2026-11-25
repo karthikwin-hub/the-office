@@ -26,20 +26,30 @@ export function classify(text: string, rating: number | null): { sentiment: Sent
   return { sentiment, intent: sentiment === "positive" ? "praise" : "question" };
 }
 
+/**
+ * The name a reply greets someone by: their first name when it is a plain word, otherwise none. A handle or display
+ * name is the sender's own text, and the business posts the reply, so a link or a slogan in it is never repeated.
+ */
+export function greetName(author: string): string | null {
+  const first = author.replace(/^@/, "").split(/\s+/)[0] ?? "";
+  return /^\p{L}{2,20}$/u.test(first) ? first : null;
+}
+
 /** A reply that states no figures and makes no promises; complaints are taken offline. */
 export function draftReply(m: Pick<SocialMessage, "author" | "intent" | "kind" | "platform">, businessName: string, phone: string): string {
-  const first = m.author.replace(/^@/, "").split(/\s+/)[0] ?? m.author;
+  const name = greetName(m.author);
+  const to = name ? `, ${name}` : "";
   switch (m.intent) {
     case "praise":
-      return `Thank you, ${first}. We are glad it helped, and we look forward to seeing you again at ${businessName}.`;
+      return `Thank you${to}. We are glad it helped, and we look forward to seeing you again at ${businessName}.`;
     case "complaint":
-      return `${first}, we are sorry about this. Please call us on ${phone} or send us a message with your bill number so the owner can look into it today.`;
+      return `${name ? `${name}, we` : "We"} are sorry about this. Please call us on ${phone} or send us a message with your bill number so the owner can look into it today.`;
     case "enquiry":
-      return `Thanks for asking, ${first}. Our sales team will send you the details and a quotation shortly.`;
+      return `Thanks for asking${to}. Our sales team will send you the details and a quotation shortly.`;
     case "spam":
       return "";
     default:
-      return `Thanks, ${first}. ${m.kind === "dm" ? "We will reply here" : "Please send us a message"} and our team will help.`;
+      return `Thanks${to}. ${m.kind === "dm" ? "We will reply here" : "Please send us a message"} and our team will help.`;
   }
 }
 

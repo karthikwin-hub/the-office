@@ -1986,11 +1986,15 @@ export class OfficeService {
    * each answer to `applyInboxSort`; the engine never calls one.
    */
   inboxSortJobs(): { messageId: string; system: string; user: string }[] {
-    return this.books.socialInbox
-      .filter((m) => m.status === "open" && m.intent !== "spam" && m.sortedBy === "rules")
-      .filter((m) => this.books.staged.some((s) => s.id === `chg-reply-${m.id}` && s.status === "pending"))
-      .filter((m) => worthAsking(m, sortByRules(this.books, m.text)))
-      .map((m) => ({ messageId: m.id, ...inboxPrompt(this.books, m.text) }));
+    return (
+      this.books.socialInbox
+        .filter((m) => m.status === "open" && m.intent !== "spam" && m.sortedBy === "rules")
+        // Only recent ones: a reply days late is better from the owner, and messages from before this existed stay theirs.
+        .filter((m) => Date.parse(m.at) >= Date.parse(istNow(this.asOf)) - 2 * 24 * 3600_000)
+        .filter((m) => this.books.staged.some((s) => s.id === `chg-reply-${m.id}` && s.status === "pending"))
+        .filter((m) => worthAsking(m, sortByRules(this.books, m.text)))
+        .map((m) => ({ messageId: m.id, ...inboxPrompt(this.books, m.text) }))
+    );
   }
 
   /**

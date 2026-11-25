@@ -1862,6 +1862,8 @@ export class Office extends Agent<Env> {
     this.office.recordEdits("social-media-manager");
     await this.afterChange();
     this.commit();
+    // A message that came in while this ran found the task already scheduled: look again.
+    if (this.office.inboxSortJobs().length) await this.schedule(60, "sortInboxTask");
   }
 
   /** Sets the model to rewrite a freshly drafted month's captions, once, in a task of its own. */
