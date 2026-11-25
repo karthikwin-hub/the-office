@@ -131,8 +131,8 @@ Nothing to configure. The templates are static files at `/templates/parties.csv`
 | Instagram | Meta app, Instagram product (Instagram login) | `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`; redirect `/api/channels/instagram/callback` |
 | Threads | Meta app, Threads use case | `THREADS_APP_ID`, `THREADS_APP_SECRET`; redirect `/api/channels/threads/callback` |
 | Webhooks (comments, messages) | Meta app webhooks pointing at `https://<host>/api/hooks/meta` | `META_VERIFY_TOKEN`; fields for the page, Instagram and WhatsApp |
-| WhatsApp (shared number) | WhatsApp Business Account, a phone number, a system user | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, optionally `WHATSAPP_TEMPLATE` |
-| WhatsApp (an office's own number) | The office's own WhatsApp Business Account, connected in Settings | Routed with `admin.mjs route <office> wa_phone <phone number id>` |
+| WhatsApp (shared number) | The platform's WhatsApp Business Account, a phone number, a system user. Owners talk to their office on it; it is never connected as a business's channel | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, optionally `WHATSAPP_TEMPLATE` |
+| WhatsApp (each business's own number) | Meta's Embedded Signup: a Facebook Login for Business configuration of the WhatsApp Embedded Signup type on the platform's Meta app (Tech Provider). The owner clicks Connect in Settings and picks or creates their WhatsApp Business account and number; its token, number and an `office_news` broadcast template stay in their office, its webhooks are routed to it, and Meta bills the business for messages | `META_APP_ID`, `META_APP_SECRET`, `WHATSAPP_CONFIG_ID`; redirect `/api/channels/whatsapp/callback` |
 | LinkedIn | LinkedIn developer app with the Community Management or Share products | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` |
 | X | X developer app, OAuth 2.0 with PKCE | `X_CLIENT_ID`, `X_CLIENT_SECRET` |
 
