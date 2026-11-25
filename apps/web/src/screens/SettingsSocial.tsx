@@ -6,6 +6,7 @@ import { useId, useState, type FormEvent } from "react";
 import { api, isLive } from "../api/client";
 import { q, useSocial } from "../api/queries";
 import { isOwner, Section } from "./common";
+import { SavedAnswersEditor } from "./CustomerService";
 
 const LANGUAGES: Record<Language, string> = { en: "English", hi: "Hindi", mr: "Marathi" };
 const EMOJI = { none: "None", light: "One or two where they help", free: "As the platform likes" } as const;
@@ -24,6 +25,14 @@ export function SocialSettings() {
       <ChannelsSection report={social.data} />
       <VoiceForm voice={social.data.voice} />
       <FestivalsForm chosen={social.data.festivals} />
+      <section className="settings-form" aria-labelledby="social-answers">
+        <h2 id="social-answers">Answers for comments and messages</h2>
+        <p className="section-lede">
+          The Social Media Manager replies from these, word for word, and the Customer Service agent uses the same list. A question none of them covers waits
+          for you.
+        </p>
+        <SavedAnswersEditor />
+      </section>
     </>
   );
 }
