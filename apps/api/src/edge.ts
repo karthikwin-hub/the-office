@@ -80,6 +80,8 @@ const INLINE_TYPES: Record<string, string> = {
   "image/jpeg": "image/jpeg",
   "image/jpg": "image/jpeg",
   "image/webp": "image/webp",
+  "video/mp4": "video/mp4",
+  "video/quicktime": "video/quicktime",
 };
 /** On every stored file: no script, no plugins, no same-origin access, nothing loaded, and never framed. Chrome still shows a PDF under it. */
 export const FILE_CSP = "sandbox; default-src 'none'; frame-ancestors 'none'";

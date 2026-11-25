@@ -125,6 +125,9 @@ export type SocialEffect =
 export type IncomingMessage = Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> &
   Partial<Pick<SocialMessage, "postId" | "threadId" | "externalId">>;
 
+/** Channels whose posting code takes a video: Instagram as a Reel, Facebook as a Page video. */
+const VIDEO_PLATFORMS = new Set(["instagram", "facebook"]);
+
 /** Wall-clock time in India on the books' date, as the log and staged items record it. */
 function istNow(asOf: string): string {
   return `${asOf}T${new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(11, 19)}+05:30`;
@@ -1645,6 +1648,12 @@ export class OfficeService {
       for (const id of channelIds) if (!this.channel(id)) throw new Error(`${where}there is no channel ${id}.`);
       for (const v of row.versions) if (!channelIds.includes(v.channelId)) throw new Error(`${where}a version is for ${v.channelId}, which is not ticked.`);
       for (const id of row.mediaIds) if (!this.books.media.some((m) => m.id === id)) throw new Error(`${where}the picture or video ${id} was not uploaded.`);
+      const video = row.mediaIds.some((id) => this.books.media.find((m) => m.id === id)?.kind === "video");
+      const noVideo = channelIds.filter((id) => !VIDEO_PLATFORMS.has(this.channel(id)!.platform));
+      if (video && noVideo.length)
+        throw new Error(
+          `${where}videos go to Instagram and Facebook only for now; untick ${noVideo.map((id) => PLATFORM_NAMES[this.channel(id)!.platform]).join(", ")}.`,
+        );
       if (row.at && !(Date.parse(row.at) > Date.parse(now))) throw new Error(`${where}the time ${row.at} has already passed.`);
       const at = row.at ?? nextFreeTime(this.books, channelIds, now, taken);
       const skuIds = [...new Set([...row.skuIds.filter((id) => this.books.skus.some((s) => s.id === id)), ...skusNamed(this.books, row.text)])];

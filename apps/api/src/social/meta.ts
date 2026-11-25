@@ -38,7 +38,7 @@ async function waitForContainer(f: Fetch, url: string, tries = 6, gapMs = 2000):
       throw new PlatformError(`The platform could not use the picture${s.error_message ? `: ${s.error_message}` : ""}`, "final");
     await sleep(gapMs);
   }
-  throw new PlatformError("The platform is still processing the picture", "retry", 120);
+  throw new PlatformError("The platform is still processing the picture or video", "retry", 120);
 }
 
 /* ---------- Instagram (Instagram API with Instagram login) ---------- */
@@ -90,28 +90,43 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
       return { ...t, access: r.access_token, expiresAt: r.expires_in ? Date.now() + r.expires_in * 1000 : t.expiresAt };
     },
     async publish(t, v: PostVariant, media: SignedMedia[]) {
-      if (!media.length) throw new PlatformError("Instagram needs a picture", "final");
-      const images = media.filter((m) => m.kind === "image").slice(0, 10);
+      if (!media.length) throw new PlatformError("Instagram needs a picture or a video", "final");
+      const items = media.slice(0, 10);
       const at = { access_token: t.access };
+      const status = (id: string) => `${IG}/${id}?${qs({ fields: "status_code", access_token: t.access })}`;
+      // A video takes Instagram a minute or two to process; a picture a few seconds.
+      const wait = (id: string, video: boolean) => waitForContainer(f, status(id), video ? 40 : 6, (opts.gapMs ?? 2000) * (video ? 1.5 : 1));
+      const hasVideo = items.some((m) => m.kind === "video");
       let creation: string;
-      if (images.length === 1) {
+      if (items.length === 1 && items[0]!.kind === "video") {
         creation = (
           await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
             method: "POST",
-            form: { ...at, image_url: images[0]!.url, caption: v.text, ...(images[0]!.alt ? { alt_text: images[0]!.alt } : {}) },
+            form: { ...at, media_type: "REELS", video_url: items[0]!.url, caption: v.text, share_to_feed: "true" },
+          })
+        ).id;
+      } else if (items.length === 1) {
+        creation = (
+          await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
+            method: "POST",
+            form: { ...at, image_url: items[0]!.url, caption: v.text, ...(items[0]!.alt ? { alt_text: items[0]!.alt } : {}) },
           })
         ).id;
       } else {
         const children: string[] = [];
-        for (const m of images)
-          children.push(
-            (
-              await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
-                method: "POST",
-                form: { ...at, image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) },
-              })
-            ).id,
-          );
+        for (const m of items) {
+          const child = (
+            await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
+              method: "POST",
+              form:
+                m.kind === "video"
+                  ? { ...at, media_type: "VIDEO", video_url: m.url, is_carousel_item: "true" }
+                  : { ...at, image_url: m.url, is_carousel_item: "true", ...(m.alt ? { alt_text: m.alt } : {}) },
+            })
+          ).id;
+          if (m.kind === "video") await wait(child, true);
+          children.push(child);
+        }
         creation = (
           await call<{ id: string }>(f, `${IG}/${t.account}/media`, {
             method: "POST",
@@ -119,7 +134,7 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
           })
         ).id;
       }
-      await waitForContainer(f, `${IG}/${creation}?${qs({ fields: "status_code", access_token: t.access })}`, 6, opts.gapMs ?? 2000);
+      await wait(creation, hasVideo && items.length === 1);
       const done = await call<{ id: string }>(f, `${IG}/${t.account}/media_publish`, { method: "POST", form: { ...at, creation_id: creation } });
       const link = await call<{ permalink?: string }>(f, `${IG}/${done.id}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({
         permalink: undefined,
@@ -225,8 +240,14 @@ export function facebook(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
     },
     async publish(t, v, media) {
       const images = media.filter((m) => m.kind === "image");
+      const video = media.find((m) => m.kind === "video");
       const base = { access_token: t.access };
       let id: string;
+      if (video) {
+        // A Page video: Facebook fetches the file from the signed link and posts it with the text.
+        id = (await call<{ id: string }>(f, `${FB}/${t.account}/videos`, { method: "POST", form: { ...base, file_url: video.url, description: v.text } })).id;
+        return { externalId: id, url: `https://www.facebook.com/${t.account}/videos/${id}` };
+      }
       if (images.length === 1) {
         const r = await call<{ id: string; post_id?: string }>(f, `${FB}/${t.account}/photos`, {
           method: "POST",

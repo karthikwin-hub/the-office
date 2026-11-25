@@ -347,6 +347,13 @@ describe("the owner's own posts", () => {
     expect(o.books.posts.length).toBe(before);
   });
 
+  it("sends a video only to Instagram and Facebook", () => {
+    const o = office();
+    o.addMedia({ id: "media-v1", url: "/m/v1", kind: "video", alt: "", skuId: null, rights: "own", width: null, height: null });
+    expect(() => one(o, { mediaIds: ["media-v1"], channelIds: ["ch-instagram", "ch-x"] })).toThrow(/untick X/);
+    expect(one(o, { mediaIds: ["media-v1"], channelIds: ["ch-instagram", "ch-facebook"] }, true).saved).toBe(true);
+  });
+
   it("refuses a time that has passed", () => {
     expect(() => one(office(), { at: "2026-11-01T10:00:00+05:30" })).toThrow(/passed/);
   });

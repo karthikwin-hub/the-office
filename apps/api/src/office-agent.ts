@@ -99,6 +99,8 @@ import { morningDigest, officeWhatsApp, type WaDeps } from "./whatsapp/office";
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const MAX_MEDIA = 8 * 1024 * 1024;
+/** A Reel or a Page video. Files are sealed whole in the office's memory, so this stays well under its 128 MB. */
+const MAX_VIDEO = 25 * 1024 * 1024;
 const MAX_IMPORT = 3 * IMPORT_MAX_BYTES + 10_000;
 /** Steps that bring an office's storage up to date, run once each, in order, when it wakes. */
 const SCHEMA_VERSION = 2;
@@ -970,9 +972,10 @@ export class Office extends Agent<Env> {
     if (caller.role !== "owner") return json({ error: "Only the owner can add pictures." }, 403);
     const form = await request.formData();
     const file = form.get("file") as File | string | null;
-    if (!(file instanceof File)) return json({ error: "Attach a picture." }, 400);
-    if (file.size > MAX_MEDIA) return json({ error: "Pictures up to 8 MB, please." }, 413);
-    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PNG, JPEG or WebP picture." }, 415);
+    if (!(file instanceof File)) return json({ error: "Attach a picture or a video." }, 400);
+    const video = /^video\/(mp4|quicktime)$/.test(file.type);
+    if (!video && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PNG, JPEG or WebP picture, or an MP4 or MOV video." }, 415);
+    if (file.size > (video ? MAX_VIDEO : MAX_MEDIA)) return json({ error: video ? "Videos up to 25 MB, please." : "Pictures up to 8 MB, please." }, 413);
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `media-u${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`;
     if (!MEDIA_ID.test(id)) return json({ error: "Could not name the picture." }, 500);
@@ -981,7 +984,7 @@ export class Office extends Agent<Env> {
     const asset = this.office.addMedia({
       id,
       url: mediaUrl(this.officeId!, id),
-      kind: "image",
+      kind: video ? "video" : "image",
       alt: String(form.get("alt") ?? "").slice(0, 500),
       skuId: this.office.books.skus.some((s) => s.id === skuId) ? skuId : null,
       rights: form.get("rights") === "stock" ? "stock" : form.get("rights") === "generated" ? "generated" : "own",
