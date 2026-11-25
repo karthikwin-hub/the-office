@@ -101,8 +101,8 @@ import { morningDigest, officeWhatsApp, type WaDeps } from "./whatsapp/office";
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const MAX_MEDIA = 8 * 1024 * 1024;
-/** A Reel or a Page video. Files are sealed whole in the office's memory, so this stays well under its 128 MB. */
-const MAX_VIDEO = 25 * 1024 * 1024;
+/** A Reel or a Page video. Files are sealed whole in the office's memory (the form, the bytes and two sealed copies), so this keeps well under its 128 MB. */
+const MAX_VIDEO = 15 * 1024 * 1024;
 const MAX_IMPORT = 3 * IMPORT_MAX_BYTES + 10_000;
 /** Steps that bring an office's storage up to date, run once each, in order, when it wakes. */
 const SCHEMA_VERSION = 2;
@@ -699,7 +699,8 @@ export class Office extends Agent<Env> {
       else await this.send([item]);
     }
     if (path.startsWith("/api/channels") && request.method !== "GET") await this.syncRoutes();
-    if (post && path === ROUTES.socialCalendarDraft) await this.writeCalendar((res.body as StagedChange).payload as { calendarId?: string });
+    // The model writes after the answer, in its own task: dozens of calls would hold the owner's request for minutes.
+    if (post && path === ROUTES.socialCalendarDraft) await this.laterWriteCalendar((res.body as StagedChange).payload as { calendarId?: string });
     if (request.method !== "GET" && (path === `/api/hiring/${CS_AGENT}` || path === "/api/customers/widget")) await this.syncCustomerRoutes();
     if (request.method !== "GET" && path === "/api/hiring/executive-assistant") await this.syncAssistantRoute();
     if (request.method !== "GET" && path === "/api/hiring/marketplace-manager") await this.syncSalesRoute();
@@ -968,7 +969,7 @@ export class Office extends Agent<Env> {
     if (!(file instanceof File)) return json({ error: "Attach a picture or a video." }, 400);
     const video = /^video\/(mp4|quicktime)$/.test(file.type);
     if (!video && !/^image\/(png|jpe?g|webp)$/.test(file.type)) return json({ error: "Send a PNG, JPEG or WebP picture, or an MP4 or MOV video." }, 415);
-    if (file.size > (video ? MAX_VIDEO : MAX_MEDIA)) return json({ error: video ? "Videos up to 25 MB, please." : "Pictures up to 8 MB, please." }, 413);
+    if (file.size > (video ? MAX_VIDEO : MAX_MEDIA)) return json({ error: video ? "Videos up to 15 MB, please." : "Pictures up to 8 MB, please." }, 413);
     take(this.kv.bind(this), istDate(), "upload", file.size);
     const id = `media-u${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`;
     if (!MEDIA_ID.test(id)) return json({ error: "Could not name the picture." }, 500);
@@ -1844,10 +1845,19 @@ export class Office extends Agent<Env> {
    * The Social Media Manager's morning: numbers and comments from each connected channel,
    * anything overdue published or held back, and from the 25th, next month's calendar drafted for the desk.
    */
-  /** The model rewrites a freshly drafted month's captions; checks keep only those the books back up. */
-  private async writeCalendar(payload: { calendarId?: string }) {
-    if (!payload.calendarId || !this.env.AI) return;
-    await writeWithAi(this.socialAi, this.office, payload.calendarId);
+  /** Sets the model to rewrite a freshly drafted month's captions, once, in a task of its own. */
+  private async laterWriteCalendar(payload: { calendarId?: string; aiWritten?: boolean }) {
+    if (!payload.calendarId || payload.aiWritten || !this.env.AI) return;
+    await this.schedule(0, "writeCalendarTask", { calendarId: payload.calendarId });
+  }
+
+  /** The model rewrites a drafted month's captions; checks keep only those the books back up. */
+  async writeCalendarTask(data: { calendarId: string }) {
+    if (!this.officeId || this.kv("office:purged")) return;
+    this.fresh();
+    await writeWithAi(this.socialAi, this.office, data.calendarId);
+    this.office.recordEdits("social-media-manager");
+    this.commit();
   }
 
   private async socialMorning(): Promise<StepResult> {
@@ -1857,7 +1867,7 @@ export class Office extends Agent<Env> {
     const published = await this.publishNow();
     const month = nextMonth(this.day.slice(0, 7));
     const draft = Number(this.day.slice(8, 10)) >= 25 && !this.office.books.calendars.some((c) => c.month === month && c.status !== "superseded");
-    if (draft) await this.writeCalendar(this.office.draftCalendar(month).payload as { calendarId?: string });
+    if (draft) await this.laterWriteCalendar(this.office.draftCalendar(month).payload as { calendarId?: string });
     await this.afterChange();
     const parts = [
       pulled.metrics ? `results for ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"}` : "",

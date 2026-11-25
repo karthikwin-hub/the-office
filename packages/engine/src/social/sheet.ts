@@ -19,10 +19,11 @@ const COLUMNS = {
 
 /** 2026-12-01, 01/12/2026 or 1-12-2026 (day first, as written in India). */
 function dateOf(s: string): string | null {
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-  if (iso) return s;
   const dmy = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(s);
-  return dmy ? `${dmy[3]}-${dmy[2]!.padStart(2, "0")}-${dmy[1]!.padStart(2, "0")}` : null;
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : dmy ? `${dmy[3]}-${dmy[2]!.padStart(2, "0")}-${dmy[1]!.padStart(2, "0")}` : null;
+  // A date that does not exist, such as 31 November, is not quietly moved to another day.
+  const t = iso ? Date.parse(`${iso}T00:00:00Z`) : Number.NaN;
+  return iso && !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === iso ? iso : null;
 }
 
 /**

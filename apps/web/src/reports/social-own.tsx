@@ -144,7 +144,7 @@ export function OwnPostComposer({ report }: { report: SocialReport }) {
               setResult(null);
             }}
           />
-          <span className="muted">Up to 10 pictures (8 MB each) or a video up to 25 MB. Instagram needs at least one.</span>
+          <span className="muted">Up to 10 pictures (8 MB each) or a video up to 15 MB. Instagram needs at least one.</span>
         </div>
         <div className="field">
           <label htmlFor={`${id}-alt`}>Describe the picture</label>

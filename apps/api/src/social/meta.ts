@@ -134,7 +134,7 @@ export function instagram(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?
           })
         ).id;
       }
-      await wait(creation, hasVideo && items.length === 1);
+      await wait(creation, hasVideo);
       const done = await call<{ id: string }>(f, `${IG}/${t.account}/media_publish`, { method: "POST", form: { ...at, creation_id: creation } });
       const link = await call<{ permalink?: string }>(f, `${IG}/${done.id}?${qs({ fields: "permalink", access_token: t.access })}`).catch(() => ({
         permalink: undefined,

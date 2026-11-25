@@ -113,7 +113,7 @@ describe("an office's stored files", () => {
     const res = await stub.fetch(await asCaller(callerFor(id, owner), `/api/social/media/${asset.id}`));
     expect(res.headers.get("content-type")).toBe("video/mp4");
     expect(await res.text()).toBe("....ftypmp42 a short reel");
-    const big = new File([new Uint8Array(25 * 1024 * 1024 + 1)], "long.mov", { type: "video/quicktime" });
+    const big = new File([new Uint8Array(15 * 1024 * 1024 + 1)], "long.mov", { type: "video/quicktime" });
     expect((await stub.fetch(await upload(big))).status).toBe(413);
     expect((await stub.fetch(await upload(new File(["GIF89a"], "a.gif", { type: "image/gif" })))).status).toBe(415);
   });
