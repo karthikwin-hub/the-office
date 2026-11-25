@@ -66,6 +66,7 @@ import { readSheetFile, SqlLayoutStore } from "./registers";
 import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
+import { routeIdsFor } from "./social/routes";
 import { writeWithAi } from "./social/write";
 import { MEDIA_ID } from "./social/media";
 import { callbackUrl, newState, readState, SpentStates } from "./social/oauth";
@@ -123,14 +124,6 @@ const claimedCaller = (request: Request): Caller | null => {
 const userTag = (userId: string) => `user:${userId}`;
 /** The office itself (`system()` in caller.ts): only the Worker sends it, for mail, webhooks, export, purge and closing sockets. */
 const SYSTEM_USER = "system";
-const ROUTE_KIND: Partial<Record<Platform, RouteKind>> = {
-  facebook: "meta_page",
-  instagram: "ig_account",
-  threads: "threads",
-  linkedin: "linkedin",
-  x: "x",
-  whatsapp: "wa_phone",
-};
 
 /**
  * One Office per business, and the only writer of its books. It knows which office it is
@@ -925,11 +918,7 @@ export class Office extends Agent<Env> {
 
   /** The ids webhooks will name for this channel. The shared WhatsApp number belongs to no one office. */
   private routeIds(platform: Platform, ids: (string | null | undefined)[]): { kind: RouteKind; id: string }[] {
-    const kind = ROUTE_KIND[platform];
-    if (!kind) return [];
-    return ids
-      .filter((id): id is string => Boolean(id) && /^[\w:.-]{1,120}$/.test(id!) && !(kind === "wa_phone" && id === this.env.WHATSAPP_PHONE_NUMBER_ID))
-      .map((id) => ({ kind, id }));
+    return routeIdsFor(platform, ids, this.env.WHATSAPP_PHONE_NUMBER_ID);
   }
 
   private async claimIds(platform: Platform, ids: (string | null | undefined)[]): Promise<boolean> {

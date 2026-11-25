@@ -10,6 +10,7 @@ import { afterFailure, SocialHost } from "../src/social/host";
 import { linkedin, linkedinVersion } from "../src/social/linkedin";
 import { signedMedia, signMedia, verifyMedia } from "../src/social/media";
 import { facebook, instagram, threads, whatsapp } from "../src/social/meta";
+import { routeIdsFor } from "../src/social/routes";
 import { challengeFor, newState, readState, SpentStates } from "../src/social/oauth";
 import { open, seal, subkey, TokenVault } from "../src/social/tokens";
 import { metaChallenge, parseMetaDelivery, sameSecret, verifyMetaSignature } from "../src/social/webhooks";
@@ -572,5 +573,20 @@ describe("publishing from the Office", () => {
   it("wakes for the next scheduled post", async () => {
     const { host } = await setup({});
     expect(host.nextWake()).toBe(Date.parse("2026-11-06T11:00:00+05:30"));
+  });
+});
+
+describe("the ids an office claims for its channels", () => {
+  it("claims a business's own WhatsApp number and account, never the shared number or the template beside them", () => {
+    const extra = { waba: "1029384756", template: "office_news", templateLanguage: "en" };
+    expect(routeIdsFor("whatsapp", ["1122334455", ...Object.values(extra)], "9988776655")).toEqual([
+      { kind: "wa_phone", id: "1122334455" },
+      { kind: "wa_phone", id: "1029384756" },
+    ]);
+    expect(routeIdsFor("whatsapp", ["9988776655"], "9988776655")).toEqual([]);
+    expect(routeIdsFor("instagram", ["1784", "kaveri"], undefined)).toEqual([
+      { kind: "ig_account", id: "1784" },
+      { kind: "ig_account", id: "kaveri" },
+    ]);
   });
 });
