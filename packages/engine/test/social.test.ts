@@ -1,6 +1,7 @@
 import { Books as BooksSchema, type Books, type Post } from "@office/contracts";
 import { loadBooks } from "@office/fixtures";
 import { describe, expect, it } from "vitest";
+import { dispatch } from "../src/dispatch";
 import { Ledger } from "../src/ledger";
 import { OfficeService } from "../src/office";
 import { charCount, fit, textHash } from "../src/social/channels";
@@ -8,6 +9,7 @@ import { checkPost } from "../src/social/checks";
 import { fromDraft } from "../src/social/drafts";
 import { classify, isThankYou } from "../src/social/inbox";
 import { importMetrics } from "../src/social/manual";
+import { nextFreeTime } from "../src/social/own";
 import { planMonth, shareSlots } from "../src/social/planner";
 
 const fresh = (): Books => structuredClone(loadBooks());
@@ -274,5 +276,117 @@ describe("manual publishing", () => {
     // A later export with a title row above its header and no saves column keeps the saves already counted.
     importMetrics(b, `LinkedIn post analytics, 1-30 Nov 2026\nPost link,Impressions,Reactions,Comments\n${v.url},1500,95,n/a\n`);
     expect(v.metrics).toMatchObject({ views: 1500, likes: 95, comments: 6, saves: 14 });
+  });
+});
+
+describe("the owner's own posts", () => {
+  const at = "2026-11-20T18:00:00+05:30";
+  const one = (o: OfficeService, row: Record<string, unknown>, confirm = false) =>
+    o.addOwnerPosts(
+      { confirm, posts: [{ text: "Come see our new fans.", channelIds: ["ch-facebook"], versions: [], mediaIds: [], link: null, skuIds: [], at, ...row }] },
+      "Asha",
+    );
+
+  it("schedules the owner's post at their time with no desk card", () => {
+    const o = office(fresh(), "trainee");
+    const desk = o.books.staged.length;
+    const r = one(o, {});
+    expect(r).toMatchObject({ saved: true, warnings: [] });
+    const p = post(o.books, r.posts[0]!.id);
+    expect(p).toMatchObject({ source: "owner", status: "scheduled", at });
+    expect(p.variants[0]).toMatchObject({ status: "scheduled", approvedHash: textHash("Come see our new fans.") });
+    expect(o.books.staged.length).toBe(desk);
+  });
+
+  it("takes each channel's next free day when no time is given, one day per post in a sheet", () => {
+    const b = fresh();
+    expect(nextFreeTime(b, ["ch-facebook"], "2026-11-05T12:00:00+05:30")).toBe("2026-11-07T11:00:00+05:30");
+    expect(nextFreeTime(b, ["ch-linkedin"], "2026-11-05T12:00:00+05:30")).toBe("2026-11-06T11:00:00+05:30");
+    const o = office(b);
+    const r = o.addOwnerPosts(
+      {
+        confirm: true,
+        posts: [1, 2].map((n) => ({
+          text: `Tip ${n}: switch off at the mains first.`,
+          channelIds: ["ch-facebook"],
+          versions: [],
+          mediaIds: [],
+          link: null,
+          skuIds: [],
+          at: null,
+        })),
+      },
+      "Asha",
+    );
+    const days = r.posts.map((p) => p.at.slice(0, 10));
+    expect(new Set(days).size).toBe(2);
+    for (const d of days) expect(o.books.posts.filter((p) => p.at.startsWith(d) && p.variants.some((v) => v.channelId === "ch-facebook"))).toHaveLength(1);
+  });
+
+  it("warns about a wrong price for a product it names, and saves only once the owner confirms", () => {
+    const o = office();
+    const before = o.books.posts.length;
+    const row = { text: "FR PVC wire 1.0 sq mm, 90 m coil now ₹999 only." };
+    const first = one(o, row);
+    expect(first.saved).toBe(false);
+    expect(first.warnings.map((w) => w.detail).join(" ")).toMatch(/999/);
+    expect(o.books.posts.length).toBe(before);
+    const second = one(o, row, true);
+    expect(second.saved).toBe(true);
+    expect(post(o.books, second.posts[0]!.id).skuIds).toContain("SKU-101");
+  });
+
+  it("refuses a whole sheet when one row names a channel that does not exist, naming the row", () => {
+    const o = office();
+    const before = o.books.posts.length;
+    const rows = [
+      { text: "One", channelIds: ["ch-facebook"], versions: [], mediaIds: [], link: null, skuIds: [], at },
+      { text: "Two", channelIds: ["ch-tiktok"], versions: [], mediaIds: [], link: null, skuIds: [], at },
+    ];
+    expect(() => o.addOwnerPosts({ confirm: true, posts: rows }, "Asha")).toThrow(/Row 2/);
+    expect(o.books.posts.length).toBe(before);
+  });
+
+  it("refuses a time that has passed", () => {
+    expect(() => one(office(), { at: "2026-11-01T10:00:00+05:30" })).toThrow(/passed/);
+  });
+
+  it("publishes the owner's post at its time even when a check fails, since they confirmed it", () => {
+    const o = office(fresh(), "trainee");
+    const r = one(o, { text: "FR PVC wire 1.0 sq mm, 90 m coil now ₹999 only." }, true);
+    const out = o.publishDue("2026-11-20T18:05:00+05:30");
+    expect(out).toContainEqual({ kind: "publish", postId: r.posts[0]!.id, channelId: "ch-facebook" });
+  });
+
+  it("keeps an edited owner post scheduled, moves it, and removes it before it goes out", () => {
+    const o = office();
+    const id = one(o, {}).posts[0]!.id;
+    const desk = o.books.staged.length;
+    o.editVariant(id, "ch-facebook", { text: "Come see our new ceiling fans." });
+    expect(post(o.books, id)).toMatchObject({ status: "scheduled" });
+    expect(post(o.books, id).variants[0]!.approvedHash).toBe(textHash("Come see our new ceiling fans."));
+    expect(o.books.staged.length).toBe(desk);
+    o.movePost(id, "2026-11-21T10:00:00+05:30");
+    expect(post(o.books, id).at).toBe("2026-11-21T10:00:00+05:30");
+    o.cancelOwnerPost(id);
+    expect(o.books.posts.some((p) => p.id === id)).toBe(false);
+    expect(() => o.cancelOwnerPost("post-05")).toThrow();
+  });
+
+  it("is reached through the owner-only route", () => {
+    const o = office();
+    const body = { posts: [{ text: "Hello", channelIds: ["ch-facebook"], at }] };
+    const as = (role: "owner" | "accountant") =>
+      dispatch(o, {
+        method: "POST",
+        path: "/api/social/posts",
+        query: new URLSearchParams(),
+        body,
+        role,
+        user: { name: "Asha", email: "asha@example.com" },
+        mode: "live",
+      });
+    expect(as("accountant").status).toBe(403);
+    expect(as("owner")).toMatchObject({ status: 200, body: { saved: true } });
   });
 });
