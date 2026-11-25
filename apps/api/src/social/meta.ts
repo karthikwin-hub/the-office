@@ -439,14 +439,21 @@ export function threads(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?: 
 
 /* ---------- WhatsApp Cloud API ---------- */
 
+/** The message template each business's number gets at sign-up for broadcasts; Meta reviews it, then it can be sent. */
+export const BROADCAST_TEMPLATE = "office_news";
+const BROADCAST_BODY = "Here is our latest news:\n\n{{1}}\n\nReply STOP to stop these messages.";
+
 /**
- * A single business uses a system user token and its phone number id, both Worker secrets, so "connecting"
- * only checks them. Replies are free inside the 24 hours after a customer writes; broadcasts are paid templates.
+ * Each business connects its own WhatsApp Business number through Meta's Embedded Signup (a Facebook Login for
+ * Business configuration, `WHATSAPP_CONFIG_ID`, on the platform's Meta app). Its token, number and template stay in
+ * that office; the platform's own number (`WHATSAPP_TOKEN`) is only for owners talking to the office, never connected
+ * as a business's channel. Replies are free inside the 24 hours after a customer writes; broadcasts are paid templates,
+ * billed by Meta to the business's own account.
  */
-export function whatsapp(keys: { token: string; phoneId: string; template: string | null } | null, f: Fetch = fetch): ChannelAdapter {
+export function whatsapp(signup: { app: AppKeys | null; configId: string | null }, f: Fetch = fetch): ChannelAdapter {
   const need = () => {
-    if (!keys) throw notSetUp("WhatsApp", ["WHATSAPP_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"]);
-    return keys;
+    if (!signup.app || !signup.configId) throw notSetUp("WhatsApp", ["META_APP_ID", "META_APP_SECRET", "WHATSAPP_CONFIG_ID"]);
+    return { ...signup.app, configId: signup.configId };
   };
   const send = (t: Tokens, body: Record<string, unknown>) =>
     call<{ messages?: { id: string }[] }>(f, `${FB}/${t.account}/messages`, {
@@ -457,25 +464,47 @@ export function whatsapp(keys: { token: string; phoneId: string; template: strin
   return {
     platform: "whatsapp",
     async authorizeUrl({ state, redirect }) {
-      need();
-      return `${redirect}?${qs({ code: "system-user", state })}`;
-    },
-    async exchange() {
       const k = need();
-      const n = await call<{ id: string; display_phone_number?: string; verified_name?: string }>(
+      return `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${qs({ client_id: k.id, redirect_uri: redirect, state, config_id: k.configId, response_type: "code", override_default_response_type: "true" })}`;
+    },
+    async exchange({ code, redirect }): Promise<Connected> {
+      const k = need();
+      const { access_token: token } = await call<{ access_token: string }>(
         f,
-        `${FB}/${k.phoneId}?${qs({ fields: "display_phone_number,verified_name" })}`,
-        { headers: { authorization: `Bearer ${k.token}` } },
+        `${FB}/oauth/access_token?${qs({ client_id: k.id, client_secret: k.secret, redirect_uri: redirect, code })}`,
       );
-      return {
-        tokens: {
-          access: k.token,
-          refresh: null,
-          expiresAt: null,
-          account: n.id,
-          extra: { ...(k.template ? { template: k.template } : {}), templateLanguage: "en" },
+      const auth = { authorization: `Bearer ${token}` };
+      // The business account the owner chose in the sign-up is the target of the token's WhatsApp permission.
+      const debug = await call<{ data?: { granular_scopes?: { scope: string; target_ids?: string[] }[] } }>(
+        f,
+        `${FB}/debug_token?${qs({ input_token: token, access_token: `${k.id}|${k.secret}` })}`,
+      );
+      const waba = debug.data?.granular_scopes?.find((g) => g.scope === "whatsapp_business_management")?.target_ids?.[0];
+      if (!waba) throw new PlatformError("Pick a WhatsApp Business account in the sign-up, then try again", "final");
+      const phones = await call<{ data: { id: string; display_phone_number?: string; verified_name?: string }[] }>(
+        f,
+        `${FB}/${waba}/phone_numbers?${qs({ fields: "id,display_phone_number,verified_name" })}`,
+        { headers: auth },
+      );
+      const phone = phones.data[0];
+      if (!phone) throw new PlatformError("That WhatsApp Business account has no phone number yet; add one in the sign-up", "final");
+      await call(f, `${FB}/${waba}/subscribed_apps`, { method: "POST", headers: auth });
+      // A number new to the Cloud API must be registered before it can send; one already registered answers with an error we can pass.
+      const pin = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0]! % 900000));
+      await call(f, `${FB}/${phone.id}/register`, { method: "POST", json: { messaging_product: "whatsapp", pin }, headers: auth }).catch(() => undefined);
+      await call(f, `${FB}/${waba}/message_templates`, {
+        method: "POST",
+        json: {
+          name: BROADCAST_TEMPLATE,
+          category: "MARKETING",
+          language: "en",
+          components: [{ type: "BODY", text: BROADCAST_BODY, example: { body_text: [["New ceiling fans are in at the counter this week."]] } }],
         },
-        handle: n.display_phone_number ?? n.verified_name ?? "WhatsApp Business",
+        headers: auth,
+      }).catch(() => undefined);
+      return {
+        tokens: { access: token, refresh: null, expiresAt: null, account: phone.id, extra: { waba, template: BROADCAST_TEMPLATE, templateLanguage: "en" } },
+        handle: phone.display_phone_number ?? phone.verified_name ?? "WhatsApp Business",
         followers: null,
       };
     },

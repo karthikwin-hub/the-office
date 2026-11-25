@@ -55,6 +55,8 @@ export type Env = {
   WHATSAPP_TOKEN?: string;
   WHATSAPP_PHONE_NUMBER_ID?: string;
   WHATSAPP_TEMPLATE?: string;
+  /** The Facebook Login for Business configuration for WhatsApp Embedded Signup: each business connects its own number. */
+  WHATSAPP_CONFIG_ID?: string;
   LINKEDIN_CLIENT_ID?: string;
   LINKEDIN_CLIENT_SECRET?: string;
   X_CLIENT_ID?: string;

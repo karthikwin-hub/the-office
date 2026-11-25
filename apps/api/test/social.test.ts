@@ -388,7 +388,7 @@ describe("adapters against recorded responses", () => {
 
   it("WhatsApp: replies inside the window, refuses after it, and sends templates for broadcasts", async () => {
     const { f, calls } = recorder([[/POST .*\/phone-1\/messages$/, () => ({ messages: [{ id: "wamid.out" }] })]]);
-    const wa = whatsapp({ token: "sys", phoneId: "phone-1", template: "festive_offer" }, f);
+    const wa = whatsapp({ app: { id: "app", secret: "shh" }, configId: "cfg-1" }, f);
     const t = { ...tokens, account: "phone-1", extra: { template: "festive_offer", templateLanguage: "en" } };
     const msg = { id: "wa-1", threadId: "919800000001", externalId: "wamid.1", replyBy: new Date(Date.now() + 3600_000).toISOString() } as SocialMessage;
     expect(await wa.reply(t, msg, "Yes, in stock.")).toEqual({ externalId: "wamid.out" });
@@ -407,6 +407,55 @@ describe("adapters against recorded responses", () => {
       name: "festive_offer",
       language: { code: "en" },
       components: [{ type: "body", parameters: [{ type: "text", text: "Line one · Line two" }] }],
+    });
+  });
+
+  it("WhatsApp: each business signs up its own number, which gets its own token and broadcast template", async () => {
+    await expect(
+      whatsapp({ app: { id: "app", secret: "shh" }, configId: null }).authorizeUrl({ state: "s", redirect: "r", verifier: "v" }),
+    ).rejects.toMatchObject({
+      kind: "not_set_up",
+      message: expect.stringContaining("WHATSAPP_CONFIG_ID"),
+    });
+    const { f, calls } = recorder([
+      [/GET .*\/oauth\/access_token\?/, () => ({ access_token: "biz-tok" })],
+      [/GET .*\/debug_token\?/, () => ({ data: { granular_scopes: [{ scope: "whatsapp_business_management", target_ids: ["waba-7"] }] } })],
+      [/GET .*\/waba-7\/phone_numbers\?/, () => ({ data: [{ id: "phone-77", display_phone_number: "+91 98000 00077" }] })],
+      [/POST .*\/waba-7\/subscribed_apps$/, () => ({ success: true })],
+      [/POST .*\/phone-77\/register$/, () => new Response(JSON.stringify({ error: { message: "already registered", code: 100 } }), { status: 400 })],
+      [/POST .*\/waba-7\/message_templates$/, () => ({ id: "tpl-1", status: "PENDING" })],
+    ]);
+    const wa = whatsapp({ app: { id: "app", secret: "shh" }, configId: "cfg-1" }, f);
+    const url = new URL(await wa.authorizeUrl({ state: "st", redirect: "https://office.example/api/channels/whatsapp/callback", verifier: "v" }));
+    expect(url.searchParams.get("config_id")).toBe("cfg-1");
+    expect(url.searchParams.get("state")).toBe("st");
+    const c = await wa.exchange({ code: "c", redirect: "r", verifier: "v" });
+    expect(c).toEqual({
+      tokens: {
+        access: "biz-tok",
+        refresh: null,
+        expiresAt: null,
+        account: "phone-77",
+        extra: { waba: "waba-7", template: "office_news", templateLanguage: "en" },
+      },
+      handle: "+91 98000 00077",
+      followers: null,
+    });
+    expect(calls.find((x) => x.url.endsWith("/subscribed_apps"))!.headers.get("authorization")).toBe("Bearer biz-tok");
+    const tpl = JSON.parse(calls.find((x) => x.url.endsWith("/message_templates"))!.body);
+    expect(tpl).toMatchObject({ name: "office_news", category: "MARKETING" });
+    expect(tpl.components[0].text).toMatch(/\{\{1\}\}/);
+  });
+
+  it("WhatsApp: refuses a sign-up that picked no business account", async () => {
+    const { f } = recorder([
+      [/oauth\/access_token/, () => ({ access_token: "biz-tok" })],
+      [/debug_token/, () => ({ data: { granular_scopes: [{ scope: "business_management", target_ids: ["b-1"] }] } })],
+    ]);
+    await expect(
+      whatsapp({ app: { id: "app", secret: "shh" }, configId: "cfg-1" }, f).exchange({ code: "c", redirect: "r", verifier: "v" }),
+    ).rejects.toMatchObject({
+      kind: "final",
     });
   });
 
