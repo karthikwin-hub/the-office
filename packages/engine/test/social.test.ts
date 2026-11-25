@@ -409,6 +409,7 @@ describe("a sheet of the owner's posts", () => {
 2026-12-07,,TikTok,Hello,
 ,,Instagram,,
 13/2026,,Facebook,Bad date,
+31/11/2026,,Facebook,No such day,
 `;
     const { rows, errors } = readPostSheet(sheet, b.channels);
     expect(rows).toEqual([
@@ -425,6 +426,7 @@ describe("a sheet of the owner's posts", () => {
       'Row 4: no channel called "TikTok".',
       "Row 5: the caption is empty.",
       "Row 6: write the date as 2026-12-01 and the time as 11:00.",
+      "Row 7: write the date as 2026-12-01 and the time as 11:00.",
     ]);
     const posts = sheetPosts(
       rows,
@@ -467,8 +469,24 @@ describe("AI drafts for the month", () => {
     const good = `Fresh stock at the counter, ${price.value}. Ask us which one suits your home.`;
     expect(o.applyAiDraft(job.postId, job.channelId, JSON.stringify({ text: good, factIds: [price.id] }))).toBe(true);
     expect(v().text).toContain(price.value);
-    o.noteAiDrafts(o.books.calendars.find((c) => c.month === "2027-01")!.id, 1, jobs.length);
-    expect(o.books.staged.find((s) => s.id === "chg-cal-2027-01")!.summary).toContain(`Written with AI: 1 of ${jobs.length}`);
+    const calId = o.books.calendars.find((c) => c.month === "2027-01")!.id;
+    o.noteAiDrafts(calId, 1, jobs.length);
+    o.noteAiDrafts(calId, 2, jobs.length);
+    const card = o.books.staged.find((s) => s.id === "chg-cal-2027-01")!;
+    expect(card.summary.match(/Written with AI/g)).toHaveLength(1);
+    expect(card.payload.aiWritten).toBe(true);
+    expect(o.draftCalendar("2027-01").payload.aiWritten).toBe(true);
+  });
+
+  it("leaves the text alone once the owner has approved the month", () => {
+    const { o, calendarId, jobs } = drafted();
+    const job = jobs[0]!;
+    o.decide("chg-cal-2027-01", { action: "approve" }, "Asha");
+    const v = post(o.books, job.postId).variants.find((x) => x.channelId === job.channelId)!;
+    const before = v.text;
+    expect(o.books.calendars.find((c) => c.id === calendarId)!.status).toBe("approved");
+    expect(o.applyAiDraft(job.postId, job.channelId, { text: "Drop in and ask us anything about wiring.", factIds: [] })).toBe(false);
+    expect(v.text).toBe(before);
   });
 
   it("names the owner's competitors in the prompt and fails a post that names one", () => {

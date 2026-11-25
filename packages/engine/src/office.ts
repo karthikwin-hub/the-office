@@ -1471,7 +1471,9 @@ export class OfficeService {
   applyAiDraft(postId: string, channelId: string, answer: unknown): boolean {
     const post = this.post(postId);
     const v = post.variants.find((x) => x.channelId === channelId);
-    if (!v || v.status !== "draft" || post.status !== "draft") return false;
+    if (!v || v.status !== "draft" || post.status !== "draft" || v.approvedHash) return false;
+    // Once the owner approved the month, its text is what they approved: the model no longer changes it.
+    if (this.books.calendars.find((c) => c.id === post.calendarId)?.status !== "draft") return false;
     const got = fromDraft(answer, post.facts);
     if (!got) return false;
     const text = fit(v.platform, got.text, { hashtags: this.books.brandVoice.hashtags }).text;
@@ -1494,7 +1496,9 @@ export class OfficeService {
     const item = this.books.staged.find(
       (s) => s.kind === "calendar" && s.status === "pending" && (s.payload as { calendarId?: string }).calendarId === calendarId,
     );
-    if (!item || !tried) return;
+    if (!item || (item.payload as { aiWritten?: boolean }).aiWritten) return;
+    item.payload = { ...item.payload, aiWritten: true };
+    if (!tried) return;
     item.summary = `${item.summary} Written with AI: ${written} of ${tried} versions${written < tried ? "; the rest from templates, because the AI's version stated a figure the books don't back up or failed a check" : ""}.`;
     this.log("social-media-manager", `Wrote ${written} of ${tried} versions with AI; every figure in them is from the books.`, {
       kind: "calendar",
@@ -1606,6 +1610,8 @@ export class OfficeService {
       if (post.approvedBy === "agent" && !(post.noticeAt && Date.parse(now) >= Date.parse(post.noticeAt) + HOLD_MS)) {
         if (!post.noticeAt) {
           post.at = istTime(new Date(Date.parse(post.at) + 24 * 3600_000).toISOString());
+          const slot = this.books.calendars.find((c) => c.id === post.calendarId)?.slots.find((x) => x.postId === post.id);
+          if (slot) slot.date = post.at.slice(0, 10);
           this.log("social-media-manager", `Moved "${post.topic}" to ${dateLabel(post.at.slice(0, 10))}, so you hear about it before it goes out.`, {
             kind: "post",
             id: post.id,
