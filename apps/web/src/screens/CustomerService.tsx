@@ -40,6 +40,21 @@ const GROUND: Record<string, string> = {
 };
 
 /** The Customer Service agent's desk: its conversations, what it answers from, and where customers reach it. */
+/**
+ * The business facts and saved answers alone, editable by the owner whether or not Customer Service is hired: the
+ * Social Media Manager answers comments and messages from the same list.
+ */
+export function SavedAnswersEditor() {
+  const desk = useQuery(q.customers());
+  if (!desk.data) return null;
+  return (
+    <>
+      <Facts facts={desk.data.facts} readOnly={!isOwner()} />
+      <Answers answers={desk.data.answers} readOnly={!isOwner()} />
+    </>
+  );
+}
+
 export function CustomerServicePanel({ preview }: { preview?: boolean }) {
   const desk = useQuery(q.customers());
   const d = desk.data;

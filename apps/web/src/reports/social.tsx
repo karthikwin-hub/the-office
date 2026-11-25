@@ -243,7 +243,7 @@ export function InboxThreads({ report, compact }: { report: SocialReport; compac
                   <p className="muted">
                     {m.basis === "fact" ? "From a business fact you wrote" : "From one of your saved answers"}, word for word
                     {m.sortedBy === "model" ? "; the AI picked which one" : ""}.{" "}
-                    <Link to="/rooms/$agentId" params={{ agentId: "customer-service" }}>
+                    <Link to="/settings" hash="social-answers">
                       Edit your answers
                     </Link>
                   </p>
