@@ -438,6 +438,20 @@ describe("a sheet of the owner's posts", () => {
     expect(posts[0]!.mediaIds).toEqual(["media-a", "media-b"]);
     expect(() => sheetPosts(rows, new Map([["fan.jpg", "media-a"]]))).toThrow(/Row 2: attach fan2.jpg/);
   });
+
+  it("names rows as the spreadsheet numbers them, counting blank rows and a multi-line caption as one row", () => {
+    const sheet = `
+Date,Channels,Caption,Files
+2026-12-01,Instagram,"Two lines:
+in one cell",fan.jpg
+,,,
+
+2026-12-07,TikTok,Hello,
+`;
+    const { rows, errors } = readPostSheet(sheet, fresh().channels);
+    expect(rows.map((r) => r.row)).toEqual([3]);
+    expect(errors).toEqual(['Row 6: no channel called "TikTok".']);
+  });
 });
 
 describe("AI drafts for the month", () => {

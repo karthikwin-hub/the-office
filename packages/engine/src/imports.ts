@@ -75,7 +75,7 @@ function flatten2b(raw: unknown): Gstr2b | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, o: { keepBlank?: boolean } = {}): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
@@ -95,7 +95,7 @@ export function parseCsv(text: string): string[][] {
     } else if (ch === "\n" || ch === "\r") {
       if (ch === "\r" && text[i + 1] === "\n") i++;
       row.push(cell.trim());
-      if (row.some((c) => c)) rows.push(row);
+      if (o.keepBlank || row.some((c) => c)) rows.push(row);
       row = [];
       cell = "";
     } else cell += ch;

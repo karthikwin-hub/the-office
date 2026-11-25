@@ -31,17 +31,22 @@ function dateOf(s: string): string | null {
  * file names. Every problem is named by its row; a row with no date takes the channels' next free day.
  */
 export function readPostSheet(text: string, channels: Channel[]): { rows: SheetRow[]; errors: string[] } {
-  const [head, ...body] = parseCsv(text);
+  // Blank rows are kept while reading so each problem names the row the owner sees in their spreadsheet.
+  const all = parseCsv(text, { keepBlank: true });
+  const blank = (r: string[]) => !r.some((c) => c);
+  const top = all.findIndex((r) => !blank(r));
   const errors: string[] = [];
-  if (!head) return { rows: [], errors: ["The sheet is empty."] };
+  if (top < 0) return { rows: [], errors: ["The sheet is empty."] };
+  const head = all[top]!;
   const names = head.map((h) => h.toLowerCase().trim());
   const col = (k: keyof typeof COLUMNS) => names.findIndex((n) => COLUMNS[k].includes(n));
   const at = { date: col("date"), time: col("time"), channels: col("channels"), caption: col("caption"), files: col("files") };
   if (at.caption < 0 || at.channels < 0)
     return { rows: [], errors: ["The sheet needs a caption column and a channels column; download the template to start."] };
   const rows: SheetRow[] = [];
-  body.forEach((cells, i) => {
-    const n = i + 2;
+  all.forEach((cells, i) => {
+    if (i <= top || blank(cells)) return;
+    const n = i + 1;
     const cell = (k: keyof typeof at) => (at[k] >= 0 ? (cells[at[k]] ?? "").trim() : "");
     const caption = cell("caption");
     if (!caption) return errors.push(`Row ${n}: the caption is empty.`);
