@@ -10,7 +10,6 @@ const STATUS: Record<PostVariant["status"], string> = {
   published: "Published",
   failed: "Failed",
   skipped: "Left out",
-  removed: "Taken down",
 };
 
 type Props = {
@@ -54,7 +53,7 @@ export function PostPreview({ variant: v, channel, facts, media, checks = [], at
           {channel?.handle ? <span className="muted"> {channel.handle}</span> : null}
         </h4>
         <span className="post-copy-status">
-          {STATUS[v.status]}
+          {v.takenDownAt ? "Taken down" : STATUS[v.status]}
           {when ? (
             <time
               dateTime={when}

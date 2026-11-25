@@ -61,6 +61,7 @@ const variant = (over: Partial<PostVariant> = {}): PostVariant => ({
   url: null,
   publishedAt: null,
   error: null,
+  takenDownAt: null,
   approvedHash: null,
   metrics: null,
   ...over,

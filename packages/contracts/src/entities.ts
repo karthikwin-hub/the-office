@@ -713,7 +713,7 @@ export const PostMetrics = z.object({
 });
 export type PostMetrics = z.infer<typeof PostMetrics>;
 
-export const VariantStatus = z.enum(["draft", "scheduled", "published", "failed", "skipped", "removed"]);
+export const VariantStatus = z.enum(["draft", "scheduled", "published", "failed", "skipped"]);
 export const PostVariant = z.object({
   channelId: z.string(),
   platform: Platform,
@@ -725,6 +725,11 @@ export const PostVariant = z.object({
   url: z.string().nullable().default(null),
   publishedAt: IsoDateTime.nullable().default(null),
   error: z.string().nullable().default(null),
+  /**
+   * When the owner took it down after it went out. The version is then `skipped`, a status every earlier version of
+   * the app reads, so books saved after a take-down still load if the release is rolled back.
+   */
+  takenDownAt: IsoDateTime.nullable().default(null),
   /** Hash of the text as the owner approved it; a calendar post that has changed since goes back to the desk. */
   approvedHash: z.string().nullable().default(null),
   metrics: PostMetrics.nullable().default(null),

@@ -133,6 +133,7 @@ export function draftPost(
       url: null,
       publishedAt: null,
       error: null,
+      takenDownAt: null,
       approvedHash: null,
       metrics: null,
     };
