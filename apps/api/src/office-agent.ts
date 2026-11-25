@@ -67,6 +67,7 @@ import { PlatformError } from "./social/adapter";
 import { SocialHost } from "./social/host";
 import { adaptersFor } from "./social";
 import { routeIdsFor } from "./social/routes";
+import { sortInbox } from "./social/sort";
 import { writeWithAi } from "./social/write";
 import { MEDIA_ID } from "./social/media";
 import { callbackUrl, newState, readState, SpentStates } from "./social/oauth";
@@ -1035,6 +1036,7 @@ export class Office extends Agent<Env> {
     for (const m of customers) await desk.receive(m).catch((e) => this.log("customer message failed", e));
     const raws = rest.map((m) => ({ ...m, channelId: byPlatform.get(m.platform) ?? "" })).filter((m) => m.channelId);
     const r = this.office.receiveMessages(raws);
+    await this.laterSortInbox();
     return { received: r.added.length, leads: r.leads, replied: r.replied, office, customers: customers.length };
   }
 
@@ -1845,6 +1847,23 @@ export class Office extends Agent<Env> {
    * The Social Media Manager's morning: numbers and comments from each connected channel,
    * anything overdue published or held back, and from the 25th, next month's calendar drafted for the desk.
    */
+  /** Sets the model to read the messages the rules were unsure of, in a task of its own, so a webhook answers at once. */
+  private async laterSortInbox() {
+    if (!this.env.AI || !this.office.inboxSortJobs().length) return;
+    if (this.getSchedules().some((x) => x.callback === "sortInboxTask")) return;
+    await this.schedule(0, "sortInboxTask");
+  }
+
+  /** The model sorts the unsure messages; replies built from the owner's own answers may then go, and go now. */
+  async sortInboxTask() {
+    if (!this.officeId || this.kv("office:purged")) return;
+    this.fresh();
+    await sortInbox(this.socialAi, this.office);
+    this.office.recordEdits("social-media-manager");
+    await this.afterChange();
+    this.commit();
+  }
+
   /** Sets the model to rewrite a freshly drafted month's captions, once, in a task of its own. */
   private async laterWriteCalendar(payload: { calendarId?: string; aiWritten?: boolean }) {
     if (!payload.calendarId || payload.aiWritten || !this.env.AI) return;
@@ -1862,6 +1881,7 @@ export class Office extends Agent<Env> {
 
   private async socialMorning(): Promise<StepResult> {
     const pulled = await this.social().pull();
+    if (pulled.messages) await this.laterSortInbox();
     if (pulled.metrics)
       this.office.log("social-media-manager", `Updated the results of ${pulled.metrics} ${pulled.metrics === 1 ? "post" : "posts"} from the platforms.`);
     const published = await this.publishNow();

@@ -239,12 +239,27 @@ export function InboxThreads({ report, compact }: { report: SocialReport; compac
                     {m.draftReply}
                   </p>
                 ) : null}
+                {m.basis === "saved_answer" || m.basis === "fact" ? (
+                  <p className="muted">
+                    {m.basis === "fact" ? "From a business fact you wrote" : "From one of your saved answers"}, word for word
+                    {m.sortedBy === "model" ? "; the AI picked which one" : ""}.{" "}
+                    <Link to="/rooms/$agentId" params={{ agentId: "customer-service" }}>
+                      Edit your answers
+                    </Link>
+                  </p>
+                ) : null}
+                {m.status === "open" && m.toOwner ? <p className="message-handoff">Waiting for you: {m.toOwner}.</p> : null}
               </li>
             ))}
           </ul>
         </div>
       ))}
-      {!groups.size ? <p className="section-lede">Nothing waiting. New comments, messages and reviews arrive here with a reply drafted.</p> : null}
+      {!groups.size ? (
+        <p className="section-lede">
+          Nothing waiting. New comments, messages and reviews arrive here with a reply drafted from your saved answers and business facts. A trusted agent sends
+          those and thank-yous on its own; refunds, complaints, price talk and anything your answers don't cover wait for you.
+        </p>
+      ) : null}
     </Section>
   );
 }

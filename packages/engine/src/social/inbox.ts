@@ -28,7 +28,7 @@ export function classify(text: string, rating: number | null): { sentiment: Sent
 
 /** A reply that states no figures and makes no promises; complaints are taken offline. */
 export function draftReply(m: Pick<SocialMessage, "author" | "intent" | "kind" | "platform">, businessName: string, phone: string): string {
-  const first = m.author.split(/\s+/)[0] ?? m.author;
+  const first = m.author.replace(/^@/, "").split(/\s+/)[0] ?? m.author;
   switch (m.intent) {
     case "praise":
       return `Thank you, ${first}. We are glad it helped, and we look forward to seeing you again at ${businessName}.`;
@@ -82,6 +82,21 @@ export function newMessage(
 ): SocialMessage {
   const { sentiment, intent } = classify(raw.text, raw.rating);
   const replyBy = raw.kind === "dm" && platformOf(raw.platform) === "whatsapp" ? new Date(Date.parse(raw.at) + 24 * 3600_000).toISOString() : null;
-  const m: SocialMessage = { postId: null, threadId: null, externalId: null, leadId: null, replyBy, ...raw, sentiment, intent, draftReply: "", status: "open" };
+  const m: SocialMessage = {
+    postId: null,
+    threadId: null,
+    externalId: null,
+    leadId: null,
+    replyBy,
+    basis: "template",
+    answerId: null,
+    toOwner: null,
+    sortedBy: "rules",
+    ...raw,
+    sentiment,
+    intent,
+    draftReply: "",
+    status: "open",
+  };
   return { ...m, draftReply: draftReply(m, l.books.business.name, l.books.business.phone) };
 }

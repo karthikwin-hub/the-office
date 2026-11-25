@@ -800,6 +800,16 @@ const MessageShape = z.object({
   leadId: z.string().nullable().default(null),
   /** WhatsApp only allows a free reply within 24 hours of the customer's last message. */
   replyBy: IsoDateTime.nullable().default(null),
+  /**
+   * What the drafted reply is made of: the owner's saved answer or a business fact (quoted as written), a
+   * thank-you, or a holding template. Only the first three may go out on their own.
+   */
+  basis: z.enum(["template", "thanks", "saved_answer", "fact"]).default("template"),
+  /** The saved answer's id, or `fact:<key>` for a business fact. */
+  answerId: z.string().nullable().default(null),
+  /** Why the reply waits for the owner, when it must. */
+  toOwner: z.string().nullable().default(null),
+  sortedBy: z.enum(["rules", "model"]).default("rules"),
 });
 
 export const SocialMessage = z.preprocess((raw) => {
