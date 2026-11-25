@@ -15,7 +15,8 @@ export type Tokens = {
 /** A picture or video at a public, short-lived link, which Instagram and Threads fetch themselves. */
 export type SignedMedia = { id: string; url: string; kind: "image" | "video"; alt: string; contentType: string };
 
-export type Connected = { tokens: Tokens; handle: string; followers: number | null };
+/** `notice` is what the owner should know about a connection that worked, shown beside the channel. */
+export type Connected = { tokens: Tokens; handle: string; followers: number | null; notice?: string | null };
 
 export type Pulled = { messages: IncomingMessage[]; metrics: { externalId: string; metrics: PostMetrics }[] };
 

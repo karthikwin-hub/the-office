@@ -448,11 +448,45 @@ describe("adapters against recorded responses", () => {
       },
       handle: "+91 98000 00077",
       followers: null,
+      notice: expect.stringContaining("with Meta for review"),
     });
+    // The number was already registered with another PIN: the owner is told, and nobody holds a PIN they were not given.
+    expect(c.notice).toMatch(/did not register this number .*already registered.*two-step verification/);
+    expect(c.notice).not.toMatch(/\d{6}/);
     expect(calls.find((x) => x.url.endsWith("/subscribed_apps"))!.headers.get("authorization")).toBe("Bearer biz-tok");
     const tpl = JSON.parse(calls.find((x) => x.url.endsWith("/message_templates"))!.body);
     expect(tpl).toMatchObject({ name: "office_news", category: "MARKETING" });
     expect(tpl.components[0].text).toMatch(/\{\{1\}\}/);
+  });
+
+  it("WhatsApp: a broadcast template Meta refuses is named on the channel, and the random PIN is not shown or kept", async () => {
+    const { f, calls } = recorder([
+      [/oauth\/access_token/, () => ({ access_token: "biz-tok" })],
+      [/debug_token/, () => ({ data: { granular_scopes: [{ scope: "whatsapp_business_management", target_ids: ["waba-7"] }] } })],
+      [/phone_numbers/, () => ({ data: [{ id: "phone-77" }] })],
+      [/subscribed_apps/, () => ({ success: true })],
+      [/register$/, () => ({ success: true })],
+      [/message_templates$/, () => new Response(JSON.stringify({ error: { message: "Template body is not allowed", code: 100 } }), { status: 400 })],
+    ]);
+    const c = await whatsapp({ app: { id: "app", secret: "shh" }, configId: "cfg-1" }, f).exchange({ code: "c", redirect: "r", verifier: "v" });
+    expect(c.notice).toMatch(/Two-step verification/);
+    expect(c.notice).toMatch(/Meta did not take the broadcast message office_news \(.*not allowed.*\)\. Broadcasts will fail/);
+    const pin = JSON.parse(calls.find((x) => x.url.endsWith("/register"))!.body).pin as string;
+    expect(pin).toMatch(/^\d{6}$/);
+    expect(JSON.stringify(c)).not.toContain(pin);
+  });
+
+  it("WhatsApp: signing up again keeps quiet about a template that already exists", async () => {
+    const { f } = recorder([
+      [/oauth\/access_token/, () => ({ access_token: "biz-tok" })],
+      [/debug_token/, () => ({ data: { granular_scopes: [{ scope: "whatsapp_business_management", target_ids: ["waba-7"] }] } })],
+      [/phone_numbers/, () => ({ data: [{ id: "phone-77" }] })],
+      [/subscribed_apps/, () => ({ success: true })],
+      [/register$/, () => ({ success: true })],
+      [/message_templates$/, () => new Response(JSON.stringify({ error: { message: "Message template already exists", code: 100 } }), { status: 400 })],
+    ]);
+    const c = await whatsapp({ app: { id: "app", secret: "shh" }, configId: "cfg-1" }, f).exchange({ code: "c", redirect: "r", verifier: "v" });
+    expect(c.notice).not.toMatch(/office_news/);
   });
 
   it("WhatsApp: refuses a sign-up that picked no business account", async () => {

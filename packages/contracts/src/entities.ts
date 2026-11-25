@@ -594,6 +594,8 @@ export const Channel = z.object({
   mode: z.enum(["connected", "manual"]),
   status: z.enum(["connected", "manual", "expired", "rate_limited", "error"]),
   lastError: z.string().nullable().default(null),
+  /** What the owner should know about a connection that works, such as a template still with the platform for review. */
+  notice: z.string().nullable().default(null),
   connectedAt: IsoDateTime.nullable().default(null),
   followers: z.number().int().nullable().default(null),
   postingHours: z.object({ from: z.string(), to: z.string() }).prefault({ from: "09:00", to: "21:00" }),

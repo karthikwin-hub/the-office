@@ -2002,7 +2002,7 @@ export class OfficeService {
   }
 
   /** The Worker calls this after an OAuth connection succeeds. */
-  connectChannel(id: string, handle: string, followers: number | null = null): Channel {
+  connectChannel(id: string, handle: string, followers: number | null = null, notice: string | null = null): Channel {
     const ch = this.channel(id);
     if (!ch) throw new Error(`No channel ${id}`);
     Object.assign(ch, {
@@ -2010,6 +2010,7 @@ export class OfficeService {
       status: "connected",
       handle,
       lastError: null,
+      notice,
       connectedAt: istNow(this.asOf),
       followers: followers ?? ch.followers,
     });
