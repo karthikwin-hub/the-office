@@ -1,10 +1,10 @@
 # 0012. Planned social posts go out after a hold the owner can stop
 
-- **Status:** proposed (for the founders to accept; Phase 6c of the roadmap)
-- **Date:** 2026-11-25
+- **Status:** accepted (Phase 6c of the roadmap)
+- **Date:** 2026-11-25 (accepted by the founders on 25 November 2026)
 - **Deciders:** founders
 
-Numbers 0010 and 0011 are taken on other branches.
+Number 0011 is taken on another branch (n8n, not adopted).
 
 ## Context
 
