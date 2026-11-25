@@ -1,6 +1,6 @@
 # Roadmap
 
-> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. Alongside go-live readiness, Phase 6b added Routines with a run history and a first version of the Customer Service agent. Go-live readiness itself is mostly configuration (email, domain, legal review of the drafted privacy notice and terms; the secrets are now set) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
+> **In one paragraph.** Six phases are complete: the design and clickable demo, the Accounts team on a live Worker, the Social Media Manager, the refined Floor, WhatsApp in eight languages, and multi-tenant offices. Alongside go-live readiness, Phase 6b added Routines with a run history and a first version of the Customer Service agent, and Phase 6c is making the Social Media Manager post on its own (and post the owner's own content) inside a plan the owner approves. Go-live readiness itself is mostly configuration (email, domain, legal review of the drafted privacy notice and terms; the secrets are now set) and is what stands between today and the first pilot businesses. After that come a measured pilot, features for accounting firms, deeper teams in the Hiring Hall, and billing. International markets are the final phase and are deliberately not started: they begin only when traction signals appear, with low-cost readiness work folded into the earlier phases.
 
 ## Overview
 
@@ -14,6 +14,7 @@
 | 5 | Multi-tenant offices | Done |
 | 6 | Go-live readiness | **Next** |
 | 6b | Routines and the Customer Service agent | Done (first version) |
+| 6c | Social Media Manager, autonomy | **In progress** |
 | 7 | Pilot and accuracy | Planned |
 | 8 | Accounting firms | Planned |
 | 9 | Deeper teams | Planned |
@@ -93,6 +94,25 @@ A review of the whole product found seven High findings, all fixed and live the 
 | Readiness habit | Done 6 November 2026: `country`, `currency`, `locale` and `timeZone` are on the office record (India values only; migration `0004_office_locale.sql`), returned with each office and shown in Settings, so new code reads them instead of constants |
 
 **Exit criteria:** a new person can sign up, confirm their email, open an office, receive a bill by email and approve it, on the custom domain, with secrets set and the checklist in the configuration document closed.
+
+### Phase 6c: Social Media Manager, autonomy (in progress)
+
+**Goal:** an owner spends about 15 minutes a week on social. Owners who make their own content schedule it and it is posted on time; for the rest, the agent plans from the brand, the season and its own results, posts on its own inside a plan the owner approves once a month, and asks only about risky items. The books stay a guard (no wrong price, offer or stock claim), not the driver. Compared with Buffer and Postiz in November 2026: they post today and cover more networks; we plan, check against the books and trace posts to invoices.
+
+| Step | Weeks | Work |
+| --- | --- | --- |
+| 0b. Your own posts | 1–2 | A post composer (photo, carousel or video, a version per network), posting times per channel and "next free time", bulk upload from images plus a sheet of captions, channels and dates. The owner's own posts need no Desk card; the checks still run and warn. Instagram Reels and Facebook video |
+| 0. Go live on Meta | 1–6, alongside | One Meta app for the whole platform (keys in Infisical, staging and live); each business connects its own accounts and its tokens stay sealed in its office. Meta business verification and App Review. WhatsApp moves from one platform number to one number per business through Meta's Embedded Signup, with each business's token and templates in its own office. X waits |
+| 1. Brand kit and AI drafting | 3–5 | Audience, logo, colours, image style and competitors on the brand voice; a built-in festival list; drafts written by the model through `draftPrompt` and `fromDraft`, kept only if every check passes, with templates as the fallback; a social AI allowance per office |
+| 2. Approve the plan, not each post | 6–7 | Planned posts go out after a hold the owner can stop from the morning digest; trusted posts without claims, autonomous also with checked claims; a take-down on Instagram and Facebook that drops the agent one trust level. ADR 0012 narrows ADR 0004 for planned social posts |
+| 3. AI inbox replies | 8–9 | Messages sorted by the model; replies chosen from the office's saved answers, checked for figures and promises; money, dates and complaints always go to the owner |
+| 4. Learning loop and event posts | 10–12 | A weekly review moves posting times and theme shares toward what worked; festival and good-review posts within limits the owner sets. "Just arrived" posts wait until posting a purchase bill updates stock |
+| 5. AI product images | 13–14 | Generated backgrounds around the real product photo, put together in the browser; labelled `generated` with alt text; a separate image allowance |
+| Later | | Reels from photo slideshows; TikTok, YouTube, Pinterest, LinkedIn pages and Google Business through Postiz or Buffer, in their own ADR; X when its cost is worth it |
+
+**Decisions open:** which model writes posts (start with the reading model on Workers AI and test Hindi and Marathi); what happens when the free AI allowance runs out (suggested: a hard cap with template fallback, keeping ADR 0005); who pays Meta for WhatsApp messages (suggested: Meta bills each business directly).
+
+**Exit criteria:** two real offices each connect their own Instagram, Facebook and WhatsApp number; an owner's own week of posts, including a Reel, goes out on time; a trusted agent's approved month goes out with Desk cards only for posts with claims; no post or reply goes out with a figure the books or saved answers don't support.
 
 ### Parked: Cloudflare Workers Paid plan
 
