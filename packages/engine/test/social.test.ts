@@ -10,6 +10,7 @@ import { fromDraft } from "../src/social/drafts";
 import { classify, isThankYou } from "../src/social/inbox";
 import { importMetrics } from "../src/social/manual";
 import { nextFreeTime } from "../src/social/own";
+import { readPostSheet, sheetPosts } from "../src/social/sheet";
 import { planMonth, shareSlots } from "../src/social/planner";
 
 const fresh = (): Books => structuredClone(loadBooks());
@@ -334,6 +335,7 @@ describe("the owner's own posts", () => {
     const second = one(o, row, true);
     expect(second.saved).toBe(true);
     expect(post(o.books, second.posts[0]!.id).skuIds).toContain("SKU-101");
+    expect(post(o.books, second.posts[0]!.id).topic).toBe("FR PVC wire 1.0 sq mm, 90 m coil now ₹999 only");
   });
 
   it("refuses a whole sheet when one row names a channel that does not exist, naming the row", () => {
@@ -395,5 +397,43 @@ describe("the owner's own posts", () => {
       });
     expect(as("accountant").status).toBe(403);
     expect(as("owner")).toMatchObject({ status: 200, body: { saved: true } });
+  });
+});
+
+describe("a sheet of the owner's posts", () => {
+  it("reads dates, channels by name and file names, and names every bad row", () => {
+    const b = fresh();
+    const sheet = `Date,Time,Channels,Caption,Files
+2026-12-01,18:30,Instagram; Facebook,"New fans, in white and brown.",fan.jpg; fan2.jpg
+05/12/2026,,facebook,Switch off at the mains first.,
+2026-12-07,,TikTok,Hello,
+,,Instagram,,
+13/2026,,Facebook,Bad date,
+`;
+    const { rows, errors } = readPostSheet(sheet, b.channels);
+    expect(rows).toEqual([
+      {
+        row: 2,
+        at: "2026-12-01T18:30:00+05:30",
+        channelIds: ["ch-instagram", "ch-facebook"],
+        text: "New fans, in white and brown.",
+        files: ["fan.jpg", "fan2.jpg"],
+      },
+      { row: 3, at: "2026-12-05T11:00:00+05:30", channelIds: ["ch-facebook"], text: "Switch off at the mains first.", files: [] },
+    ]);
+    expect(errors).toEqual([
+      'Row 4: no channel called "TikTok".',
+      "Row 5: the caption is empty.",
+      "Row 6: write the date as 2026-12-01 and the time as 11:00.",
+    ]);
+    const posts = sheetPosts(
+      rows,
+      new Map([
+        ["fan.jpg", "media-a"],
+        ["fan2.jpg", "media-b"],
+      ]),
+    );
+    expect(posts[0]!.mediaIds).toEqual(["media-a", "media-b"]);
+    expect(() => sheetPosts(rows, new Map([["fan.jpg", "media-a"]]))).toThrow(/Row 2: attach fan2.jpg/);
   });
 });

@@ -10,6 +10,7 @@ import { q, useSocial } from "../api/queries";
 import { count, isOwner, Section, shortDate } from "../screens/common";
 import { SheetLayoutBody } from "../screens/SheetLayoutBody";
 import { FrameMaker, MetricsImport, PublishingPackCard } from "./social-manual";
+import { OwnPostActions, OwnPostComposer, OwnPostSheet } from "./social-own";
 
 const pct = (n: number) => `${n.toLocaleString("en-IN", { maximumFractionDigits: 1 })}%`;
 const thisMonth = (asOf: string) => asOf.slice(0, 7);
@@ -41,6 +42,7 @@ export function PostCard({ post, report, editable }: { post: Post; report: Socia
         ))}
       </div>
       {editable && post.status !== "published" ? <FrameMaker post={post} report={report} /> : null}
+      {editable ? <OwnPostActions post={post} /> : null}
     </div>
   );
 }
@@ -267,39 +269,47 @@ export function PostsView({ report }: { report: SocialReport }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const opened = report.posts.find((p) => p.id === openId);
   return (
-    <Section title="Posts">
-      <LedgerTable
-        caption="Posts"
-        rows={report.posts}
-        rowKey={(r) => r.id}
-        initialSort={{ id: "a", desc: true }}
-        rowTone={(r) => ((report.checks[r.id] ?? []).some((c) => !c.ok) ? "red" : undefined)}
-        columns={[
-          { id: "a", header: "When", cell: (r) => `${shortDate(r.at)}, ${r.at.slice(11, 16)}`, sortBy: (r) => r.at },
-          {
-            id: "t",
-            header: "Post",
-            cell: (r) => (
-              <button type="button" className="btn-link" onClick={() => setOpenId(r.id === openId ? null : r.id)} aria-expanded={r.id === openId}>
-                {r.topic}
-              </button>
-            ),
-            sortBy: (r) => r.topic,
-          },
-          { id: "p", header: "Where", cell: channelsOf, secondary: true },
-          { id: "s", header: "Status", cell: (r) => POST[r.status], sortBy: (r) => r.status },
-          {
-            id: "v",
-            header: "Views",
-            cell: (r) => (totalViews(r) ? totalViews(r).toLocaleString("en-IN") : ""),
-            sortBy: totalViews,
-            numeric: true,
-            secondary: true,
-          },
-        ]}
-      />
-      {opened ? <PostCard post={opened} report={report} editable={isOwner()} /> : null}
-    </Section>
+    <>
+      {isOwner() ? (
+        <>
+          <OwnPostComposer report={report} />
+          <OwnPostSheet report={report} />
+        </>
+      ) : null}
+      <Section title="Posts">
+        <LedgerTable
+          caption="Posts"
+          rows={report.posts}
+          rowKey={(r) => r.id}
+          initialSort={{ id: "a", desc: true }}
+          rowTone={(r) => ((report.checks[r.id] ?? []).some((c) => !c.ok) ? "red" : undefined)}
+          columns={[
+            { id: "a", header: "When", cell: (r) => `${shortDate(r.at)}, ${r.at.slice(11, 16)}`, sortBy: (r) => r.at },
+            {
+              id: "t",
+              header: "Post",
+              cell: (r) => (
+                <button type="button" className="btn-link" onClick={() => setOpenId(r.id === openId ? null : r.id)} aria-expanded={r.id === openId}>
+                  {r.topic}
+                </button>
+              ),
+              sortBy: (r) => r.topic,
+            },
+            { id: "p", header: "Where", cell: channelsOf, secondary: true },
+            { id: "s", header: "Status", cell: (r) => `${POST[r.status]}${r.source === "owner" ? ", yours" : ""}`, sortBy: (r) => r.status },
+            {
+              id: "v",
+              header: "Views",
+              cell: (r) => (totalViews(r) ? totalViews(r).toLocaleString("en-IN") : ""),
+              sortBy: totalViews,
+              numeric: true,
+              secondary: true,
+            },
+          ]}
+        />
+        {opened ? <PostCard post={opened} report={report} editable={isOwner()} /> : null}
+      </Section>
+    </>
   );
 }
 
