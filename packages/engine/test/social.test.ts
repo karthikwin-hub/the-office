@@ -591,6 +591,9 @@ describe("the owner approves the plan, not each post", () => {
     o.takeEffects();
     expect(o.takeDown(p.id, "ch-facebook", "Asha").byHand).toBe(false);
     expect(o.takeEffects()).toEqual([{ kind: "remove", postId: p.id, channelId: "ch-facebook" }]);
+    // Recorded with a status every earlier version reads, so a rollback still loads these books.
+    expect(p.variants.find((v) => v.channelId === "ch-facebook")).toMatchObject({ status: "skipped", takenDownAt: expect.any(String) });
+    expect(() => BooksSchema.parse(JSON.parse(JSON.stringify(o.books)))).not.toThrow();
     expect(o.books.agents.find((a) => a.agentId === "social-media-manager")!.trustLevel).toBe("trusted");
     const other = p.variants.find((v) => v.channelId !== "ch-facebook")!;
     expect(o.takeDown(p.id, other.channelId, "Asha").byHand).toBe(true);

@@ -1782,6 +1782,7 @@ export class OfficeService {
           url: null,
           publishedAt: null,
           error: null,
+          takenDownAt: null,
           approvedHash: null,
           metrics: null,
         })),
@@ -1875,7 +1876,8 @@ export class OfficeService {
     const ch = this.channel(channelId);
     const byApi = v.platform === "facebook" && ch?.mode === "connected" && ch.status === "connected" && !!v.externalId;
     if (byApi) this.effects.push({ kind: "remove", postId, channelId });
-    v.status = "removed";
+    v.status = "skipped";
+    v.takenDownAt = istNow(this.asOf);
     this.log("you", `${by} took "${post.topic}" down from ${PLATFORM_NAMES[v.platform]}${byApi ? "" : "; delete it in the app too"}.`, {
       kind: "post",
       id: post.id,
