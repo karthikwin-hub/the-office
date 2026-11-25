@@ -1,5 +1,5 @@
-import type { BrandVoice, Channel, Language, SocialReport } from "@office/contracts";
-import { PLATFORM_NAMES } from "@office/contracts";
+import type { BrandVoice, Channel, FestivalDate, Language, SocialReport } from "@office/contracts";
+import { INDIA_FESTIVALS, PLATFORM_NAMES } from "@office/contracts";
 import { ChannelStrip } from "@office/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useId, useState, type FormEvent } from "react";
@@ -23,6 +23,7 @@ export function SocialSettings() {
     <>
       <ChannelsSection report={social.data} />
       <VoiceForm voice={social.data.voice} />
+      <FestivalsForm chosen={social.data.festivals} />
     </>
   );
 }
@@ -105,10 +106,14 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
   const [donts, setDonts] = useState(voice.donts.join("\n"));
   const [samples, setSamples] = useState(voice.samples.join("\n\n"));
   const [hashtags, setHashtags] = useState(voice.hashtags.join(" "));
+  const [colours, setColours] = useState(voice.colours.join(" "));
+  const [competitors, setCompetitors] = useState(voice.competitors.join("\n"));
   const [saved, setSaved] = useState(false);
+  const colourList = colours.split(/[\s,]+/).filter(Boolean);
+  const coloursOk = colourList.length <= 5 && colourList.every((c) => /^#[0-9a-fA-F]{6}$/.test(c));
   const social = useSocial();
   const total = v.pillars.reduce((s, p) => s + p.share, 0);
-  const valid = total === 100 && v.languages.length > 0 && v.tone.trim().length > 0;
+  const valid = total === 100 && v.languages.length > 0 && v.tone.trim().length > 0 && coloursOk;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setSaved(false);
@@ -125,6 +130,8 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
         .split(/[\s,]+/)
         .filter(Boolean)
         .map((h) => (h.startsWith("#") ? h : `#${h}`)),
+      colours: colourList,
+      competitors: lines(competitors).slice(0, 20),
     };
     social.mutate(() => api.saveVoice(next), { onSuccess: () => setSaved(true) });
   };
@@ -179,6 +186,37 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
             <label htmlFor="hashtags">Your hashtags</label>
             <input id="hashtags" className="input" value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
           </div>
+          <div className="field field-wide">
+            <label htmlFor="audience">Who the posts are for</label>
+            <input
+              id="audience"
+              className="input"
+              value={v.audience}
+              maxLength={500}
+              placeholder="Electricians and homeowners in Pune who want safe, branded fittings"
+              onChange={(e) => setV({ ...v, audience: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="competitors">Never mention (one per line)</label>
+            <textarea id="competitors" className="input" rows={3} value={competitors} onChange={(e) => setCompetitors(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="image-style">How pictures should look</label>
+            <input
+              id="image-style"
+              className="input"
+              value={v.imageStyle}
+              maxLength={500}
+              placeholder="Bright, clean counter shots on white"
+              onChange={(e) => setV({ ...v, imageStyle: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="colours">Brand colours</label>
+            <input id="colours" className="input" value={colours} placeholder="#27408B #F3F5F7" onChange={(e) => setColours(e.target.value)} />
+            {!coloursOk ? <span className="form-error">Up to five colours written like #27408B.</span> : null}
+          </div>
           <div className="field">
             <label htmlFor="signoff">Sign-off</label>
             <input id="signoff" className="input" value={v.signoff} onChange={(e) => setV({ ...v, signoff: e.target.value })} />
@@ -222,6 +260,99 @@ function VoiceForm({ voice }: { voice: BrandVoice }) {
             Save brand voice
           </button>
           {saved ? <span role="status">Brand voice saved. Next month's calendar will follow it.</span> : null}
+          {social.error ? <span className="form-error">{(social.error as Error).message}</span> : null}
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+
+const festivalKey = (f: FestivalDate) => `${f.date}|${f.name}`;
+
+/** Which festivals the agent plans posts for: the built-in list to tick, and the owner's own with their dates. */
+function FestivalsForm({ chosen }: { chosen: FestivalDate[] }) {
+  const owner = isOwner();
+  const social = useSocial();
+  const today = new Date().toISOString().slice(0, 10);
+  const builtIn = INDIA_FESTIVALS.filter((f) => f.date >= today);
+  const [on, setOn] = useState(() => new Set(chosen.map(festivalKey)));
+  const [own, setOwn] = useState<FestivalDate[]>(() => chosen.filter((f) => !INDIA_FESTIVALS.some((b) => festivalKey(b) === festivalKey(f))));
+  const [draft, setDraft] = useState({ date: "", name: "" });
+  const [saved, setSaved] = useState(false);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    setSaved(false);
+    const festivals = [...builtIn.filter((f) => on.has(festivalKey(f))), ...own];
+    social.mutate(() => api.saveFestivals(festivals), { onSuccess: () => setSaved(true) });
+  };
+  return (
+    <form onSubmit={submit} className="settings-form">
+      <fieldset disabled={!owner}>
+        <legend className="h2">Festivals to plan for</legend>
+        <p className="section-lede">
+          The Social Media Manager plans an offers post three days before each festival you tick. Dates that vary by region, such as Pongal, Ugadi, Onam and
+          Dussehra, are yours to add with the date you keep.
+        </p>
+        <fieldset className="field">
+          <legend>Built in</legend>
+          <p>
+            <button type="button" className="btn-link" onClick={() => setOn(new Set([...on, ...builtIn.map(festivalKey)]))}>
+              Tick all
+            </button>
+          </p>
+          {builtIn.map((f) => (
+            <label key={festivalKey(f)}>
+              <input
+                type="checkbox"
+                checked={on.has(festivalKey(f))}
+                onChange={(e) => {
+                  const next = new Set(on);
+                  if (e.target.checked) next.add(festivalKey(f));
+                  else next.delete(festivalKey(f));
+                  setOn(next);
+                }}
+              />{" "}
+              {f.name} <span className="muted">{new Date(f.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="field">
+          <legend>Your own</legend>
+          {own.map((f) => (
+            <p key={festivalKey(f)}>
+              {f.name} <span className="muted">{f.date}</span>{" "}
+              <button type="button" className="btn-link" onClick={() => setOwn(own.filter((x) => festivalKey(x) !== festivalKey(f)))}>
+                Remove
+              </button>
+            </p>
+          ))}
+          <div className="settings-grid">
+            <div className="field">
+              <label htmlFor="fest-name">Name</label>
+              <input id="fest-name" className="input" value={draft.name} maxLength={80} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor="fest-date">Date</label>
+              <input id="fest-date" className="input" type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn"
+            disabled={!draft.name.trim() || !draft.date}
+            onClick={() => {
+              setOwn([...own, { date: draft.date, name: draft.name.trim(), relevance: "Your own date" }]);
+              setDraft({ date: "", name: "" });
+            }}
+          >
+            Add
+          </button>
+        </fieldset>
+        <div className="approval-actions">
+          <button type="submit" className="btn btn-primary" disabled={social.isPending}>
+            Save festivals
+          </button>
+          {saved ? <span role="status">Saved. Next month's calendar will plan for them.</span> : null}
           {social.error ? <span className="form-error">{(social.error as Error).message}</span> : null}
         </div>
       </fieldset>

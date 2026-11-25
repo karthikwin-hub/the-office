@@ -12,11 +12,12 @@ export function draftPrompt(topic: string, facts: PostFact[], voice: BrandVoice,
   const system = [
     `You write social media posts for a small Indian business, for ${PLATFORM_NAMES[platform]}.`,
     `Voice: ${voice.tone}`,
+    voice.audience ? `The posts are for: ${voice.audience}` : "",
     voice.dos.length ? `Do: ${voice.dos.join("; ")}.` : "",
     voice.donts.length ? `Don't: ${voice.donts.join("; ")}.` : "",
     `Keep it under ${r.maxChars} characters with at most ${r.maxHashtags} hashtags. Emoji: ${voice.emoji}.`,
     "State a price, percentage, count or date only if it appears in the fact list, copied exactly, and list the ids of every fact you used.",
-    "Never claim to be the cheapest or best, and never name a competitor.",
+    `Never claim to be the cheapest or best, and never name a competitor${voice.competitors.length ? ` (such as ${voice.competitors.join(", ")})` : ""}.`,
     voice.samples.length
       ? `Past posts in this voice:\n${voice.samples
           .slice(0, 5)

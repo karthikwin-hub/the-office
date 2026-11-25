@@ -437,3 +437,59 @@ describe("a sheet of the owner's posts", () => {
     expect(() => sheetPosts(rows, new Map([["fan.jpg", "media-a"]]))).toThrow(/Row 2: attach fan2.jpg/);
   });
 });
+
+describe("AI drafts for the month", () => {
+  const drafted = () => {
+    const o = office();
+    const card = o.draftCalendar("2027-01");
+    const calendarId = (card.payload as { calendarId: string }).calendarId;
+    return { o, calendarId, jobs: o.aiDraftJobs(calendarId) };
+  };
+
+  it("asks for every version of the month's drafts, with the voice and the facts in the prompt", () => {
+    const { o, jobs } = drafted();
+    expect(jobs.length).toBeGreaterThan(5);
+    const job = jobs.find((j) => post(o.books, j.postId).facts.some((f) => f.kind === "price"))!;
+    expect(job.prompt.system).toContain(o.books.brandVoice.tone);
+    expect(job.prompt.user).toContain(post(o.books, job.postId).facts.find((f) => f.kind === "price")!.value);
+  });
+
+  it("keeps the model's caption only when its figures are the books' own and it passes the checks", () => {
+    const { o, jobs } = drafted();
+    const job = jobs.find((j) => post(o.books, j.postId).facts.some((f) => f.kind === "price"))!;
+    const p = post(o.books, job.postId);
+    const v = () => p.variants.find((x) => x.channelId === job.channelId)!;
+    const template = v().text;
+    const price = p.facts.find((f) => f.kind === "price")!;
+    expect(o.applyAiDraft(job.postId, job.channelId, { text: "Now just ₹1 at the counter.", factIds: [price.id] })).toBe(false);
+    expect(o.applyAiDraft(job.postId, job.channelId, { text: "Cheapest in town, come today.", factIds: [] })).toBe(false);
+    expect(v().text).toBe(template);
+    const good = `Fresh stock at the counter, ${price.value}. Ask us which one suits your home.`;
+    expect(o.applyAiDraft(job.postId, job.channelId, JSON.stringify({ text: good, factIds: [price.id] }))).toBe(true);
+    expect(v().text).toContain(price.value);
+    o.noteAiDrafts(o.books.calendars.find((c) => c.month === "2027-01")!.id, 1, jobs.length);
+    expect(o.books.staged.find((s) => s.id === "chg-cal-2027-01")!.summary).toContain(`Written with AI: 1 of ${jobs.length}`);
+  });
+
+  it("names the owner's competitors in the prompt and fails a post that names one", () => {
+    const o = office();
+    o.updateVoice({ ...o.books.brandVoice, competitors: ["Sharma Electricals"] });
+    const p = structuredClone(post(o.books, "post-05"));
+    p.variants[0]!.text = "Better service than Sharma Electricals.";
+    expect(
+      checkPost(o.ledger, p, o.books.brandVoice)
+        .filter((c) => !c.ok)
+        .map((c) => c.key),
+    ).toContain("claims");
+  });
+
+  it("keeps the festivals the owner chose, once each and in date order", () => {
+    const o = office();
+    const set = o.setFestivals([
+      { date: "2027-10-29", name: "Diwali", relevance: "Lights" },
+      { date: "2027-03-22", name: "Holi", relevance: "Colours" },
+      { date: "2027-10-29", name: "Diwali", relevance: "Lights" },
+    ]);
+    expect(set.map((f) => f.name)).toEqual(["Holi", "Diwali"]);
+  });
+});

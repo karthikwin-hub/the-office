@@ -160,6 +160,7 @@ export function socialReport(l: Ledger): SocialReport {
     ratings: { average, count: reviews.length },
     channels: l.books.channels,
     voice,
+    festivals: l.books.festivalCalendar,
     calendars: l.books.calendars,
     media: l.books.media,
     checks,

@@ -50,6 +50,7 @@ import {
   type AgentState,
   type BrandVoice,
   type Channel,
+  type FestivalDate,
   type MediaAsset,
   type OwnerPostResult,
   type OwnerPosts,
@@ -346,6 +347,7 @@ export const api = {
   removePost: (postId: string) => call<{ removed: string }>(ROUTES.socialPost(postId), { method: "DELETE" }),
   draftCalendar: (month: string) => call<StagedChange>(ROUTES.socialCalendarDraft, { method: "POST", body: { month } }),
   saveVoice: (voice: BrandVoice) => call<BrandVoice>(ROUTES.socialVoice, { method: "PUT", body: voice }),
+  saveFestivals: (festivals: FestivalDate[]) => call<FestivalDate[]>(ROUTES.socialFestivals, { method: "PUT", body: { festivals } }),
   setupChannel: (id: string, change: { handle?: string; mode?: "manual"; postingHours?: { from: string; to: string } }) =>
     call<Channel>(ROUTES.socialChannel(id), { method: "POST", body: change }),
   /** Live: the platform's sign-in page, and back to Settings. Mockups: connects at once. */
