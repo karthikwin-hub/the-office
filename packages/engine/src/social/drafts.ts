@@ -142,6 +142,7 @@ export function draftPost(
     pillar: slot.pillarId,
     calendarId: opts.calendarId ?? null,
     campaignId: opts.campaignId ?? null,
+    source: "agent",
     status: "draft",
     at,
     skuIds,

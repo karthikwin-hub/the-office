@@ -696,6 +696,8 @@ const PostShape = z.object({
   pillar: z.string().nullable().default(null),
   calendarId: z.string().nullable().default(null),
   campaignId: z.string().nullable().default(null),
+  /** "owner": the owner wrote it and chose its time, so it goes out without a desk card; checks only warn. */
+  source: z.enum(["agent", "owner"]).default("agent"),
   status: z.enum(["draft", "scheduled", "published"]),
   at: IsoDateTime,
   skuIds: z.array(z.string()),

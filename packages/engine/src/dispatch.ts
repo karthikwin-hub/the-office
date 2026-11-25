@@ -21,6 +21,8 @@ import {
   MasterDataPaste,
   MediaAsset,
   MetricsImport,
+  OwnerPosts,
+  PostTime,
   type Obligation,
   OrderChange,
   OrderInput,
@@ -629,6 +631,15 @@ function orders(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
   return notFound("Route");
 }
 
+/** Runs a change whose refusal is a plain sentence for the owner. */
+function refused(run: () => unknown): ApiResult {
+  try {
+    return ok(run());
+  } catch (e) {
+    return { status: 422, body: { error: e instanceof Error ? e.message : String(e) } };
+  }
+}
+
 /** The Social Media Manager's routes. Reading is open to the team; changing anything is the owner's. */
 function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiResult {
   const [what, id, sub, channelId, action] = parts;
@@ -647,6 +658,16 @@ function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
     if (typeof month !== "string" || !/^\d{4}-\d{2}$/.test(month)) return bad("Send the month as YYYY-MM.");
     return ok(office.draftCalendar(month));
   }
+  if (what === "posts" && !id && req.method === "POST") {
+    const parsed = OwnerPosts.safeParse(req.body ?? {});
+    if (!parsed.success) return bad("Each post needs its text and at least one channel.");
+    return refused(() => office.addOwnerPosts(parsed.data, req.user.name));
+  }
+  if (what === "posts" && id && !sub && req.method === "PUT") {
+    const parsed = PostTime.safeParse(req.body ?? {});
+    return parsed.success ? refused(() => office.movePost(id, parsed.data.at)) : bad("Send the new time.");
+  }
+  if (what === "posts" && id && !sub && req.method === "DELETE") return refused(() => office.cancelOwnerPost(id));
   if (what === "posts" && id && sub === "variants" && channelId) {
     if (!action && write) {
       const parsed = VariantEdit.safeParse(req.body ?? {});

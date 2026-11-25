@@ -397,6 +397,31 @@ export const ChannelSetup = z.object({
 });
 export const MetricsImport = z.object({ content: z.string().min(1).max(2_000_000) });
 
+/** A post the owner wrote. With no time it takes each channel's next free day. */
+export const OwnerPost = z.object({
+  topic: z.string().max(120).optional(),
+  text: z.string().min(1).max(5000),
+  channelIds: z.array(z.string()).min(1).max(7),
+  /** A different text for some channels; the rest use `text`. */
+  versions: z
+    .array(z.object({ channelId: z.string(), text: z.string().min(1).max(5000) }))
+    .max(7)
+    .default([]),
+  mediaIds: z.array(z.string()).max(10).default([]),
+  link: z.string().refine(isUrl, "Invalid url").nullable().default(null),
+  /** Products the post is about, so prices and stock can be checked; products named in the text are found too. */
+  skuIds: z.array(z.string()).max(10).default([]),
+  at: IsoDateTime.nullable().default(null),
+});
+export type OwnerPost = z.infer<typeof OwnerPost>;
+/** One post or a sheet of them. Warnings stop the save until the owner sends `confirm`. */
+export const OwnerPosts = z.object({ posts: z.array(OwnerPost).min(1).max(100), confirm: z.boolean().default(false) });
+export type OwnerPosts = z.infer<typeof OwnerPosts>;
+export const OwnerPostWarning = z.object({ row: z.number().int(), channelId: z.string().nullable(), detail: z.string() });
+export const OwnerPostResult = z.object({ saved: z.boolean(), posts: z.array(Post), warnings: z.array(OwnerPostWarning) });
+export type OwnerPostResult = z.infer<typeof OwnerPostResult>;
+export const PostTime = z.object({ at: IsoDateTime });
+
 export const OperationsReport = z.object({
   note: Note,
   stock: z.array(
@@ -1047,6 +1072,8 @@ export const ROUTES = {
   socialPack: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}/pack`,
   socialMetricsImport: "/api/social/metrics/import",
   socialMedia: "/api/social/media",
+  socialPosts: "/api/social/posts",
+  socialPost: (postId: string) => `/api/social/posts/${postId}`,
   routines: "/api/routines",
   routine: (id: string) => `/api/routines/${encodeURIComponent(id)}`,
   routineRuns: (id: string) => `/api/routines/${encodeURIComponent(id)}/runs`,

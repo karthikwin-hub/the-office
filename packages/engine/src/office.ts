@@ -26,6 +26,8 @@ import type {
   Channel,
   ContentCalendar,
   MediaAsset,
+  OwnerPostResult,
+  OwnerPosts,
   Post,
   PostMetrics,
   PostVariant,
@@ -37,7 +39,8 @@ import type {
 } from "@office/contracts";
 import { AGENT_BY_ID, AGENTS, BOOKS_PROVIDER, BRAND, PLATFORM_NAMES, PROMOTION_RULES } from "@office/contracts";
 import { textHash } from "./social/channels";
-import { checkPost } from "./social/checks";
+import { checkPost, factsFor } from "./social/checks";
+import { claimDays, nextFreeTime, skusNamed } from "./social/own";
 import { isThankYou, leadFrom, newMessage } from "./social/inbox";
 import { draftCalendar, planMonth } from "./social/planner";
 import { ageingReport, DEFAULT_POLICY, draftReminders, openInvoices } from "./ageing";
@@ -1519,7 +1522,9 @@ export class OfficeService {
       if (post.status !== "scheduled" || Date.parse(post.at) > Date.parse(now)) continue;
       const due = post.variants.filter((v) => v.status === "scheduled");
       if (!due.length) continue;
-      const failed = checkPost(this.ledger, post, this.books.brandVoice, { now: post.at }).filter((c) => !c.ok && c.key !== "duplicate");
+      // The owner saw the warnings when they scheduled their own post; only the agent's posts are held back.
+      const failed =
+        post.source === "owner" ? [] : checkPost(this.ledger, post, this.books.brandVoice, { now: post.at }).filter((c) => !c.ok && c.key !== "duplicate");
       const changed = due.find((v) => v.approvedHash !== textHash(v.text));
       if (failed.length || changed) {
         const why = changed ? `the ${PLATFORM_NAMES[changed.platform]} text changed after approval` : failed.map((c) => c.detail).join("; ");
@@ -1622,6 +1627,103 @@ export class OfficeService {
     return n;
   }
 
+  /**
+   * Posts the owner wrote. Each is scheduled at its time, or each channel's next free day, with no desk card.
+   * Every check still runs: if any fails, nothing is saved until the owner sends `confirm` with the warnings seen.
+   * A wrong channel, a missing picture id or a time already past refuses the whole sheet, naming the row.
+   */
+  addOwnerPosts(input: OwnerPosts, by: string): OwnerPostResult {
+    const now = istNow(this.asOf);
+    const taken = new Set<string>();
+    const posts: Post[] = [];
+    const warnings: OwnerPostResult["warnings"] = [];
+    let seq = this.books.posts.filter((p) => p.source === "owner").length;
+    input.posts.forEach((row, i) => {
+      const n = i + 1;
+      const where = input.posts.length > 1 ? `Row ${n}: ` : "";
+      const channelIds = [...new Set(row.channelIds)];
+      for (const id of channelIds) if (!this.channel(id)) throw new Error(`${where}there is no channel ${id}.`);
+      for (const v of row.versions) if (!channelIds.includes(v.channelId)) throw new Error(`${where}a version is for ${v.channelId}, which is not ticked.`);
+      for (const id of row.mediaIds) if (!this.books.media.some((m) => m.id === id)) throw new Error(`${where}the picture or video ${id} was not uploaded.`);
+      if (row.at && !(Date.parse(row.at) > Date.parse(now))) throw new Error(`${where}the time ${row.at} has already passed.`);
+      const at = row.at ?? nextFreeTime(this.books, channelIds, now, taken);
+      const skuIds = [...new Set([...row.skuIds.filter((id) => this.books.skus.some((s) => s.id === id)), ...skusNamed(this.books, row.text)])];
+      do seq++;
+      while (this.books.posts.some((p) => p.id === `own-${seq}`));
+      const post: Post = {
+        id: `own-${seq}`,
+        topic:
+          row.topic?.trim() ||
+          row.text
+            .split(/[.!?\n]/)[0]!
+            .trim()
+            .slice(0, 80),
+        pillar: null,
+        calendarId: null,
+        campaignId: null,
+        source: "owner",
+        status: "draft",
+        at,
+        skuIds,
+        facts: factsFor(this.ledger, skuIds, at),
+        variants: channelIds.map((channelId) => ({
+          channelId,
+          platform: this.channel(channelId)!.platform,
+          text: row.versions.find((v) => v.channelId === channelId)?.text ?? row.text,
+          mediaIds: row.mediaIds,
+          link: row.link,
+          status: "draft",
+          externalId: null,
+          url: null,
+          publishedAt: null,
+          error: null,
+          approvedHash: null,
+          metrics: null,
+        })),
+      };
+      claimDays(post, taken);
+      posts.push(post);
+      const others = { ...this.books, posts: [...this.books.posts, ...posts.slice(0, -1)] };
+      const checks = checkPost(new Ledger(others, this.asOf), post, this.books.brandVoice, { now });
+      for (const c of checks) if (!c.ok) warnings.push({ row: n, channelId: c.channelId ?? null, detail: c.detail });
+    });
+    if (warnings.length && !input.confirm) return { saved: false, posts, warnings };
+    for (const post of posts) {
+      this.books.posts.push(post);
+      this.schedulePost(post.id);
+    }
+    this.log("you", `${by} scheduled ${posts.length === 1 ? `"${posts[0]!.topic}"` : `${posts.length} posts`} of their own.`, {
+      kind: "post",
+      id: posts[0]!.id,
+    });
+    return { saved: true, posts, warnings };
+  }
+
+  /** Moves a post that has not gone out yet. The owner chose the time, so it keeps its approval. */
+  movePost(postId: string, at: string): Post {
+    const post = this.post(postId);
+    if (post.status === "published" || post.variants.some((v) => v.status === "published")) throw new Error("It has already gone out.");
+    if (!(Date.parse(at) > Date.parse(istNow(this.asOf)))) throw new Error("Pick a time that has not passed.");
+    post.at = at;
+    if (post.calendarId) {
+      const slot = this.books.calendars.find((c) => c.id === post.calendarId)?.slots.find((s) => s.postId === post.id);
+      if (slot) slot.date = at.slice(0, 10);
+    }
+    this.log("you", `Moved "${post.topic}" to ${dateLabel(at.slice(0, 10))}.`, { kind: "post", id: post.id });
+    return post;
+  }
+
+  /** Takes back an owner's post before it goes out, with any broadcast card it raised. */
+  cancelOwnerPost(postId: string): { removed: string } {
+    const post = this.post(postId);
+    if (post.source !== "owner") throw new Error("Only your own posts can be removed here; reject the agent's on the desk.");
+    if (post.variants.some((v) => v.status === "published")) throw new Error("It has already gone out on at least one channel.");
+    this.books.posts = this.books.posts.filter((p) => p.id !== postId);
+    this.books.staged = this.books.staged.filter((s) => !(s.status === "pending" && (s.payload as { postId?: string }).postId === postId));
+    this.log("you", `Removed "${post.topic}" before it went out.`);
+    return { removed: postId };
+  }
+
   /** Editing one channel's version. A scheduled post that changes goes back to the desk. */
   editVariant(postId: string, channelId: string, edits: { text?: string; link?: string | null; mediaIds?: string[] }): Post {
     const post = this.post(postId);
@@ -1631,6 +1733,10 @@ export class OfficeService {
     if (edits.text !== undefined) v.text = edits.text;
     if (edits.link !== undefined) v.link = edits.link;
     if (edits.mediaIds) v.mediaIds = edits.mediaIds.filter((id) => this.books.media.some((m) => m.id === id));
+    if (post.source === "owner") {
+      if (v.status === "scheduled") v.approvedHash = textHash(v.text);
+      return post;
+    }
     if (post.status === "scheduled") {
       post.status = "draft";
       for (const x of post.variants) if (x.status === "scheduled") x.status = "draft";
