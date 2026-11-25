@@ -10,7 +10,7 @@ import { q, useSocial } from "../api/queries";
 import { count, isOwner, Section, shortDate } from "../screens/common";
 import { SheetLayoutBody } from "../screens/SheetLayoutBody";
 import { FrameMaker, MetricsImport, PublishingPackCard } from "./social-manual";
-import { OwnPostActions, OwnPostComposer, OwnPostSheet } from "./social-own";
+import { AgentPostActions, OwnPostActions, OwnPostComposer, OwnPostSheet } from "./social-own";
 
 const pct = (n: number) => `${n.toLocaleString("en-IN", { maximumFractionDigits: 1 })}%`;
 const thisMonth = (asOf: string) => asOf.slice(0, 7);
@@ -43,6 +43,7 @@ export function PostCard({ post, report, editable }: { post: Post; report: Socia
       </div>
       {editable && post.status !== "published" ? <FrameMaker post={post} report={report} /> : null}
       {editable ? <OwnPostActions post={post} /> : null}
+      {editable ? <AgentPostActions post={post} /> : null}
     </div>
   );
 }
@@ -296,7 +297,13 @@ export function PostsView({ report }: { report: SocialReport }) {
               sortBy: (r) => r.topic,
             },
             { id: "p", header: "Where", cell: channelsOf, secondary: true },
-            { id: "s", header: "Status", cell: (r) => `${POST[r.status]}${r.source === "owner" ? ", yours" : ""}`, sortBy: (r) => r.status },
+            {
+              id: "s",
+              header: "Status",
+              cell: (r) =>
+                `${POST[r.status]}${r.source === "owner" ? ", yours" : r.status === "scheduled" && r.approvedBy === "agent" ? ", by the agent" : ""}`,
+              sortBy: (r) => r.status,
+            },
             {
               id: "v",
               header: "Views",
@@ -319,8 +326,8 @@ export function CalendarView({ report }: { report: SocialReport }) {
   return (
     <Section title="Content calendar">
       <p className="section-lede">
-        One block per planned post, hatched by its pillar. An approved month lets a trusted Social Media Manager publish each post at its time, if it is
-        unchanged and passes every check again then.
+        One block per planned post, hatched by its pillar. In an approved month a trusted Social Media Manager posts the plain posts on its own, and an
+        autonomous one also those with a price, offer or stock claim. Each is in your morning digest first, and you have two hours to stop it.
       </p>
       {cals.map((c) => (
         <CalendarGrid key={c.id} calendar={c} pillars={report.voice.pillars} posts={report.posts} festivals={marketing.data?.calendar} />

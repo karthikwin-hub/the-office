@@ -88,6 +88,7 @@ export class SocialHost {
     for (const e of effects) {
       if (e.kind === "publish") await this.publish(e.postId, e.channelId);
       else if (e.kind === "reply") await this.reply(e.messageId, e.channelId, e.text);
+      else if (e.kind === "remove") await this.remove(e.postId, e.channelId);
       else await this.broadcast(e.postId, e.channelId);
     }
   }
@@ -204,13 +205,33 @@ export class SocialHost {
     }
   }
 
+  /** Deletes a version the owner took down, where the platform lets an app delete; the owner is told if it could not. */
+  private async remove(postId: string, channelId: string) {
+    const post = this.office.books.posts.find((p) => p.id === postId);
+    const v = post?.variants.find((x) => x.channelId === channelId);
+    if (!post || !v?.externalId) return;
+    const r = await this.ready(channelId);
+    try {
+      if (!("a" in r)) throw r.problem;
+      if (!r.a.remove) throw new PlatformError("This platform does not let apps delete posts", "final");
+      await r.a.remove(r.t, v.externalId);
+    } catch (e) {
+      this.office.log(
+        "social-media-manager",
+        `Could not delete "${post.topic}" on ${PLATFORM_NAMES[v.platform]} (${e instanceof Error ? e.message : String(e)}); delete it in the app.`,
+        { kind: "post", id: post.id },
+      );
+    }
+  }
+
   /** When the Office should next wake to publish: the next post's time, or the next retry. */
   nextWake(): number | null {
     const now = this.now();
     const times = [
       ...this.office.books.posts
         .filter((p) => p.status === "scheduled" && p.variants.some((v) => v.status === "scheduled"))
-        .map((p) => Date.parse(p.at))
+        // The agent's own go-ahead also waits out the owner's two hours after being told.
+        .map((p) => Math.max(Date.parse(p.at), p.approvedBy === "agent" && p.noticeAt ? Date.parse(p.noticeAt) + 2 * 3600_000 : 0))
         .filter((t) => t > now),
       ...Object.values(this.retries).map((r) => Math.max(r.notBefore, now + 1000)),
     ];

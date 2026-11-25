@@ -673,6 +673,9 @@ function social(office: OfficeService, req: ApiRequest, parts: string[]): ApiRes
     return parsed.success ? refused(() => office.movePost(id, parsed.data.at)) : bad("Send the new time.");
   }
   if (what === "posts" && id && !sub && req.method === "DELETE") return refused(() => office.cancelOwnerPost(id));
+  if (what === "posts" && id && sub === "stop" && req.method === "POST") return refused(() => office.stopPost(id, req.user.name));
+  if (what === "posts" && id && sub === "variants" && channelId && action === "takedown" && req.method === "POST")
+    return refused(() => office.takeDown(id, channelId, req.user.name));
   if (what === "posts" && id && sub === "variants" && channelId) {
     if (!action && write) {
       const parsed = VariantEdit.safeParse(req.body ?? {});

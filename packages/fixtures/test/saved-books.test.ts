@@ -16,7 +16,11 @@ type Loose = Record<string, unknown>;
  */
 function withLaterDefaults(book: unknown): unknown {
   const b = structuredClone(book) as Loose;
-  for (const p of (b.posts as Loose[] | undefined) ?? []) p.source ??= "agent";
+  for (const p of (b.posts as Loose[] | undefined) ?? []) {
+    p.source ??= "agent";
+    p.approvedBy ??= null;
+    p.noticeAt ??= null;
+  }
   const voice = b.brandVoice as Loose | undefined;
   if (voice) for (const [k, v] of Object.entries({ audience: "", colours: [], imageStyle: "", logoMediaId: null, competitors: [] })) voice[k] ??= v;
   return b;

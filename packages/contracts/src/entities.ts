@@ -713,7 +713,7 @@ export const PostMetrics = z.object({
 });
 export type PostMetrics = z.infer<typeof PostMetrics>;
 
-export const VariantStatus = z.enum(["draft", "scheduled", "published", "failed", "skipped"]);
+export const VariantStatus = z.enum(["draft", "scheduled", "published", "failed", "skipped", "removed"]);
 export const PostVariant = z.object({
   channelId: z.string(),
   platform: Platform,
@@ -739,6 +739,10 @@ const PostShape = z.object({
   campaignId: z.string().nullable().default(null),
   /** "owner": the owner wrote it and chose its time, so it goes out without a desk card; checks only warn. */
   source: z.enum(["agent", "owner"]).default("agent"),
+  /** Who let it go out: the owner (on the desk, or their own post) or the agent at its trust level. */
+  approvedBy: z.enum(["owner", "agent"]).nullable().default(null),
+  /** When the owner was told the agent would post it; an agent's post waits at least two hours after that. */
+  noticeAt: IsoDateTime.nullable().default(null),
   status: z.enum(["draft", "scheduled", "published"]),
   at: IsoDateTime,
   skuIds: z.array(z.string()),
