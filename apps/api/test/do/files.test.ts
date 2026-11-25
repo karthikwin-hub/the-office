@@ -98,6 +98,25 @@ describe("an office's stored files", () => {
     expect(zip).toContain("plain bill");
     expect(zip).not.toContain("OFB1");
   });
+
+  it("takes a video for a Reel, sealed like a picture and shown as a video", async () => {
+    const { id, owner, stub } = await openOffice();
+    const upload = (file: File) => {
+      const form = new FormData();
+      form.set("file", file);
+      return asCaller(callerFor(id, owner), ROUTES.socialMedia, { method: "POST", body: form });
+    };
+    const up = await stub.fetch(await upload(new File(["....ftypmp42 a short reel"], "reel.mp4", { type: "video/mp4" })));
+    expect(up.status).toBe(200);
+    const asset = (await up.json()) as { id: string; kind: string };
+    expect(asset.kind).toBe("video");
+    const res = await stub.fetch(await asCaller(callerFor(id, owner), `/api/social/media/${asset.id}`));
+    expect(res.headers.get("content-type")).toBe("video/mp4");
+    expect(await res.text()).toBe("....ftypmp42 a short reel");
+    const big = new File([new Uint8Array(25 * 1024 * 1024 + 1)], "long.mov", { type: "video/quicktime" });
+    expect((await stub.fetch(await upload(big))).status).toBe(413);
+    expect((await stub.fetch(await upload(new File(["GIF89a"], "a.gif", { type: "image/gif" })))).status).toBe(415);
+  });
 });
 
 describe("a bill uploaded from the browser", () => {

@@ -312,6 +312,24 @@ describe("adapters against recorded responses", () => {
     expect(new URLSearchParams(calls[2]!.body).get("creation_id")).toBe("cont-1");
   });
 
+  it("Instagram: a single video goes out as a Reel, waiting while Instagram processes it", async () => {
+    const clip = { ...picture, id: "media-v1", kind: "video" as const, contentType: "video/mp4" };
+    let polls = 0;
+    const { f, calls } = recorder([
+      [/POST .*\/1784\/media$/, () => ({ id: "cont-v" })],
+      [/GET .*\/cont-v\?fields=status_code/, () => ({ status_code: ++polls < 3 ? "IN_PROGRESS" : "FINISHED" })],
+      [/POST .*\/1784\/media_publish$/, () => ({ id: "m-v" })],
+      [/GET .*\/m-v\?fields=permalink/, () => ({ permalink: "https://www.instagram.com/reel/abc/" })],
+    ]);
+    const r = await instagram(keys, f, { gapMs: 0 }).publish(tokens, variant(), [clip]);
+    expect(r).toEqual({ externalId: "m-v", url: "https://www.instagram.com/reel/abc/" });
+    const form = new URLSearchParams(calls[0]!.body);
+    expect(form.get("media_type")).toBe("REELS");
+    expect(form.get("video_url")).toBe(clip.url);
+    expect(form.has("image_url")).toBe(false);
+    expect(polls).toBe(3);
+  });
+
   it("Instagram: refuses a post without a picture, and maps an expired token", async () => {
     await expect(instagram(keys, recorder([]).f).publish(tokens, variant(), [])).rejects.toMatchObject({ kind: "final" });
     const { f } = recorder([[/media$/, () => new Response(JSON.stringify({ error: { message: "Session has expired", code: 190 } }), { status: 400 })]]);
@@ -334,6 +352,17 @@ describe("adapters against recorded responses", () => {
     );
     expect(r).toEqual({ externalId: "55_77", url: "https://www.facebook.com/55_77" });
     expect(new URLSearchParams(calls[0]!.body).get("link")).toBe("https://kaveri.in/?utm_source=facebook");
+  });
+
+  it("Facebook: a video goes to the Page's videos with the text as its description", async () => {
+    const clip = { ...picture, id: "media-v1", kind: "video" as const, contentType: "video/mp4" };
+    const { f, calls } = recorder([[/POST .*\/55\/videos$/, () => ({ id: "v-88" })]]);
+    const r = await facebook(keys, f).publish({ ...tokens, account: "55" }, variant({ platform: "facebook" }), [clip, picture]);
+    expect(r).toEqual({ externalId: "v-88", url: "https://www.facebook.com/55/videos/v-88" });
+    const form = new URLSearchParams(calls[0]!.body);
+    expect(form.get("file_url")).toBe(clip.url);
+    expect(form.get("description")).toBe("Diwali lights in stock");
+    expect(calls).toHaveLength(1);
   });
 
   it("Facebook: picks the Page and its token at sign-in", async () => {
