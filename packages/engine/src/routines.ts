@@ -177,7 +177,12 @@ export async function runOne(
         };
       });
     case "social-morning":
-      return runRoutine(office, id, trigger, () => host.socialMorning());
+      return runRoutine(office, id, trigger, async () => {
+        const r = await host.socialMorning();
+        // The agent's posts for the coming day go in the digest, each stoppable for two hours after.
+        notes.push(...office.noticeDue(new Date().toISOString()));
+        return r;
+      });
     case "publish-posts":
       return runRoutine(office, id, trigger, () => host.publish());
     case "reorder-check":

@@ -311,3 +311,45 @@ export function OwnPostActions({ post }: { post: Post }) {
     </div>
   );
 }
+
+/** The agent's post on its way out can be stopped; a live version can be taken down. Either costs the agent a trust level. */
+export function AgentPostActions({ post }: { post: Post }) {
+  const social = useSocial();
+  const [note, setNote] = useState<string | null>(null);
+  if (post.source === "owner") return null;
+  const waiting = post.status === "scheduled" && post.variants.some((v) => v.status === "scheduled");
+  const live = post.variants.filter((v) => v.status === "published");
+  if (!waiting && !live.length) return null;
+  return (
+    <div className="own-post-actions">
+      {waiting ? (
+        <button type="button" className="btn" disabled={social.isPending} onClick={() => social.mutate(() => api.stopPost(post.id))}>
+          Stop it before it goes out
+        </button>
+      ) : null}
+      {live.map((v) => (
+        <button
+          key={v.channelId}
+          type="button"
+          className="btn btn-link"
+          disabled={social.isPending}
+          onClick={() =>
+            social.mutate(() => api.takeDown(post.id, v.channelId), {
+              onSuccess: (r) =>
+                setNote(
+                  (r as { byHand: boolean }).byHand
+                    ? `${PLATFORM_NAMES[v.platform]} does not let apps delete posts: delete it in the ${PLATFORM_NAMES[v.platform]} app. It is marked as taken down here.`
+                    : `Taken down from ${PLATFORM_NAMES[v.platform]}.`,
+                ),
+            })
+          }
+        >
+          Take it down from {PLATFORM_NAMES[v.platform]}
+        </button>
+      ))}
+      {post.approvedBy === "agent" ? <span className="muted">The agent posted this on its own; stopping it moves the agent back a trust level.</span> : null}
+      {note ? <p role="status">{note}</p> : null}
+      {social.error ? <p className="form-error">{(social.error as Error).message}</p> : null}
+    </div>
+  );
+}

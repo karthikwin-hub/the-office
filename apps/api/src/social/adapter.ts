@@ -36,6 +36,8 @@ export interface ChannelAdapter {
   refresh?(t: Tokens): Promise<Tokens>;
   /** A paid template message to everyone who opted in. WhatsApp only. */
   broadcast?(t: Tokens, o: { template: string; language: string; text: string; audience: string[] }): Promise<{ sent: number; failed: number }>;
+  /** Deletes a published post, where the platform lets an app do so. */
+  remove?(t: Tokens, externalId: string): Promise<void>;
 }
 
 export type FailureKind = "rate_limited" | "expired" | "retry" | "final" | "not_set_up";

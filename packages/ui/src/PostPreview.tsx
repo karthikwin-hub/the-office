@@ -4,7 +4,14 @@ import { charCount, RULES, segmentFigures } from "@office/engine";
 import { useId, useState } from "react";
 import { useFigures } from "./Figure";
 
-const STATUS: Record<PostVariant["status"], string> = { draft: "Draft", scheduled: "Scheduled", published: "Published", failed: "Failed", skipped: "Left out" };
+const STATUS: Record<PostVariant["status"], string> = {
+  draft: "Draft",
+  scheduled: "Scheduled",
+  published: "Published",
+  failed: "Failed",
+  skipped: "Left out",
+  removed: "Taken down",
+};
 
 type Props = {
   variant: PostVariant;

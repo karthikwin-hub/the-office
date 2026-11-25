@@ -1078,6 +1078,8 @@ export const ROUTES = {
   socialPosts: "/api/social/posts",
   socialPost: (postId: string) => `/api/social/posts/${postId}`,
   socialFestivals: "/api/social/festivals",
+  socialStop: (postId: string) => `/api/social/posts/${postId}/stop`,
+  socialTakeDown: (postId: string, channelId: string) => `/api/social/posts/${postId}/variants/${channelId}/takedown`,
   routines: "/api/routines",
   routine: (id: string) => `/api/routines/${encodeURIComponent(id)}`,
   routineRuns: (id: string) => `/api/routines/${encodeURIComponent(id)}/runs`,

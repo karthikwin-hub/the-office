@@ -144,6 +144,8 @@ export function draftPost(
     calendarId: opts.calendarId ?? null,
     campaignId: opts.campaignId ?? null,
     source: "agent",
+    approvedBy: null,
+    noticeAt: null,
     status: "draft",
     at,
     skuIds,

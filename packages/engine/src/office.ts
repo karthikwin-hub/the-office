@@ -41,7 +41,7 @@ import type {
 import { AGENT_BY_ID, AGENTS, BOOKS_PROVIDER, BRAND, PLATFORM_NAMES, PROMOTION_RULES } from "@office/contracts";
 import { fit, textHash } from "./social/channels";
 import { type DraftPrompt, draftPrompt, fromDraft } from "./social/drafts";
-import { checkPost, factsFor } from "./social/checks";
+import { checkPost, factsFor, figuresIn } from "./social/checks";
 import { claimDays, nextFreeTime, skusNamed } from "./social/own";
 import { isThankYou, leadFrom, newMessage } from "./social/inbox";
 import { draftCalendar, planMonth } from "./social/planner";
@@ -121,11 +121,25 @@ export const WHATSAPP_MARKETING_PAISE = 78;
 /** Work for the host after a change: the Worker calls the platforms, the mock pretends to. */
 export type SocialEffect =
   | { kind: "publish"; postId: string; channelId: string }
+  | { kind: "remove"; postId: string; channelId: string }
   | { kind: "reply"; messageId: string; channelId: string; text: string }
   | { kind: "broadcast"; postId: string; channelId: string; audience: number };
 
 export type IncomingMessage = Pick<SocialMessage, "id" | "platform" | "channelId" | "kind" | "author" | "at" | "rating" | "text"> &
   Partial<Pick<SocialMessage, "postId" | "threadId" | "externalId">>;
+
+/** How long the owner has, after being told, to stop one of the agent's posts. */
+const HOLD_MS = 2 * 3600_000;
+
+/** An ISO time written in India time, as posts keep it. */
+function istTime(iso: string): string {
+  return `${new Date(Date.parse(iso) + 5.5 * 3600_000).toISOString().slice(0, 19)}+05:30`;
+}
+
+/** Whether any version states a price, a percentage or a stock count: a trusted agent leaves those to the owner. */
+function makesClaim(post: Post): boolean {
+  return post.variants.some((v) => v.status !== "skipped" && figuresIn(v.text).some((f) => f.kind === "price" || f.kind === "percent" || f.kind === "count"));
+}
 
 /** Channels whose posting code takes a video: Instagram as a Reel, Facebook as a Page video. */
 const VIDEO_PLATFORMS = new Set(["instagram", "facebook"]);
@@ -1151,7 +1165,10 @@ export class OfficeService {
     const post = this.books.posts.find((x) => x.id === p.postId);
     if (!post) return null;
     const c = this.postClearance(post);
-    return c.ok ? { level, reason: c.reason } : null;
+    if (!c.ok) return null;
+    // A trusted agent posts the plan's plain posts; one that states a price, an offer or stock waits for the owner.
+    if (level === "trusted" && makesClaim(post)) return null;
+    return { level, reason: level === "trusted" ? `${c.reason}, and it states no price, offer or stock` : c.reason };
   }
 
   /** Whether a post may go out on its own: in an approved calendar, unchanged since, and passing every check today. */
@@ -1287,9 +1304,12 @@ export class OfficeService {
       case "calendar":
         this.approveCalendar(p.calendarId!, item.decidedBy ?? "You");
         break;
-      case "post":
+      case "post": {
         this.schedulePost(p.postId!);
+        const post = this.books.posts.find((x) => x.id === p.postId);
+        if (post) post.approvedBy = /, (trusted|autonomous)$/.test(item.decidedBy ?? "") ? "agent" : "owner";
         break;
+      }
       case "broadcast": {
         const post = this.books.posts.find((x) => x.id === p.postId);
         const v = post?.variants.find((x) => x.channelId === p.channelId);
@@ -1499,7 +1519,7 @@ export class OfficeService {
       kind: "calendar",
       createdAt: istNow(this.asOf),
       title: `Approve the ${monthLabel(month)} calendar: ${posts.length} posts across ${channels.size} channels`,
-      summary: `${byPillar}.${this.books.festivalCalendar.length ? "" : " No festivals are chosen yet: pick them in Settings, Social media."}${failing ? ` ${failing} draft${failing === 1 ? " fails" : "s fail"} a check and will wait for you after approval.` : ""} Approving lets a trusted Social Media Manager publish each post at its time, if it is unchanged and passes every check again then.`,
+      summary: `${byPillar}.${this.books.festivalCalendar.length ? "" : " No festivals are chosen yet: pick them in Settings, Social media."}${failing ? ` ${failing} draft${failing === 1 ? " fails" : "s fail"} a check and will wait for you after approval.` : ""} Approving lets the Social Media Manager post on its own: a trusted one the posts with no price, offer or stock claim, an autonomous one all of them. Each is listed in your morning digest first and waits two hours for you to stop it, and must be unchanged and pass every check again when it goes out.`,
       evidence: [{ label: "The calendar", ref: { kind: "calendar", id: calendar.id } }],
       payload: { calendarId: calendar.id, postIds: posts.map((p) => p.id) },
       status: "pending",
@@ -1582,6 +1602,17 @@ export class OfficeService {
       if (post.status !== "scheduled" || Date.parse(post.at) > Date.parse(now)) continue;
       const due = post.variants.filter((v) => v.status === "scheduled");
       if (!due.length) continue;
+      // The agent's own go-ahead waits until the owner has been told, two hours ahead; untold, it moves a day on.
+      if (post.approvedBy === "agent" && !(post.noticeAt && Date.parse(now) >= Date.parse(post.noticeAt) + HOLD_MS)) {
+        if (!post.noticeAt) {
+          post.at = istTime(new Date(Date.parse(post.at) + 24 * 3600_000).toISOString());
+          this.log("social-media-manager", `Moved "${post.topic}" to ${dateLabel(post.at.slice(0, 10))}, so you hear about it before it goes out.`, {
+            kind: "post",
+            id: post.id,
+          });
+        }
+        continue;
+      }
       // The owner saw the warnings when they scheduled their own post; only the agent's posts are held back.
       const failed =
         post.source === "owner" ? [] : checkPost(this.ledger, post, this.books.brandVoice, { now: post.at }).filter((c) => !c.ok && c.key !== "duplicate");
@@ -1728,6 +1759,8 @@ export class OfficeService {
         calendarId: null,
         campaignId: null,
         source: "owner",
+        approvedBy: "owner",
+        noticeAt: null,
         status: "draft",
         at,
         skuIds,
@@ -1788,6 +1821,72 @@ export class OfficeService {
     this.books.staged = this.books.staged.filter((s) => !(s.status === "pending" && (s.payload as { postId?: string }).postId === postId));
     this.log("you", `Removed "${post.topic}" before it went out.`);
     return { removed: postId };
+  }
+
+  /**
+   * The agent's posts going out in the next day and a half that the owner has not heard about: each is listed in
+   * the morning digest and the activity log as going out unless stopped, and its two-hour hold starts now.
+   */
+  noticeDue(now: string): string[] {
+    const until = Date.parse(now) + 36 * 3600_000;
+    const out: string[] = [];
+    for (const post of this.books.posts) {
+      if (post.approvedBy !== "agent" || post.status !== "scheduled" || post.noticeAt || Date.parse(post.at) > until) continue;
+      if (!post.variants.some((v) => v.status === "scheduled")) continue;
+      post.noticeAt = now;
+      const when = Date.parse(post.at) < Date.parse(now) + HOLD_MS ? new Date(Date.parse(now) + HOLD_MS).toISOString() : post.at;
+      const line = `Posting "${post.topic}" on ${this.channelList(post)} at ${istTime(when).slice(11, 16)} ${dateLabel(istTime(when).slice(0, 10))} unless you stop it (Boardroom, Social media, Posts).`;
+      out.push(line);
+      this.log("social-media-manager", line, { kind: "post", id: post.id });
+    }
+    return out;
+  }
+
+  /** The owner stops one of the agent's posts before it goes out: it comes back to the desk, and the agent's trust drops a level. */
+  stopPost(postId: string, by: string): Post {
+    const post = this.post(postId);
+    if (post.source === "owner") throw new Error("This is your own post; move it or remove it instead.");
+    if (post.status !== "scheduled" || !post.variants.some((v) => v.status === "scheduled")) throw new Error("It is not waiting to go out.");
+    post.status = "draft";
+    for (const v of post.variants) if (v.status === "scheduled") v.status = "draft";
+    const agentApproved = post.approvedBy === "agent";
+    post.approvedBy = null;
+    post.noticeAt = null;
+    const item = this.stagePost(post, `${by} stopped it before it went out.`);
+    item.payload = { ...item.payload, holdForOwner: true };
+    if (agentApproved) this.demote("social-media-manager", `${by} stopped "${post.topic}"`);
+    return post;
+  }
+
+  /**
+   * Takes a published version down. Facebook removes it through its API; Instagram and the others have no
+   * delete for apps, so the owner deletes it there and this records it. An agent's own post costs it a trust level.
+   */
+  takeDown(postId: string, channelId: string, by: string): { post: Post; byHand: boolean } {
+    const post = this.post(postId);
+    const v = post.variants.find((x) => x.channelId === channelId);
+    if (!v || v.status !== "published") throw new Error("That version is not live.");
+    const ch = this.channel(channelId);
+    const byApi = v.platform === "facebook" && ch?.mode === "connected" && ch.status === "connected" && !!v.externalId;
+    if (byApi) this.effects.push({ kind: "remove", postId, channelId });
+    v.status = "removed";
+    this.log("you", `${by} took "${post.topic}" down from ${PLATFORM_NAMES[v.platform]}${byApi ? "" : "; delete it in the app too"}.`, {
+      kind: "post",
+      id: post.id,
+    });
+    if (post.approvedBy === "agent") this.demote("social-media-manager", `${by} took down "${post.topic}"`);
+    return { post, byHand: !byApi };
+  }
+
+  /** One trust level down, never below trainee. Promotion back is the owner's, in the Hiring hall. */
+  private demote(agentId: string, why: string) {
+    const s = this.state(agentId);
+    if (!s || s.trustLevel === "trainee") return;
+    s.trustLevel = s.trustLevel === "autonomous" ? "trusted" : "trainee";
+    this.log(
+      "office-manager",
+      `${AGENT_BY_ID[agentId]?.title ?? "The agent"} is back to ${s.trustLevel}, because ${why}. Promote it again in the Hiring hall when you are ready.`,
+    );
   }
 
   /** Editing one channel's version. A scheduled post that changes goes back to the desk. */

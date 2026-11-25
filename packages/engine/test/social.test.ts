@@ -493,3 +493,89 @@ describe("AI drafts for the month", () => {
     expect(set.map((f) => f.name)).toEqual(["Holi", "Diwali"]);
   });
 });
+
+describe("the owner approves the plan, not each post", () => {
+  const approvedMonth = (level: "trusted" | "autonomous") => {
+    const b = fresh();
+    b.agents.find((a) => a.agentId === "social-media-manager")!.trustLevel = level;
+    const o = new OfficeService(b, { asOf: "2026-11-04" });
+    o.setFestivals([]);
+    const card = o.draftCalendar("2027-01");
+    const calendarId = (card.payload as { calendarId: string }).calendarId;
+    const posts = o.books.posts.filter((p) => p.calendarId === calendarId);
+    // The sample has no photos for these products: leave Instagram out, and describe every picture.
+    for (const m of o.books.media) m.alt ||= "A product on the counter";
+    for (const p of posts) for (const v of p.variants) if (v.platform === "instagram") v.status = "skipped";
+    o.decide(card.id, { action: "approve" }, "Asha");
+    const claims = (p: Post) => p.variants.some((v) => /₹|%|\b(only|just|last)\s+\d+\s/i.test(v.text));
+    return { o, posts, claims };
+  };
+
+  it("lets a trusted agent schedule the plan's plain posts, and leaves posts with a price or stock claim to the owner", () => {
+    const { o, posts, claims } = approvedMonth("trusted");
+    const agent = posts.filter((p) => p.approvedBy === "agent");
+    expect(agent.length).toBeGreaterThan(0);
+    expect(agent.every((p) => p.status === "scheduled" && !claims(p))).toBe(true);
+    const withClaims = posts.filter(claims);
+    expect(withClaims.length).toBeGreaterThan(0);
+    for (const p of withClaims) {
+      expect(p.status).toBe("draft");
+      expect(o.books.staged.some((s) => s.kind === "post" && s.status === "pending" && (s.payload as { postId: string }).postId === p.id)).toBe(true);
+    }
+  });
+
+  it("lets an autonomous agent schedule checked posts with claims too", () => {
+    const { posts, claims } = approvedMonth("autonomous");
+    expect(posts.some((p) => claims(p) && p.approvedBy === "agent" && p.status === "scheduled")).toBe(true);
+  });
+
+  it("waits until the owner has been told, then two hours, before an agent's post goes out", () => {
+    const { o, posts } = approvedMonth("trusted");
+    const p = posts.find((x) => x.approvedBy === "agent" && x.variants.some((v) => v.channelId === "ch-facebook" && v.status === "scheduled"))!;
+    const at = p.at;
+    const due = new Date(Date.parse(at) + 60_000).toISOString();
+    expect(o.publishDue(due).some((e) => "postId" in e && e.postId === p.id)).toBe(false);
+    expect(Date.parse(p.at) - Date.parse(at)).toBe(24 * 3600_000);
+    const told = new Date(Date.parse(p.at) - 6 * 3600_000).toISOString();
+    const lines = o.noticeDue(told);
+    expect(lines.some((l) => l.includes(p.topic) && l.includes("unless you stop it"))).toBe(true);
+    expect(o.noticeDue(told).some((l) => l.includes(p.topic))).toBe(false);
+    expect(o.publishDue(new Date(Date.parse(told) + 3600_000).toISOString()).some((e) => "postId" in e && e.postId === p.id)).toBe(false);
+    expect(o.publishDue(new Date(Date.parse(p.at) + 60_000).toISOString())).toContainEqual({ kind: "publish", postId: p.id, channelId: "ch-facebook" });
+  });
+
+  it("does not hold a post the owner approved on the desk", () => {
+    const o = office(fresh(), "trainee");
+    const card = o.draftCalendar("2027-01");
+    o.decide(card.id, { action: "approve" }, "Asha");
+    const item = o.books.staged.find((s) => s.kind === "post" && s.status === "pending")!;
+    o.decide(item.id, { action: "approve" }, "Asha");
+    const p = post(o.books, (item.payload as { postId: string }).postId);
+    expect(p.approvedBy).toBe("owner");
+    expect(o.publishDue(new Date(Date.parse(p.at) + 60_000).toISOString()).some((e) => "postId" in e && e.postId === p.id)).toBe(true);
+  });
+
+  it("stops an agent's post on the owner's word, back to the desk, and drops the agent a trust level", () => {
+    const { o, posts } = approvedMonth("trusted");
+    const p = posts.find((x) => x.approvedBy === "agent")!;
+    o.stopPost(p.id, "Asha");
+    expect(p.status).toBe("draft");
+    const item = o.books.staged.find((s) => s.kind === "post" && s.status === "pending" && (s.payload as { postId: string }).postId === p.id)!;
+    expect(item.payload.holdForOwner).toBe(true);
+    expect(o.routine(item)).toBeNull();
+    expect(o.books.agents.find((a) => a.agentId === "social-media-manager")!.trustLevel).toBe("trainee");
+  });
+
+  it("takes a live post down: through Facebook's API, by hand on Instagram, with a trust level for the agent's own", () => {
+    const { o, posts } = approvedMonth("autonomous");
+    const p = posts.find((x) => x.approvedBy === "agent" && x.variants.some((v) => v.channelId === "ch-facebook"))!;
+    for (const v of p.variants) Object.assign(v, { status: "published", externalId: `ext-${v.channelId}` });
+    o.takeEffects();
+    expect(o.takeDown(p.id, "ch-facebook", "Asha").byHand).toBe(false);
+    expect(o.takeEffects()).toEqual([{ kind: "remove", postId: p.id, channelId: "ch-facebook" }]);
+    expect(o.books.agents.find((a) => a.agentId === "social-media-manager")!.trustLevel).toBe("trusted");
+    const other = p.variants.find((v) => v.channelId !== "ch-facebook")!;
+    expect(o.takeDown(p.id, other.channelId, "Asha").byHand).toBe(true);
+    expect(() => o.takeDown(p.id, "ch-facebook", "Asha")).toThrow(/not live/);
+  });
+});

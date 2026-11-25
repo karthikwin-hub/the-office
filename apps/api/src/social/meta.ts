@@ -275,6 +275,9 @@ export function facebook(keys: AppKeys | null, f: Fetch = fetch): ChannelAdapter
       }
       return { externalId: id, url: `https://www.facebook.com/${id}` };
     },
+    async remove(t, externalId) {
+      await call(f, `${FB}/${externalId}?${qs({ access_token: t.access })}`, { method: "DELETE" });
+    },
     async reply(t, to, text) {
       if (!to.externalId) throw new PlatformError("This comment has no Facebook id", "final");
       if (to.kind === "review") throw new PlatformError("Facebook does not let Pages reply to recommendations through the API; reply on the Page", "final");

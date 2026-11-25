@@ -365,6 +365,12 @@ describe("adapters against recorded responses", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("Facebook: takes a post down by deleting it", async () => {
+    const { f, calls } = recorder([[/DELETE .*\/55_77\?access_token=tok$/, () => ({ success: true })]]);
+    await facebook(keys, f).remove!({ ...tokens, account: "55" }, "55_77");
+    expect(calls.map((c) => c.method)).toEqual(["DELETE"]);
+  });
+
   it("Facebook: picks the Page and its token at sign-in", async () => {
     const { f } = recorder([
       [/oauth\/access_token\?client_id/, () => ({ access_token: "short" })],
