@@ -33,6 +33,7 @@ export function ChannelStrip({ channels, onConnect, onManual, busy }: Props) {
             <span className="channel-reach muted num">{`${c.followers.toLocaleString("en-IN")} ${c.platform === "whatsapp" ? "opted in" : "followers"}`}</span>
           ) : null}
           {c.lastError && c.status !== "connected" && c.status !== "manual" ? <span className="channel-error">{c.lastError}</span> : null}
+          {c.notice && c.status === "connected" ? <span className="channel-notice muted">{c.notice}</span> : null}
           {onConnect && c.platform !== "google" && c.status !== "connected" ? (
             <button type="button" className="btn-link" disabled={busy} onClick={() => onConnect(c)}>
               {c.status === "manual" ? "Connect" : "Reconnect"}

@@ -22,6 +22,7 @@ function withLaterDefaults(book: unknown): unknown {
     p.noticeAt ??= null;
     for (const v of (p.variants as Loose[] | undefined) ?? []) v.takenDownAt ??= null;
   }
+  for (const c of (b.channels as Loose[] | undefined) ?? []) c.notice ??= null;
   const voice = b.brandVoice as Loose | undefined;
   if (voice) for (const [k, v] of Object.entries({ audience: "", colours: [], imageStyle: "", logoMediaId: null, competitors: [] })) voice[k] ??= v;
   return b;

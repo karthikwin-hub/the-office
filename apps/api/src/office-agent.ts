@@ -908,7 +908,7 @@ export class Office extends Agent<Env> {
       const claimed = await this.claimIds(platform, [got.tokens.account, ...Object.values(got.tokens.extra)]);
       if (!claimed) return this.back({ connect_error: `That ${PLATFORM_NAMES[platform]} account is connected to another office. Disconnect it there first.` });
       await this.vault.put(ch.id, got.tokens);
-      this.office.connectChannel(ch.id, got.handle, got.followers);
+      this.office.connectChannel(ch.id, got.handle, got.followers, got.notice ?? null);
       await this.syncRoutes();
       return this.back({ connected: platform });
     } catch (e) {

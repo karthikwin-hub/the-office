@@ -442,6 +442,8 @@ export function threads(keys: AppKeys | null, f: Fetch = fetch, opts: { gapMs?: 
 
 /* ---------- WhatsApp Cloud API ---------- */
 
+const reason = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 160);
+
 /** The message template each business's number gets at sign-up for broadcasts; Meta reviews it, then it can be sent. */
 export const BROADCAST_TEMPLATE = "office_news";
 const BROADCAST_BODY = "Here is our latest news:\n\n{{1}}\n\nReply STOP to stop these messages.";
@@ -492,10 +494,20 @@ export function whatsapp(signup: { app: AppKeys | null; configId: string | null 
       const phone = phones.data[0];
       if (!phone) throw new PlatformError("That WhatsApp Business account has no phone number yet; add one in the sign-up", "final");
       await call(f, `${FB}/${waba}/subscribed_apps`, { method: "POST", headers: auth });
-      // A number new to the Cloud API must be registered before it can send; one already registered answers with an error we can pass.
+      // A number new to the Cloud API must be registered before it can send, which sets its two-step verification PIN.
+      // The PIN is random and not kept: the owner changes it in WhatsApp Manager, which does not ask for the old one.
+      const notes: string[] = [];
       const pin = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0]! % 900000));
-      await call(f, `${FB}/${phone.id}/register`, { method: "POST", json: { messaging_product: "whatsapp", pin }, headers: auth }).catch(() => undefined);
-      await call(f, `${FB}/${waba}/message_templates`, {
+      const registered = await call(f, `${FB}/${phone.id}/register`, { method: "POST", json: { messaging_product: "whatsapp", pin }, headers: auth }).then(
+        () => true,
+        (e: unknown) => e,
+      );
+      notes.push(
+        registered === true
+          ? "We turned on two-step verification for this number with a PIN we do not keep. To set your own, open WhatsApp Manager, Phone numbers, then Two-step verification."
+          : `WhatsApp did not register this number for sending (${reason(registered)}). If replies do not go out, turn off two-step verification for it in WhatsApp Manager and connect again.`,
+      );
+      const template = await call(f, `${FB}/${waba}/message_templates`, {
         method: "POST",
         json: {
           name: BROADCAST_TEMPLATE,
@@ -504,11 +516,21 @@ export function whatsapp(signup: { app: AppKeys | null; configId: string | null 
           components: [{ type: "BODY", text: BROADCAST_BODY, example: { body_text: [["New ceiling fans are in at the counter this week."]] } }],
         },
         headers: auth,
-      }).catch(() => undefined);
+      }).then(
+        () => true,
+        (e: unknown) => e,
+      );
+      // On a second sign-up the template is already there, which is what we want.
+      if (template === true) notes.push(`The broadcast message ${BROADCAST_TEMPLATE} is with Meta for review; broadcasts can go once Meta approves it.`);
+      else if (!/already exists/i.test(reason(template)))
+        notes.push(
+          `Meta did not take the broadcast message ${BROADCAST_TEMPLATE} (${reason(template)}). Broadcasts will fail until you add a marketing template called ${BROADCAST_TEMPLATE} in WhatsApp Manager.`,
+        );
       return {
         tokens: { access: token, refresh: null, expiresAt: null, account: phone.id, extra: { waba, template: BROADCAST_TEMPLATE, templateLanguage: "en" } },
         handle: phone.display_phone_number ?? phone.verified_name ?? "WhatsApp Business",
         followers: null,
+        notice: notes.join(" "),
       };
     },
     async publish() {
