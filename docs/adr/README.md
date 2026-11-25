@@ -19,4 +19,4 @@ Dates come from the git history: the first commit that carries the decision. The
 | [0008](0008-india-backup-rule-3-5.md) | A daily copy in India for rule 3(5) | Accepted | 2026-11-06 |
 | [0009](0009-releases-from-ci-via-staging.md) | Releases go from CI, through staging | Accepted | 2026-11-20 |
 | [0010](0010-reading-any-file.md) | Reading any file: convert, recognise, map | Proposed | 2026-11-21 |
-| [0012](0012-planned-social-posts-after-a-hold.md) | Planned social posts go out after a hold the owner can stop | Proposed | 2026-11-25 |
+| [0012](0012-planned-social-posts-after-a-hold.md) | Planned social posts go out after a hold the owner can stop | Accepted | 2026-11-25 |
