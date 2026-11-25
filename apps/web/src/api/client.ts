@@ -51,6 +51,8 @@ import {
   type BrandVoice,
   type Channel,
   type MediaAsset,
+  type OwnerPostResult,
+  type OwnerPosts,
   type Post,
   type PublishingPack,
   type JoinCode,
@@ -339,6 +341,9 @@ export const api = {
     call<Post>(ROUTES.socialVariant(postId, channelId), { method: "PUT", body: edit }),
   markPosted: (postId: string, channelId: string, url: string) => call<Post>(ROUTES.socialPosted(postId, channelId), { method: "POST", body: { url } }),
   pack: (postId: string, channelId: string) => call<PublishingPack>(ROUTES.socialPack(postId, channelId)),
+  ownPosts: (body: OwnerPosts) => call<OwnerPostResult>(ROUTES.socialPosts, { method: "POST", body }),
+  movePost: (postId: string, at: string) => call<Post>(ROUTES.socialPost(postId), { method: "PUT", body: { at } }),
+  removePost: (postId: string) => call<{ removed: string }>(ROUTES.socialPost(postId), { method: "DELETE" }),
   draftCalendar: (month: string) => call<StagedChange>(ROUTES.socialCalendarDraft, { method: "POST", body: { month } }),
   saveVoice: (voice: BrandVoice) => call<BrandVoice>(ROUTES.socialVoice, { method: "PUT", body: voice }),
   setupChannel: (id: string, change: { handle?: string; mode?: "manual"; postingHours?: { from: string; to: string } }) =>

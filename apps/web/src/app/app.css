@@ -1838,3 +1838,15 @@
   outline: 2px solid var(--carbon);
   outline-offset: 2px;
 }
+
+/* The owner's own posts: move or remove before it goes out. */
+.own-post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+.own-post-actions .field {
+  margin: 0;
+}

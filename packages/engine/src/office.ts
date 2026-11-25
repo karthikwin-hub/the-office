@@ -1664,7 +1664,7 @@ export class OfficeService {
         topic:
           row.topic?.trim() ||
           row.text
-            .split(/[.!?\n]/)[0]!
+            .split(/[.!?](?:\s|$)|\n/)[0]!
             .trim()
             .slice(0, 80),
         pillar: null,

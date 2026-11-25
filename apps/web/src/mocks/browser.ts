@@ -143,12 +143,13 @@ const handler = http.all("/api/*", async ({ request }) => {
     if (role !== "owner") return HttpResponse.json({ error: "Only the owner can add pictures." }, { status: 403 });
     const form = await request.formData();
     const file = form.get("file");
-    if (!(file instanceof File) || !/^image\/(png|jpe?g|webp)$/.test(file.type))
-      return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture." }, { status: 415 });
+    const video = file instanceof File && /^video\/(mp4|quicktime)$/.test(file.type);
+    if (!(file instanceof File) || (!video && !/^image\/(png|jpe?g|webp)$/.test(file.type)))
+      return HttpResponse.json({ error: "Send a PNG, JPEG or WebP picture, or an MP4 or MOV video." }, { status: 415 });
     const asset = getOffice().addMedia({
-      id: `media-u${Date.now().toString(36)}`,
+      id: `media-u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       url: URL.createObjectURL(file),
-      kind: "image",
+      kind: video ? "video" : "image",
       alt: String(form.get("alt") ?? ""),
       skuId: (form.get("skuId") as string | null) || null,
       rights: form.get("rights") === "generated" ? "generated" : "own",
@@ -194,7 +195,7 @@ const handler = http.all("/api/*", async ({ request }) => {
     return HttpResponse.json(next);
   }
   let body: unknown;
-  if (request.method !== "GET" && request.headers.get("content-type")?.includes("json")) body = await request.json();
+  if (request.method !== "GET" && request.headers.get("content-type")?.includes("json")) body = await request.json().catch(() => undefined);
   const res = dispatch(getOffice(), { method: request.method, path: url.pathname, query: url.searchParams, body, role, user: USERS[role], mode: "mock" });
   if (request.method !== "GET") {
     runMockEffects(getOffice());
